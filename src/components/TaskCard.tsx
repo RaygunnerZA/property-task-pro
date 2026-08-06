@@ -23,7 +23,11 @@ import { useState, useMemo, useCallback, memo, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
-import { UserAvatar, TASK_CARD_META_CHIP_SIZE } from "@/components/tasks/UserAvatar";
+import {
+  UserAvatar,
+  TASK_CARD_AVATAR_SIZE,
+  TASK_CARD_META_CHIP_SIZE,
+} from "@/components/tasks/UserAvatar";
 import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
 import {
   resolveTaskAssigneeUsers,
@@ -39,6 +43,7 @@ import {
   taskDueUrgencyLabel,
 } from "@/lib/taskDueUrgency";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
+import { TaskStatusMark } from "@/components/tasks/TaskStatusMark";
 import { useTaskCommentSignal } from "@/hooks/useTaskCommentSignals";
 import {
   issuesSignalOverflowButtonClassName,
@@ -52,7 +57,7 @@ const WORKBENCH_TASK_META_CLASS =
 
 
 // Property Icon Chip Component - shows property icon on property color background
-// Matches task meta avatars: 24×24, rounded-card
+// Matches META_CHIP size: 28×28, rounded-card
 function PropertyIconChip({ property }: { property: any }) {
   if (!property) return null;
   
@@ -128,12 +133,12 @@ function TaskCardPeopleMeta({
   className?: string;
 }) {
   if (!assigner && !assignee) return null;
-  const size = TASK_CARD_META_CHIP_SIZE;
+  const size = TASK_CARD_AVATAR_SIZE;
 
   if (assigner && assignee) {
     return (
       <div
-        className={cn("flex items-center gap-1 shrink-0", className)}
+        className={cn("flex items-center gap-0.5 shrink-0", className)}
         title={
           [assigner.name && `From ${assigner.name}`, assignee.name && `For ${assignee.name}`]
             .filter(Boolean)
@@ -147,7 +152,7 @@ function TaskCardPeopleMeta({
           size={size}
           shape="card"
         />
-        <ArrowRight className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+        <ArrowRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden />
         <UserAvatar
           imageUrl={assignee.imageUrl}
           name={assignee.name}
@@ -360,23 +365,7 @@ function TaskCardComponent({
   // Don't show Done button if task is already archived or completed
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';
 
-  // Get priority color for indicator circle
-  // No priority is treated as normal, and normal/low priorities don't show a dot
-  const getPriorityColor = (priority?: string | null) => {
-    if (!priority) return 'bg-transparent'; // No priority = normal, don't show
-    const normalizedPriority = priority?.toLowerCase();
-    if (normalizedPriority === 'low') return 'bg-transparent'; // Don't show for low
-    if (normalizedPriority === 'normal' || normalizedPriority === 'medium') return 'bg-transparent'; // Don't show for normal/medium
-    if (normalizedPriority === 'high') return 'bg-warning-vivid';
-    if (normalizedPriority === 'urgent') return 'bg-destructive';
-    return 'bg-transparent'; // Default: transparent
-  };
-
-  const priorityColor = getPriorityColor(task?.priority);
-  const isUrgentPriority = task?.priority?.toLowerCase() === "urgent";
   const metaCompact = metaDensity === "compact";
-  const showPriorityDot =
-    !metaCompact || task?.priority === "high" || task?.priority === "urgent";
   const dueUrgency = getTaskDueUrgency(task);
   const dueDateRaw = task?.due_date ?? t.due_at;
   const educationChipLabel = isStaffTrainingTask(task)
@@ -422,11 +411,19 @@ function TaskCardComponent({
     </div>
   );
 
+  /** Status locked top-left on the thumbnail. */
+  const statusMark = (
+    <div className="pointer-events-none absolute left-1.5 top-1.5 z-10">
+      <TaskStatusMark status={task?.status} size="chip" />
+    </div>
+  );
+
+  /** OVERDUE / NEARLY DUE — top-right, same 22px height as status mark. */
   const dueUrgencyChip =
     dueUrgency != null ? (
       <span
         className={cn(
-          "absolute top-1.5 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
+          "absolute top-1.5 z-10 flex h-[22px] min-w-[72px] items-center justify-center rounded-[5px] px-2",
           // Leave room when the new-comment square sits on the card’s top-right
           commentSignal && layout !== "horizontal" ? "right-8" : "right-2",
           "font-mono text-2xs font-medium uppercase tracking-wide leading-none shadow-sm",
@@ -459,16 +456,8 @@ function TaskCardComponent({
 
     const horizontalMedia = (
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
+        {statusMark}
         {dueUrgencyChip}
-        {/* Inside media zone so paper-texture `bg-card > * { relative }` cannot push the thumb */}
-        {showPriorityDot ? (
-          <div
-            className={cn(
-              "pointer-events-none absolute top-[4px] left-[4px] z-10 h-[10px] w-[10px] rounded-full",
-              priorityColor
-            )}
-          />
-        ) : null}
         {showDoneButton && !metaCompact ? (
           <button
             type="button"
@@ -596,23 +585,8 @@ function TaskCardComponent({
       {completionOverlay}
       {newCommentBubble}
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
+        {statusMark}
         {dueUrgencyChip}
-        {showPriorityDot ? (
-          <div
-            className={cn(
-              "absolute top-[4px] left-[4px] w-[24px] h-[24px] rounded-card z-10 flex items-center justify-center",
-              priorityColor
-            )}
-            style={{
-              boxShadow:
-                "1px 2px 1px 0px rgba(255, 255, 255, 0.3), -1px -1px 1px 0px rgba(0, 0, 0, 0.2)",
-            }}
-          >
-            {isUrgentPriority ? (
-              <span className="text-white text-sm font-bold leading-none">!</span>
-            ) : null}
-          </div>
-        ) : null}
         {!metaCompact && themes.length > 0 ? (
           <div className="absolute bottom-2 left-2 z-10">
             <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">

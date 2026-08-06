@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { ChevronRight, User, MapPin, Calendar, Box, AlertTriangle, Tag, Shield } from "lucide-react";
+import { ChevronRight, Plus, User, MapPin, Calendar, Box, AlertTriangle, Tag, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SemanticChip, type EpistemicState } from "@/components/chips/semantic";
 
@@ -118,9 +118,16 @@ export interface IntakeChipRowProps {
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   openSlot: IntakeChipSlotId | null;
   onCloseSlot: () => void;
-  renderSlotContent: (slot: IntakeChipSlotId, onClose: () => void) => IntakeSlotPanelRows;
+  renderSlotContent: (slot: IntakeChipSlotId, onClose: () => void) => IntakeSlotViewRows;
   /** stacked: icon rail + panel + summary row (intake modal). interleaved: [icon][chip] pairs (task detail edit). */
   layout?: IntakeChipRowLayout;
+  /**
+   * Interleaved: hover icon or live chip expands the icon box +12px and reveals +.
+   * Defaults on for interleaved layout.
+   */
+  showHoverAdd?: boolean;
+  /** Display chips/icons without opening slot panels. */
+  readOnly?: boolean;
   className?: string;
 }
 
@@ -131,8 +138,11 @@ export function IntakeChipRow({
   onCloseSlot,
   renderSlotContent,
   layout = "stacked",
+  showHoverAdd,
+  readOnly = false,
   className,
 }: IntakeChipRowProps) {
+  const hoverAddEnabled = showHoverAdd ?? layout === "interleaved";
   const containerRef = useRef<HTMLDivElement>(null);
   const railScrollRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +185,7 @@ export function IntakeChipRow({
   }, [updateRailFade, chips.length, openSlot]);
 
   const toggleSlot = (slot: IntakeChipSlotId) => {
+    if (readOnly) return;
     if (openSlot === slot) {
       onCloseSlot();
       return;
@@ -193,45 +204,75 @@ export function IntakeChipRow({
             pressOnPointerDown
             truncate
             animateIn
-            removable={chip.removable ?? Boolean(chip.onRemove)}
-            onRemove={chip.onRemove}
+            removable={!readOnly && (chip.removable ?? Boolean(chip.onRemove))}
+            onRemove={readOnly ? undefined : chip.onRemove}
             className="shrink-0"
           />
         ))
       : null;
 
-  const panel = openSlot ? renderSlotContent(openSlot, onCloseSlot) : null;
+  const panel = !readOnly && openSlot ? renderSlotContent(openSlot, onCloseSlot) : null;
 
-  const slotIconButton = (id: IntakeChipSlotId, Icon: typeof User, title: string) => {
+  const slotIconButton = (
+    id: IntakeChipSlotId,
+    Icon: typeof User,
+    title: string,
+    opts?: { hoverExpandAdd?: boolean }
+  ) => {
     const isOpen = openSlot === id;
+    const expandAdd = Boolean(opts?.hoverExpandAdd) && !readOnly;
     return (
       <button
         key={`icon-${id}`}
         type="button"
         onClick={() => toggleSlot(id)}
-        aria-label={title}
+        aria-label={expandAdd ? `${title}, add` : title}
         title={title}
-        style={{ width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }}
+        style={
+          expandAdd
+            ? undefined
+            : { width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }
+        }
         className={cn(
           "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-card",
-          "transition-[background-color,box-shadow,color] duration-200 ease-out",
+          "transition-[width,min-width,background-color,box-shadow,color,gap] duration-150 ease-out",
+          expandAdd
+            ? cn(
+                // Rest tight to the glyph; hover grows +12px for the +.
+                "w-5 min-w-5 justify-start gap-0 pl-0.5",
+                "group-hover/slot:w-8 group-hover/slot:min-w-8 group-hover/slot:gap-0.5",
+                isOpen && "w-8 min-w-8 gap-0.5"
+              )
+            : null,
           isOpen
             ? "bg-transparent text-muted-foreground shadow-e1"
             : "bg-transparent text-muted-foreground shadow-none hover:shadow-inset"
         )}
       >
         <Icon className="h-[14px] w-[14px] shrink-0" />
+        {expandAdd ? (
+          <Plus
+            className={cn(
+              "h-3 w-3 shrink-0 text-primary transition-opacity duration-150",
+              isOpen ? "opacity-100" : "opacity-0 group-hover/slot:opacity-100"
+            )}
+            aria-hidden
+          />
+        ) : null}
       </button>
     );
   };
 
   const interleavedRow = (
-    <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>
+    <HorizontalOverflowRow className={cn(SCROLLER_ROW_CLASS, "gap-2.5")}>
       {SLOTS.map(({ id, icon: Icon, title }) => {
         const slotChips = chips.filter((c) => c.slot === id);
         return (
-          <span key={id} className="inline-flex shrink-0 items-center gap-1">
-            {slotIconButton(id, Icon, title)}
+          <span
+            key={id}
+            className="group/slot inline-flex shrink-0 items-center gap-0.5"
+          >
+            {slotIconButton(id, Icon, title, { hoverExpandAdd: hoverAddEnabled })}
             {slotChips.map((chip) => (
               <SemanticChip
                 key={chip.id}
@@ -241,8 +282,8 @@ export function IntakeChipRow({
                 pressOnPointerDown
                 truncate
                 animateIn
-                removable={chip.removable ?? Boolean(chip.onRemove)}
-                onRemove={chip.onRemove}
+                removable={!readOnly && (chip.removable ?? Boolean(chip.onRemove))}
+                onRemove={readOnly ? undefined : chip.onRemove}
                 className="shrink-0"
               />
             ))}

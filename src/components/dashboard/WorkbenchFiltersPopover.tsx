@@ -40,11 +40,11 @@ const Funnel = ({ className, style }: { className?: string; style?: React.CSSPro
 );
 
 const STATUS_OPTIONS = [
-  { id: "filter-status-todo", label: "To-do" },
+  { id: "filter-status-todo", label: "Not started" },
   { id: "filter-status-in-progress", label: "In progress" },
-  { id: "filter-status-waiting-review", label: "Waiting review" },
-  { id: "filter-status-blocked", label: "Blocked" },
-  { id: "filter-status-done", label: "Done" },
+  { id: "filter-status-waiting-review", label: "On hold" },
+  { id: "filter-status-done", label: "Completed" },
+  { id: "filter-status-cancelled", label: "Cancelled" },
 ] as const;
 
 const PRIORITY_OPTIONS = [

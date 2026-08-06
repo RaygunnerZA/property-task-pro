@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
-import { Camera, CheckSquare, Edit2, MessageSquare } from "lucide-react";
-import { UserAvatar } from "@/components/tasks/UserAvatar";
-import type { TaskPersonAvatar } from "@/lib/userDisplayHelpers";
+import { Camera, Edit2, X } from "lucide-react";
 import {
   META_CHIP_CLASS,
   META_CHIP_FILLED_CLASS,
 } from "@/lib/metaChips";
+import { PROPERTY_HERO_UNDERLAY } from "@/hooks/usePropertyHeroSettle";
 import { cn } from "@/lib/utils";
 
 export type TaskDetailImageThumb = {
@@ -29,6 +28,8 @@ type TaskDetailHeroMetaProps = {
   selectedIndex: number | null;
   onSelectImage: (index: number) => void;
   onOpenImage?: (index: number) => void;
+  /** Close control in the hero toolbar — avoids stacking under Dialog’s absolute X. */
+  onClose?: () => void;
   statusLabel: string;
   statusTone?: "open" | "progress" | "review" | "done" | "other";
   /** Priority urgent chip next to status. */
@@ -37,14 +38,13 @@ type TaskDetailHeroMetaProps = {
   urgencyChip?: TaskDetailUrgencyChip;
   /** Theme / category tags after status chips. */
   tagLabels?: string[];
-  dueLabel?: string | null;
-  /** Space or property shown under LOCATION. */
-  locationLabel?: string | null;
   /** e.g. "Created by Justin • Today 14:32" */
   contextLine?: string | null;
   counts?: TaskDetailStatusCounts;
-  assigner?: TaskPersonAvatar | null;
-  assignee?: TaskPersonAvatar | null;
+  /** HorizontalOverflowRow / IntakeChipRow under the image (who / where / when…). */
+  metaRow?: ReactNode;
+  /** Lightbox / annotation open — image at full opacity (same as hover). */
+  imageOpen?: boolean;
 };
 
 function statusFilledClass(tone: TaskDetailHeroMetaProps["statusTone"]): string {
@@ -62,72 +62,26 @@ function statusFilledClass(tone: TaskDetailHeroMetaProps["statusTone"]): string 
   }
 }
 
-function PersonCell({ person }: { person: TaskPersonAvatar }) {
-  return (
-    <span className="inline-flex min-w-0 items-center gap-2">
-      <UserAvatar
-        imageUrl={person.imageUrl}
-        name={person.name}
-        propertyColor={person.accentColor}
-        size={20}
-        shape="card"
-        className="!h-5 !w-5 !min-h-5 !min-w-5 rounded-[6px]"
-      />
-      <span className="truncate">{person.name || "Unknown"}</span>
-    </span>
-  );
-}
-
-function StatusCounts({
-  counts,
+function PhotoCountBadge({
+  count,
   tone = "dark",
 }: {
-  counts?: TaskDetailStatusCounts;
+  count: number;
   tone?: "dark" | "light";
 }) {
-  if (!counts) return null;
-  const items: { key: string; icon: ReactNode; value: number; label: string }[] = [];
-  if ((counts.photos ?? 0) > 0) {
-    items.push({
-      key: "photos",
-      icon: <Camera className="h-3 w-3" aria-hidden />,
-      value: counts.photos!,
-      label: "Photos",
-    });
-  }
-  if ((counts.checklist ?? 0) > 0) {
-    items.push({
-      key: "checklist",
-      icon: <CheckSquare className="h-3 w-3" aria-hidden />,
-      value: counts.checklist!,
-      label: "Checklist items",
-    });
-  }
-  if ((counts.comments ?? 0) > 0) {
-    items.push({
-      key: "comments",
-      icon: <MessageSquare className="h-3 w-3" aria-hidden />,
-      value: counts.comments!,
-      label: "Comments",
-    });
-  }
-  if (items.length === 0) return null;
-
+  if (count <= 0) return null;
   return (
-    <div
+    <span
       className={cn(
-        "flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]",
-        tone === "dark" ? "text-white/75" : "text-muted-foreground"
+        "inline-flex shrink-0 items-center gap-1 text-[11px] tabular-nums",
+        tone === "dark" ? "text-white/80" : "text-muted-foreground"
       )}
+      title="Photos"
     >
-      {items.map((item) => (
-        <span key={item.key} className="inline-flex items-center gap-1" title={item.label}>
-          {item.icon}
-          <span className="tabular-nums">{item.value}</span>
-          <span className="sr-only">{item.label}</span>
-        </span>
-      ))}
-    </div>
+      <Camera className="h-3 w-3" aria-hidden />
+      <span>{count}</span>
+      <span className="sr-only">Photos</span>
+    </span>
   );
 }
 
@@ -145,7 +99,7 @@ function MetaChipRow({
   tagLabels?: string[];
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
       <span className={cn(META_CHIP_FILLED_CLASS, statusFilledClass(statusTone))}>
         {statusLabel}
       </span>
@@ -170,7 +124,7 @@ function MetaChipRow({
 }
 
 /**
- * Compact evidence hero + Assigned / Due / Location metadata for Task Detail.
+ * Compact evidence hero + HorizontalOverflowRow metadata for Task Detail.
  */
 export function TaskDetailHeroMeta({
   title,
@@ -178,21 +132,22 @@ export function TaskDetailHeroMeta({
   selectedIndex,
   onSelectImage,
   onOpenImage,
+  onClose,
   statusLabel,
   statusTone = "other",
   priorityUrgent = false,
   urgencyChip = null,
   tagLabels,
-  dueLabel,
-  locationLabel,
   contextLine,
   counts,
-  assignee,
+  metaRow,
+  imageOpen = false,
 }: TaskDetailHeroMetaProps) {
   const activeIndex = selectedIndex ?? 0;
   const hero = images[activeIndex] ?? images[0];
   const heroSrc = hero?.heroSrc || hero?.src;
   const hasHero = Boolean(heroSrc);
+  const photoCount = counts?.photos ?? 0;
 
   const chipRow = (
     <MetaChipRow
@@ -208,7 +163,11 @@ export function TaskDetailHeroMeta({
     <div className="space-y-4">
       {hasHero ? (
         <div className="space-y-2.5">
-          <div className="group relative w-full overflow-hidden rounded-[12px] bg-muted/40 shadow-e1">
+          {/* Full-bleed to panel/modal top; turquoise shows through at rest opacity. */}
+          <div
+            className="group relative w-full overflow-hidden"
+            style={{ backgroundColor: PROPERTY_HERO_UNDERLAY }}
+          >
             <button
               type="button"
               onClick={() => onOpenImage?.(activeIndex)}
@@ -218,51 +177,76 @@ export function TaskDetailHeroMeta({
               <img
                 src={heroSrc}
                 alt={hero?.alt || ""}
-                className="h-[min(22vh,168px)] w-full object-cover"
+                className={cn(
+                  "h-[min(22vh,168px)] w-full object-cover transition-opacity duration-200 ease-out",
+                  imageOpen
+                    ? "opacity-100"
+                    : "opacity-60 group-hover:opacity-100 group-focus-within:opacity-100"
+                )}
               />
             </button>
 
             <div
               className="pointer-events-none absolute inset-0"
               style={{
+                // Same angled wash as dashboard property card heroes.
                 background:
-                  "linear-gradient(180deg, rgba(20, 28, 45, 0.12) 0%, rgba(20, 28, 45, 0.05) 40%, rgba(20, 28, 45, 0.78) 100%)",
+                  "linear-gradient(10.2deg, rgba(26, 44, 55, 0.74) 2%, rgba(0, 0, 0, 0) 41%)",
               }}
             />
 
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 space-y-1.5 p-3 pr-12 sm:p-3.5">
-              <div className="pointer-events-auto">{chipRow}</div>
+              <div className="pointer-events-auto min-w-0">{chipRow}</div>
 
               <h2 className="text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-sm sm:text-xl">
                 {title}
               </h2>
 
-              {contextLine ? (
-                <p className="truncate text-[11px] text-white/70">{contextLine}</p>
+              {contextLine || photoCount > 0 ? (
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  {contextLine ? (
+                    <p className="min-w-0 truncate text-[11px] text-white/70">{contextLine}</p>
+                  ) : (
+                    <span />
+                  )}
+                  <PhotoCountBadge count={photoCount} tone="dark" />
+                </div>
               ) : null}
-
-              <StatusCounts counts={counts} tone="dark" />
             </div>
 
-            <div className="absolute right-2 top-2 z-20 flex items-center gap-1 opacity-70 transition-opacity group-hover:opacity-100">
+            <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
               <button
                 type="button"
                 onClick={() => onOpenImage?.(activeIndex)}
                 className={cn(
-                  "flex h-7 w-7 items-center justify-center rounded-full",
-                  "bg-black/25 text-white/90 backdrop-blur-[1px] transition-opacity duration-200",
-                  "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 hover:bg-black/40",
+                  "flex h-8 w-8 items-center justify-center rounded-full",
+                  "bg-black/35 text-white/95 backdrop-blur-[1px] transition-opacity duration-200",
+                  "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 hover:bg-black/50",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                 )}
                 aria-label="Edit image and annotations"
               >
                 <Edit2 className="h-3.5 w-3.5" />
               </button>
+              {onClose ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className={cn(
+                    "flex h-8 w-8 items-center justify-center rounded-md",
+                    "bg-black/35 text-white/95 backdrop-blur-[1px] transition-colors",
+                    "hover:bg-black/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                  )}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              ) : null}
             </div>
           </div>
 
           {images.length > 1 ? (
-            <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hz-teal">
+            <div className="flex gap-1.5 overflow-x-auto px-5 pb-0.5 scrollbar-hz-teal">
               {images.map((image, index) => {
                 const selected = activeIndex === index;
                 return (
@@ -287,58 +271,44 @@ export function TaskDetailHeroMeta({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-3">
-          {chipRow}
+        <div className="space-y-3 px-5 pt-4">
+          {onClose ? (
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
+          <div className="min-w-0">{chipRow}</div>
 
           <h2 className="text-xl font-semibold leading-snug tracking-tight text-foreground pr-2">
             {title}
           </h2>
 
-          {contextLine ? (
-            <p className="text-xs text-muted-foreground">{contextLine}</p>
+          {contextLine || photoCount > 0 ? (
+            <div className="flex min-w-0 items-center justify-between gap-2">
+              {contextLine ? (
+                <p className="min-w-0 truncate text-xs text-muted-foreground">{contextLine}</p>
+              ) : (
+                <span />
+              )}
+              <PhotoCountBadge count={photoCount} tone="light" />
+            </div>
           ) : null}
-
-          <StatusCounts counts={counts} tone="light" />
         </div>
       )}
 
-      <div className="space-y-3">
-        <dl className="grid grid-cols-3 gap-x-3 gap-y-2">
-          <div className="min-w-0 space-y-0.5">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Assigned to
-            </dt>
-            <dd className="min-w-0 text-sm text-foreground">
-              {assignee ? (
-                <PersonCell person={assignee} />
-              ) : (
-                <span className="text-muted-foreground">Unassigned</span>
-              )}
-            </dd>
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Due
-            </dt>
-            <dd className="min-w-0 text-sm text-foreground">
-              {dueLabel ? dueLabel : <span className="text-muted-foreground">No due date</span>}
-            </dd>
-          </div>
-          <div className="min-w-0 space-y-0.5">
-            <dt className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              Location
-            </dt>
-            <dd className="min-w-0 truncate text-sm text-foreground">
-              {locationLabel ? (
-                locationLabel
-              ) : (
-                <span className="text-muted-foreground">—</span>
-              )}
-            </dd>
-          </div>
-        </dl>
-        <div className="border-t border-white/60" aria-hidden />
-      </div>
+      {metaRow ? (
+        <div className="space-y-3 px-5">
+          {metaRow}
+          <div className="border-t border-white/60" aria-hidden />
+        </div>
+      ) : null}
     </div>
   );
 }

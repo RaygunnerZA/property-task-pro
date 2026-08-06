@@ -55,15 +55,15 @@ export function TaskDetailContent({
         className
       )}
     >
+      {/* Hero bleeds full-width to the top of the panel / modal. */}
+      {hero}
+
       <div className="space-y-6 px-5 pb-3 pt-4">
-        <header className="space-y-4">
-          {showTitle ? (
-            <h2 className="text-xl font-semibold text-foreground leading-snug tracking-tight pr-2">
-              {title}
-            </h2>
-          ) : null}
-          {hero}
-        </header>
+        {showTitle ? (
+          <h2 className="text-xl font-semibold text-foreground leading-snug tracking-tight pr-2">
+            {title}
+          </h2>
+        ) : null}
 
         {showDescription ? (
           <section className="space-y-2" aria-label="Description">

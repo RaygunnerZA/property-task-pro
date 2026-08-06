@@ -4,18 +4,17 @@ import {
   ArrowDown,
   Building2,
   Calendar,
-  CheckSquare,
-  Clock,
-  Eye,
   Minus,
   User,
   Users,
 } from "lucide-react";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { SortBar } from "@/components/ui/filters/SortBar";
+import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
+import { TASK_STATUS_ORDER, TASK_STATUS_VISUALS } from "@/lib/taskStatus";
 import { cn } from "@/lib/utils";
 
 type WorkbenchTaskFilterBarProps = {
@@ -95,33 +94,15 @@ export function WorkbenchTaskFilterBar({
       {
         id: "status",
         label: "Status",
-        options: [
-          {
-            id: "filter-status-todo",
-            label: "To-Do",
-            icon: <CheckSquare className="h-4 w-4" />,
-          },
-          {
-            id: "filter-status-in-progress",
-            label: "In Progress",
-            icon: <Clock className="h-4 w-4" />,
-          },
-          {
-            id: "filter-status-waiting-review",
-            label: "Waiting review",
-            icon: <Eye className="h-4 w-4" />,
-          },
-          {
-            id: "filter-status-blocked",
-            label: "Blocked",
-            icon: <AlertTriangle className="h-4 w-4" />,
-          },
-          {
-            id: "filter-status-done",
-            label: "Done",
-            icon: <CheckSquare className="h-4 w-4" />,
-          },
-        ],
+        options: TASK_STATUS_ORDER.map((status) => {
+          const visual = TASK_STATUS_VISUALS[status];
+          const Icon = visual.Icon;
+          return {
+            id: visual.filterId,
+            label: visual.label,
+            icon: <Icon className={cn("h-4 w-4", visual.filterIconClassName)} />,
+          };
+        }),
       },
       {
         id: "date-due",
@@ -241,13 +222,19 @@ export function WorkbenchTaskFilterBar({
       collapseInteractionRootRef={collapseInteractionRootRef}
       onExpandedChange={showSortBar ? setFilterExpanded : undefined}
       afterFilterTrigger={
-        showSortBar ? (
-          <SortBar
-            sortBy={sortBy}
-            onSortChange={setSortBy}
-            forceCollapsed={filterExpanded}
+        <>
+          <StatusFilterIconStrip
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
           />
-        ) : undefined
+          {showSortBar ? (
+            <SortBar
+              sortBy={sortBy}
+              onSortChange={setSortBy}
+              forceCollapsed={filterExpanded}
+            />
+          ) : null}
+        </>
       }
     />
   );

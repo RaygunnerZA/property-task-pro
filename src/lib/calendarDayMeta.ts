@@ -227,7 +227,7 @@ export function applyCalendarDisplayFilters(
     "filter-status-todo",
     "filter-status-in-progress",
     "filter-status-waiting-review",
-    "filter-status-blocked",
+    "filter-status-cancelled",
     "filter-status-done",
   ];
   if (statusFilters.some((f) => filters.has(f))) {
@@ -236,7 +236,7 @@ export function applyCalendarDisplayFilters(
       if (filters.has("filter-status-in-progress") && task.status === "in_progress") return true;
       if (filters.has("filter-status-waiting-review") && task.status === "waiting_review")
         return true;
-      if (filters.has("filter-status-blocked") && task.status === "blocked") return true;
+      if (filters.has("filter-status-cancelled") && task.status === "archived") return true;
       if (filters.has("filter-status-done") && task.status === "completed") return true;
       return false;
     });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, Upload, Pencil } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -36,7 +36,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { columnShellClass, dialogContentWideClass } from "@/lib/layoutClasses";
 import { useDataContext } from "@/contexts/DataContext";
-import { useFileUpload } from "@/hooks/use-file-upload";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useCategories } from "@/hooks/useCategories";
@@ -78,12 +77,15 @@ import {
   clearTaskCompletionMotion,
   playTaskCompletionMotion,
 } from "@/lib/taskCompletionMotion";
-import {
-  resolveTaskAssignerUser,
-  resolveTaskAssigneeUsers,
-} from "@/lib/userDisplayHelpers";
+import { resolveTaskAssignerUser } from "@/lib/userDisplayHelpers";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
+import {
+  getTaskStatusVisual,
+  TASK_STATUS_ORDER,
+  type TaskStatusVisual,
+} from "@/lib/taskStatus";
+import type { TaskStatus } from "@/types/database";
 
 interface TaskDetailPanelProps {
   taskId: string;
@@ -149,6 +151,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [taskEditOpen, setTaskEditOpen] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [evidenceSlideIndex, setEvidenceSlideIndex] = useState(0);
   const [focusComposeKey] = useState(0);
@@ -182,6 +185,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   // Reset edit UI when switching tasks
   useEffect(() => {
     setTaskEditOpen(false);
+    setActivityExpanded(false);
     setOpenChipSlot(null);
   }, [taskId]);
 
@@ -431,8 +435,54 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     }
   };
 
-  const handleDueDateChange = (date: string) => {
+  const handleDueDateChange = async (date: string) => {
     setDueDate(date);
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ due_date: date || null })
+        .eq("id", taskId);
+      if (error) throw error;
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (err: any) {
+      toast({ title: "Couldn't update due date", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handlePriorityChange = async (next: string) => {
+    setPriority(next);
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ priority: next })
+        .eq("id", taskId);
+      if (error) throw error;
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (err: any) {
+      toast({ title: "Couldn't update priority", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleStatusChange = async (next: TaskStatus) => {
+    if (isUpdating || next === status) return;
+    setIsUpdating(true);
+    const prev = status;
+    setStatus(next);
+    try {
+      const { error } = await supabase.from("tasks").update({ status: next }).eq("id", taskId);
+      if (error) throw error;
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task-audit-log", (task as any)?.org_id, taskId] });
+      toast({ title: "Status updated", description: getTaskStatusVisual(next).label });
+    } catch (err: any) {
+      setStatus(prev);
+      toast({ title: "Couldn't update status", description: err.message, variant: "destructive" });
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleAssetsChange = async (assetIds: string[]) => {
@@ -475,11 +525,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const statusFactChips: SuggestedChip[] = useMemo(() => {
     const label = (
       {
-        open: "OPEN",
+        open: "NOT STARTED",
         in_progress: "IN PROGRESS",
-        waiting_review: "WAITING REVIEW",
-        completed: "DONE",
-        archived: "ARCHIVED",
+        waiting_review: "ON HOLD",
+        completed: "COMPLETED",
+        archived: "CANCELLED",
       } as Record<string, string>
     )[status] || status.toUpperCase();
     return [{ id: `status-${status}`, type: "priority" as const, value: status, label, score: 1, source: "rule" as const, resolvedEntityId: status }];
@@ -489,11 +539,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     return (
       (
         {
-          open: "Open",
+          open: "Not started",
           in_progress: "In progress",
-          waiting_review: "Waiting review",
-          completed: "Done",
-          archived: "Archived",
+          waiting_review: "On hold",
+          completed: "Completed",
+          archived: "Cancelled",
         } as Record<string, string>
       )[status] || status
     ).toUpperCase();
@@ -505,14 +555,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     if (urgency === "due_soon") return "nearly_due" as const;
     return null;
   }, [dueDate, status]);
-
-  const dueChipLabel = useMemo(() => {
-    if (!dueDate) return null;
-    const d = dueDate.includes("T") ? parseISO(dueDate) : parseISO(`${dueDate}T12:00:00`);
-    if (!isValid(d)) return null;
-    const hasTime = dueDate.includes("T");
-    return hasTime ? format(d, "EEE d MMM · HH:mm") : format(d, "EEE d MMM");
-  }, [dueDate]);
 
   const statusChipTextClass = useMemo(() => {
     if (status === "open") return "text-success-foreground";
@@ -652,7 +694,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         epistemic: "fact",
         removable: true,
         onPress: () => openSlot("priority"),
-        onRemove: () => setPriority("normal"),
+        onRemove: () => void handlePriorityChange("normal"),
       });
     }
 
@@ -717,6 +759,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     handleTeamsChange,
     handleSpacesChange,
     handleDueDateChange,
+    handlePriorityChange,
     handleAssetsChange,
     handleThemesChange,
     resolveSpaceLabel,
@@ -819,10 +862,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 onActivate={() => setOpenChipSlot("priority")}
                 factChips={priorityFactChips}
                 hoverChips={[
-                  { id: "low", label: "LOW", onPress: () => setPriority("low") },
-                  { id: "normal", label: "NORMAL", onPress: () => setPriority("normal") },
-                  { id: "high", label: "HIGH", onPress: () => setPriority("high") },
-                  { id: "urgent", label: "URGENT", onPress: () => setPriority("urgent") },
+                  { id: "low", label: "LOW", onPress: () => void handlePriorityChange("low") },
+                  { id: "normal", label: "NORMAL", onPress: () => void handlePriorityChange("normal") },
+                  { id: "high", label: "HIGH", onPress: () => void handlePriorityChange("high") },
+                  { id: "urgent", label: "URGENT", onPress: () => void handlePriorityChange("urgent") },
                 ]}
               />
             ),
@@ -841,11 +884,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 onActivate={() => setOpenChipSlot("status")}
                 factChips={statusFactChips}
                 hoverChips={[
-                  { id: "open", label: "OPEN", onPress: () => setStatus("open") },
+                  { id: "open", label: "NOT STARTED", onPress: () => setStatus("open") },
                   { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
-                  { id: "waiting_review", label: "WAITING REVIEW", onPress: () => setStatus("waiting_review") },
-                  { id: "completed", label: "DONE", onPress: () => setStatus("completed") },
-                  { id: "archived", label: "ARCHIVED", onPress: () => setStatus("archived") },
+                  { id: "waiting_review", label: "ON HOLD", onPress: () => setStatus("waiting_review") },
+                  { id: "completed", label: "COMPLETED", onPress: () => setStatus("completed") },
+                  { id: "archived", label: "CANCELLED", onPress: () => setStatus("archived") },
                 ]}
               />
             ),
@@ -923,6 +966,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       handlePropertyChangeSection,
       handleSpacesChange,
       handleDueDateChange,
+      handlePriorityChange,
       handleAssetsChange,
       handleThemesChange,
     ]
@@ -957,11 +1001,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       }),
     [task, members, user]
   );
-  const assigneeUser = useMemo(
-    () => resolveTaskAssigneeUsers(task as any, members, "#8EC9CE", user)[0] ?? null,
-    [task, members, user]
-  );
-
   const propertyChip = useMemo(() => {
     const propId = (task as any)?.property_id as string | undefined;
     if (!propId) return null;
@@ -972,26 +1011,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       iconColorHex: fromOrg?.icon_color_hex ?? "#8EC9CE",
     };
   }, [task, orgProperties]);
-
-  const propertyLabelForHero = useMemo(() => {
-    // Hide property when the org only has one — space carries the useful place signal.
-    if (orgProperties.length <= 1) return null;
-    return (
-      (task as any)?.property?.nickname ||
-      (task as any)?.property_name ||
-      orgProperties.find((p: any) => p.id === (task as any)?.property_id)?.nickname ||
-      orgProperties.find((p: any) => p.id === (task as any)?.property_id)?.address ||
-      null
-    );
-  }, [task, orgProperties]);
-
-  const spaceLabelForHero = useMemo(() => {
-    const spaceNames = selectedSpaceIds
-      .map((id) => resolveSpaceLabel(id))
-      .filter((name) => name && name !== "Space");
-    if (spaceNames.length === 0) return null;
-    return spaceNames.join(" · ");
-  }, [selectedSpaceIds, resolveSpaceLabel]);
 
   const createdContextLine = useMemo(() => {
     const raw = (task as any)?.created_at as string | undefined;
@@ -1018,7 +1037,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
       const { count, error } = await supabase
         .from("subtasks")
         .select("id", { count: "exact", head: true })
-        .eq("task_id", taskId);
+        .eq("task_id", taskId)
+        .or("is_archived.eq.false,is_archived.is.null");
       if (error) return 0;
       return count ?? 0;
     },
@@ -1141,21 +1161,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }, [task, title, descriptionDraft, status, priority, dueDate, milestones]);
 
-  const { uploadFile, uploading: isUploadingImage } = useFileUpload({
-    taskId,
-    propertyId: propertyId ?? undefined,
-    onUploadComplete: () => {
-      refreshTask();
-      queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
-      queryClient.invalidateQueries({ queryKey: ["task-details", (task as any)?.org_id, taskId] });
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      setSelectedImageIndex(0);
-    },
-    onError: (err) => toast({ title: "Upload failed", description: err.message, variant: "destructive" }),
-  });
-  const taskImageInputRef = useRef<HTMLInputElement>(null);
-
-  const panelWrapper = (content: ReactNode, title?: string) => {
+  const panelWrapper = (
+    content: ReactNode,
+    title?: string,
+    options?: { hideCloseButton?: boolean }
+  ) => {
     if (variant === "column") {
       return (
         <div className={cn(columnShellClass, "overflow-hidden rounded-xl shadow-none border-0 bg-background")}>
@@ -1181,6 +1191,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         <DialogContent
           className="max-h-[90vh] overflow-hidden flex flex-col p-0 min-w-0"
           aria-describedby="task-detail-panel-desc"
+          // When true, Close is rendered in the hero toolbar beside edit-image.
+          hideCloseButton={options?.hideCloseButton}
           onPointerDownOutside={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
             // Portaled menus (checklist •••, overflow) render outside DialogContent;
@@ -1297,8 +1309,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               rows={3}
               className="w-full bg-transparent px-3 py-2 text-sm border-0 outline-none focus:ring-0 resize-none"
             />
-            {/* Create-task style: add checklist under description when none exists yet */}
-            {canManageTask && checklistItemCount === 0 ? (
+            {/* Create-task style checklist stays in the description while editing */}
+            {canManageTask ? (
               <TaskDetailChecklistTab
                 taskId={taskId}
                 canEdit={canManageTask}
@@ -1308,14 +1320,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               />
             ) : null}
           </div>
-          <IntakeChipRow
-            layout="interleaved"
-            chips={taskDetailChips}
-            onOpenSlot={setOpenChipSlot}
-            openSlot={openChipSlot}
-            onCloseSlot={() => setOpenChipSlot(null)}
-            renderSlotContent={renderTaskDetailSlotContent}
-          />
         </>
       ) : !titleMatchesDescription && taskDescription ? (
         <p className="text-base leading-relaxed text-foreground">{taskDescription}</p>
@@ -1359,20 +1363,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
 
   const panelContent = (
     <>
-      <input
-        ref={taskImageInputRef}
-        type="file"
-        accept="image/png,image/jpeg,image/jpg,image/heic,image/heif,.heic,.heif,.jpg,.jpeg,.png"
-        multiple
-        className="hidden"
-        onChange={(e) => {
-          const files = e.target.files;
-          if (files) {
-            Array.from(files).forEach((f) => f.type.startsWith("image/") && uploadFile(f));
-            e.target.value = "";
-          }
-        }}
-      />
       <TaskDetailContent
         title={taskTitle}
         showTitle={false}
@@ -1402,21 +1392,31 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               }
               setLightboxOpen(true);
             }}
+            onClose={variant === "modal" ? onClose : undefined}
             statusLabel={statusChipLabel}
             statusTone={statusTone}
             priorityUrgent={priority === "urgent"}
             urgencyChip={dueUrgencyChip}
             tagLabels={tagLabels}
-            dueLabel={dueChipLabel}
-            locationLabel={spaceLabelForHero || propertyLabelForHero}
             contextLine={createdContextLine}
             counts={{
               photos: imageAttachments.length,
               checklist: checklistItemCount,
               comments: commentCount,
             }}
-            assigner={assignerUser}
-            assignee={assigneeUser}
+            imageOpen={lightboxOpen || showAnnotationEditor}
+            metaRow={
+              <IntakeChipRow
+                layout="interleaved"
+                chips={taskDetailChips}
+                onOpenSlot={setOpenChipSlot}
+                openSlot={openChipSlot}
+                onCloseSlot={() => setOpenChipSlot(null)}
+                renderSlotContent={renderTaskDetailSlotContent}
+                showHoverAdd={canManageTask}
+                readOnly={!canManageTask}
+              />
+            }
           />
         }
         description={descriptionSection}
@@ -1433,20 +1433,14 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 editMode={taskEditOpen}
               />
             ),
-            // Hide empty Checklist card; add-checklist lives in the description while editing.
-            hidden: checklistItemCount === 0,
-          },
-          {
-            id: "activity",
-            title: "Activity",
-            content: activitySection,
-            hidden: false,
+            // Empty: hide. Editing: checklist lives in the description composer (avoid duplicate).
+            hidden: checklistItemCount === 0 || taskEditOpen,
           },
         ]}
       />
 
       <div className="flex flex-col gap-1.5 pt-2 pb-4 px-4 border-0 flex-shrink-0 bg-background/95 backdrop-blur-sm text-foreground sticky bottom-0 z-10">
-        <div ref={actionRowRef} className="flex min-w-0 w-full items-stretch gap-2">
+        <div ref={actionRowRef} className="flex min-w-0 w-full items-center gap-2">
           {canManageTask && taskEditOpen ? (
             <Button
               type="button"
@@ -1459,12 +1453,71 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               {isUpdating ? "…" : "Update"}
             </Button>
           ) : null}
+          {canManageTask ? (
+            <DropdownMenu modal={false}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={isUpdating}
+                  className="h-10 min-w-0 max-w-[42%] shrink gap-1.5 px-2.5 shadow-e1 text-foreground"
+                  aria-label="Change status"
+                >
+                  {(() => {
+                    const visual = getTaskStatusVisual(status);
+                    const Icon = visual.Icon;
+                    return (
+                      <>
+                        <span
+                          className={cn(
+                            "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px]",
+                            visual.blockClassName
+                          )}
+                        >
+                          <Icon className={cn("h-3 w-3", visual.iconClassName)} aria-hidden />
+                        </span>
+                        <span className="min-w-0 truncate text-sm font-medium">
+                          {visual.shortLabel}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+                      </>
+                    );
+                  })()}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="z-[120] min-w-[11rem]">
+                {TASK_STATUS_ORDER.map((statusId) => {
+                  const visual: TaskStatusVisual = getTaskStatusVisual(statusId);
+                  const Icon = visual.Icon;
+                  const selected = status === statusId;
+                  return (
+                    <DropdownMenuItem
+                      key={statusId}
+                      disabled={isUpdating || selected}
+                      onSelect={() => void handleStatusChange(statusId)}
+                      className="gap-2"
+                    >
+                      <span
+                        className={cn(
+                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px]",
+                          visual.blockClassName
+                        )}
+                      >
+                        <Icon className={cn("h-3 w-3", visual.iconClassName)} aria-hidden />
+                      </span>
+                      <span className={cn(selected && "font-semibold")}>{visual.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
           {canManageTask && (
             <Button
               data-task-action
               variant={status === "completed" ? "secondary" : "default"}
               className={cn(
-                "h-auto min-h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden whitespace-normal px-2 py-1.5",
+                "min-w-0 flex-1 basis-0 overflow-hidden text-base",
                 status !== "completed" && "shadow-primary-btn text-white"
               )}
               onClick={async () => {
@@ -1527,52 +1580,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               {!hideActionIcons ? (
                 <CheckSquare className="h-4 w-4 shrink-0" aria-hidden />
               ) : null}
-              <span className="flex min-w-0 flex-col items-center text-center text-xs font-medium leading-tight">
-                {status === "completed" ? (
-                  "Completed"
-                ) : (
-                  <>
-                    <span>Mark</span>
-                    <span>Complete</span>
-                  </>
-                )}
+              <span className="min-w-0 truncate text-base font-semibold">
+                {status === "completed" ? "Completed" : "Mark Complete"}
               </span>
             </Button>
           )}
-          <Button
-            data-task-action
-            type="button"
-            variant="outline"
-            className="h-auto min-h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden whitespace-normal px-2 py-1.5 shadow-e1 text-foreground"
-            onClick={() => taskImageInputRef.current?.click()}
-            disabled={isUploadingImage}
-            aria-label={isUploadingImage ? "Uploading evidence" : "Upload evidence"}
-            title={isUploadingImage ? "Uploading…" : "Upload evidence"}
-          >
-            {!hideActionIcons ? (
-              <Upload
-                className={cn("h-4 w-4 shrink-0", isUploadingImage && "animate-pulse")}
-                aria-hidden
-              />
-            ) : null}
-            <span className="flex min-w-0 flex-col items-center text-center text-xs font-medium leading-tight">
-              {isUploadingImage ? (
-                "Uploading…"
-              ) : (
-                <>
-                  <span>Upload</span>
-                  <span>Evidence</span>
-                </>
-              )}
-            </span>
-          </Button>
           {canManageTask && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-auto min-h-10 w-10 shrink-0 shadow-e1 text-foreground"
+                  className="h-10 w-10 shrink-0 shadow-e1 text-foreground"
                   aria-label="More"
                 >
                   <MoreVertical className="h-4 w-4" />
@@ -1684,11 +1703,39 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
             </DropdownMenu>
           )}
         </div>
-        {canManageTask && status !== "completed" ? (
-          <p className="text-caption leading-snug text-muted-foreground px-0.5">
-            {GEO_EVIDENCE_CONSENT_LINE}
-          </p>
-        ) : null}
+        <div className="flex items-start justify-between gap-3 px-0.5">
+          {canManageTask && status !== "completed" ? (
+            <p className="min-w-0 flex-1 text-caption leading-snug text-muted-foreground">
+              {GEO_EVIDENCE_CONSENT_LINE}
+            </p>
+          ) : (
+            <span className="min-w-0 flex-1" />
+          )}
+          <button
+            type="button"
+            onClick={() => setActivityExpanded((open) => !open)}
+            className="shrink-0 pt-px text-caption font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            aria-expanded={activityExpanded}
+            aria-controls="task-detail-activity-panel"
+          >
+            Activity
+          </button>
+        </div>
+        <div
+          id="task-detail-activity-panel"
+          className={cn(
+            "grid transition-[grid-template-rows] duration-200 ease-out",
+            activityExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {activityExpanded ? (
+              <div className="max-h-[min(40vh,320px)] overflow-y-auto border-t border-border/20 pt-3">
+                {activitySection}
+              </div>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -1741,7 +1788,8 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         <div className="flex flex-1 flex-col overflow-hidden">
           {panelContent}
         </div>,
-      "Task Details"
+      "Task Details",
+      { hideCloseButton: true }
     )}
     
     <InviteUserModal

@@ -88,7 +88,6 @@ export const ISSUES_OPEN_TASK_FILTER_IDS = [
   "filter-status-todo",
   "filter-status-in-progress",
   "filter-status-waiting-review",
-  "filter-status-blocked",
 ] as const;
 
 function workbenchScopedPath(

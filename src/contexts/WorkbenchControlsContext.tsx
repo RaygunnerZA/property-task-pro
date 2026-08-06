@@ -22,8 +22,8 @@ const STATUS_FILTER_IDS = [
   "filter-status-todo",
   "filter-status-in-progress",
   "filter-status-waiting-review",
-  "filter-status-blocked",
   "filter-status-done",
+  "filter-status-cancelled",
 ] as const;
 
 /** No task filters applied — used on Home and when the user clears filters. */

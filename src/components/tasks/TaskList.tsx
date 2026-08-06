@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/design-system/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
-import { Calendar, AlertTriangle, User, CheckSquare, Clock, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search, Eye } from "lucide-react";
+import { Calendar, AlertTriangle, User, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search } from "lucide-react";
 import { FilterChip } from "@/components/chips/filter";
 import {
   useOptionalWorkbenchControls,
@@ -25,6 +25,13 @@ import {
   isPropertySubsetSelected,
   scopedPropertyIdSet,
 } from "@/utils/propertyFilter";
+import {
+  TASK_STATUS_FILTER_IDS,
+  TASK_STATUS_ORDER,
+  TASK_STATUS_VISUALS,
+  taskMatchesStatusFilters,
+} from "@/lib/taskStatus";
+import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -245,23 +252,10 @@ export function TaskList({
     }
 
     // Secondary filters - Status
-    const statusFilters = [
-      "filter-status-todo",
-      "filter-status-in-progress",
-      "filter-status-waiting-review",
-      "filter-status-blocked",
-      "filter-status-done",
-    ];
-    const hasStatusFilter = statusFilters.some((f) => selectedFilters.has(f));
-    if (hasStatusFilter) {
-      filtered = filtered.filter((task) => {
-        if (selectedFilters.has("filter-status-todo") && task.status === "open") return true;
-        if (selectedFilters.has("filter-status-in-progress") && task.status === "in_progress") return true;
-        if (selectedFilters.has("filter-status-waiting-review") && task.status === "waiting_review") return true;
-        if (selectedFilters.has("filter-status-blocked") && task.status === "blocked") return true;
-        if (selectedFilters.has("filter-status-done") && task.status === "completed") return true;
-        return false;
-      });
+    if (TASK_STATUS_FILTER_IDS.some((f) => selectedFilters.has(f))) {
+      filtered = filtered.filter((task) =>
+        taskMatchesStatusFilters(task.status, selectedFilters)
+      );
     }
 
     // Secondary filters - Responsibility
@@ -469,33 +463,15 @@ export function TaskList({
     {
       id: "status",
       label: "Status",
-      options: [
-        {
-          id: "filter-status-todo",
-          label: "To-Do",
-          icon: <CheckSquare className="h-4 w-4" />,
-        },
-        {
-          id: "filter-status-in-progress",
-          label: "In Progress",
-          icon: <Clock className="h-4 w-4" />,
-        },
-        {
-          id: "filter-status-waiting-review",
-          label: "Waiting review",
-          icon: <Eye className="h-4 w-4" />,
-        },
-        {
-          id: "filter-status-blocked",
-          label: "Blocked",
-          icon: <AlertTriangle className="h-4 w-4" />,
-        },
-        {
-          id: "filter-status-done",
-          label: "Done",
-          icon: <CheckSquare className="h-4 w-4" />,
-        },
-      ],
+      options: TASK_STATUS_ORDER.map((status) => {
+        const visual = TASK_STATUS_VISUALS[status];
+        const Icon = visual.Icon;
+        return {
+          id: visual.filterId,
+          label: visual.label,
+          icon: <Icon className={cn("h-4 w-4", visual.filterIconClassName)} />,
+        };
+      }),
     },
     {
       id: "date-due",
@@ -735,6 +711,12 @@ export function TaskList({
           }
           collapseFilterChipAfterMs={2000}
           collapseInteractionRootRef={tasksPanelInteractionRef}
+          afterFilterTrigger={
+            <StatusFilterIconStrip
+              selectedFilters={selectedFilters}
+              onFilterChange={handleFilterChange}
+            />
+          }
           primaryTrailing={
             embeddedInIssuesWorkbench ? undefined : (
               <FilterChip
