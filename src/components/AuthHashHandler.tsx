@@ -9,11 +9,26 @@ import { toast } from "sonner";
  * instead of /verify. If we only parse the hash on /verify, users landing on /
  * never get a session and see "Create your Organisation" then "Please sign in".
  * This runs on any route and sets the session before any auth-gated logic runs.
+ *
+ * Password recovery (`type=recovery`) must land on `/reset-password`, not login
+ * or the authenticated app home.
  */
 export function AuthHashHandler() {
   const navigate = useNavigate();
   const location = useLocation();
   const handled = useRef(false);
+
+  // Catch recovery sessions established by detectSessionInUrl on any route.
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "PASSWORD_RECOVERY") return;
+      if (location.pathname === "/reset-password") return;
+      navigate("/reset-password", { replace: true });
+    });
+    return () => subscription.unsubscribe();
+  }, [location.pathname, navigate]);
 
   useEffect(() => {
     if (handled.current) return;
@@ -32,7 +47,25 @@ export function AuthHashHandler() {
       const refreshToken = params.get("refresh_token");
       const type = params.get("type");
 
-      if ((type === "signup" || type === "magiclink") && accessToken) {
+      if (!accessToken) return;
+
+      if (type === "recovery") {
+        handled.current = true;
+        supabase.auth
+          .setSession({ access_token: accessToken, refresh_token: refreshToken || "" })
+          .then(({ error }) => {
+            if (error) {
+              handled.current = false;
+              toast.error(error.message || "Couldn't open reset link");
+              return;
+            }
+            window.history.replaceState(null, "", "/reset-password");
+            navigate("/reset-password", { replace: true });
+          });
+        return;
+      }
+
+      if (type === "signup" || type === "magiclink") {
         handled.current = true;
         supabase.auth
           .setSession({ access_token: accessToken, refresh_token: refreshToken || "" })

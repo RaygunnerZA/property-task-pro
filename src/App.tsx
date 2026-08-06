@@ -17,6 +17,8 @@ import { StatusBanner } from "@/components/ui/StatusBanner";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import Login from "@/pages/Login";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
 // Onboarding wizard — eager imports so step-to-step navigation never hits a lazy chunk fetch failure.
 import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
@@ -282,6 +284,16 @@ const App = () => {
                       <Route path="/login" element={
                         <ErrorBoundary regionTitle="Sign in">
                           <Login />
+                        </ErrorBoundary>
+                      } />
+                      <Route path="/forgot-password" element={
+                        <ErrorBoundary regionTitle="Forgot password">
+                          <ForgotPassword />
+                        </ErrorBoundary>
+                      } />
+                      <Route path="/reset-password" element={
+                        <ErrorBoundary regionTitle="Reset password">
+                          <ResetPassword />
                         </ErrorBoundary>
                       } />
                       

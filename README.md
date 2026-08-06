@@ -27,6 +27,8 @@ Open the URL printed by Vite (typically `http://localhost:5173`).
 | `VITE_POSTHOG_KEY` | `.env`, Vercel | Public analytics key |
 | `VITE_APP_URL` | Vercel production | Auth redirect base URL |
 
+Password reset emails use `{VITE_APP_URL}/reset-password`. Add that exact URL under Supabase → Authentication → URL Configuration → **Redirect URLs**, or recovery links fall back to Site URL (often login/home).
+
 If `.env` was ever committed, rotate the **service role key** in Supabase Dashboard → Settings → API before continuing.
 
 ## Scripts

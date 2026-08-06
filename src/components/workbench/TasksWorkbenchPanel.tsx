@@ -290,8 +290,8 @@ export function TasksWorkbenchPanel({
                     )}
                   >
                     <MessagesIcon
-                      className="h-[1cap] w-[1cap] shrink-0"
-                      strokeWidth={listTab === "messages" ? 2.25 : 1.75}
+                      className="h-[calc(1.3cap+4px)] w-[calc(1.3cap+4px)] shrink-0 translate-y-[1px]"
+                      strokeWidth={listTab === "messages" ? 2.25 : 2}
                       aria-hidden
                     />
                     <span

@@ -1,6 +1,6 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Calendar, Check, Clock, MapPin, MessageCircle, MoreHorizontal, ArrowRight } from "lucide-react";
+import { Calendar, Check, Clock, MapPin, MessageSquare, MoreHorizontal, ArrowRight } from "lucide-react";
 import {
   COMPLETE_COLLAPSE_MS,
   clearTaskCompletionMotion,
@@ -427,7 +427,8 @@ function TaskCardComponent({
       <span
         className={cn(
           "absolute top-1.5 z-10 flex h-[22px] w-[72px] items-center justify-center rounded-[5px] px-2",
-          commentSignal ? "right-8" : "right-2",
+          // Leave room when the new-comment square sits on the card’s top-right
+          commentSignal && layout !== "horizontal" ? "right-8" : "right-2",
           "font-mono text-2xs font-medium uppercase tracking-wide leading-none shadow-sm",
           dueUrgency === "overdue"
             ? "bg-destructive/90 text-white"
@@ -440,13 +441,12 @@ function TaskCardComponent({
 
   const newCommentBubble = commentSignal ? (
     <span
-      className="pointer-events-none absolute top-1.5 right-1.5 z-20 flex h-5 w-5 items-center justify-center drop-shadow-sm"
+      className="pointer-events-none !absolute top-1.5 right-1.5 !z-20 flex h-5 w-5 items-center justify-center drop-shadow-sm"
       title="New comment"
       aria-label="New comment"
     >
-      <MessageCircle
-        className="h-[18px] w-[18px]"
-        style={{ color: commentSignal.accentColor, fill: commentSignal.accentColor }}
+      <MessageSquare
+        className="h-[18px] w-[18px] text-amber-500 fill-amber-500"
         strokeWidth={0}
         aria-hidden
       />

@@ -45,6 +45,22 @@ export default function LoginPage() {
           hashRefreshToken = hashParams.get("refresh_token");
           hashType = hashParams.get("type");
           
+          if (hashAccessToken && hashType === "recovery") {
+            try {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: hashAccessToken,
+                refresh_token: hashRefreshToken || "",
+              });
+              if (!sessionError) {
+                window.history.replaceState({}, "", "/reset-password");
+                navigate("/reset-password", { replace: true });
+                return;
+              }
+            } catch (err) {
+              console.error("[Login] Error setting recovery session from hash:", err);
+            }
+          }
+
           if (hashAccessToken && hashType === "invite") {
             // Set session first, then redirect
             try {
@@ -242,6 +258,22 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
           />
+
+          <div className="-mt-2 flex justify-end">
+            <button
+              type="button"
+              className="text-sm font-medium text-primary hover:underline"
+              onClick={() =>
+                navigate(
+                  email.trim()
+                    ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+                    : "/forgot-password"
+                )
+              }
+            >
+              Forgot password?
+            </button>
+          </div>
 
           <div className="pt-4 space-y-3">
             <NeomorphicButton
