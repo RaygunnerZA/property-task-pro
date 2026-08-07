@@ -100,26 +100,44 @@ export function CreateTaskRow({
   }, [isActive, isInlineEditing]);
 
   // Convert to ChipData and merge for ChipStrip (contract: fact, interactive only)
-  // Instruction/hover chips appear only on hover
+  // Instruction/hover chips appear only on hover. Never show a proposal/hover chip
+  // that duplicates an active fact (e.g. URGENT fact + URGENT option).
   const chipData = useMemo((): ChipData[] => {
     const facts: ChipData[] = factChips.map((c) =>
       suggestedChipToChipData(c)
     );
+    const factLabels = new Set(
+      facts.map((f) => f.label.trim().toUpperCase()).filter(Boolean)
+    );
+    const isCoveredByFact = (id: string, label: string) => {
+      const normalized = label.trim().toUpperCase();
+      if (normalized && factLabels.has(normalized)) return true;
+      return facts.some(
+        (f) =>
+          f.id === id ||
+          f.id.endsWith(`-${id}`) ||
+          f.id === `priority-${id}` ||
+          f.id === `status-${id}`
+      );
+    };
+
     const verbs: ChipData[] = verbChips.map((c) =>
       suggestedChipToChipData(c, { verbLabel: c.label })
     );
-    const suggested: ChipData[] = suggestedChips.map((c) =>
-      suggestedChipToChipData(c)
-    );
+    const suggested: ChipData[] = suggestedChips
+      .filter((c) => !isCoveredByFact(c.id, c.label))
+      .map((c) => suggestedChipToChipData(c));
     if (!isHovered && !isActive) return [...facts, ...verbs, ...suggested];
     // Hover: show hoverChips (e.g. PRIORITY) or single instruction chip
     if (hoverChips && hoverChips.length > 0) {
-      const hoverAsChips: ChipData[] = hoverChips.map((h) => ({
-        id: h.id,
-        label: h.label,
-        variant: "interactive" as const,
-        kind: "instruction" as const,
-      }));
+      const hoverAsChips: ChipData[] = hoverChips
+        .filter((h) => !isCoveredByFact(h.id, h.label))
+        .map((h) => ({
+          id: h.id,
+          label: h.label,
+          variant: "interactive" as const,
+          kind: "instruction" as const,
+        }));
       return [...facts, ...verbs, ...suggested, ...hoverAsChips];
     }
     const instructionChip: ChipData = {

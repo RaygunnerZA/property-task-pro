@@ -6,6 +6,7 @@ import {
 } from "@/lib/metaChips";
 import { PROPERTY_HERO_UNDERLAY } from "@/hooks/usePropertyHeroSettle";
 import { cn } from "@/lib/utils";
+import type { TaskSignalChip } from "@/lib/taskSignalChip";
 
 export type TaskDetailImageThumb = {
   id: string;
@@ -20,6 +21,7 @@ export type TaskDetailStatusCounts = {
   comments?: number;
 };
 
+/** @deprecated Use TaskSignalChip from `@/lib/taskSignalChip`. */
 export type TaskDetailUrgencyChip = "overdue" | "nearly_due" | null;
 
 type TaskDetailHeroMetaProps = {
@@ -32,10 +34,11 @@ type TaskDetailHeroMetaProps = {
   onClose?: () => void;
   statusLabel: string;
   statusTone?: "open" | "progress" | "review" | "done" | "other";
-  /** Priority urgent chip next to status. */
-  priorityUrgent?: boolean;
-  /** Due urgency chip: OVERDUE or NEARLY DUE. */
-  urgencyChip?: TaskDetailUrgencyChip;
+  /**
+   * Merged priority + due signal (EXPIRED → OVERDUE → URGENT → DUE SOON).
+   * Replaces separate priorityUrgent / urgencyChip props.
+   */
+  signalChip?: TaskSignalChip | null;
   /** Theme / category tags after status chips. */
   tagLabels?: string[];
   /** e.g. "Created by Justin • Today 14:32" */
@@ -92,14 +95,12 @@ const URGENCY_CORAL = "bg-[#EB6834] text-white";
 function MetaChipRow({
   statusLabel,
   statusTone,
-  priorityUrgent,
-  urgencyChip,
+  signalChip,
   tagLabels,
 }: {
   statusLabel: string;
   statusTone: TaskDetailHeroMetaProps["statusTone"];
-  priorityUrgent?: boolean;
-  urgencyChip?: TaskDetailUrgencyChip;
+  signalChip?: TaskSignalChip | null;
   tagLabels?: string[];
 }) {
   return (
@@ -107,14 +108,21 @@ function MetaChipRow({
       <span className={cn(META_CHIP_FILLED_CLASS, statusFilledClass(statusTone))}>
         {statusLabel}
       </span>
-      {priorityUrgent ? (
-        <span className={cn(META_CHIP_FILLED_CLASS, URGENCY_CORAL)}>Urgent</span>
-      ) : null}
-      {urgencyChip === "overdue" ? (
-        <span className={cn(META_CHIP_FILLED_CLASS, URGENCY_CORAL)}>Overdue</span>
-      ) : null}
-      {urgencyChip === "nearly_due" ? (
-        <span className={cn(META_CHIP_FILLED_CLASS, "bg-amber-500 text-white")}>Nearly due</span>
+      {signalChip ? (
+        <span
+          className={cn(
+            META_CHIP_FILLED_CLASS,
+            signalChip.tone === "coral" ? URGENCY_CORAL : "bg-amber-500 text-white"
+          )}
+        >
+          {signalChip.kind === "due_soon"
+            ? "Nearly due"
+            : signalChip.kind === "overdue"
+              ? "Overdue"
+              : signalChip.kind === "urgent"
+                ? "Urgent"
+                : "Expired"}
+        </span>
       ) : null}
       {(tagLabels ?? []).map((tag) => (
         <span key={tag} className={META_CHIP_CLASS}>
@@ -137,8 +145,7 @@ export function TaskDetailHeroMeta({
   onClose,
   statusLabel,
   statusTone = "other",
-  priorityUrgent = false,
-  urgencyChip = null,
+  signalChip = null,
   tagLabels,
   contextLine,
   counts,
@@ -155,8 +162,7 @@ export function TaskDetailHeroMeta({
     <MetaChipRow
       statusLabel={statusLabel}
       statusTone={statusTone}
-      priorityUrgent={priorityUrgent}
-      urgencyChip={urgencyChip}
+      signalChip={signalChip}
       tagLabels={tagLabels}
     />
   );

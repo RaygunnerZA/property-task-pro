@@ -48,7 +48,8 @@ import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
 import { CreateTaskRow } from "./create/CreateTaskRow";
 import { differenceInCalendarDays, format, isToday, isValid, isYesterday, parseISO } from "date-fns";
-import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
+import { taskPriorityLabel, toTaskPriorityDb } from "@/lib/taskPriority";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
 import type { Annotation } from "@/types/image-annotations";
@@ -154,7 +155,7 @@ export function TaskDetailPanel({
   const [title, setTitle] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [status, setStatus] = useState<string>("open");
-  const [priority, setPriority] = useState<string>("normal");
+  const [priority, setPriority] = useState<string>("medium");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -226,7 +227,7 @@ export function TaskDetailPanel({
       setTitle((task as any).title || "");
       setDescriptionDraft(String((task as any).description ?? ""));
       setStatus((task as any).status || "open");
-      setPriority((task as any).priority || "normal");
+      setPriority(toTaskPriorityDb((task as any).priority));
       setSelectedUserId(task.assigned_user_id || undefined);
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
       setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
@@ -401,7 +402,7 @@ export function TaskDetailPanel({
           title,
           description: descriptionDraft.trim() || null,
           status: status as any,
-          priority: priority as any,
+          priority: toTaskPriorityDb(priority) as any,
           due_date: dueDate || null,
           milestones: milestones.length > 0 ? milestones : [],
         },
@@ -476,11 +477,12 @@ export function TaskDetailPanel({
   };
 
   const handlePriorityChange = async (next: string) => {
-    setPriority(next);
+    const dbPriority = toTaskPriorityDb(next);
+    setPriority(dbPriority);
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ priority: next })
+        .update({ priority: dbPriority })
         .eq("id", taskId);
       if (error) throw error;
       await refreshTask();
@@ -606,8 +608,16 @@ export function TaskDetailPanel({
 
   // Fact chips for CreateTaskRow-based priority and status sections
   const priorityFactChips: SuggestedChip[] = useMemo(() => {
-    const label = ({ low: "LOW", normal: "NORMAL", high: "HIGH", urgent: "URGENT" } as Record<string, string>)[priority] || priority.toUpperCase();
-    return [{ id: `priority-${priority}`, type: "priority" as const, value: priority, label, score: 1, source: "rule" as const, resolvedEntityId: priority }];
+    const db = toTaskPriorityDb(priority);
+    return [{
+      id: `priority-${db}`,
+      type: "priority" as const,
+      value: db,
+      label: taskPriorityLabel(db),
+      score: 1,
+      source: "rule" as const,
+      resolvedEntityId: db,
+    }];
   }, [priority]);
 
   const statusFactChips: SuggestedChip[] = useMemo(() => {
@@ -637,12 +647,15 @@ export function TaskDetailPanel({
     );
   }, [status]);
 
-  const dueUrgencyChip = useMemo(() => {
-    const urgency = getTaskDueUrgency({ due_date: dueDate || null, status });
-    if (urgency === "overdue") return "overdue" as const;
-    if (urgency === "due_soon") return "nearly_due" as const;
-    return null;
-  }, [dueDate, status]);
+  const signalChip = useMemo(
+    () =>
+      resolveTaskSignalChip({
+        priority,
+        due_date: dueDate || null,
+        status,
+      }),
+    [priority, dueDate, status]
+  );
 
   const statusChipTextClass = useMemo(() => {
     if (status === "open") return "text-muted-foreground";
@@ -785,7 +798,7 @@ export function TaskDetailPanel({
         epistemic: "fact",
         removable: true,
         onPress: () => openSlot("priority"),
-        onRemove: () => void handlePriorityChange("normal"),
+        onRemove: () => void handlePriorityChange("medium"),
       });
     }
 
@@ -954,7 +967,7 @@ export function TaskDetailPanel({
                 factChips={priorityFactChips}
                 hoverChips={[
                   { id: "low", label: "LOW", onPress: () => void handlePriorityChange("low") },
-                  { id: "normal", label: "NORMAL", onPress: () => void handlePriorityChange("normal") },
+                  { id: "medium", label: "NORMAL", onPress: () => void handlePriorityChange("medium") },
                   { id: "high", label: "HIGH", onPress: () => void handlePriorityChange("high") },
                   { id: "urgent", label: "URGENT", onPress: () => void handlePriorityChange("urgent") },
                 ]}
@@ -1239,7 +1252,7 @@ export function TaskDetailPanel({
       title !== ((task as any)?.title || "") ||
       descriptionDraft !== String((task as any)?.description ?? "") ||
       status !== ((task as any)?.status || "open") ||
-      priority !== ((task as any)?.priority || "normal") ||
+      toTaskPriorityDb(priority) !== toTaskPriorityDb((task as any)?.priority) ||
       dueDate !== ((task as any)?.due_date || (task as any)?.due_at || "") ||
       JSON.stringify(milestones) !== origMsJson
     );
@@ -1508,8 +1521,7 @@ export function TaskDetailPanel({
             onClose={variant === "modal" ? onClose : undefined}
             statusLabel={statusChipLabel}
             statusTone={statusTone}
-            priorityUrgent={priority === "urgent"}
-            urgencyChip={dueUrgencyChip}
+            signalChip={signalChip}
             tagLabels={tagLabels}
             contextLine={createdContextLine}
             counts={{
@@ -1618,7 +1630,7 @@ export function TaskDetailPanel({
                   org_id: (task as any).org_id,
                   title: `${(task as any).title} (copy)`,
                   property_id: (task as any).property_id ?? null,
-                  priority: (task as any).priority ?? "normal",
+                  priority: toTaskPriorityDb((task as any).priority),
                   due_date: (task as any).due_date ?? null,
                   description: (task as any).description ?? null,
                   status: "open",

@@ -77,6 +77,20 @@ function StaggerRow({
   // Hover shows proposal chips; when the slot is open the panel owns actions
   // so the row only keeps fact chips (avoids duplicate TOMORROW / stacked chips).
   const showHoverChips = hovered && !isOpen;
+  const factLabels = new Set(
+    section.facts.map((f) => f.label.trim().toUpperCase()).filter(Boolean)
+  );
+  const availableHoverChips = section.hoverChips.filter((chip) => {
+    const label = chip.label.trim().toUpperCase();
+    if (label && factLabels.has(label)) return false;
+    return !section.facts.some(
+      (f) =>
+        f.id === chip.id ||
+        f.id.endsWith(`-${chip.id}`) ||
+        f.id === `priority-${chip.id}` ||
+        f.id === `status-${chip.id}`
+    );
+  });
 
   return (
     <div className="animate-in fade-in duration-700 fill-mode-both">
@@ -125,7 +139,7 @@ function StaggerRow({
           ) : null}
 
           {showHoverChips
-            ? section.hoverChips.map((chip) => (
+            ? availableHoverChips.map((chip) => (
                 <SemanticChip
                   key={chip.id}
                   epistemic="proposal"
@@ -139,7 +153,7 @@ function StaggerRow({
             : null}
 
           {!hasFacts && isOpen
-            ? section.hoverChips.map((chip) => (
+            ? availableHoverChips.map((chip) => (
                 <SemanticChip
                   key={`open-${chip.id}`}
                   epistemic="proposal"

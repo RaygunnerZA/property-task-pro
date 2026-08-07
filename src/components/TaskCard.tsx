@@ -49,11 +49,8 @@ import {
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/hooks/useAuth";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
-import {
-  formatTaskDueRelative,
-  getTaskDueUrgency,
-  taskDueUrgencyLabel,
-} from "@/lib/taskDueUrgency";
+import { formatTaskDueRelative, getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
 import { TaskStatusMark } from "@/components/tasks/TaskStatusMark";
 import { useTaskCommentSignal } from "@/hooks/useTaskCommentSignals";
@@ -378,6 +375,10 @@ function TaskCardComponent({
   // Don't show Done button if task is already archived or completed
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';
   const isCompleted = task?.status === "completed";
+  /** On hold (paused) or completed — soften thumbnail / title / meta. */
+  const dimThumbnail =
+    isCompleted || task?.status === "waiting_review";
+  const dimCopyClass = "opacity-40";
 
   const handleArchive = useCallback(
     async (e?: MouseEvent) => {
@@ -483,6 +484,11 @@ function TaskCardComponent({
 
   const metaCompact = metaDensity === "compact";
   const dueUrgency = getTaskDueUrgency(task);
+  const signalChip = resolveTaskSignalChip({
+    priority: task?.priority,
+    due_date: task?.due_date ?? t.due_at,
+    status: task?.status,
+  });
   const dueDateRaw = task?.due_date ?? t.due_at;
   const educationChipLabel = isStaffTrainingTask(task)
     ? "Learn Filla"
@@ -563,21 +569,25 @@ function TaskCardComponent({
     </div>
   );
 
-  /** OVERDUE / NEARLY DUE — top-right, same 22px height as status mark. */
+  /**
+   * Merged signal chip (EXPIRED → OVERDUE → URGENT → DUE SOON) — top-right,
+   * same 22px height as status mark. One chip only.
+   * Kept as `dueUrgencyChip` so HMR/call sites stay stable after the merge.
+   */
   const dueUrgencyChip =
-    dueUrgency != null ? (
+    signalChip != null ? (
       <span
         className={cn(
           "absolute top-1.5 z-10 flex h-[22px] min-w-[72px] items-center justify-center rounded-[5px] px-2",
           // Leave room when the new-comment square sits on the card’s top-right
           commentSignal && layout !== "horizontal" ? "right-8" : "right-2",
           "font-mono text-2xs font-medium uppercase tracking-wide leading-none shadow-sm",
-          dueUrgency === "overdue"
+          signalChip.tone === "coral"
             ? "bg-destructive/90 text-white"
             : "bg-amber-500/90 text-white"
         )}
       >
-        {taskDueUrgencyLabel(dueUrgency)}
+        {signalChip.label}
       </span>
     ) : null;
 
@@ -600,7 +610,12 @@ function TaskCardComponent({
     const thumbnailFirst = imagePosition === 'left';
 
     const horizontalMedia = (
-      <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="horizontal">
+      <TaskCardMediaZone
+        imageUrl={imageUrl}
+        alt={t.title}
+        variant="horizontal"
+        dimmed={dimThumbnail || isConfirmingComplete}
+      >
         {statusMark}
         {dueUrgencyChip}
         {showDoneButton && !metaCompact ? (
@@ -644,6 +659,7 @@ function TaskCardComponent({
               <div
                 className={cn(
                   "flex h-[37.5px] min-w-0 items-end gap-2",
+                  (dimThumbnail || isConfirmingComplete) && dimCopyClass,
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-40 group-focus-within:opacity-40"
                 )}
@@ -663,13 +679,18 @@ function TaskCardComponent({
               </div>
 
               {/* Tag chip under title (compact + default) */}
-              {themeTagChips}
+              {themeTagChips ? (
+                <div className={cn((dimThumbnail || isConfirmingComplete) && dimCopyClass)}>
+                  {themeTagChips}
+                </div>
+              ) : null}
 
               {/* Property Icon + Space + Date/Time + Teams + From / For */}
               <div
                 className={cn(
                   "flex gap-2 flex-wrap items-center",
                   themeTagChips ? "mt-1" : "mt-[7px]",
+                  (dimThumbnail || isConfirmingComplete) && dimCopyClass,
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none"
                 )}
@@ -765,36 +786,52 @@ function TaskCardComponent({
     >
       {completionOverlay}
       {newCommentBubble}
-      <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
+      <TaskCardMediaZone
+        imageUrl={imageUrl}
+        alt={t.title}
+        variant="vertical"
+        dimmed={dimThumbnail || isConfirmingComplete}
+      >
         {statusMark}
         {dueUrgencyChip}
       </TaskCardMediaZone>
 
       {/* Content */}
       <div className="flex flex-1 flex-col px-[12px] pt-[12px] pb-[12px] min-h-0">
-        <h3 className="pb-[5px] text-[15px] font-medium text-foreground line-clamp-2 leading-tight">
-          {t.title}
-        </h3>
+        <div
+          className={cn(
+            (dimThumbnail || isConfirmingComplete) && dimCopyClass
+          )}
+        >
+          <h3 className="pb-[5px] text-[15px] font-medium text-foreground line-clamp-2 leading-tight">
+            {t.title}
+          </h3>
 
-        {themeTagChips}
+          {themeTagChips}
 
-        {locationLine ? (
-          <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
-            <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate leading-none">{locationLine}</span>
-          </p>
-        ) : null}
+          {locationLine ? (
+            <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
+              <MapPin className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate leading-none">{locationLine}</span>
+            </p>
+          ) : null}
 
-        {dueFormattedLabel ? (
-          <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
-            <Calendar className="h-3 w-3 shrink-0" aria-hidden />
-            <span className="truncate leading-none">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
-          </p>
-        ) : null}
+          {dueFormattedLabel ? (
+            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">
+              <Calendar className="h-3 w-3 shrink-0" aria-hidden />
+              <span className="truncate leading-none">{sentenceCaseTaskDate(dueFormattedLabel)}</span>
+            </p>
+          ) : null}
+        </div>
 
         <div className="relative mt-auto min-h-[32px] pt-3">
           {/* Default footer — relative due + assignee */}
-          <div className="flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none">
+          <div
+            className={cn(
+              "flex items-center justify-between gap-2 transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none",
+              (dimThumbnail || isConfirmingComplete) && dimCopyClass
+            )}
+          >
             {dueRelativeLabel ? (
               <span
                 className={cn(

@@ -21,6 +21,8 @@ interface TaskCardMediaZoneProps {
   variant: "horizontal" | "vertical";
   className?: string;
   placeholderClassName?: string;
+  /** Dim thumbnail media (e.g. completed / on hold) — overlays stay full opacity. */
+  dimmed?: boolean;
   children?: ReactNode;
 }
 
@@ -30,6 +32,7 @@ export function TaskCardMediaZone({
   variant,
   className,
   placeholderClassName,
+  dimmed = false,
   children,
 }: TaskCardMediaZoneProps) {
   const isIllustration = isTaskSpaceIllustrationUrl(imageUrl);
@@ -48,6 +51,7 @@ export function TaskCardMediaZone({
         <div
           className={cn(
             "absolute inset-0 bg-transparent flex items-center justify-center",
+            dimmed && "opacity-50",
             placeholderClassName
           )}
         >
@@ -81,7 +85,8 @@ export function TaskCardMediaZone({
         className={cn(
           isIllustration
             ? "max-h-full max-w-full object-contain p-2"
-            : "absolute inset-0 h-full w-full object-cover"
+            : "absolute inset-0 h-full w-full object-cover",
+          dimmed && "opacity-50"
         )}
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
