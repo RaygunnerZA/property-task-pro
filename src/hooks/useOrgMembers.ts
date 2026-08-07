@@ -14,6 +14,7 @@ export interface OrgMember {
   last_name: string | null;
   avatar_url: string | null;
   assigned_properties: string[] | null;
+  is_primary_owner: boolean;
 }
 
 type UserInfoRow = {
@@ -37,7 +38,7 @@ export function useOrgMembers() {
     try {
       const { data: memberships, error: err } = await supabase
         .from("organisation_members")
-        .select("id, user_id, role, assigned_properties")
+        .select("id, user_id, role, assigned_properties, is_primary_owner")
         .eq("org_id", orgId);
 
       if (err) {
@@ -60,6 +61,7 @@ export function useOrgMembers() {
           user_id: m.user_id,
           role: m.role,
           assigned_properties: m.assigned_properties ?? null,
+          is_primary_owner: !!(m as { is_primary_owner?: boolean }).is_primary_owner,
           display_name: `User ${m.user_id.slice(0, 8)}`,
           email: null,
           nickname: null,
@@ -86,6 +88,7 @@ export function useOrgMembers() {
           user_id: m.user_id,
           role: m.role,
           assigned_properties: m.assigned_properties ?? null,
+          is_primary_owner: !!(m as { is_primary_owner?: boolean }).is_primary_owner,
           display_name: formatPersonDisplayName({
             first_name,
             last_name,

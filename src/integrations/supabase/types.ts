@@ -2031,6 +2031,8 @@ export type Database = {
           assigned_properties: string[] | null
           created_at: string
           id: string
+          is_primary_owner: boolean
+          membership_status: string
           org_id: string
           role: string
           updated_at: string
@@ -2040,6 +2042,8 @@ export type Database = {
           assigned_properties?: string[] | null
           created_at?: string
           id?: string
+          is_primary_owner?: boolean
+          membership_status?: string
           org_id: string
           role: string
           updated_at?: string
@@ -2049,6 +2053,8 @@ export type Database = {
           assigned_properties?: string[] | null
           created_at?: string
           id?: string
+          is_primary_owner?: boolean
+          membership_status?: string
           org_id?: string
           role?: string
           updated_at?: string
@@ -3727,6 +3733,16 @@ export type Database = {
       }
       get_org_entitlements: { Args: { p_org_id: string }; Returns: Json }
       home_entitlement_defaults: { Args: never; Returns: Json }
+      transfer_primary_ownership: {
+        Args: { p_org_id: string; p_new_primary_user_id: string }
+        Returns: undefined
+      }
+      revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined }
+      member_can_create_tasks: { Args: { p_org_id: string }; Returns: boolean }
+      member_can_access_property: {
+        Args: { p_org_id: string; p_property_id: string }
+        Returns: boolean
+      }
       refresh_org_usage: {
         Args: { p_org_id: string }
         Returns: {

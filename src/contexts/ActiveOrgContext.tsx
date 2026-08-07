@@ -7,6 +7,9 @@ export interface ActiveOrgSnapshot {
   orgId: string | null;
   role: string | null;
   orgType: ActiveOrgType | null;
+  /** null/empty = all properties; non-empty = scoped access. */
+  assignedProperties: string[] | null;
+  isPrimaryOwner: boolean;
 }
 
 /** Active org snapshot from membership query (see `useActiveOrgInternal`). */

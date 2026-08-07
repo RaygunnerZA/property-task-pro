@@ -7,7 +7,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 
 **Organisations:**
 *   `organisations` (id, org_type: `personal` | `business` | `contractor`)
-*   `organisation_members` (role, assigned_properties) — canonical roles: `owner` | `manager` | `staff`. Legacy `member` is treated as Staff (`02_Identity`). External access is link/token scoped, not a durable membership role by default.
+*   `organisation_members` (role, assigned_properties, `is_primary_owner`, `membership_status`) — canonical roles: `owner` | `manager` | `staff`. Legacy `member`/`admin` normalize to Staff/Manager (`02_Identity`). Exactly one Primary Owner per org. External access is link/token scoped (`revoke_invitation` / contractor tokens), not a durable membership role by default.
 *   `contractor_tokens` (task_id, token)
 *   Billing/plan state and entitlements: see `@Docs/20_Billing.md` (do not invent plan columns without that chapter + schema migration).
 

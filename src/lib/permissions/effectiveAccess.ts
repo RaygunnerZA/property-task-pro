@@ -1,7 +1,6 @@
 /**
- * Effective access stub — Phase 1.
- * Full evaluation (entitlement ∩ role ∩ assignment ∩ state) lands in Phase 2.
- * @see @Docs/02_Identity.md §10
+ * Effective access — Phase 2.
+ * @see @Docs/02_Identity.md §10–§11
  */
 import {
   isCoordinatingRole,
@@ -10,35 +9,84 @@ import {
   type CanonicalOrgRole,
 } from "@/lib/permissions/normalizeOrgRole";
 import type { OrgEntitlements } from "@/lib/entitlements";
+import { HOME_ENTITLEMENTS } from "@/lib/entitlements";
 
 export type EffectiveAccessInput = {
   role: string | null | undefined;
-  entitlements: OrgEntitlements;
-  /** Property ids the member may access; null/undefined = unresolved (Phase 2). */
+  entitlements?: OrgEntitlements | null;
+  /** null/empty = all properties (Owner, or unscoped Manager/Staff). */
   assignedPropertyIds?: string[] | null;
+  isPrimaryOwner?: boolean;
 };
 
 export type EffectiveAccess = {
   role: CanonicalOrgRole | null;
   isCoordinating: boolean;
   isStaff: boolean;
+  isPrimaryOwner: boolean;
+  canCreateTask: boolean;
+  canAssignWork: boolean;
   canInviteStaff: boolean;
+  canInviteManagers: boolean;
+  canManageRoles: boolean;
+  canManageProperties: boolean;
+  canManageBilling: boolean;
+  canTransferOwnership: boolean;
   canAddProperty: boolean;
   multiPropertyEnabled: boolean;
+  /** null = all properties in org; array = scoped. */
+  propertyScopeIds: string[] | null;
 };
+
+function scopedPropertyIds(
+  role: CanonicalOrgRole | null,
+  assigned: string[] | null | undefined
+): string[] | null {
+  if (role === "owner") return null;
+  if (!assigned || assigned.length === 0) return null;
+  return assigned;
+}
 
 export function resolveEffectiveAccess(input: EffectiveAccessInput): EffectiveAccess {
   const role = normalizeOrgRole(input.role);
-  const { entitlements } = input;
+  const entitlements = input.entitlements ?? HOME_ENTITLEMENTS;
+  const isPrimaryOwner = !!input.isPrimaryOwner;
+  const propertyScopeIds = scopedPropertyIds(role, input.assignedPropertyIds);
+
+  const isOwner = role === "owner";
+  const isManager = role === "manager";
+  const isStaff = role === "staff";
 
   return {
     role,
     isCoordinating: isCoordinatingRole(input.role),
     isStaff: isStaffRole(input.role),
-    canInviteStaff: entitlements.can_add_staff,
+    isPrimaryOwner,
+    canCreateTask: isOwner || isManager,
+    canAssignWork: isOwner || isManager,
+    canInviteStaff:
+      (isOwner || isManager) && entitlements.can_add_staff,
+    canInviteManagers: isOwner,
+    canManageRoles: isOwner,
+    canManageProperties: isOwner,
+    canManageBilling: isPrimaryOwner,
+    canTransferOwnership: isPrimaryOwner,
     canAddProperty:
-      entitlements.multi_property_enabled ||
-      entitlements.active_properties_limit > 1,
+      isOwner &&
+      (entitlements.multi_property_enabled ||
+        entitlements.active_properties_limit > 1),
     multiPropertyEnabled: entitlements.multi_property_enabled,
+    propertyScopeIds,
   };
+}
+
+/** Filter a property list by effective access scope. */
+export function filterPropertiesByScope<T extends { id: string }>(
+  properties: T[],
+  access: Pick<EffectiveAccess, "propertyScopeIds">
+): T[] {
+  const scope = access.propertyScopeIds;
+  if (!scope) return properties;
+  const allowed = new Set(scope);
+  return properties.filter((p) => allowed.has(p.id));
 }

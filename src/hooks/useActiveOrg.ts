@@ -19,12 +19,16 @@ const EMPTY_ACTIVE_ORG: ActiveOrgSnapshot = {
   orgId: null,
   role: null,
   orgType: null,
+  assignedProperties: null,
+  isPrimaryOwner: false,
 };
 
 type MembershipRow = {
   org_id: string;
   role: string;
   created_at: string;
+  assigned_properties: string[] | null;
+  is_primary_owner: boolean | null;
   organisations: { org_type?: string } | null;
 };
 
@@ -40,6 +44,8 @@ function snapshotFromMembership(row: MembershipRow): ActiveOrgSnapshot {
     orgId: row.org_id,
     role: row.role,
     orgType: parseOrgType(row.organisations?.org_type),
+    assignedProperties: row.assigned_properties ?? null,
+    isPrimaryOwner: !!row.is_primary_owner,
   };
 }
 
@@ -84,7 +90,9 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
 
     const { data: memberships, error: membershipsError } = await supabase
       .from("organisation_members")
-      .select(`org_id, role, created_at, ${ORG_MEMBER_ORG_EMBED}(org_type)`)
+      .select(
+        `org_id, role, created_at, assigned_properties, is_primary_owner, ${ORG_MEMBER_ORG_EMBED}(org_type)`
+      )
       .eq("user_id", userId)
       .order("created_at", { ascending: true });
 
@@ -166,6 +174,8 @@ export function useActiveOrgInternal(): UseActiveOrgResult {
     orgId: snapshot?.orgId ?? null,
     role: snapshot?.role ?? null,
     orgType: snapshot?.orgType ?? null,
+    assignedProperties: snapshot?.assignedProperties ?? null,
+    isPrimaryOwner: snapshot?.isPrimaryOwner ?? false,
     isLoading: userLoading || (!!userId && orgQueryLoading),
     error: error ? (error as Error).message : null,
   };

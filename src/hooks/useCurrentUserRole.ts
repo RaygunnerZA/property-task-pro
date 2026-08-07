@@ -7,6 +7,7 @@ interface UseCurrentUserRoleResult {
   isLoading: boolean;
   error: string | null;
   isOwner: boolean;
+  isPrimaryOwner: boolean;
   isDevOverride: boolean;
 }
 
@@ -18,7 +19,7 @@ interface UseCurrentUserRoleResult {
  * real DB role without any auth state mutation.
  */
 export function useCurrentUserRole(): UseCurrentUserRoleResult {
-  const { role, isLoading, error } = useActiveOrg();
+  const { role, isPrimaryOwner, isLoading, error } = useActiveOrg();
   const devMode = useDevMode();
 
   const effectiveRole =
@@ -37,6 +38,7 @@ export function useCurrentUserRole(): UseCurrentUserRoleResult {
     isLoading,
     error,
     isOwner: isDevOverride ? role === "owner" : effectiveRole === "owner",
+    isPrimaryOwner: isDevOverride ? isPrimaryOwner : isPrimaryOwner && effectiveRole === "owner",
     isDevOverride,
   };
 }

@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
+import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useTeams } from "@/hooks/useTeams";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +88,7 @@ export function InviteUserForm({
   const { orgId } = useActiveOrg();
   const { members, refresh: refreshMembers } = useOrgMembers();
   const { entitlements, planLabel } = useOrgEntitlements();
+  const { canInviteManagers, canInviteStaff } = useEffectiveAccess();
   const { data: properties = [] } = usePropertiesQuery();
   const { teams } = useTeams();
 
@@ -202,7 +204,15 @@ export function InviteUserForm({
     return () => { cancelled = true; };
   }, [orgId, email]);
 
-  const roles = userType === "internal" ? INTERNAL_ROLES : EXTERNAL_ROLES;
+  const roles = useMemo(() => {
+    const base = userType === "internal" ? INTERNAL_ROLES : EXTERNAL_ROLES;
+    if (userType !== "internal") return base;
+    return base.filter((r) => {
+      if (r.value === "owner" || r.value === "manager") return canInviteManagers;
+      if (r.value === "staff") return canInviteStaff || canInviteManagers;
+      return true;
+    });
+  }, [userType, canInviteManagers, canInviteStaff]);
   const initials = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
 
   const filteredTeams = useMemo(() => {

@@ -10,7 +10,8 @@ export function normalizeOrgRole(
   if (!role) return null;
   const r = role.trim().toLowerCase();
   if (r === "owner") return "owner";
-  if (r === "manager") return "manager";
+  // Legacy/admin labels → Manager coordinating access
+  if (r === "manager" || r === "admin") return "manager";
   if (r === "staff" || r === "member") return "staff";
   return null;
 }

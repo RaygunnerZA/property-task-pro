@@ -255,6 +255,15 @@ Deno.serve(async (req) => {
       return jsonErr("Only owners and managers can invite members", 403);
     }
 
+    // Managers may invite Staff/External only; Owners may invite Managers/Owners too.
+    const inviteRoleLower = String(role).toLowerCase();
+    if (
+      membership.role === "manager" &&
+      (inviteRoleLower === "owner" || inviteRoleLower === "manager")
+    ) {
+      return jsonErr("Managers can invite Staff and external helpers only", 403);
+    }
+
     // Entitlement soft gates (Home defaults when no subscription)
     const { data: ents, error: entsError } = await supabaseAdmin.rpc(
       "get_org_entitlements",

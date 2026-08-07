@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
+import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
 import type { Tables, TablesInsert } from "@/integrations/supabase/types";
 
 export type TaskCreatedSource = "manual" | "ai" | "assistant";
@@ -49,9 +50,15 @@ function patchBriefingCache(
  */
 export function useCreateTaskMutation() {
   const queryClient = useQueryClient();
+  const { canCreateTask } = useEffectiveAccess();
 
   return useMutation({
     mutationFn: async ({ insert }: CreateTaskMutationVariables) => {
+      if (!canCreateTask) {
+        throw new Error(
+          "Your role can complete assigned work and report issues, but cannot create tasks. Ask an Owner or Manager."
+        );
+      }
       let payload = { ...insert };
       if (!payload.owner_user_id) {
         const {

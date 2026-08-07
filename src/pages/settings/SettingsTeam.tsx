@@ -395,22 +395,23 @@ function SetPasswordDialog({ inviteName, onConfirm, onClose }: SetPasswordDialog
 }
 
 // ─── Role badge ────────────────────────────────────────────────────────────────
-function RoleBadge({ role }: { role: string }) {
+function RoleBadge({ role, isPrimaryOwner }: { role: string; isPrimaryOwner?: boolean }) {
   const isOwner = role === "owner";
   const isManager = role === "manager";
   const isExternal = ["contractor", "vendor", "inspector"].includes(role);
+  const label = isPrimaryOwner ? "Primary Owner" : role === "staff" ? "Staff" : role;
   return (
     <Badge
       variant={isOwner ? "default" : isManager ? "secondary" : "outline"}
       size="sm"
       className={cn(
-        "w-fit shrink-0",
+        "w-fit shrink-0 capitalize",
         isOwner && "bg-primary text-primary-foreground",
         isManager && "bg-secondary text-secondary-foreground",
         isExternal && "border-accent/40 text-accent"
       )}
     >
-      {role}
+      {label}
     </Badge>
   );
 }
@@ -419,7 +420,7 @@ function RoleBadge({ role }: { role: string }) {
 export default function SettingsTeam() {
   const queryClient = useQueryClient();
   const { members, loading, error, refresh: refreshMembers } = useOrgMembers();
-  const { orgId } = useActiveOrg();
+  const { orgId, isPrimaryOwner } = useActiveOrg();
   const { setRightPanel } = useSettingsWorkbench();
   const { data: properties = [] } = usePropertiesQuery();
 
@@ -553,6 +554,11 @@ export default function SettingsTeam() {
   const handleRemoveMember = useCallback(
     async (memberId: string) => {
       if (!orgId) return;
+      const target = members.find((m) => m.id === memberId);
+      if (target?.is_primary_owner) {
+        toast.error("Transfer Primary Owner before removing this member");
+        return;
+      }
       const { error } = await supabase
         .from("organisation_members")
         .delete()
@@ -566,7 +572,44 @@ export default function SettingsTeam() {
       setDeleteMemberId(null);
       await refreshMembers();
     },
-    [orgId, refreshMembers]
+    [orgId, members, refreshMembers]
+  );
+
+  const handleTransferOwnership = useCallback(
+    async (newPrimaryUserId: string, displayName: string) => {
+      if (!orgId || !isPrimaryOwner) return;
+      const confirmed = window.confirm(
+        `Transfer Primary Owner to ${displayName}? You will remain an Owner but lose billing and destructive controls.`
+      );
+      if (!confirmed) return;
+      const { error } = await supabase.rpc("transfer_primary_ownership", {
+        p_org_id: orgId,
+        p_new_primary_user_id: newPrimaryUserId,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Primary ownership transferred");
+      await refreshMembers();
+      void queryClient.invalidateQueries({ queryKey: ["activeOrg"] });
+    },
+    [orgId, isPrimaryOwner, refreshMembers, queryClient]
+  );
+
+  const handleRevokeInvite = useCallback(
+    async (invitationId: string) => {
+      const { error } = await supabase.rpc("revoke_invitation", {
+        p_invitation_id: invitationId,
+      });
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+      toast.success("Invitation revoked");
+      await fetchInvitations();
+    },
+    [fetchInvitations]
   );
 
   // ── Invite edge-function helper ────────────────────────────────────────────
@@ -740,7 +783,7 @@ export default function SettingsTeam() {
 
                         {/* Role + actions */}
                         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                          <RoleBadge role={member.role} />
+                          <RoleBadge role={member.role} isPrimaryOwner={member.is_primary_owner} />
 
                           {/* Edit */}
                           <button
@@ -756,8 +799,21 @@ export default function SettingsTeam() {
                             {isEditing ? <ChevronUp className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}
                           </button>
 
-                          {/* Remove */}
-                          {member.role !== "owner" && (
+                          {isPrimaryOwner && !member.is_primary_owner && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void handleTransferOwnership(member.user_id, member.display_name)
+                              }
+                              title="Transfer Primary Owner"
+                              className="h-8 px-2 rounded-card text-2xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                            >
+                              Make primary
+                            </button>
+                          )}
+
+                          {/* Remove — never Primary Owner */}
+                          {!member.is_primary_owner && (
                             <button
                               type="button"
                               onClick={() => setDeleteMemberId(member.id)}
@@ -891,8 +947,8 @@ export default function SettingsTeam() {
                               </button>
                             )}
 
-                            {/* Resend (non-accepted) */}
-                            {invite.status !== "accepted" && (
+                            {/* Resend (pending only) */}
+                            {invite.status === "pending" && (
                               <button
                                 type="button"
                                 disabled={isBusy}
@@ -912,6 +968,25 @@ export default function SettingsTeam() {
                                 className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors disabled:opacity-50"
                               >
                                 {isBusy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                              </button>
+                            )}
+
+                            {invite.status === "pending" && (
+                              <button
+                                type="button"
+                                disabled={isBusy}
+                                title="Revoke invitation"
+                                onClick={async () => {
+                                  try {
+                                    setActionBusyId(invite.id);
+                                    await handleRevokeInvite(invite.id);
+                                  } finally {
+                                    setActionBusyId(null);
+                                  }
+                                }}
+                                className="h-8 w-8 rounded-card flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                              >
+                                <Trash2 className="h-4 w-4" />
                               </button>
                             )}
 

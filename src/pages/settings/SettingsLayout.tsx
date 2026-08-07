@@ -16,6 +16,7 @@ interface SettingsNavItem {
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   requiresOwner?: boolean;
+  requiresPrimaryOwner?: boolean;
 }
 
 const navItems: SettingsNavItem[] = [
@@ -24,7 +25,7 @@ const navItems: SettingsNavItem[] = [
   { label: "Automation & AI", path: "/settings/automation", icon: Zap },
   { label: "Integrations", path: "/settings/integrations", icon: Plug },
   { label: "Team", path: "/settings/team", icon: Users },
-  { label: "Billing", path: "/settings/billing", icon: CreditCard, requiresOwner: true },
+  { label: "Billing", path: "/settings/billing", icon: CreditCard, requiresPrimaryOwner: true },
 ];
 
 function SettingsRightColumnPlaceholder() {
@@ -134,11 +135,19 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
 
 export function SettingsLayout() {
   const location = useLocation();
-  const { isOwner, isLoading: roleLoading } = useCurrentUserRole();
+  const { isOwner, isPrimaryOwner, isLoading: roleLoading } = useCurrentUserRole();
 
-  const visibleNavItems = navItems.filter((item) => !item.requiresOwner || isOwner);
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.requiresPrimaryOwner) return isPrimaryOwner;
+    if (item.requiresOwner) return isOwner;
+    return true;
+  });
 
-  if (location.pathname === "/settings/billing" && !roleLoading && !isOwner) {
+  if (
+    location.pathname === "/settings/billing" &&
+    !roleLoading &&
+    !isPrimaryOwner
+  ) {
     return <Navigate to="/settings" replace />;
   }
 

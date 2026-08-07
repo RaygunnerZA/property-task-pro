@@ -98,6 +98,8 @@ Remove direct dependency between plan names and application behaviour.
 
 ## Phase 2 — Roles and property scope
 
+**Status (2026-08-07):** Shipped — Primary Owner, member→staff migration, property-scope RLS + client filter, Staff create-task deny (RLS + mutation), Manager invite limits, `revoke_invitation`, transfer ownership RPC. External durable links remain Phase 2+ polish (revocable pending invites + contractor tokens cover the foundation).
+
 ### Objectives
 
 Implement four access models and scoped property access.

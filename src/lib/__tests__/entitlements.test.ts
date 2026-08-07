@@ -59,5 +59,6 @@ describe("normalizeOrgRole", () => {
     expect(normalizeOrgRole("staff")).toBe("staff");
     expect(normalizeOrgRole("owner")).toBe("owner");
     expect(normalizeOrgRole("viewer")).toBeNull();
+    expect(normalizeOrgRole("admin")).toBe("manager");
   });
 });
