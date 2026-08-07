@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -53,6 +53,8 @@ import {
   resolveIsSubStep,
 } from "@/components/tasks/subtasks";
 import { rowToChecklistItem } from "@/lib/subtaskPersist";
+
+const TITLE_PERSIST_DEBOUNCE_MS = 450;
 
 type TaskDetailChecklistTabProps = {
   taskId: string;
@@ -191,55 +193,20 @@ export function TaskDetailChecklistActions({
   canEdit: boolean;
   canManageTemplates?: boolean;
   hasItems: boolean;
-  /** Render only template/manage items for an external DropdownMenu. */
+  /** Render only manage/navigate items for an external DropdownMenu (no Apply template rows). */
   menuOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { orgId } = useActiveOrg();
-  const { templates, loading: templatesLoading } = useChecklistTemplates(canEdit || canManageTemplates);
   const { refresh } = useSubtasks(taskId);
   const queryClient = useQueryClient();
-  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
-
-  const handleApplyTemplate = async (templateId: string) => {
-    if (!orgId || !canEdit) return;
-    setApplyingTemplateId(templateId);
-    try {
-      await applyTemplateToTask(taskId, templateId, orgId);
-      await refresh();
-      void queryClient.invalidateQueries({ queryKey: ["task-subtask-count", taskId] });
-      toast({ title: "Checklist template applied" });
-    } catch (err: unknown) {
-      toast({
-        title: "Couldn't apply template",
-        description: err instanceof Error ? err.message : undefined,
-        variant: "destructive",
-      });
-    } finally {
-      setApplyingTemplateId(null);
-    }
-  };
 
   if (menuOnly) {
+    if (!canManageTemplates) return null;
     return (
-      <>
-        {canEdit &&
-          templates.map((t) => (
-            <DropdownMenuItem
-              key={t.id}
-              onSelect={() => void handleApplyTemplate(t.id)}
-              disabled={applyingTemplateId === t.id || templatesLoading}
-            >
-              Apply “{t.name}”
-            </DropdownMenuItem>
-          ))}
-        {canManageTemplates ? (
-          <DropdownMenuItem onSelect={() => navigate("/manage/templates")}>
-            Manage checklists
-          </DropdownMenuItem>
-        ) : null}
-      </>
+      <DropdownMenuItem onSelect={() => navigate("/manage/templates")}>
+        Manage checklists
+      </DropdownMenuItem>
     );
   }
 
@@ -297,13 +264,55 @@ export function TaskDetailChecklistTab({
     useState<ChecklistTemplateCategory>("operations");
   const [savingTemplate, setSavingTemplate] = useState(false);
 
+  const editorItemsRef = useRef(editorItems);
+  editorItemsRef.current = editorItems;
+  const titlePersistTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
   useEffect(() => {
-    setEditorItems(subtasks.map(rowToChecklistItem));
+    setEditorItems((prev) => {
+      const mapped = subtasks.map(rowToChecklistItem);
+      const pending = titlePersistTimersRef.current;
+
+      // Preserve in-flight typed titles so a mid-keystroke sync cannot clobber input.
+      const withLocalTitles =
+        pending.size === 0
+          ? mapped
+          : mapped.map((row) => {
+              if (!pending.has(row.id)) return row;
+              const local = prev.find((p) => p.id === row.id);
+              return local ? { ...row, title: local.title } : row;
+            });
+
+      // Keep local-only draft rows (Enter-created UUIDs not yet on server).
+      const serverIds = new Set(withLocalTitles.map((r) => r.id));
+      const localDrafts = prev.filter((p) => !serverIds.has(p.id));
+      if (localDrafts.length === 0) return withLocalTitles;
+
+      // Insert drafts after the item they followed in prev order when possible.
+      const merged = [...withLocalTitles];
+      for (const draft of localDrafts) {
+        const prevIndex = prev.findIndex((p) => p.id === draft.id);
+        const beforeId = prevIndex > 0 ? prev[prevIndex - 1]?.id : null;
+        const insertAt = beforeId
+          ? merged.findIndex((m) => m.id === beforeId) + 1
+          : merged.length;
+        merged.splice(Math.max(insertAt, 0), 0, draft);
+      }
+      return merged;
+    });
   }, [subtasks]);
 
   useEffect(() => {
     if (editMode) setChecklistAuthoring(false);
   }, [editMode]);
+
+  useEffect(
+    () => () => {
+      titlePersistTimersRef.current.forEach((timer) => clearTimeout(timer));
+      titlePersistTimersRef.current.clear();
+    },
+    []
+  );
 
   // Prefetch GPS so the first Mark done is not cold (reused ~60s for rapid completions).
   useEffect(() => {
@@ -365,18 +374,27 @@ export function TaskDetailChecklistTab({
     const serverIds = new Set(subtasks.map((s) => String(s.id)));
     const nextIds = new Set(next.map((s) => s.id));
 
+    let deletedAny = false;
     for (const item of prev) {
       if (serverIds.has(item.id) && !nextIds.has(item.id)) {
+        const pending = titlePersistTimersRef.current.get(item.id);
+        if (pending) {
+          clearTimeout(pending);
+          titlePersistTimersRef.current.delete(item.id);
+        }
         const ok = await deleteSubtask(item.id);
         if (!ok) {
           toast({ title: "Couldn't remove item", variant: "destructive" });
           await refresh();
           return;
         }
+        deletedAny = true;
       }
     }
 
     let createdAny = false;
+    let structureChangedAny = false;
+
     for (let index = 0; index < next.length; index++) {
       const item = next[index];
       const stepType = getStepType(item);
@@ -401,15 +419,25 @@ export function TaskDetailChecklistTab({
       }
 
       const before = prev.find((s) => s.id === item.id);
-      if (
-        before &&
-        (before.title !== item.title ||
-          getStepType(before) !== stepType ||
-          resolveIsSubStep(before) !== isSubStep ||
-          Boolean(before.is_required) !== Boolean(item.is_required) ||
-          Boolean(before.is_yes_no) !== legacy.is_yes_no ||
-          Boolean(before.requires_signature) !== legacy.requires_signature)
-      ) {
+      if (!before) continue;
+
+      const structureChanged =
+        getStepType(before) !== stepType ||
+        resolveIsSubStep(before) !== isSubStep ||
+        Boolean(before.is_required) !== Boolean(item.is_required) ||
+        Boolean(before.is_yes_no) !== legacy.is_yes_no ||
+        Boolean(before.requires_signature) !== legacy.requires_signature;
+      const titleChanged = before.title !== item.title;
+
+      if (!structureChanged && !titleChanged) continue;
+
+      if (structureChanged) {
+        structureChangedAny = true;
+        const pending = titlePersistTimersRef.current.get(item.id);
+        if (pending) {
+          clearTimeout(pending);
+          titlePersistTimersRef.current.delete(item.id);
+        }
         const ok = await updateSubtask(item.id, {
           title: item.title,
           is_yes_no: legacy.is_yes_no,
@@ -424,16 +452,56 @@ export function TaskDetailChecklistTab({
           await refresh();
           return;
         }
+        continue;
       }
+
+      // Title-only: debounce + silent persist (no list remount / loading flash).
+      const existingTimer = titlePersistTimersRef.current.get(item.id);
+      if (existingTimer) clearTimeout(existingTimer);
+      titlePersistTimersRef.current.set(
+        item.id,
+        setTimeout(() => {
+          void (async () => {
+            titlePersistTimersRef.current.delete(item.id);
+            const latest = editorItemsRef.current.find((s) => s.id === item.id);
+            if (!latest) return;
+            const latestType = getStepType(latest);
+            const latestLegacy = stepTypeToLegacy(latestType);
+            const ok = await updateSubtask(
+              item.id,
+              {
+                title: latest.title,
+                is_yes_no: latestLegacy.is_yes_no,
+                requires_signature: latestLegacy.requires_signature,
+                step_type: latestType,
+                is_sub_step: resolveIsSubStep(latest),
+                is_required: Boolean(latest.is_required),
+                order_index: editorItemsRef.current.findIndex((s) => s.id === item.id),
+              },
+              { refresh: false }
+            );
+            if (!ok) {
+              toast({ title: "Couldn't update item", variant: "destructive" });
+              await refresh();
+            }
+          })();
+        }, TITLE_PERSIST_DEBOUNCE_MS)
+      );
     }
 
     const persistedOrder = next.map((s) => s.id).filter((id) => serverIds.has(id));
-    if (!createdAny && persistedOrder.length > 1) {
-      await updateSubtaskOrder(persistedOrder);
+    if (!createdAny && !deletedAny && persistedOrder.length > 1) {
+      const orderChanged = persistedOrder.some((id, i) => prev[i]?.id !== id);
+      if (orderChanged) {
+        await updateSubtaskOrder(persistedOrder);
+        structureChangedAny = true;
+      }
     }
 
-    bumpCount();
-    await refresh();
+    if (createdAny || deletedAny || structureChangedAny) {
+      bumpCount();
+      await refresh();
+    }
   };
 
   const handleClearResponse = async (stepId: string) => {
@@ -565,7 +633,7 @@ export function TaskDetailChecklistTab({
     }
   };
 
-  if (loading) {
+  if (loading && subtasks.length === 0) {
     if (composerEmbed) return null;
     return <LoadingState message="Loading checklist…" />;
   }
@@ -651,7 +719,7 @@ export function TaskDetailChecklistTab({
             type="button"
             onClick={() => void handleAddItem()}
             disabled={addingItem}
-            className="flex w-full items-center gap-2 py-[3px] pl-[2px] text-left disabled:opacity-60"
+            className="flex w-full items-center gap-2 py-[3px] pl-1.5 pr-1.5 text-left disabled:opacity-60"
           >
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/30 bg-background/50" />
             <span className="flex-1 text-sm text-muted-foreground/70">
@@ -680,7 +748,7 @@ export function TaskDetailChecklistTab({
             type="button"
             onClick={() => void handleAddItem()}
             disabled={addingItem}
-            className="flex w-full items-center gap-2 py-[3px] pl-[2px] text-left disabled:opacity-60"
+            className="flex w-full items-center gap-2 py-[3px] pl-1.5 pr-1.5 text-left disabled:opacity-60"
           >
             <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/30 bg-background/50" />
             <span className="flex-1 text-sm text-muted-foreground/70">

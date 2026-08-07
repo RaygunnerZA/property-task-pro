@@ -80,7 +80,9 @@ export function useSubscription(): UseSubscriptionResult {
 
   const subscription = data?.subscription ?? null;
   const usage = data?.usage ?? null;
-  const planName = subscription?.tier?.name || "Free Tier";
+  // Prefer Home when no subscription (constitutional default). Keep planName
+  // for display only — feature gates must use entitlement keys.
+  const planName = subscription?.tier?.name || "Home";
 
   return {
     subscription,
@@ -88,6 +90,8 @@ export function useSubscription(): UseSubscriptionResult {
     loading: isLoading,
     error: error ? (error as Error).message : null,
     planName,
-    refresh: () => refetch(),
+    refresh: () => {
+      void refetch();
+    },
   };
 }

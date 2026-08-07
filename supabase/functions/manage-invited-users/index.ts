@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
         const upsert = await upsertOrgMembership({
           orgId: invitation.org_id,
           userId: existingUser.id,
-          role: invitation.role ?? "member",
+          role: invitation.role === "member" ? "staff" : (invitation.role ?? "staff"),
           propertyIds,
         });
         await markInvitationAccepted(invitation.id);
@@ -369,7 +369,7 @@ Deno.serve(async (req) => {
       const upsert = await upsertOrgMembership({
         orgId: invitation.org_id,
         userId: user.id,
-        role: invitation.role ?? "member",
+        role: invitation.role === "member" ? "staff" : (invitation.role ?? "staff"),
         propertyIds,
       });
 

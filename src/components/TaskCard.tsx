@@ -15,11 +15,23 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { markTaskCompleted } from "@/lib/completeTask";
+import { archiveTask } from "@/services/tasks/taskMutations";
+import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo, useCallback, memo, type ReactNode } from "react";
+import { useState, useMemo, useCallback, memo, type MouseEvent, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
@@ -223,10 +235,13 @@ function TaskCardComponent({
   const { data: orgProperties = [] } = usePropertiesQuery();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const deleteTaskMutation = useDeleteTaskMutation();
   const commentSignal = useTaskCommentSignal(task?.id);
   /** Property chip is only useful when the org has more than one property. */
   const showPropertyIconInMeta = orgProperties.length > 1;
   const [isCompleting, setIsCompleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   // Shared confirm/settle phase — also driven by TaskDetailPanel's "Mark Complete"
   // so the list card animates no matter where completion was triggered from.
   const completionPhase = useTaskCompletionMotion(
@@ -367,6 +382,109 @@ function TaskCardComponent({
   
   // Don't show Done button if task is already archived or completed
   const showDoneButton = task?.status !== 'archived' && task?.status !== 'completed';
+  const isCompleted = task?.status === "completed";
+
+  const handleArchive = useCallback(
+    async (e?: MouseEvent) => {
+      e?.stopPropagation();
+      if (!task?.id || !orgId || isArchiving) return;
+      setIsArchiving(true);
+      try {
+        await archiveTask(task.id, orgId);
+        await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        await queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+        toast({ title: "Task archived" });
+      } catch (err) {
+        toast({
+          title: "Couldn't archive task",
+          description: err instanceof Error ? err.message : "Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsArchiving(false);
+      }
+    },
+    [task?.id, orgId, isArchiving, queryClient, toast]
+  );
+
+  const handleConfirmDelete = useCallback(() => {
+    if (!task?.id || deleteTaskMutation.isPending) return;
+    deleteTaskMutation.mutate(
+      {
+        taskId: task.id,
+        orgId: orgId ?? undefined,
+        propertyId: task.property_id ?? property?.id ?? null,
+      },
+      {
+        onSuccess: () => {
+          toast({ title: "Task deleted" });
+          setShowDeleteDialog(false);
+        },
+        onError: (err) => {
+          toast({
+            title: "Couldn't delete task",
+            description: err instanceof Error ? err.message : "Please try again.",
+            variant: "destructive",
+          });
+        },
+      }
+    );
+  }, [task?.id, task?.property_id, property?.id, orgId, deleteTaskMutation, toast]);
+
+  const completedHoverActions = (
+    <div className="flex items-center gap-1.5">
+      <button
+        type="button"
+        disabled={isArchiving}
+        className={issuesSignalSecondaryButtonClassName}
+        onClick={(e) => {
+          void handleArchive(e);
+        }}
+      >
+        {isArchiving ? "Archiving…" : "Archive"}
+      </button>
+      <button
+        type="button"
+        disabled={deleteTaskMutation.isPending}
+        className={cn(
+          issuesSignalSecondaryButtonClassName,
+          "text-destructive hover:text-destructive"
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          setShowDeleteDialog(true);
+        }}
+      >
+        Delete
+      </button>
+    </div>
+  );
+
+  const deleteConfirmDialog = (
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete task?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete &quot;{task?.title ?? "this task"}&quot; and cannot be
+            undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleConfirmDelete();
+            }}
+          >
+            {deleteTaskMutation.isPending ? "Deleting…" : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   const metaCompact = metaDensity === "compact";
   const dueUrgency = getTaskDueUrgency(task);
@@ -486,101 +604,140 @@ function TaskCardComponent({
       </TaskCardMediaZone>
     );
 
-    return withCompletionSettle(
-      <div 
-        className={cn(
-          "task-card-horizontal",
-          "rounded-card bg-card/60",
-          "shadow-e1",
-          "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
-          "overflow-hidden flex flex-row min-h-[80px] relative group",
-          isSelected && "bg-card shadow-e3"
-        )}
-        onClick={onClick}
-      >
-        {completionOverlay}
-        {newCommentBubble}
-        {thumbnailFirst ? horizontalMedia : null}
-        {/* Content */}
-        <div className="flex-1 px-[14px] py-4 flex flex-col justify-center">
-          {/* Theme/Category */}
-          {!metaCompact && themes.length > 0 && (
-            <div className="text-2xs text-muted-foreground uppercase tracking-wide mb-1">
-              {themes[0].name}
-            </div>
-          )}
-          
-          {/* Task Title */}
-          <div className="flex justify-start items-center gap-2 min-h-[44px] flex-wrap">
-            <h3 className="text-base font-medium text-foreground line-clamp-2 leading-tight">
-              {t.title}
-            </h3>
-            {educationChipLabel ? (
-              <Badge
-                variant="neutral"
-                size="sm"
-                className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
-              >
-                {educationChipLabel}
-              </Badge>
-            ) : null}
-          </div>
-
-          {/* Property Icon + Space + Date/Time + Teams + From / For */}
-          <div className="mt-[7px] flex gap-2 flex-wrap items-center">
-            {showPropertyIconInMeta && property ? (
-              <PropertyIconChips properties={[property]} />
-            ) : null}
-            {metaCompact ? (
-              <>
-                {(spaces[0]?.name || t.due_at) && (
-                  <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0 flex-1")}>
-                    {spaces[0]?.name ? `${spaces[0].name}` : ""}
-                    {spaces[0]?.name && t.due_at ? " · " : ""}
-                    {t.due_at ? formatTaskDate(t.due_at) : ""}
-                  </span>
-                )}
-                <TaskCardPeopleMeta
-                  assigner={assignerUser}
-                  assignee={assigneeUser}
-                  className="ml-auto"
-                />
-              </>
-            ) : (
-              <>
-                {spaces.length > 0 && (
-                  <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
-                    {spaces[0].name}
-                  </Badge>
-                )}
-                {t.due_at && (
-                  <Badge variant="neutral" size="sm" className="text-2xs px-[5px] flex items-center gap-1 font-mono h-[24px]">
-                    <Clock className="h-3 w-3" />
-                    {formatTaskDate(t.due_at)}
-                  </Badge>
-                )}
-                {teams.length > 0 && teams.map((team: any) => (
-                  <Badge key={team.id} variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
-                    {team.name}
-                  </Badge>
-                ))}
-                <TaskCardPeopleMeta
-                  assigner={assignerUser}
-                  assignee={assigneeUser}
-                  className="ml-auto"
-                />
-              </>
+    return (
+      <>
+        {withCompletionSettle(
+          <div
+            className={cn(
+              "task-card-horizontal",
+              "rounded-card bg-card/60",
+              "shadow-e1",
+              "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
+              "overflow-hidden flex flex-row min-h-[80px] relative group",
+              isSelected && "bg-card shadow-e3"
             )}
-          </div>
-        </div>
+            onClick={onClick}
+          >
+            {completionOverlay}
+            {newCommentBubble}
+            {thumbnailFirst ? horizontalMedia : null}
+            {/* Content */}
+            <div className="relative flex-1 px-[14px] py-4 flex flex-col justify-center min-w-0">
+              {/* Theme/Category */}
+              {!metaCompact && themes.length > 0 && (
+                <div className="text-2xs text-muted-foreground uppercase tracking-wide mb-1">
+                  {themes[0].name}
+                </div>
+              )}
 
-        {!thumbnailFirst ? horizontalMedia : null}
-      </div>
+              {/* Task Title */}
+              <div
+                className={cn(
+                  "flex justify-start items-center gap-2 min-h-[44px] flex-wrap",
+                  isCompleted &&
+                    "transition-opacity duration-150 group-hover:opacity-40 group-focus-within:opacity-40"
+                )}
+              >
+                <h3 className="text-base font-medium text-foreground line-clamp-2 leading-tight">
+                  {t.title}
+                </h3>
+                {educationChipLabel ? (
+                  <Badge
+                    variant="neutral"
+                    size="sm"
+                    className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
+                  >
+                    {educationChipLabel}
+                  </Badge>
+                ) : null}
+              </div>
+
+              {/* Property Icon + Space + Date/Time + Teams + From / For */}
+              <div
+                className={cn(
+                  "mt-[7px] flex gap-2 flex-wrap items-center",
+                  isCompleted &&
+                    "transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none"
+                )}
+              >
+                {showPropertyIconInMeta && property ? (
+                  <PropertyIconChips properties={[property]} />
+                ) : null}
+                {metaCompact ? (
+                  <>
+                    {(spaces[0]?.name || t.due_at) && (
+                      <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0 flex-1")}>
+                        {spaces[0]?.name ? `${spaces[0].name}` : ""}
+                        {spaces[0]?.name && t.due_at ? " · " : ""}
+                        {t.due_at ? formatTaskDate(t.due_at) : ""}
+                      </span>
+                    )}
+                    <TaskCardPeopleMeta
+                      assigner={assignerUser}
+                      assignee={assigneeUser}
+                      className="ml-auto"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {spaces.length > 0 && (
+                      <Badge
+                        variant="neutral"
+                        size="sm"
+                        className="text-2xs px-[5px] font-mono uppercase h-[24px]"
+                      >
+                        {spaces[0].name}
+                      </Badge>
+                    )}
+                    {t.due_at && (
+                      <Badge
+                        variant="neutral"
+                        size="sm"
+                        className="text-2xs px-[5px] flex items-center gap-1 font-mono h-[24px]"
+                      >
+                        <Clock className="h-3 w-3" />
+                        {formatTaskDate(t.due_at)}
+                      </Badge>
+                    )}
+                    {teams.length > 0 &&
+                      teams.map((team: any) => (
+                        <Badge
+                          key={team.id}
+                          variant="neutral"
+                          size="sm"
+                          className="text-2xs px-[5px] font-mono uppercase h-[24px]"
+                        >
+                          {team.name}
+                        </Badge>
+                      ))}
+                    <TaskCardPeopleMeta
+                      assigner={assignerUser}
+                      assignee={assigneeUser}
+                      className="ml-auto"
+                    />
+                  </>
+                )}
+              </div>
+
+              {isCompleted ? (
+                <div className="absolute inset-y-0 right-3 z-10 flex items-center opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto">
+                  {completedHoverActions}
+                </div>
+              ) : null}
+            </div>
+
+            {!thumbnailFirst ? horizontalMedia : null}
+          </div>
+        )}
+        {deleteConfirmDialog}
+      </>
     );
   }
 
   // Vertical layout (image on top)
-  return withCompletionSettle(
+  return (
+    <>
+      {withCompletionSettle(
     <div 
       className={cn(
         "task-card-vertical h-[290px] w-full min-w-0",
@@ -648,6 +805,44 @@ function TaskCardComponent({
 
           {/* Hover — CTA buttons */}
           <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto">
+            {isCompleted ? (
+              <>
+                {completedHoverActions}
+                <div className="ml-auto shrink-0">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="More actions"
+                        className={issuesSignalOverflowButtonClassName}
+                        onClick={(e) => e.stopPropagation()}
+                        onPointerDown={(e) => e.stopPropagation()}
+                      >
+                        <MoreHorizontal className="h-4 w-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="end"
+                      side="top"
+                      sideOffset={4}
+                      className="min-w-[8rem] rounded-card border-border/60 bg-card p-1 shadow-md"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <DropdownMenuItem
+                        className="cursor-pointer px-3 py-1.5 text-xs text-foreground focus:bg-muted/40"
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          onClick?.();
+                        }}
+                      >
+                        Details
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </>
+            ) : (
+              <>
             <button
               type="button"
               className={issuesSignalReviewButtonClassName}
@@ -715,10 +910,15 @@ function TaskCardComponent({
             </DropdownMenuContent>
               </DropdownMenu>
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>
     </div>
+      )}
+      {deleteConfirmDialog}
+    </>
   );
 }
 

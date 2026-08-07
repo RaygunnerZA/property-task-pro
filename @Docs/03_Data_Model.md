@@ -18,7 +18,8 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   Admin RPCs (each checks admin, logs to `audit_logs`, returns empty if not admin): `admin_list_orgs`, `admin_get_org`, `admin_list_org_members`, `admin_get_org_activity`, `admin_get_org_ai_requests`.
 
 **Properties & Assets:**
-*   `properties` (address, type, nickname, icon fields, thumbnail; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
+*   `properties` (address, type, nickname, icon fields, thumbnail, `is_archived` — inactive properties do not count toward billing; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
+*   Billing: `subscription_tiers`, `org_subscriptions`, `org_usage` (+ `metrics` JSONB) — see `@Docs/20_Billing.md`
 *   `spaces` (property_id, type, icon_name, thumbnail_url — mini-card / photo path for space identity; floor_level)
 *   `assets` (property_id, space_id, serial, condition_score)
 

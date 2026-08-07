@@ -1992,6 +1992,7 @@ export type Database = {
         Row: {
           compliance_docs_count: number
           last_updated: string
+          metrics: Json
           org_id: string
           property_count: number
           staff_count: number
@@ -2000,6 +2001,7 @@ export type Database = {
         Insert: {
           compliance_docs_count?: number
           last_updated?: string
+          metrics?: Json
           org_id: string
           property_count?: number
           staff_count?: number
@@ -2008,6 +2010,7 @@ export type Database = {
         Update: {
           compliance_docs_count?: number
           last_updated?: string
+          metrics?: Json
           org_id?: string
           property_count?: number
           staff_count?: number
@@ -3721,6 +3724,20 @@ export type Database = {
           p_thumbnail_url?: string
         }
         Returns: Json
+      }
+      get_org_entitlements: { Args: { p_org_id: string }; Returns: Json }
+      home_entitlement_defaults: { Args: never; Returns: Json }
+      refresh_org_usage: {
+        Args: { p_org_id: string }
+        Returns: {
+          compliance_docs_count: number
+          last_updated: string
+          metrics: Json
+          org_id: string
+          property_count: number
+          staff_count: number
+          storage_used_bytes: number
+        }
       }
       create_task_v2: {
         Args: {

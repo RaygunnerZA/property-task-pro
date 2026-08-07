@@ -13,14 +13,18 @@ export function useSubtasks(taskId?: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  async function fetchSubtasks() {
+  async function fetchSubtasks(options?: { silent?: boolean }) {
     if (!taskId || !orgId) {
       setSubtasks([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    // Never flip loading on background refreshes — that remounts the checklist
+    // mid-keystroke and drops focus / caret.
+    if (!options?.silent) {
+      setLoading(true);
+    }
     setError(null);
 
     const { data, error: err } = await supabase
@@ -34,7 +38,9 @@ export function useSubtasks(taskId?: string) {
     if (err) setError(err.message);
     else setSubtasks(data ?? []);
 
-    setLoading(false);
+    if (!options?.silent) {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -73,11 +79,12 @@ export function useSubtasks(taskId?: string) {
       .single();
 
     if (err) {
+      console.error("[useSubtasks] createSubtask failed:", err.message, err);
       setError(err.message);
       return null;
     }
 
-    await fetchSubtasks();
+    await fetchSubtasks({ silent: true });
     return data;
   }
 
@@ -98,7 +105,7 @@ export function useSubtasks(taskId?: string) {
       return false;
     }
 
-    await fetchSubtasks();
+    await fetchSubtasks({ silent: true });
     return true;
   }
 
@@ -113,7 +120,7 @@ export function useSubtasks(taskId?: string) {
       return false;
     }
 
-    await fetchSubtasks();
+    await fetchSubtasks({ silent: true });
     return true;
   }
 
@@ -127,7 +134,8 @@ export function useSubtasks(taskId?: string) {
       step_type?: string;
       is_sub_step?: boolean;
       is_required?: boolean;
-    }
+    },
+    options?: { refresh?: boolean }
   ) {
     const { error: err } = await supabase
       .from("subtasks")
@@ -139,7 +147,13 @@ export function useSubtasks(taskId?: string) {
       return false;
     }
 
-    await fetchSubtasks();
+    // Title-only persists skip refresh so typing stays local and focused.
+    // Do not patch `subtasks` here — that re-syncs editorItems and can fight the caret.
+    if (options?.refresh === false) {
+      return true;
+    }
+
+    await fetchSubtasks({ silent: true });
     return true;
   }
 
@@ -161,7 +175,7 @@ export function useSubtasks(taskId?: string) {
       }
     }
 
-    await fetchSubtasks();
+    await fetchSubtasks({ silent: true });
     return true;
   }
 
@@ -169,7 +183,7 @@ export function useSubtasks(taskId?: string) {
     subtasks, 
     loading, 
     error, 
-    refresh: fetchSubtasks, 
+    refresh: () => fetchSubtasks({ silent: true }), 
     createSubtask, 
     toggleSubtask, 
     deleteSubtask,

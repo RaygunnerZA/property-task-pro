@@ -38,6 +38,7 @@ export function useCreatePropertyMutation() {
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       void queryClient.invalidateQueries({ queryKey: ["assets"] });
       void queryClient.invalidateQueries({ queryKey: ["compliance_portfolio"] });
+      void queryClient.invalidateQueries({ queryKey: ["subscription", variables.p_org_id] });
     },
   });
 }

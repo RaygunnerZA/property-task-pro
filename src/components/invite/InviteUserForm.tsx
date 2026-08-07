@@ -36,11 +36,13 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useTeams } from "@/hooks/useTeams";
 import { supabase } from "@/integrations/supabase/client";
 import { EXTERNAL_ORG_ROLES, INTERNAL_ORG_ROLES } from "@/lib/orgRoles";
 import { edgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
+import { isCoordinatingRole, isStaffRole } from "@/lib/permissions/normalizeOrgRole";
 
 type UserType = "internal" | "external";
 
@@ -84,6 +86,7 @@ export function InviteUserForm({
 }: InviteUserFormProps) {
   const { orgId } = useActiveOrg();
   const { members, refresh: refreshMembers } = useOrgMembers();
+  const { entitlements, planLabel } = useOrgEntitlements();
   const { data: properties = [] } = usePropertiesQuery();
   const { teams } = useTeams();
 
@@ -236,6 +239,23 @@ export function InviteUserForm({
 
   const handleSubmit = async () => {
     if (!canSubmit) return;
+
+    if (isStaffRole(role) && !entitlements.can_add_staff) {
+      toast.error("Upgrade required", {
+        description: `${planLabel} does not include Staff collaboration. Upgrade to Home Plus to invite helpers.`,
+      });
+      return;
+    }
+    if (isCoordinatingRole(role)) {
+      const coordinatingUsed = members.filter((m) => isCoordinatingRole(m.role)).length;
+      if (coordinatingUsed >= entitlements.coordinating_seats_limit) {
+        toast.error("Coordinating seat limit reached", {
+          description: `Your plan allows ${entitlements.coordinating_seats_limit} Owner/Manager seat(s). Upgrade to invite another.`,
+        });
+        return;
+      }
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -592,6 +612,11 @@ export function InviteUserForm({
                 ))}
               </SelectContent>
             </Select>
+            {!entitlements.can_add_staff && (isStaffRole(role) || userType === "external") && (
+              <p className="text-xs text-warning-foreground leading-relaxed">
+                {planLabel} does not include Staff collaboration. Upgrade to Home Plus to invite helpers.
+              </p>
+            )}
             {showOwnerWarning && role === "owner" && (
               <div className="flex items-start gap-2 p-3 rounded-card bg-warning/30 dark:bg-amber-950/30 shadow-e1">
                 <Shield className="h-4 w-4 text-warning-foreground mt-0.5 shrink-0" />

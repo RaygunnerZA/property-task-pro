@@ -285,19 +285,20 @@ export function SubtaskCard({
   };
 
   const handleTitleChange = (value: string) => {
-    const updates: Partial<SubtaskData> = { title: value };
+    // Title only while typing — keyword type detection on blur.
+    // Changing step_type mid-keystroke remounts execute controls and races persist.
+    onUpdate(subtask.id, { title: value });
+  };
 
-    // Auto-suggest type from keywords only when still on the default check type
-    if (currentType === "check") {
-      const detected = detectStepType(value);
-      if (detected) {
-        updates.step_type = detected;
-        updates.is_yes_no = detected === "yes_no";
-        updates.requires_signature = detected === "signature";
-      }
-    }
-
-    onUpdate(subtask.id, updates);
+  const applyKeywordTypeIfNeeded = (title: string) => {
+    if (currentType !== "check") return;
+    const detected = detectStepType(title);
+    if (!detected) return;
+    onUpdate(subtask.id, {
+      step_type: detected,
+      is_yes_no: detected === "yes_no",
+      requires_signature: detected === "signature",
+    });
   };
 
   const handleTypeSelect = (type: StepType) => {
@@ -415,7 +416,7 @@ export function SubtaskCard({
       >
         {/* Main Row */}
         <div
-          className="group/row flex items-center gap-[3px] pl-0 pr-0 py-0 rounded"
+          className="group/row flex items-center gap-2 pl-1.5 pr-1.5 py-0 rounded"
           style={{ backgroundColor: "rgba(255, 255, 255, 0)", height: "42px" }}
         >
           {/* Drag Handle — authoring only */}
@@ -515,7 +516,10 @@ export function SubtaskCard({
                 onChange={(e) => handleTitleChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
+                onBlur={() => {
+                  setIsFocused(false);
+                  applyKeywordTypeIfNeeded(subtask.title);
+                }}
                 readOnly={!isCreator}
                 className={cn(
                   "w-full min-h-[32px] max-h-[64px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none overflow-y-auto",
@@ -532,7 +536,8 @@ export function SubtaskCard({
                     : "rgba(42, 41, 62, 1)",
                   paddingTop: "6px",
                   paddingBottom: "6px",
-                  paddingLeft: "6px",
+                  paddingLeft: "10px",
+                  paddingRight: "8px",
                 }}
                 rows={1}
               />
@@ -551,7 +556,7 @@ export function SubtaskCard({
 
           {/* Follow-up if failed indicator */}
           {subtask.has_followup_if_failed && (
-            <GitBranch className="h-3 w-3 shrink-0 text-amber-400/80" />
+            <GitBranch className="h-3 w-3 shrink-0 text-destructive" />
           )}
 
           {/* Assigned user badge */}
@@ -823,16 +828,16 @@ export function SubtaskCard({
           <div className="ml-[22px] pb-1.5">
             {/* "If Failed →" label with connector */}
             <div className="flex items-center gap-1 mb-0.5 pl-[2px]">
-              <div className="w-[1px] h-2.5 bg-amber-300/40 shrink-0" />
-              <GitBranch className="h-2.5 w-2.5 text-amber-400/60 shrink-0" />
-              <span className="text-2xs font-mono uppercase tracking-widest text-warning-vivid/50">
+              <div className="w-[1px] h-2.5 bg-destructive/50 shrink-0" />
+              <GitBranch className="h-2.5 w-2.5 text-destructive shrink-0" />
+              <span className="text-2xs font-mono uppercase tracking-widest text-destructive">
                 If Failed
               </span>
             </div>
 
             {/* Follow-up step row */}
-            <div className="flex items-center gap-[3px] border-l-[2px] border-warning pl-2 min-h-[30px]">
-              <Check className="h-3 w-3 shrink-0 text-amber-400/50" />
+            <div className="flex items-center gap-[3px] border-l-[2px] border-destructive pl-2 min-h-[30px]">
+              <Check className="h-3 w-3 shrink-0 text-destructive" />
               <input
                 type="text"
                 placeholder="Follow-up action…"
@@ -845,8 +850,8 @@ export function SubtaskCard({
                     },
                   })
                 }
-                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm placeholder:text-muted-foreground/30"
-                style={{ color: "rgba(42, 41, 62, 0.70)" }}
+                className="flex-1 min-w-0 bg-transparent border-0 outline-none text-sm placeholder:text-destructive/45"
+                style={{ color: "rgba(235, 104, 52, 0.92)" }}
               />
             </div>
           </div>

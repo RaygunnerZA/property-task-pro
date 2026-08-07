@@ -316,3 +316,67 @@ Limits initially run in **observe mode**: measure → warn internally → correc
 3. Add org-level counters (properties active, members by role, storage estimate, AI request counts) — observe only.
 4. Draft entitlement key catalogue matching `20_Billing` §20.3.
 5. Constitution PR checklist: `02_Identity` + `20_Billing` reviewed by product before schema work.
+
+---
+
+## Appendix A — Frozen usage definitions (Phase 0)
+
+These definitions are locked for observe-mode instrumentation and Phase 1 soft gates.
+
+### Active property
+
+A row in `properties` for the organisation where `is_archived` is false (or null treated as active).
+
+* Counts toward `active_properties_limit`.
+* Archived properties remain readable per lifecycle policy and do **not** count.
+
+### Coordinating member
+
+An `organisation_members` row whose normalized role is `owner` or `manager`.
+
+* Counts toward `coordinating_seats_limit`.
+* Unaccepted invitations do not count until membership exists.
+* Suspended/deleted members do not count (when status exists).
+
+### Staff contributor (headcount / monthly active)
+
+* **Headcount (observe):** membership with normalized role `staff` (legacy `member` counts as Staff).
+* **Monthly active Staff (observe later):** Staff/`member` who in the billing period completed a task item, added evidence, or sent an operational message. Sign-in alone does not qualify.
+* Phase 0–1 refreshes headcount into `org_usage`; monthly-active is not enforced yet.
+
+### External contributor
+
+Link/token or short-lived session access to an explicitly shared resource. Not a coordinating seat. Not counted in `staff_count`.
+
+### Home defaults (no `org_subscriptions` row)
+
+When an organisation has no subscription row, resolve entitlements as **Home**:
+
+| Key | Value |
+|---|---|
+| `active_properties_limit` | 1 |
+| `coordinating_seats_limit` | 1 |
+| `can_add_staff` | false |
+| `multi_property_enabled` | false |
+| `external_submissions_enabled` | false |
+| `compliance_enabled` | false |
+| `advanced_reports_enabled` | false |
+| `api_enabled` | false |
+
+Personal orgs without a paid plan use these defaults. Feature code must check entitlement keys, never plan display names.
+
+### Entitlement key catalogue (Phase 1)
+
+Boolean / numeric keys stored on `subscription_tiers.entitlements` (JSONB):
+
+* `active_properties_limit` (number)
+* `coordinating_seats_limit` (number)
+* `staff_active_monthly_allowance` (number, observe)
+* `can_add_staff` (boolean)
+* `multi_property_enabled` (boolean)
+* `external_submissions_enabled` (boolean)
+* `compliance_enabled` (boolean)
+* `advanced_reports_enabled` (boolean)
+* `api_enabled` (boolean)
+* `evidence_bytes_allowance` (number, observe)
+* `ai_ops_allowance` (number, observe)

@@ -33,7 +33,7 @@ export default function InviteTeamScreen() {
   }, [propertyProfile, navigate]);
   
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<string>("member");
+  const [role, setRole] = useState<string>("staff");
 
   const handleAddInvite = () => {
     if (!email.trim()) {
@@ -53,7 +53,7 @@ export default function InviteTeamScreen() {
 
     addTeamInvite({ email, role });
     setEmail("");
-    setRole("member");
+    setRole("staff");
     toast.success("Invite added");
   };
 
@@ -174,7 +174,7 @@ export default function InviteTeamScreen() {
                 Role
               </label>
               <div className="grid grid-cols-2 gap-3">
-                {(['member', 'manager'] as const).map((r) => (
+                {(['staff', 'manager'] as const).map((r) => (
                   <button
                     key={r}
                     type="button"

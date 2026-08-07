@@ -123,13 +123,11 @@ export function SubtaskOptionsMenu({
                 e.preventDefault();
                 onToggleFollowupIfFailed();
               }}
-              className="gap-2 text-sm"
+              className="gap-2 text-sm text-destructive focus:text-destructive"
             >
-              <GitBranch
-                className={`h-4 w-4 ${hasFollowupIfFailed ? "text-warning-vivid" : "text-current"}`}
-              />
+              <GitBranch className="h-4 w-4 text-destructive" />
               {hasFollowupIfFailed ? "Remove Follow-up" : "Add Follow-up if Failed"}
-              {hasFollowupIfFailed && <Check className="h-3.5 w-3.5 text-warning-vivid ml-auto" />}
+              {hasFollowupIfFailed && <Check className="h-3.5 w-3.5 text-destructive ml-auto" />}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

@@ -126,11 +126,12 @@ export function TaskDetailPanel({
     queryKey: ["task-assets", taskId],
     queryFn: async () => {
       if (!taskId) return [];
-      const { data: links } = await supabase
+      const { data: links, error } = await supabase
         .from("task_assets")
         .select("asset_id")
         .eq("task_id", taskId);
-      if (!links || links.length === 0) return [];
+      // Missing table / RLS / 404 — treat as no linked assets.
+      if (error || !links || links.length === 0) return [];
       const assetIds = links.map((l: any) => l.asset_id);
       const { data: assetRows } = await supabase
         .from("assets_view")
@@ -139,11 +140,12 @@ export function TaskDetailPanel({
       return (assetRows || []).map((a: any) => ({ id: a.id, name: a.name ?? "Unnamed" }));
     },
     enabled: !!taskId,
+    retry: false,
   });
 
   const { toast } = useToast();
   const { data: orgProperties = [] } = usePropertiesQuery();
-  const { role: orgRole } = useActiveOrg();
+  const { role: orgRole, orgId } = useActiveOrg();
   const canManageTemplates = orgRole === "owner" || orgRole === "manager";
   const queryClient = useQueryClient();
   const deleteTaskMutation = useDeleteTaskMutation();
@@ -1126,16 +1128,27 @@ export function TaskDetailPanel({
   });
 
   const { data: commentCount = 0 } = useQuery({
-    queryKey: ["task-comment-count", taskId],
-    enabled: Boolean(taskId),
+    queryKey: ["task-comment-count", orgId, taskId],
+    enabled: Boolean(orgId && taskId),
     queryFn: async () => {
+      // messages link via conversations.task_id — not messages.task_id
+      const { data: conversation, error: convError } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("org_id", orgId!)
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      if (convError || !conversation?.id) return 0;
       const { count, error } = await supabase
         .from("messages")
         .select("id", { count: "exact", head: true })
-        .eq("task_id", taskId);
+        .eq("conversation_id", conversation.id);
       if (error) return 0;
       return count ?? 0;
     },
+    retry: false,
   });
 
   const assetLabels = useMemo(

@@ -3,7 +3,7 @@ export const DEV_TEST_PERSONAS = [
   { email: "justinplunkett+alice@gmail.com", role: "staff" },
   { email: "justinplunkett+bob@gmail.com", role: "staff" },
   { email: "justinplunkett+carol@gmail.com", role: "manager" },
-  { email: "justinplunkett+david@gmail.com", role: "member" },
+  { email: "justinplunkett+david@gmail.com", role: "staff" },
   { email: "justinplunkett+emma@gmail.com", role: "staff" },
-  { email: "justinplunkett+frank@gmail.com", role: "member" },
+  { email: "justinplunkett+frank@gmail.com", role: "staff" },
 ] as const;

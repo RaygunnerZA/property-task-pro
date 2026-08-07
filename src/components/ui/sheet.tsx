@@ -57,7 +57,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
       <SheetOverlay />
       <SheetPrimitive.Content
         ref={ref}
-        aria-describedby={ariaDescribedBy ?? undefined}
+        {...(typeof ariaDescribedBy === "string" ? { "aria-describedby": ariaDescribedBy } : {})}
         className={cn(
           "dialog-content",
           sheetVariants({ side }),

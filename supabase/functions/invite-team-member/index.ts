@@ -191,10 +191,16 @@ Deno.serve(async (req) => {
       org_id,
       first_name,
       last_name,
-      role = "member",
+      role: rawRole = "staff",
       property_ids = null,
       team_ids = null,
     } = body;
+
+    // Legacy member → staff (@Docs/02_Identity.md)
+    const role =
+      typeof rawRole === "string" && rawRole.toLowerCase() === "member"
+        ? "staff"
+        : (rawRole || "staff");
 
     console.log("[invite:validating-fields]", { executionId, hasEmail: !!email, hasOrgId: !!org_id });
     
@@ -247,6 +253,51 @@ Deno.serve(async (req) => {
     if (!["owner", "manager"].includes(membership.role)) {
       console.log("[invite:insufficient-role]", { executionId, role: membership.role });
       return jsonErr("Only owners and managers can invite members", 403);
+    }
+
+    // Entitlement soft gates (Home defaults when no subscription)
+    const { data: ents, error: entsError } = await supabaseAdmin.rpc(
+      "get_org_entitlements",
+      { p_org_id: org_id }
+    );
+    if (entsError) {
+      console.error("[invite:entitlements-error]", { executionId, error: entsError.message });
+      return jsonErr("Could not verify plan entitlements", 500);
+    }
+    const canAddStaff = ents?.can_add_staff === true;
+    const coordinatingLimit = Number(ents?.coordinating_seats_limit ?? 1);
+    const normalizedInviteRole = String(role).toLowerCase();
+    const isStaffInvite =
+      normalizedInviteRole === "staff" ||
+      normalizedInviteRole === "contractor" ||
+      normalizedInviteRole === "vendor" ||
+      normalizedInviteRole === "inspector";
+    const isCoordinatingInvite =
+      normalizedInviteRole === "owner" || normalizedInviteRole === "manager";
+
+    if (isStaffInvite && !canAddStaff) {
+      return jsonErr(
+        "Your plan does not include Staff collaboration. Upgrade to Home Plus to invite helpers.",
+        403
+      );
+    }
+
+    if (isCoordinatingInvite) {
+      const { count: coordinatingCount, error: countError } = await supabaseAdmin
+        .from("organisation_members")
+        .select("id", { count: "exact", head: true })
+        .eq("org_id", org_id)
+        .in("role", ["owner", "manager"]);
+      if (countError) {
+        console.error("[invite:seat-count-error]", { executionId, error: countError.message });
+        return jsonErr("Could not verify coordinating seats", 500);
+      }
+      if ((coordinatingCount ?? 0) >= coordinatingLimit) {
+        return jsonErr(
+          `Coordinating seat limit reached (${coordinatingCount} of ${coordinatingLimit}). Upgrade your plan to invite another Owner or Manager.`,
+          403
+        );
+      }
     }
 
     console.log("[invite:checking-existing-invitation]", { executionId, email });

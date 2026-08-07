@@ -1,4 +1,5 @@
 import { Session } from "@supabase/supabase-js";
+import { normalizeOrgRole } from "@/lib/permissions/normalizeOrgRole";
 
 /**
  * Identity mode types supported by the system.
@@ -22,11 +23,6 @@ export interface IdentityModeResolution {
  * Organization type from the database.
  */
 type OrgType = "personal" | "business" | "contractor";
-
-/**
- * Organization member role from the database.
- */
-type OrgRole = "owner" | "manager" | "member" | "staff";
 
 /**
  * Resolves identity mode from JWT claims.
@@ -56,47 +52,37 @@ function resolveFromJWT(session: Session | null): IdentityMode | null {
 
 /**
  * Resolves identity mode from organization membership.
- * 
+ *
  * Derives identity mode based on:
  * - org_type: 'personal' → 'personal', 'contractor' → 'contractor'
- * - role: 'staff' → 'staff', 'owner'/'manager' → 'manager'
- * 
+ * - role: owner/manager → manager; staff (and legacy member) → staff
+ *
  * @param orgType - Organization type (personal, business, contractor)
- * @param role - User's role in the organization (owner, manager, member, staff)
+ * @param role - User's role in the organization
  * @returns Identity mode if resolvable, null otherwise
  */
 function resolveFromOrgMembership(
   orgType: OrgType | null,
-  role: OrgRole | null
+  role: string | null
 ): IdentityMode | null {
-  // If org_type is 'personal', identity is 'personal'
   if (orgType === "personal") {
     return "personal";
   }
 
-  // If org_type is 'contractor', identity is 'contractor'
   if (orgType === "contractor") {
     return "contractor";
   }
 
-  // If no role, cannot resolve
-  if (!role) {
+  const normalized = normalizeOrgRole(role);
+  if (!normalized) {
     return null;
   }
 
-  // If role is 'staff', identity is 'staff'
-  if (role === "staff") {
+  if (normalized === "staff") {
     return "staff";
   }
 
-  // If role is 'owner' or 'manager', identity is 'manager'
-  if (role === "owner" || role === "manager") {
-    return "manager";
-  }
-
-  // For 'member' role in business org, default to 'manager'
-  // (member role typically has manager-level access)
-  if (role === "member" && orgType === "business") {
+  if (normalized === "owner" || normalized === "manager") {
     return "manager";
   }
 
@@ -118,7 +104,7 @@ function resolveFromOrgMembership(
 export function resolveIdentityMode(
   session: Session | null,
   orgType: OrgType | null = null,
-  role: OrgRole | null = null
+  role: string | null = null
 ): IdentityModeResolution {
   // First, try to resolve from JWT claims
   const jwtMode = resolveFromJWT(session);
