@@ -34,10 +34,10 @@ export const TASK_STATUS_VISUALS: Record<TaskStatus, TaskStatusVisual> = {
     label: "Not started",
     shortLabel: "Not started",
     Icon: Circle,
-    // Lighter grey block; circle stroke grey with white fill.
-    blockClassName: "bg-muted-foreground/30",
-    iconClassName: "text-muted-foreground/55 fill-white",
-    filterIconClassName: "text-muted-foreground/55 fill-white",
+    // Very light grey block; circle stroke grey with white fill.
+    blockClassName: "bg-muted-foreground/15",
+    iconClassName: "text-muted-foreground/45 fill-white",
+    filterIconClassName: "text-muted-foreground/45 fill-white",
     filterId: "filter-status-todo",
   },
   in_progress: {
@@ -65,6 +65,7 @@ export const TASK_STATUS_VISUALS: Record<TaskStatus, TaskStatusVisual> = {
     label: "Completed",
     shortLabel: "Completed",
     Icon: CircleCheckBig,
+    // Solid green block + white check — reads clearly on task thumbnails.
     blockClassName: "bg-success-vivid",
     iconClassName: "text-white",
     filterIconClassName: "text-success-vivid",
@@ -98,8 +99,11 @@ export const TASK_STATUS_FILTER_IDS = TASK_STATUS_ORDER.map(
 export function getTaskStatusVisual(
   status: string | null | undefined
 ): TaskStatusVisual {
-  if (status && status in TASK_STATUS_VISUALS) {
-    return TASK_STATUS_VISUALS[status as TaskStatus];
+  const key = String(status ?? "").toLowerCase();
+  // Legacy / alternate labels
+  if (key === "done") return TASK_STATUS_VISUALS.completed;
+  if (key && key in TASK_STATUS_VISUALS) {
+    return TASK_STATUS_VISUALS[key as TaskStatus];
   }
   return TASK_STATUS_VISUALS.open;
 }

@@ -266,7 +266,7 @@ export function IssuesTriagePanel({
                         externalTaskSearchQuery={issuesWorkbenchSearch}
                         onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
                         compactTaskMeta
-                        hideDoneSection={issuesFilter === "all"}
+                        hideDoneSection={false}
                       />
                     </div>
                   </div>

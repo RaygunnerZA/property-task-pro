@@ -38,7 +38,7 @@ const TASKS_LIST_TABS: {
     id: "all",
     label: "All",
     subtitle:
-      "Every open task in scope —\nincluding work assigned to others, newest first.",
+      "Every task in scope —\nincluding completed work and work assigned to others.",
     illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
   },
   {
@@ -62,24 +62,36 @@ const MESSAGES_TAB_META = {
 };
 
 const TERMINAL_TASK_STATUSES = new Set(["completed", "archived", "done"]);
+/** Cancelled only — completed work stays visible in All. */
+const HIDDEN_FROM_ALL_STATUSES = new Set(["archived", "done"]);
 
 function isOpenTask(task: { status?: string | null }) {
   const status = (task.status ?? "").toLowerCase();
   return !TERMINAL_TASK_STATUSES.has(status);
 }
 
-function filterOpenTasksForTasksTab(
+function isVisibleInAllTasks(task: { status?: string | null }) {
+  const status = (task.status ?? "").toLowerCase();
+  return !HIDDEN_FROM_ALL_STATUSES.has(status);
+}
+
+function filterScopedTasksForTasksTab(
   tasks: any[],
   selectedPropertyIds: Set<string> | undefined,
   properties: { id: string }[],
-  memberRole: string | null | undefined
+  memberRole: string | null | undefined,
+  includeCompleted: boolean
 ) {
   const propertyIds = properties.map((p) => p.id);
   return tasks.filter((task) => {
     if (!taskMatchesPropertyScope(task, selectedPropertyIds, propertyIds)) return false;
     if (shouldHideOwnerDemoTaskForRole(task, memberRole)) return false;
     if (isStaffTrainingTask(task)) return false;
-    if (!isOpenTask(task)) return false;
+    if (includeCompleted) {
+      if (!isVisibleInAllTasks(task)) return false;
+    } else if (!isOpenTask(task)) {
+      return false;
+    }
     const isDemo = isOnboardingDemoTask(task);
     return !isDemo || memberRole === "owner" || memberRole === "manager";
   });
@@ -142,7 +154,26 @@ export function TasksWorkbenchPanel({
   }, [setSelectedFilters]);
 
   const scopedOpenTasks = useMemo(
-    () => filterOpenTasksForTasksTab(tasks, selectedPropertyIds, properties, memberRole),
+    () =>
+      filterScopedTasksForTasksTab(
+        tasks,
+        selectedPropertyIds,
+        properties,
+        memberRole,
+        false
+      ),
+    [tasks, selectedPropertyIds, properties, memberRole]
+  );
+
+  const scopedAllTasks = useMemo(
+    () =>
+      filterScopedTasksForTasksTab(
+        tasks,
+        selectedPropertyIds,
+        properties,
+        memberRole,
+        true
+      ),
     [tasks, selectedPropertyIds, properties, memberRole]
   );
 
@@ -160,8 +191,8 @@ export function TasksWorkbenchPanel({
   );
 
   const allTasks = useMemo(
-    () => sortRecentlyAdded(scopedOpenTasks),
-    [scopedOpenTasks]
+    () => sortRecentlyAdded(scopedAllTasks),
+    [scopedAllTasks]
   );
 
   const messageTasks = useMemo(() => {
@@ -353,7 +384,7 @@ export function TasksWorkbenchPanel({
             embeddedVerticalList
             embeddedColumns={2}
             compactTaskMeta
-            hideDoneSection
+            hideDoneSection={listTab !== "all"}
           />
         </div>
       </section>

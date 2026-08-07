@@ -97,7 +97,10 @@ interface TaskListProps {
   /** Parent-controlled search when embedded in Issues (omits inline search in TaskList). */
   externalTaskSearchQuery?: string;
   onExternalTaskSearchQueryChange?: (value: string) => void;
-  /** When true, completed tasks are rendered elsewhere (Issues Done stream). */
+  /**
+   * When true (Open / Urgent / My), completed tasks are omitted from the list.
+   * When false (All), completed tasks stay in the primary list in place.
+   */
   hideDoneSection?: boolean;
   /** Home open-work strip: horizontal slider only, no tall scroll region. */
   embeddedSliderOnly?: boolean;
@@ -417,22 +420,32 @@ export function TaskList({
     return filtered;
   }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties, taskSearchQuery, propertyMap]);
 
-  // Group filtered tasks by status
+  // Group filtered tasks by status.
+  // When the Done section is shown (All), keep completed in the primary list so
+  // Mark Complete updates status in place instead of yanking the card below the fold.
   const groupedTasks = useMemo(() => {
     const sortBy = workbenchControls?.sortBy ?? "recent";
+    const inlineCompleted = !hideDoneSection;
     const todo = sortTasksBy(
-      filteredTasks.filter(
-        (task) =>
+      filteredTasks.filter((task) => {
+        if (
           task.status === "open" ||
           task.status === "in_progress" ||
           task.status === "waiting_review"
-      ),
+        ) {
+          return true;
+        }
+        return inlineCompleted && task.status === "completed";
+      }),
       sortBy
     );
-    const done = filteredTasks.filter((task) => task.status === "completed");
+    // Dedicated Done section only when completed are not already inline.
+    const done = inlineCompleted
+      ? []
+      : filteredTasks.filter((task) => task.status === "completed");
 
     return { todo, done };
-  }, [filteredTasks, workbenchControls?.sortBy]);
+  }, [filteredTasks, workbenchControls?.sortBy, hideDoneSection]);
 
   const primaryOptions: FilterOption[] = useMemo(() => {
     const opts: FilterOption[] = [

@@ -1,13 +1,12 @@
 import { create } from "zustand";
 
 /**
- * Shared "confirm and settle" completion motion (restrained-motion Experiment A).
+ * Shared completion confirm motion (restrained-motion Experiment A).
  *
- * Task completion can be triggered from two places — the card's own "Mark done"
- * action and the task detail panel's "Mark Complete" CTA. Both drive this store
- * so the card in the list plays the same motion regardless of the trigger:
- * hold the card in a visibly completed state (confirm), then collapse it out so
- * siblings settle instead of jumping. Skipped under prefers-reduced-motion.
+ * Task completion can be triggered from the card's "Mark done" action or the
+ * detail panel's "Mark Complete" CTA. Both drive this store so the list card
+ * plays a short confirm flash. Completed work stays on screen (no collapse).
+ * Skipped under prefers-reduced-motion.
  */
 
 export type TaskCompletionPhase = "confirm" | "collapse";
@@ -44,19 +43,16 @@ function prefersReducedMotionNow(): boolean {
 }
 
 /**
- * Plays confirm → collapse on the task's list card and resolves once the exit
- * finished. Callers should invalidate the tasks queries only after this
- * resolves (so the card isn't removed mid-animation), then call
- * `clearTaskCompletionMotion` once fresh data has landed.
- * Resolves immediately under prefers-reduced-motion.
+ * Plays a short confirm flash on the task's list card (no collapse/exit).
+ * Completed work stays visible in All under Done — collapsing felt like the
+ * task vanished. Skipped under prefers-reduced-motion.
  */
 export async function playTaskCompletionMotion(taskId: string): Promise<void> {
   if (prefersReducedMotionNow()) return;
   const { setPhase } = useTaskCompletionMotion.getState();
   setPhase(taskId, "confirm");
   await sleep(COMPLETE_CONFIRM_HOLD_MS);
-  setPhase(taskId, "collapse");
-  await sleep(COMPLETE_COLLAPSE_MS);
+  // Do not enter collapse — keep the card on screen.
 }
 
 export function clearTaskCompletionMotion(taskId: string): void {

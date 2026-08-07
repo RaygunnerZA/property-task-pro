@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, CheckSquare, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
+import { Copy, Archive, Trash2, MoreVertical, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -77,6 +77,7 @@ import {
   clearTaskCompletionMotion,
   playTaskCompletionMotion,
 } from "@/lib/taskCompletionMotion";
+import { patchTasksCacheStatus } from "@/lib/completeTask";
 import { resolveTaskAssignerUser } from "@/lib/userDisplayHelpers";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
@@ -178,7 +179,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
   const actionRowRef = useRef<HTMLDivElement | null>(null);
-  const [hideActionIcons, setHideActionIcons] = useState(false);
   const prevHydratedTaskIdRef = useRef<string | null>(null);
   const prevAssetTaskIdRef = useRef<string | null>(null);
 
@@ -470,15 +470,58 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     setIsUpdating(true);
     const prev = status;
     setStatus(next);
+    if (next === "completed" || next === "archived") {
+      patchTasksCacheStatus(queryClient, taskId, next);
+    }
+    const orgId = (task as any)?.org_id;
+    const propId = (task as any)?.property_id ?? undefined;
     try {
       const { error } = await supabase.from("tasks").update({ status: next }).eq("id", taskId);
       if (error) throw error;
+      if (next === "completed") {
+        if (orgId) {
+          const updateBriefingCache = (key: (string | undefined)[]) => {
+            queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
+              const list = Array.isArray(old) ? [...old] : [];
+              const idx = list.findIndex((t) => t.id === taskId);
+              const entry = { id: taskId, status: "completed", property_id: propId };
+              if (idx >= 0) {
+                list[idx] = { ...list[idx], ...entry };
+              } else {
+                list.push(entry);
+              }
+              return list;
+            });
+          };
+          updateBriefingCache(["tasks-briefing", orgId, null]);
+          if (propId) updateBriefingCache(["tasks-briefing", orgId, propId]);
+        }
+        captureGeo("task_complete", {
+          taskId,
+          propertyId: propId,
+        });
+        await playTaskCompletionMotion(taskId);
+      }
       await refreshTask();
-      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["task-audit-log", (task as any)?.org_id, taskId] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      clearTaskCompletionMotion(taskId);
+      queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
+      if (next === "completed" && orgId && propId) {
+        queryClient.invalidateQueries({
+          queryKey: ["property-timeline", orgId, propId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["property-vendors", orgId, propId],
+        });
+        queryClient.invalidateQueries({
+          queryKey: ["property-drift", orgId, propId],
+        });
+      }
       toast({ title: "Status updated", description: getTaskStatusVisual(next).label });
     } catch (err: any) {
       setStatus(prev);
+      clearTaskCompletionMotion(taskId);
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
       toast({ title: "Couldn't update status", description: err.message, variant: "destructive" });
     } finally {
       setIsUpdating(false);
@@ -557,8 +600,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   }, [dueDate, status]);
 
   const statusChipTextClass = useMemo(() => {
-    if (status === "open") return "text-success-foreground";
-    if (status === "completed" || status === "archived") return "text-muted-foreground";
+    if (status === "open") return "text-muted-foreground";
+    if (status === "completed") return "text-success-foreground";
+    if (status === "archived") return "text-muted-foreground";
     if (status === "waiting_review") return "text-warning-foreground";
     return "text-primary-deep";
   }, [status]);
@@ -592,7 +636,9 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     if (status === "open") return "open" as const;
     if (status === "in_progress") return "progress" as const;
     if (status === "waiting_review") return "review" as const;
-    if (status === "completed" || status === "archived") return "done" as const;
+    if (status === "completed") return "done" as const;
+    // Cancelled stays muted — not the green completed tone.
+    if (status === "archived") return "other" as const;
     return "other" as const;
   }, [status]);
 
@@ -1130,24 +1176,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   // Show CTA to any authenticated user who can view the task (fallback when created_by not in view)
   const canManageTask = !!userId && (isAssigner || isAssignee || !createdBy);
 
-  // Narrow third-column footer: wrap labels; drop icons when buttons still overflow.
-  useEffect(() => {
-    const row = actionRowRef.current;
-    if (!row) return;
-    const measure = () => {
-      const buttons = row.querySelectorAll<HTMLElement>("[data-task-action]");
-      let hide = false;
-      buttons.forEach((btn) => {
-        if (btn.clientWidth > 0 && btn.clientWidth < 104) hide = true;
-      });
-      setHideActionIcons(hide);
-    };
-    const ro = new ResizeObserver(measure);
-    ro.observe(row);
-    measure();
-    return () => ro.disconnect();
-  }, [canManageTask, taskEditOpen, status]);
-
   const hasEdits = useMemo(() => {
     const origMs = (task as any)?.milestones;
     const origMsJson = JSON.stringify(Array.isArray(origMs) ? origMs : []);
@@ -1458,9 +1486,13 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               <DropdownMenuTrigger asChild>
                 <Button
                   type="button"
-                  variant="outline"
+                  data-task-action
+                  variant={status === "completed" ? "secondary" : "default"}
                   disabled={isUpdating}
-                  className="h-10 min-w-0 max-w-[42%] shrink gap-1.5 px-2.5 shadow-e1 text-foreground"
+                  className={cn(
+                    "h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden px-3 text-base shadow-e1",
+                    status !== "completed" && "shadow-primary-btn text-white"
+                  )}
                   aria-label="Change status"
                 >
                   {(() => {
@@ -1476,10 +1508,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                         >
                           <Icon className={cn("h-3 w-3", visual.iconClassName)} aria-hidden />
                         </span>
-                        <span className="min-w-0 truncate text-sm font-medium">
+                        <span className="min-w-0 truncate text-base font-semibold">
                           {visual.shortLabel}
                         </span>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-60" aria-hidden />
+                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
                       </>
                     );
                   })()}
@@ -1512,79 +1544,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
               </DropdownMenuContent>
             </DropdownMenu>
           ) : null}
-          {canManageTask && (
-            <Button
-              data-task-action
-              variant={status === "completed" ? "secondary" : "default"}
-              className={cn(
-                "min-w-0 flex-1 basis-0 overflow-hidden text-base",
-                status !== "completed" && "shadow-primary-btn text-white"
-              )}
-              onClick={async () => {
-                if (status === "completed") return;
-                if (isUpdating) return;
-                setIsUpdating(true);
-                const orgId = (task as any)?.org_id;
-                const propId = (task as any)?.property_id ?? undefined;
-                try {
-                  const { error } = await supabase.from("tasks").update({ status: "completed" }).eq("id", taskId);
-                  if (error) throw error;
-                  setStatus("completed");
-                  if (orgId) {
-                    const updateBriefingCache = (key: (string | undefined)[]) => {
-                      queryClient.setQueryData(key, (old: { id: string; status: string; property_id?: string }[] | undefined) => {
-                        const list = Array.isArray(old) ? [...old] : [];
-                        const idx = list.findIndex((t) => t.id === taskId);
-                        const entry = { id: taskId, status: "completed", property_id: propId };
-                        if (idx >= 0) {
-                          list[idx] = { ...list[idx], ...entry };
-                        } else {
-                          list.push(entry);
-                        }
-                        return list;
-                      });
-                    };
-                    updateBriefingCache(["tasks-briefing", orgId, null]);
-                    if (propId) updateBriefingCache(["tasks-briefing", orgId, propId]);
-                  }
-                  toast({ title: "Task completed" });
-                  captureGeo("task_complete", {
-                    taskId,
-                    propertyId: propId,
-                  });
-                  onClose();
-                  await playTaskCompletionMotion(taskId);
-                  await queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                  clearTaskCompletionMotion(taskId);
-                  queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
-                  if (orgId && propId) {
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-timeline", orgId, propId],
-                    });
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-vendors", orgId, propId],
-                    });
-                    queryClient.invalidateQueries({
-                      queryKey: ["property-drift", orgId, propId],
-                    });
-                  }
-                } catch (err: any) {
-                  clearTaskCompletionMotion(taskId);
-                  toast({ title: "Couldn't complete task", description: err.message, variant: "destructive" });
-                } finally {
-                  setIsUpdating(false);
-                }
-              }}
-              disabled={isUpdating}
-            >
-              {!hideActionIcons ? (
-                <CheckSquare className="h-4 w-4 shrink-0" aria-hidden />
-              ) : null}
-              <span className="min-w-0 truncate text-base font-semibold">
-                {status === "completed" ? "Completed" : "Mark Complete"}
-              </span>
-            </Button>
-          )}
           {canManageTask && (
             <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>

@@ -8,7 +8,7 @@ export const APP_USER_AVATAR_SIZE = 32;
 export const TASK_CARD_META_CHIP_SIZE = 28;
 
 /** Task card assigner / assignee avatars. */
-export const TASK_CARD_AVATAR_SIZE = 12;
+export const TASK_CARD_AVATAR_SIZE = 22;
 
 interface UserAvatarProps {
   imageUrl?: string | null;

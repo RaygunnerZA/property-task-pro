@@ -50,13 +50,13 @@ type TaskDetailHeroMetaProps = {
 function statusFilledClass(tone: TaskDetailHeroMetaProps["statusTone"]): string {
   switch (tone) {
     case "open":
-      return "bg-success-vivid text-white";
+      return "bg-muted-foreground/15 text-muted-foreground";
     case "progress":
-      return "bg-primary text-primary-foreground";
+      return "bg-blue-500 text-white";
     case "review":
-      return "bg-warning text-warning-foreground";
+      return "bg-amber-500 text-white";
     case "done":
-      return "bg-muted text-muted-foreground";
+      return "bg-success-vivid text-white";
     default:
       return "bg-card text-foreground";
   }

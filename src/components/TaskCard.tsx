@@ -15,7 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { updateTaskFields } from "@/services/tasks/taskMutations";
+import { markTaskCompleted } from "@/lib/completeTask";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -330,7 +330,12 @@ function TaskCardComponent({
     // Run the mutation in parallel with the confirm/settle motion. Capture the
     // outcome instead of awaiting immediately so an early rejection can't
     // surface as an unhandled promise while the motion plays.
-    const mutation = updateTaskFields(task.id, { status: "completed" }).then(
+    const mutation = markTaskCompleted(queryClient, task.id, {
+      orgId,
+      // Keep the card in the list; All shows a Done section for completed work.
+      optimistic: false,
+      skipCachePatch: true,
+    }).then(
       () => ({ ok: true as const }),
       (error: unknown) => ({ ok: false as const, error })
     );
@@ -341,16 +346,14 @@ function TaskCardComponent({
     if (result.ok) {
       toast({
         title: "Task completed",
-        description: "The task has been marked as complete.",
+        description: "Marked complete — it stays visible in All.",
       });
-      // Invalidate only after the exit motion completed, so the refetch can't
-      // remove the card mid-animation. The card stays collapsed until the
-      // fresh data drops it from the list, then the phase is cleared.
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-        queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] }),
-        queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] }),
-      ]);
+      // Refresh lists after the confirm motion; do not collapse the row away.
+      await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      await queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+      if (orgId) {
+        await queryClient.invalidateQueries({ queryKey: ["task", orgId, task.id] });
+      }
     } else {
       toast({
         title: "Error",
@@ -390,8 +393,8 @@ function TaskCardComponent({
    *  (index.css) which forces direct card children to relative/z-1. */
   const completionOverlay = isConfirmingComplete ? (
     <div className="!absolute inset-0 !z-20 flex items-center justify-center rounded-card bg-card/60">
-      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-primary shadow-md animate-complete-pop">
-        <Check className="h-5 w-5 text-primary-foreground" strokeWidth={3} aria-hidden />
+      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-success-vivid shadow-md animate-complete-pop">
+        <Check className="h-5 w-5 text-white" strokeWidth={3} aria-hidden />
       </span>
     </div>
   ) : null;
@@ -411,10 +414,17 @@ function TaskCardComponent({
     </div>
   );
 
-  /** Status locked top-left on the thumbnail. */
+  /** Status locked top-left on the thumbnail — force completed green while confirming. */
   const statusMark = (
     <div className="pointer-events-none absolute left-1.5 top-1.5 z-10">
-      <TaskStatusMark status={task?.status} size="chip" />
+      <TaskStatusMark
+        status={
+          isConfirmingComplete || task?.status === "completed"
+            ? "completed"
+            : task?.status
+        }
+        size="chip"
+      />
     </div>
   );
 

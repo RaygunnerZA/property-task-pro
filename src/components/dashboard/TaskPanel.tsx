@@ -941,7 +941,7 @@ export function TaskPanel({
                         externalTaskSearchQuery={issuesWorkbenchSearch}
                         onExternalTaskSearchQueryChange={setIssuesWorkbenchSearch}
                         compactTaskMeta
-                        hideDoneSection={issuesFilter === "all"}
+                        hideDoneSection={issuesFilter === "open"}
                       />
                     </div>
                   </div>
