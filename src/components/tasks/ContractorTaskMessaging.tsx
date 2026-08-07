@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Send, Loader2, Paperclip, Image as ImageIcon, X, FileText, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
 
 interface ContractorTaskMessagingProps {
   taskId: string;
@@ -159,10 +160,12 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleFileSelect = (files: FileList | null, isImage: boolean) => {
-    if (!files || files.length === 0) return;
+  const handleFileSelect = (files: FileList | File[] | null, isImage: boolean) => {
+    if (!files) return;
+    const list = Array.isArray(files) ? files : Array.from(files);
+    if (list.length === 0) return;
 
-    Array.from(files).forEach((file) => {
+    list.forEach((file) => {
       const id = crypto.randomUUID();
       const preview: AttachmentPreview = {
         file,
@@ -185,6 +188,13 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
         setAttachments((prev) => [...prev, preview]);
       }
     });
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const images = clipboardImageFiles(e.clipboardData);
+    if (images.length === 0) return;
+    e.preventDefault();
+    handleFileSelect(images, true);
   };
 
   const removeAttachment = (id: string) => {
@@ -467,6 +477,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
           <Textarea
             value={messageText}
             onChange={(e) => setMessageText(e.target.value)}
+            onPaste={handlePaste}
             placeholder="Type a message or attach files (costing, plans, documents)..."
             className="flex-1 min-h-[60px] resize-none shadow-engraved"
             onKeyDown={(e) => {

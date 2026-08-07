@@ -7,6 +7,7 @@
 #   04_UI_System.md    — workbench, navigation, neomorphism, role visibility
 #   05_Task_Engine.md  — tasks, checklists, evidence, task context areas
 #   19_Platform_Arch.md — signals, context panels, Action Layer
+#   20_Billing.md      — plans, entitlements, meters, downgrade (commercial truth)
 #   Appendix_A.md      — entity → context map (wins on entity IA conflicts)
 #
 # CONFLICT POLICY (agents and builders):
@@ -37,6 +38,9 @@
 17_Analytics.md             : (Formerly Ch 16) Dashboard logic per Identity Mode.
 18_Audio.md                 : (Formerly Ch 17) Audio capture, transcription, and diagnostics.
 19_Platform_Arch.md         : (Formerly Ch 18) Global events, internal APIs, and extensibility.
-20_Billing.md               : (Formerly Ch 19) Subscriptions, entitlements, and gates.
+20_Billing.md               : CANONICAL — Plans (Home / Home Plus / Portfolio / Business), Contractor track, entitlements, meters, downgrade.
 21_Data_Lifecycle.md        : (Formerly Ch 20) Retention, archiving, and deletion rules.
+26_CreateTaskModal_Inventory.md : Create Task modal inventory (implementation aid).
+27_Manual_QA_Matrix_Template.md : Manual QA matrix template.
+28_Billing_Implementation_Plan.md : Phased build plan for billing, roles, entitlements (defers to Ch 2 + Ch 20).
 Appendix_A.md               : Entity -> Context Map.

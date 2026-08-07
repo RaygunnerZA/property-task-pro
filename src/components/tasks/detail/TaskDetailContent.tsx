@@ -25,12 +25,17 @@ export type TaskDetailContentProps = {
   hideDescription?: boolean;
   sections: TaskDetailScrollSection[];
   scrollRef?: React.RefObject<HTMLDivElement | null>;
+  /**
+   * When false, this block does not own overflow — parent scrolls the full page
+   * (hero → checklist → messaging → actions).
+   */
+  ownScroll?: boolean;
   className?: string;
 };
 
 /**
  * Single continuous task page.
- * Overview (hero + meta + description) → Checklist → Activity
+ * Overview (hero + meta + description) → Checklist → (messaging / actions in parent).
  * (@Docs/05_Task_Engine.md §5.6; evidence lives in the hero).
  */
 export function TaskDetailContent({
@@ -42,6 +47,7 @@ export function TaskDetailContent({
   hideDescription = false,
   sections,
   scrollRef,
+  ownScroll = true,
   className,
 }: TaskDetailContentProps) {
   const visibleSections = sections.filter((s) => !s.hidden);
@@ -49,9 +55,12 @@ export function TaskDetailContent({
 
   return (
     <div
-      ref={scrollRef}
+      ref={ownScroll ? scrollRef : undefined}
       className={cn(
-        "flex min-h-0 flex-1 flex-col justify-start overflow-y-auto [overflow-anchor:none]",
+        "flex flex-col justify-start",
+        ownScroll
+          ? "min-h-0 flex-1 overflow-y-auto [overflow-anchor:none]"
+          : "shrink-0",
         className
       )}
     >

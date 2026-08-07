@@ -79,6 +79,7 @@ export function SubtasksSection({
   const [animationDirection, setAnimationDirection] = useState<"left-to-right" | "right-to-left" | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<"all" | ChecklistTemplateCategory>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [descriptionFocused, setDescriptionFocused] = useState(false);
 
   const handleAddFirstSubtask = () => {
     if (subtasks.length === 0) {
@@ -100,6 +101,16 @@ export function SubtasksSection({
 
   // If no subtasks, show the "add subtask" placeholder row
   const showPlaceholder = subtasks.length === 0;
+
+  // Reveal checklist chrome once the user starts writing (or already has steps / picker open).
+  // When showDescription is false, the parent already gated mounting (e.g. Intake) — keep chrome on.
+  const hasDescriptionContent = Boolean(description.trim());
+  const revealChecklistChrome =
+    !showDescription ||
+    hasDescriptionContent ||
+    descriptionFocused ||
+    subtasks.length > 0 ||
+    pickerOpen;
 
   const templateMap = useMemo(() => {
     return new Map(templates.map((template) => [template.id, template]));
@@ -234,6 +245,8 @@ export function SubtasksSection({
             placeholder="What Needs Doing?"
             value={description}
             onChange={e => onDescriptionChange?.(e.target.value)}
+            onFocus={() => setDescriptionFocused(true)}
+            onBlur={() => setDescriptionFocused(false)}
             onPaste={(e) => {
               if (!onPasteImages) return;
               const files = clipboardImageFiles(e.clipboardData);
@@ -251,14 +264,39 @@ export function SubtasksSection({
       {/* Subtasks Area */}
       <div className="pl-0 pr-0 pb-[6px] pt-0">
         {showPlaceholder ? (/* Empty State - Add Step Placeholder */
-      <div className="flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group" onClick={handleAddFirstSubtask}>
-            <div className="h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50 opacity-0 transition-opacity group-hover:opacity-100" />
-            <span className="flex-1 text-muted-foreground/50 text-sm opacity-0 transition-opacity group-hover:opacity-100">
+      <div
+        className={cn(
+          "flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group transition-opacity duration-200",
+          !revealChecklistChrome && "opacity-0 hover:opacity-100"
+        )}
+        onClick={handleAddFirstSubtask}
+      >
+            <div
+              className={cn(
+                "h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50 transition-opacity",
+                !revealChecklistChrome && "opacity-0 group-hover:opacity-100"
+              )}
+            />
+            <span
+              className={cn(
+                "flex-1 text-muted-foreground/50 text-sm transition-opacity",
+                !revealChecklistChrome && "opacity-0 group-hover:opacity-100"
+              )}
+            >
               Add step
             </span>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button type="button" variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className={cn(
+                    "h-7 w-7 transition-opacity",
+                    !revealChecklistChrome && "opacity-0 group-hover:opacity-100"
+                  )}
+                  onClick={e => e.stopPropagation()}
+                >
                   <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                 </Button>
               </DropdownMenuTrigger>
@@ -285,9 +323,9 @@ export function SubtasksSection({
           <div
             className={cn(
               "flex items-center justify-end gap-[5px] pt-[3px] mt-1 pr-[10px] pb-1 text-xs text-muted-foreground/60 transition-opacity duration-200",
-              pickerOpen
+              revealChecklistChrome
                 ? "opacity-100 pointer-events-auto"
-                : "md:opacity-0 md:pointer-events-none md:group-hover/subtask:opacity-100 md:group-hover/subtask:pointer-events-auto md:group-focus-within/subtask:opacity-100 md:group-focus-within/subtask:pointer-events-auto"
+                : "opacity-0 pointer-events-none md:group-hover/subtask:opacity-100 md:group-hover/subtask:pointer-events-auto md:group-focus-within/subtask:opacity-100 md:group-focus-within/subtask:pointer-events-auto"
             )}
           >
             <button

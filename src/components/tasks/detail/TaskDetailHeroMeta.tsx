@@ -50,7 +50,8 @@ type TaskDetailHeroMetaProps = {
 function statusFilledClass(tone: TaskDetailHeroMetaProps["statusTone"]): string {
   switch (tone) {
     case "open":
-      return "bg-muted-foreground/15 text-muted-foreground";
+      // Solid raised chip (same geometry as overdue) — avoid translucent wash.
+      return "bg-card text-muted-foreground";
     case "progress":
       return "bg-blue-500 text-white";
     case "review":
@@ -85,6 +86,9 @@ function PhotoCountBadge({
   );
 }
 
+/** Coral fill — same as Urgent / brand destructive (#EB6834). */
+const URGENCY_CORAL = "bg-[#EB6834] text-white";
+
 function MetaChipRow({
   statusLabel,
   statusTone,
@@ -104,12 +108,10 @@ function MetaChipRow({
         {statusLabel}
       </span>
       {priorityUrgent ? (
-        <span className={cn(META_CHIP_FILLED_CLASS, "bg-[#EB6834] text-white")}>Urgent</span>
+        <span className={cn(META_CHIP_FILLED_CLASS, URGENCY_CORAL)}>Urgent</span>
       ) : null}
       {urgencyChip === "overdue" ? (
-        <span className={cn(META_CHIP_FILLED_CLASS, "bg-destructive text-destructive-foreground")}>
-          Overdue
-        </span>
+        <span className={cn(META_CHIP_FILLED_CLASS, URGENCY_CORAL)}>Overdue</span>
       ) : null}
       {urgencyChip === "nearly_due" ? (
         <span className={cn(META_CHIP_FILLED_CLASS, "bg-amber-500 text-white")}>Nearly due</span>
@@ -271,35 +273,34 @@ export function TaskDetailHeroMeta({
           ) : null}
         </div>
       ) : (
-        <div className="space-y-3 px-5 pt-4">
+        <div className="relative px-5 pt-4">
           {onClose ? (
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           ) : null}
-          <div className="min-w-0">{chipRow}</div>
-
-          <h2 className="text-xl font-semibold leading-snug tracking-tight text-foreground pr-2">
-            {title}
-          </h2>
-
-          {contextLine || photoCount > 0 ? (
-            <div className="flex min-w-0 items-center justify-between gap-2">
-              {contextLine ? (
-                <p className="min-w-0 truncate text-xs text-muted-foreground">{contextLine}</p>
-              ) : (
-                <span />
-              )}
-              <PhotoCountBadge count={photoCount} tone="light" />
-            </div>
-          ) : null}
+          {/* Shared left edge: chips + title stack without extra indent */}
+          <div className="min-w-0 space-y-2.5 pr-10">
+            {chipRow}
+            <h2 className="text-xl font-semibold leading-snug tracking-tight text-foreground">
+              {title}
+            </h2>
+            {contextLine || photoCount > 0 ? (
+              <div className="flex min-w-0 items-center justify-between gap-2">
+                {contextLine ? (
+                  <p className="min-w-0 truncate text-xs text-muted-foreground">{contextLine}</p>
+                ) : (
+                  <span />
+                )}
+                <PhotoCountBadge count={photoCount} tone="light" />
+              </div>
+            ) : null}
+          </div>
         </div>
       )}
 

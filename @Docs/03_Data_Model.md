@@ -6,9 +6,10 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 **3.2 — Complete Schema (Canonical)**
 
 **Organisations:**
-*   `organisations` (id, org_type)
-*   `organisation_members` (role, assigned_properties)
+*   `organisations` (id, org_type: `personal` | `business` | `contractor`)
+*   `organisation_members` (role, assigned_properties) — canonical roles: `owner` | `manager` | `staff`. Legacy `member` is treated as Staff (`02_Identity`). External access is link/token scoped, not a durable membership role by default.
 *   `contractor_tokens` (task_id, token)
+*   Billing/plan state and entitlements: see `@Docs/20_Billing.md` (do not invent plan columns without that chapter + schema migration).
 
 **Platform administration (Phase 2 — read-only `/admin`):**
 *   `platform_admins` — `user_id` (PK → `auth.users`), `added_by`, `added_at`, `notes`. Separate privilege from org membership; grants cross-org **read** only via SECURITY DEFINER RPCs. RLS: authenticated users may SELECT their own row (`user_id = auth.uid()`); no app-level INSERT/DELETE. Rows are added in the Supabase dashboard or a controlled migration.

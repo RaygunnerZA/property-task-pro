@@ -4033,7 +4033,7 @@ export function IntakeModal({
                     onSubtasksChange={setSubtasks}
                     showDescription={false}
                     embedded
-                    description=""
+                    description={description}
                     onDescriptionChange={() => {}}
                     className="bg-transparent"
                     templates={templates}

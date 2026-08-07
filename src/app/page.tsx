@@ -923,6 +923,7 @@ export default function Dashboard({
                           taskId={selectedItem.id}
                           onClose={handleClosePanel}
                           variant="column"
+                          onOpenTask={(id) => setSelectedItem({ type: "task", id })}
                         />
                       ) : selectedItem.type === "message" ? (
                         <MessageDetailPanel
@@ -1164,7 +1165,12 @@ export default function Dashboard({
       {/* Detail Panel - Modal variant for smaller screens */}
       {selectedItem && !isLargeScreen && (
         selectedItem.type === "task" ? (
-          <TaskDetailPanel taskId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
+          <TaskDetailPanel
+            taskId={selectedItem.id}
+            onClose={handleClosePanel}
+            variant="modal"
+            onOpenTask={(id) => setSelectedItem({ type: "task", id })}
+          />
         ) : selectedItem.type === "message" ? (
           <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
         ) : (

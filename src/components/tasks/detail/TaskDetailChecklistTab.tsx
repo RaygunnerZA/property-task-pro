@@ -68,6 +68,8 @@ type TaskDetailChecklistTabProps = {
    * (Add step + Templates | Save Checklist | Manage).
    */
   composerEmbed?: boolean;
+  /** Fired after checklist structure or responses change in this session. */
+  onSessionChange?: () => void;
 };
 
 const TEMPLATE_CATEGORIES: { value: ChecklistTemplateCategory; label: string }[] = [
@@ -267,6 +269,7 @@ export function TaskDetailChecklistTab({
   listOnly = false,
   editMode = false,
   composerEmbed = false,
+  onSessionChange,
 }: TaskDetailChecklistTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -312,6 +315,7 @@ export function TaskDetailChecklistTab({
     void queryClient.invalidateQueries({ queryKey: ["task-subtask-count", taskId] });
     void queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
     void queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
+    onSessionChange?.();
   };
 
   /** Authoring mode: change structure/types. Otherwise show requirements for completion. */

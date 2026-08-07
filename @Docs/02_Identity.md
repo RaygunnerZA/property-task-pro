@@ -7,12 +7,19 @@ This chapter is a source of truth.
 
 Implementation documents must defer to this chapter.
 
+Commercial plans, usage meters and downgrade behaviour live in `@Docs/20_Billing.md`.
+Implementation phases live in `@Docs/28_Billing_Implementation_Plan.md`.
+
 1. PURPOSE
 The Identity & Organisation backbone determines what data a user can access, what capabilities they can perform, and how organisation-scoped security is enforced.
 
 Identity provides context.
 
 Roles provide permissions.
+
+Assignments provide resource scope.
+
+Plan entitlements (billing) further gate what the organisation may use — see Chapter 20.
 
 Capabilities determine visible functionality.
 
@@ -41,12 +48,21 @@ Roles determine:
 * Access rights
 * Available actions
 
-Examples:
+Canonical membership roles:
 
-* Owner
-* Manager
-* Member
-* Staff
+* **Owner** — organisational control; at least one **Primary Owner** per organisation
+* **Manager** — coordinate work on all or assigned properties
+* **Staff** — perform assigned operational work
+
+Restricted non-membership access:
+
+* **External** — explicitly shared resources only (issue report, evidence submit, shared task). Prefer secure links / short-lived sessions over durable membership. Prefer the label **External** over “Guest” (property guests are a different concept).
+
+Legacy:
+
+* **`member`** — deprecated synonym for **Staff**. Existing rows and invitations may still use `member`; permission evaluation MUST treat `member` as Staff until data is migrated. New invites MUST use `staff` (or Owner/Manager). Do not introduce `member` in new product copy.
+
+Do not invent additional durable roles at launch. Business overrides may later grant selected Manager capabilities; they do not create new role names.
 
 ⸻
 
@@ -74,6 +90,44 @@ The underlying platform remains the same.
 * organisations: id, name, org_type (personal|business|contractor).
 * organisation_members: user_id, org_id, role, assigned_properties.
 
+`org_type` is an identity/tenant shape. It is **not** a billing plan name.
+
+Mapping to commercial plan families (Chapter 20):
+
+| org_type | Typical plan family |
+|---|---|
+| `personal` | Home, Home Plus |
+| `business` | Portfolio, Business (Enterprise = negotiated Business) |
+| `contractor` | Contractor Free (token) / Contractor Pro (SaaS) — parallel track |
+
+Plans never replace `org_type`. Application code must not assume `org_type === "business"` means a paid Portfolio subscription.
+
+⸻
+
+3a. PRIMARY OWNER
+
+Every organisation has exactly one **Primary Owner**.
+
+* Controls organisation deletion and ownership transfer.
+* Cannot leave or be demoted while still Primary Owner (transfer first).
+* Other Owners (if ever allowed) do not receive destructive org controls by default.
+
+Launch default: one Owner = Primary Owner. Multi-Owner is deferred.
+
+⸻
+
+3b. BILLING SEAT TYPE VS ROLE
+
+Role ≠ billable seat. Seat types are commercial (Chapter 20):
+
+| Seat / access type | Typical roles |
+|---|---|
+| Coordinating member | Owner, Manager |
+| Staff contributor (active monthly) | Staff (and legacy `member`) |
+| External contributor | External access — not a coordinating seat |
+
+Billing meters organisations, never a user’s global identity across orgs. A person in three orgs is metered independently in each paying organisation.
+
 ⸻
 
 4. ACTIVE ORGAN (CANONICAL FOR DATA)
@@ -97,7 +151,7 @@ Switching organisation must invalidate dependent queries and reload organisation
 
 6. INVISIBLE ORG (PERSONAL MODE)
 
-“I manage my own home” creates a personal organisation where the user is Owner.
+“I manage my own home” creates a personal organisation where the user is Owner (Primary Owner).
 
 Personal organisations follow the same rules as all other organisations.
 
@@ -126,8 +180,8 @@ Use useActiveOrg and DataContext.orgId as the source of truth for data loading.
 2. Resolve user id
 3. Load active organisation from organisation_members
 4. Fetch organisation row
-5. Derive permissions from membership role
-6. Resolve visible capabilities
+5. Derive permissions from membership role (map legacy `member` → Staff)
+6. Resolve visible capabilities from role ∩ plan entitlements ∩ assignments
 
 ⸻
 
@@ -151,10 +205,59 @@ New code should use:
 9. GATES & FLOWS
 
 * Identity Gate: Blocks access until identity is known.
-* Organisation Gate: Ensures membership exists.
-* Staff: Restricted to assigned properties.
-* Contractor Free: Token-based access to a single task.
+* Organisation Gate: Ensures membership exists (External link sessions are exempt and scoped to shared resources only).
+* Staff: Restricted to assigned properties / assigned work.
+* External: Shared resources only; no organisation navigation.
+* Contractor Free: Token-based access to a single task (parallel contractor track).
 * Contractor Pro: Full access to contractor organisation; upload-only access to client organisations.
+
+⸻
+
+10. EFFECTIVE ACCESS
+
+Authorization evaluates four layers:
+
+> Effective access = plan entitlement ∩ role permission ∩ resource assignment ∩ valid resource state
+
+* **Plan entitlement** — organisation purchased capabilities and allowances (`20_Billing`).
+* **Role permission** — what the role may do (matrix below).
+* **Resource assignment** — property/task/resource relationships (not a Boolean “all properties” capability alone).
+* **Resource state** — active property, non-cancelled task, unexpired invitation/link, org not security-blocked.
+
+UI visibility and API/RLS enforcement must use the same rules. Never check plan display names in feature code.
+
+⸻
+
+11. LAUNCH PERMISSION DEFAULTS
+
+| Action | Owner | Manager | Staff | External |
+|---|:---:|:---:|:---:|:---:|
+| View assigned work | Yes | Yes | Yes | Shared only |
+| Complete assigned work | Yes | Yes | Yes | If link permits |
+| Complete checklists | Yes | Yes | Yes | If link permits |
+| Add evidence | Yes | Yes | Yes | Shared only |
+| Add comments | Yes | Yes | Yes | Shared only |
+| Create tasks | Yes | Yes | **No** (default) | No |
+| Report issue / intake | Yes | Yes | Yes | Shared only |
+| Assign work | Yes | Yes | No | No |
+| Manage properties | Yes | **No** (default); all-property Managers may be granted later | No | No |
+| Invite Staff / External | Yes | **Yes** (Staff/External only) | No | No |
+| Invite Managers / transfer Owner | Yes (Primary for transfer) | No | No | No |
+| Manage roles | Yes | No | No | No |
+| View operational reports | Yes | Yes | Limited (own work) | No |
+| Manage compliance | Yes | Yes (if entitlement + scope) | No | No |
+| Manage billing | Primary Owner (default) | No | No | No |
+| Transfer ownership | Primary Owner | No | No | No |
+| Delete organisation | Primary Owner | No | No | No |
+
+Manager property scope:
+
+* **Assigned-property Manager** (default when scoped): operate only on assigned properties.
+* **All-property Manager**: operate across the organisation’s active properties when granted.
+
+Staff must not discover unrelated properties. External participants must not navigate the organisation.
+
+Business-tier administrative overrides may widen selected Manager capabilities later; they remain overrides, not new role names.
 
 ⸻
 

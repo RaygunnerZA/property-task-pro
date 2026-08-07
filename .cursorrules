@@ -8,9 +8,10 @@ These `@Docs` chapters are **constitutional**. Read them before product, IA, or 
 - `@Docs/04_UI_System.md` — workbench layout, navigation patterns, design tokens
 - `@Docs/05_Task_Engine.md` — tasks, checklists, evidence, task context areas
 - `@Docs/19_Platform_Arch.md` — signals layer, context panels, Action Layer
+- `@Docs/20_Billing.md` — plans, entitlements, meters, downgrade (commercial truth)
 - `@Docs/Appendix_A.md` — entity → context map (IA authority on entity surfaces)
 
-**Conflict policy:** Do **not** propose or implement changes to **IA, navigation, tasks, checklists, signals, property scope/navigation, or the operational workbench** that conflict with the constitution. If code, specs, rollout notes, or user requests conflict, **flag the conflict** and point to the constitutional chapter — do not silently implement the conflicting approach. Resolving conflicts requires an explicit constitution or product update first.
+**Conflict policy:** Do **not** propose or implement changes to **IA, navigation, tasks, checklists, signals, property scope/navigation, the operational workbench, roles/permissions, or billing/entitlements** that conflict with the constitution. If code, specs, rollout notes, or user requests conflict, **flag the conflict** and point to the constitutional chapter — do not silently implement the conflicting approach. Resolving conflicts requires an explicit constitution or product update first.
 
 Index: `@Docs/00_Index.txt`
 

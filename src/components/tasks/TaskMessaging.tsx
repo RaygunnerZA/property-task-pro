@@ -19,15 +19,39 @@ import {
   userDisplayName,
 } from "@/lib/userDisplayHelpers";
 import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
+import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
+
+const ENTER_SEND_HINT_KEY = "filla_task_message_enter_send_known";
+
+function readEnterSendKnown(): boolean {
+  try {
+    return window.localStorage.getItem(ENTER_SEND_HINT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function markEnterSendKnown(): void {
+  try {
+    window.localStorage.setItem(ENTER_SEND_HINT_KEY, "1");
+  } catch {
+    /* ignore */
+  }
+}
 
 interface TaskMessagingProps {
   taskId: string;
   /** Increment to focus the comment composer (e.g. footer Comment action). */
   focusComposeKey?: number;
-  /** Lightweight activity-feed layout (no chat bubbles). */
+  /**
+   * `chat` — staggered conversation + composer (above action bar).
+   * `activity` — read-only compact lines (legacy; prefer timeline merge).
+   */
   variant?: "chat" | "activity";
-  /** Hide the inline composer (footer Comment scrolls here / focuses separately). */
+  /** Hide the inline composer. */
   hideComposer?: boolean;
+  /** Fired when compose draft has text or attachments (or clears). */
+  onDraftChange?: (hasDraft: boolean) => void;
 }
 
 interface AttachmentPreview {
@@ -66,6 +90,7 @@ export function TaskMessaging({
   focusComposeKey = 0,
   variant = "chat",
   hideComposer = false,
+  onDraftChange,
 }: TaskMessagingProps) {
   const { messages, loading, error, refresh } = useTaskMessages(taskId);
   const { orgId } = useActiveOrg();
@@ -77,16 +102,24 @@ export function TaskMessaging({
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
+  const [showEnterHint, setShowEnterHint] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    setShowEnterHint(!readEnterSendKnown());
+  }, []);
+
+  useEffect(() => {
+    onDraftChange?.(Boolean(messageText.trim() || attachments.length > 0));
+  }, [messageText, attachments.length, onDraftChange]);
+
+  useEffect(() => {
     if (!focusComposeKey) return;
     const el = composeRef.current;
     if (!el) return;
-    // Nearest only — never drag the workbench / third-column scrollers.
     el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
     el.focus({ preventScroll: true });
   }, [focusComposeKey]);
@@ -123,8 +156,6 @@ export function TaskMessaging({
   }, [messages]);
 
   useEffect(() => {
-    // Activity feed lives inside Task Details' page scroll — auto scrollIntoView
-    // jumps the workbench/third column to the bottom when a task opens.
     if (variant === "activity") return;
     const end = messagesEndRef.current;
     if (!end || messages.length === 0) return;
@@ -136,10 +167,12 @@ export function TaskMessaging({
     end.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
   }, [messages, attachments.length, variant]);
 
-  const handleFileSelect = (files: FileList | null, isImage: boolean) => {
+  const handleFileSelect = (files: FileList | File[] | null, isImage: boolean) => {
     if (!files) return;
+    const list = Array.isArray(files) ? files : Array.from(files);
+    if (list.length === 0) return;
 
-    Array.from(files).forEach((file) => {
+    list.forEach((file) => {
       if (isImage && !file.type.startsWith("image/")) {
         toast({
           title: "Invalid file type",
@@ -169,19 +202,21 @@ export function TaskMessaging({
 
     requestAnimationFrame(() => {
       composeRef.current?.focus({ preventScroll: true });
-      composeRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "nearest",
-      });
     });
+  };
+
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const images = clipboardImageFiles(e.clipboardData);
+    if (images.length === 0) return;
+    e.preventDefault();
+    handleFileSelect(images, true);
   };
 
   const removeAttachment = (id: string) => {
     setAttachments((prev) => prev.filter((a) => a.id !== id));
   };
 
-  const handleSend = async () => {
+  const handleSend = async (opts?: { viaEnter?: boolean }) => {
     if (!messageText.trim() && attachments.length === 0) {
       toast({
         title: "Nothing to send",
@@ -324,12 +359,18 @@ export function TaskMessaging({
         });
       }
 
+      if (opts?.viaEnter) {
+        markEnterSendKnown();
+        setShowEnterHint(false);
+      }
+
       setMessageText("");
       setAttachments([]);
       await refresh();
       markTaskCommentSeen(taskId);
       void queryClient.invalidateQueries({ queryKey: ["task-comment-signals", orgId] });
       void queryClient.invalidateQueries({ queryKey: ["task-comment-count", taskId] });
+      void queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
     } catch (err: unknown) {
       console.error("Error sending message:", err);
       toast({
@@ -345,15 +386,15 @@ export function TaskMessaging({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      void handleSend();
+      void handleSend({ viaEnter: true });
     }
   };
 
   const placeholder = useMemo(() => {
     if (attachments.length > 0) {
-      return "Add a caption (optional) — press send to upload";
+      return "Add a caption (optional)";
     }
-    return "Add a comment… (Enter to send)";
+    return "Write a message…";
   }, [attachments.length]);
 
   if (error) {
@@ -364,17 +405,54 @@ export function TaskMessaging({
     );
   }
 
-  return (
-    <div className="flex flex-col gap-2">
-      <div className={cn("min-h-0 px-0.5", variant === "activity" ? "space-y-5" : "space-y-2.5")}>
+  if (variant === "activity") {
+    return (
+      <div className="space-y-1.5 px-0.5">
         {loading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         ) : messages.length === 0 ? (
-          variant === "activity" ? (
-            <p className="text-sm text-muted-foreground">No comments yet.</p>
-          ) : null
+          <p className="text-[11px] text-muted-foreground">No messages recorded.</p>
+        ) : (
+          messages.map((message) => {
+            const author = resolveMessageAuthor(
+              message.author_user_id,
+              message.author_name,
+              members,
+              user,
+              userId
+            );
+            const preview = (message.body || "Attachment").trim().slice(0, 72);
+            return (
+              <p key={message.id} className="text-[11px] leading-snug text-muted-foreground">
+                <span className="tabular-nums text-muted-foreground/80">
+                  {format(new Date(message.created_at), "d MMM HH:mm")}
+                </span>
+                {" · Message · "}
+                <span className="text-muted-foreground/90">{preview}</span>
+                {preview.length >= 72 ? "…" : ""}
+                {" · "}
+                {author.name}
+              </p>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div id="task-detail-comment" className="flex flex-col gap-2.5">
+      <div
+        data-messages-scroller
+        className={cn(
+          "min-h-0 space-y-3 px-0.5",
+          messages.length === 0 && !loading && "hidden"
+        )}
+      >
+        {loading ? (
+          <div className="flex items-center justify-center py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : (
           messages.map((message) => {
             const isOwnMessage = message.author_user_id === userId;
@@ -386,71 +464,15 @@ export function TaskMessaging({
               user,
               userId
             );
-
-            if (variant === "activity") {
-              return (
-                <div key={message.id} className="flex gap-3">
-                  <UserAvatar
-                    imageUrl={author.imageUrl}
-                    name={author.name}
-                    propertyColor={author.accentColor}
-                    size={20}
-                    shape="card"
-                    className="mt-0.5 !h-5 !w-5 !min-h-5 !min-w-5 shrink-0 rounded-[6px]"
-                  />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-medium text-foreground/80">{author.name}</span>
-                      {" · "}
-                      {format(new Date(message.created_at), "MMM d · HH:mm")}
-                    </p>
-                    {message.body ? (
-                      <p className="text-sm leading-relaxed text-foreground whitespace-pre-wrap">
-                        {message.body}
-                      </p>
-                    ) : null}
-                    {messageAtts.length > 0 ? (
-                      <div className="flex flex-wrap gap-2 pt-0.5">
-                        {messageAtts.map((attachment) => {
-                          const isImage = attachment.file_type?.startsWith("image/");
-                          return isImage ? (
-                            <a
-                              key={attachment.id}
-                              href={attachment.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="block overflow-hidden rounded-md"
-                            >
-                              <img
-                                src={attachment.file_url}
-                                alt={attachment.file_name || "Attachment"}
-                                className="h-14 w-14 object-cover"
-                              />
-                            </a>
-                          ) : (
-                            <a
-                              key={attachment.id}
-                              href={attachment.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              <FileText className="h-3.5 w-3.5" />
-                              {attachment.file_name || "Attachment"}
-                            </a>
-                          );
-                        })}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              );
-            }
+            const sentAt = format(new Date(message.created_at), "d MMM · HH:mm");
 
             return (
               <div
                 key={message.id}
-                className={cn("flex gap-2 max-w-[92%]", isOwnMessage ? "ml-auto flex-row-reverse" : "")}
+                className={cn(
+                  "flex max-w-[92%] gap-2",
+                  isOwnMessage ? "ml-auto flex-row-reverse" : "mr-auto"
+                )}
               >
                 <UserAvatar
                   imageUrl={author.imageUrl}
@@ -462,70 +484,76 @@ export function TaskMessaging({
                 />
                 <div
                   className={cn(
-                    "min-w-0 rounded-lg p-3",
-                    isOwnMessage
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-input text-foreground"
+                    "min-w-0 space-y-1",
+                    isOwnMessage ? "items-end text-right" : "items-start text-left"
                   )}
-                  title={author.name}
                 >
-                  <div className="mb-1 flex items-center justify-end">
-                    <span
-                      className={cn(
-                        "text-2xs font-mono uppercase tracking-wide",
-                        isOwnMessage ? "text-white/70" : "text-muted-foreground"
-                      )}
-                    >
-                      {format(new Date(message.created_at), "HH:mm")}
-                    </span>
+                  <p
+                    className={cn(
+                      "text-2xs tabular-nums text-muted-foreground/70",
+                      isOwnMessage ? "text-right" : "text-left"
+                    )}
+                  >
+                    <span className="font-medium text-muted-foreground/85">{author.name}</span>
+                    {" · "}
+                    {sentAt}
+                  </p>
+                  <div
+                    className={cn(
+                      "rounded-[10px] px-3 py-2 text-left shadow-e1",
+                      isOwnMessage
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-input text-foreground"
+                    )}
+                  >
+                    {message.body ? (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.body}</p>
+                    ) : null}
+                    {messageAtts.length > 0 ? (
+                      <div className={cn("space-y-2", message.body && "mt-2")}>
+                        {messageAtts.map((attachment) => {
+                          const isImage = attachment.file_type?.startsWith("image/");
+                          return (
+                            <div
+                              key={attachment.id}
+                              className={cn(
+                                "overflow-hidden rounded-md",
+                                isOwnMessage ? "bg-white/20" : "bg-background/50"
+                              )}
+                            >
+                              {isImage ? (
+                                <a
+                                  href={attachment.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block"
+                                >
+                                  <img
+                                    src={attachment.file_url}
+                                    alt={attachment.file_name || "Attachment"}
+                                    className="max-h-40 max-w-full object-contain"
+                                  />
+                                </a>
+                              ) : (
+                                <a
+                                  href={attachment.file_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 p-2 transition-opacity hover:opacity-80"
+                                >
+                                  <FileText className="h-4 w-4 shrink-0" />
+                                  <span className="min-w-0 flex-1 truncate text-xs">
+                                    {attachment.file_name || "Attachment"}
+                                  </span>
+                                  <Download className="h-3 w-3 shrink-0" />
+                                </a>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                   </div>
-                  {message.body && (
-                    <p className="text-sm whitespace-pre-wrap mb-1">{message.body}</p>
-                  )}
-                  {messageAtts.length > 0 && (
-                    <div className="space-y-2 mt-2">
-                      {messageAtts.map((attachment) => {
-                        const isImage = attachment.file_type?.startsWith("image/");
-                        return (
-                          <div
-                            key={attachment.id}
-                            className={cn(
-                              "rounded-md overflow-hidden",
-                              isOwnMessage ? "bg-white/20" : "bg-background/50"
-                            )}
-                          >
-                            {isImage ? (
-                              <a
-                                href={attachment.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block"
-                              >
-                                <img
-                                  src={attachment.file_url}
-                                  alt={attachment.file_name || "Attachment"}
-                                  className="max-w-full h-auto max-h-48 object-contain"
-                                />
-                              </a>
-                            ) : (
-                              <a
-                                href={attachment.file_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center gap-2 p-2 hover:opacity-80 transition-opacity"
-                              >
-                                <FileText className="h-4 w-4 flex-shrink-0" />
-                                <span className="text-xs truncate flex-1">
-                                  {attachment.file_name || "Attachment"}
-                                </span>
-                                <Download className="h-3 w-3 flex-shrink-0" />
-                              </a>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
               </div>
             );
@@ -534,59 +562,54 @@ export function TaskMessaging({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Unified compose box: attach controls stacked top-left; caption below thumbs */}
       {!hideComposer ? (
-      <div className="rounded-[12px] bg-input p-2.5 shadow-engraved">
-        <input
-          ref={imageInputRef}
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            handleFileSelect(e.target.files, true);
-            e.target.value = "";
-          }}
-        />
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => {
-            handleFileSelect(e.target.files, false);
-            e.target.value = "";
-          }}
-        />
+        <div className="rounded-[12px] bg-input p-2.5 shadow-engraved">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              handleFileSelect(e.target.files, true);
+              e.target.value = "";
+            }}
+          />
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              handleFileSelect(e.target.files, false);
+              e.target.value = "";
+            }}
+          />
 
-        <div className="flex items-start gap-2">
-          <div className="flex shrink-0 flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => imageInputRef.current?.click()}
-              className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
-              aria-label="Attach image"
-              title="Attach image"
-            >
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
-              aria-label="Upload file"
-              title="Upload file"
-            >
-              <Upload className="h-4 w-4 text-muted-foreground" />
-            </button>
-          </div>
+          <div className="flex items-start gap-2">
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button
+                type="button"
+                onClick={() => imageInputRef.current?.click()}
+                className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
+                aria-label="Attach image"
+                title="Attach image"
+              >
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex h-9 w-9 items-center justify-center rounded-card bg-muted/60 shadow-e1 transition-all hover:shadow-e2"
+                aria-label="Upload file"
+                title="Upload file"
+              >
+                <Upload className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
 
-          <div className="min-w-0 flex-1 space-y-2">
-            {attachments.length > 0 ? (
-              <div className="space-y-1.5">
-                <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground px-0.5">
-                  Not uploaded yet — press send
-                </p>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              {attachments.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {attachments.map((attachment) => (
                     <div
@@ -594,7 +617,7 @@ export function TaskMessaging({
                       className="relative overflow-hidden rounded-card shadow-e1"
                     >
                       {attachment.preview ? (
-                        <div className="relative h-16 w-16">
+                        <div className="relative h-14 w-14">
                           <img
                             src={attachment.preview}
                             alt={attachment.file.name}
@@ -626,38 +649,49 @@ export function TaskMessaging({
                     </div>
                   ))}
                 </div>
-              </div>
-            ) : null}
+              ) : null}
 
-            <div className="flex items-end gap-1.5">
-              <Textarea
-                ref={composeRef}
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                className={cn(
-                  "min-h-[4.5rem] flex-1 resize-none border-0 bg-transparent px-1 py-1.5 shadow-none",
-                  "focus-visible:ring-0 focus-visible:ring-offset-0"
-                )}
-                rows={3}
-                disabled={isSending}
-              />
-              <Button
-                type="button"
-                onClick={() => void handleSend()}
-                disabled={(!messageText.trim() && attachments.length === 0) || isSending}
-                className="h-8 w-8 shrink-0 rounded-card p-0 shadow-primary-btn"
-                size="sm"
-                aria-label="Send message"
-                title={attachments.length > 0 ? "Send to upload" : "Send"}
-              >
-                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              </Button>
+              <div className="flex items-start gap-1.5">
+                <Textarea
+                  ref={composeRef}
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  placeholder={placeholder}
+                  className={cn(
+                    "min-h-[4.5rem] flex-1 resize-none border-0 bg-transparent px-1 py-1.5 shadow-none",
+                    "focus-visible:ring-0 focus-visible:ring-offset-0"
+                  )}
+                  rows={3}
+                  disabled={isSending}
+                />
+                <Button
+                  type="button"
+                  onClick={() => void handleSend()}
+                  disabled={(!messageText.trim() && attachments.length === 0) || isSending}
+                  className="h-8 shrink-0 gap-1.5 rounded-card px-2.5 shadow-primary-btn sm:px-3"
+                  size="sm"
+                  aria-label="Send message"
+                  title="Send"
+                >
+                  {isSending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      <span className="hidden text-sm font-semibold sm:inline">Send</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {showEnterHint ? (
+                <p className="px-0.5 text-2xs text-muted-foreground/45">(Enter to send)</p>
+              ) : null}
             </div>
           </div>
         </div>
-      </div>
       ) : null}
     </div>
   );

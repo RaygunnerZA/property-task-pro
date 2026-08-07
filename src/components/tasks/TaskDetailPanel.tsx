@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Copy, Archive, Trash2, MoreVertical, Clock, Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, Pencil } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -55,7 +55,8 @@ import type { Annotation } from "@/types/image-annotations";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskDetails } from "@/hooks/use-task-details";
-import { useTaskTimeline } from "@/hooks/useTaskTimeline";
+import { useTaskTimeline, type TaskTimelineEvent } from "@/hooks/useTaskTimeline";
+import { useTaskMessages } from "@/hooks/useTaskMessages";
 import { TaskTimeline } from "./TaskTimeline";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
@@ -69,8 +70,10 @@ import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
 import { TaskDetailHeroMeta } from "@/components/tasks/detail/TaskDetailHeroMeta";
 import {
   TaskDetailChecklistTab,
-  TaskDetailChecklistActions,
 } from "@/components/tasks/detail/TaskDetailChecklistTab";
+import { TaskDetailActionBar } from "@/components/tasks/detail/TaskDetailActionBar";
+import { TaskProgressUpdateSheet } from "@/components/tasks/detail/TaskProgressUpdateSheet";
+import { findNextOpenTaskId } from "@/lib/findNextOpenTask";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
@@ -83,8 +86,6 @@ import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 import {
   getTaskStatusVisual,
-  TASK_STATUS_ORDER,
-  type TaskStatusVisual,
 } from "@/lib/taskStatus";
 import type { TaskStatus } from "@/types/database";
 
@@ -92,16 +93,23 @@ interface TaskDetailPanelProps {
   taskId: string;
   onClose: () => void;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
+  /** Open another task after Mark complete → Next task. */
+  onOpenTask?: (taskId: string) => void;
 }
 
 /**
  * Task Detail Panel
  *
- * Continuous task page: Overview (hero evidence + metadata + description) →
- * Checklist → Activity. Constitutional contexts from @Docs/05_Task_Engine.md §5.6
- * with evidence folded into the hero.
+ * Continuous task page: Overview → Checklist → Messaging → smart actions.
+ * Activity remains a collapsed audit trail at the bottom.
+ * Constitutional contexts from @Docs/05_Task_Engine.md §5.6.
  */
-export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDetailPanelProps) {
+export function TaskDetailPanel({
+  taskId,
+  onClose,
+  variant = "modal",
+  onOpenTask,
+}: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { capture: captureGeo } = useGeoCaptureOnAction();
   const {
@@ -110,6 +118,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     error: timelineError,
     refetch: refetchTimeline,
   } = useTaskTimeline(taskId);
+  const { messages: taskMessages } = useTaskMessages(taskId);
   const propertyId = (task as any)?.property_id;
   const { data: assets = [] } = useAssetsQuery(propertyId);
   const { data: complianceItems = [] } = useComplianceQuery();
@@ -153,6 +162,10 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [taskEditOpen, setTaskEditOpen] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
+  const [progressUpdateOpen, setProgressUpdateOpen] = useState(false);
+  const [nextTaskOfferId, setNextTaskOfferId] = useState<string | null>(null);
+  const [checklistSessionDirty, setChecklistSessionDirty] = useState(false);
+  const [messageDraftPending, setMessageDraftPending] = useState(false);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [evidenceSlideIndex, setEvidenceSlideIndex] = useState(0);
   const [focusComposeKey] = useState(0);
@@ -178,7 +191,6 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<any | null>(null);
   const panelScrollRef = useRef<HTMLDivElement | null>(null);
-  const actionRowRef = useRef<HTMLDivElement | null>(null);
   const prevHydratedTaskIdRef = useRef<string | null>(null);
   const prevAssetTaskIdRef = useRef<string | null>(null);
 
@@ -187,7 +199,18 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     setTaskEditOpen(false);
     setActivityExpanded(false);
     setOpenChipSlot(null);
+    setChecklistSessionDirty(false);
+    setMessageDraftPending(false);
+    setProgressUpdateOpen(false);
   }, [taskId]);
+
+  const markChecklistSessionDirty = useCallback(() => {
+    setChecklistSessionDirty(true);
+  }, []);
+
+  const handleMessageDraftChange = useCallback((hasDraft: boolean) => {
+    setMessageDraftPending(hasDraft);
+  }, []);
 
   // Opening detail clears the “new comment” bubble on task cards
   useEffect(() => {
@@ -517,7 +540,19 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           queryKey: ["property-drift", orgId, propId],
         });
       }
-      toast({ title: "Status updated", description: getTaskStatusVisual(next).label });
+      toast({
+        title:
+          next === "completed"
+            ? "Task completed"
+            : next === "in_progress"
+              ? "Task started"
+              : "Status updated",
+        description: getTaskStatusVisual(next).label,
+      });
+      if (next === "completed") {
+        const nextId = findNextOpenTaskId(queryClient, taskId, propId);
+        setNextTaskOfferId(nextId);
+      }
     } catch (err: any) {
       setStatus(prev);
       clearTaskCompletionMotion(taskId);
@@ -589,7 +624,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           archived: "Cancelled",
         } as Record<string, string>
       )[status] || status
-    ).toUpperCase();
+    );
   }, [status]);
 
   const dueUrgencyChip = useMemo(() => {
@@ -1189,6 +1224,33 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
     );
   }, [task, title, descriptionDraft, status, priority, dueDate, milestones]);
 
+  /** Activity = audit edits + messages as compact recorded line items (not the chat UI).
+   * Must run before loading/error early returns to keep hook order stable. */
+  const activityEvents = useMemo((): TaskTimelineEvent[] => {
+    const audit = timelineEvents ?? [];
+    const fromMessages: TaskTimelineEvent[] = (taskMessages ?? []).map((m) => {
+      const timestamp = new Date(m.created_at);
+      const raw = (m.body || "").trim();
+      const preview =
+        raw.length > 64 ? `${raw.slice(0, 64).trimEnd()}…` : raw || "Sent an attachment";
+      const description = `Message · ${preview}`;
+      const author = m.author_name || undefined;
+      const parts = [format(timestamp, "d MMM HH:mm"), description];
+      if (author) parts.push(author);
+      return {
+        id: `msg-${m.id}`,
+        type: "comment" as const,
+        description,
+        author,
+        timestamp,
+        line: parts.join(" • "),
+      };
+    });
+    return [...audit, ...fromMessages].sort(
+      (a, b) => a.timestamp.getTime() - b.timestamp.getTime()
+    );
+  }, [timelineEvents, taskMessages]);
+
   const panelWrapper = (
     content: ReactNode,
     title?: string,
@@ -1345,6 +1407,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 canManageTemplates={canManageTemplates}
                 editMode
                 composerEmbed
+                onSessionChange={markChecklistSessionDirty}
               />
             ) : null}
           </div>
@@ -1358,10 +1421,11 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
   const hideDescriptionSection =
     !taskEditOpen && (titleMatchesDescription || !taskDescription);
 
-  const hasTimelineActivity = !timelineLoading && !timelineError && (timelineEvents?.length ?? 0) > 0;
+  const hasTimelineActivity =
+    !timelineLoading && !timelineError && activityEvents.length > 0;
 
   const activitySection = (
-    <div id="task-detail-comment" className="space-y-5">
+    <div className="space-y-2">
       {timelineLoading ? (
         <div className="space-y-2 py-1">
           <Skeleton className="h-4 w-full" />
@@ -1379,22 +1443,22 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
           </button>
         </p>
       ) : hasTimelineActivity ? (
-        <TaskTimeline events={timelineEvents} variant="activity" />
-      ) : null}
-      <TaskMessaging
-        taskId={taskId}
-        variant="activity"
-        focusComposeKey={focusComposeKey}
-      />
+        <TaskTimeline events={activityEvents} variant="activity" />
+      ) : (
+        <p className="text-[11px] text-muted-foreground">No activity recorded yet.</p>
+      )}
     </div>
   );
 
   const panelContent = (
-    <>
+    <div
+      ref={panelScrollRef}
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto [overflow-anchor:none]"
+    >
       <TaskDetailContent
         title={taskTitle}
         showTitle={false}
-        scrollRef={panelScrollRef}
+        ownScroll={false}
         descriptionHeading={false}
         hideDescription={hideDescriptionSection}
         hero={
@@ -1459,6 +1523,7 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
                 canEdit={canManageTask}
                 canManageTemplates={canManageTemplates}
                 editMode={taskEditOpen}
+                onSessionChange={markChecklistSessionDirty}
               />
             ),
             // Empty: hide. Editing: checklist lives in the description composer (avoid duplicate).
@@ -1467,201 +1532,97 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         ]}
       />
 
-      <div className="flex flex-col gap-1.5 pt-2 pb-4 px-4 border-0 flex-shrink-0 bg-background/95 backdrop-blur-sm text-foreground sticky bottom-0 z-10">
-        <div ref={actionRowRef} className="flex min-w-0 w-full items-center gap-2">
-          {canManageTask && taskEditOpen ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="shrink-0 shadow-e1"
-              onClick={handleUpdateTask}
-              disabled={isUpdating || !hasEdits}
-              title={hasEdits ? "Save changes" : "No changes to save"}
-            >
-              {isUpdating ? "…" : "Update"}
-            </Button>
-          ) : null}
-          {canManageTask ? (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  data-task-action
-                  variant={status === "completed" ? "secondary" : "default"}
-                  disabled={isUpdating}
-                  className={cn(
-                    "h-10 min-w-0 flex-1 basis-0 gap-1.5 overflow-hidden px-3 text-base shadow-e1",
-                    status !== "completed" && "shadow-primary-btn text-white"
-                  )}
-                  aria-label="Change status"
-                >
-                  {(() => {
-                    const visual = getTaskStatusVisual(status);
-                    const Icon = visual.Icon;
-                    return (
-                      <>
-                        <span
-                          className={cn(
-                            "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px]",
-                            visual.blockClassName
-                          )}
-                        >
-                          <Icon className={cn("h-3 w-3", visual.iconClassName)} aria-hidden />
-                        </span>
-                        <span className="min-w-0 truncate text-base font-semibold">
-                          {visual.shortLabel}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                      </>
-                    );
-                  })()}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="z-[120] min-w-[11rem]">
-                {TASK_STATUS_ORDER.map((statusId) => {
-                  const visual: TaskStatusVisual = getTaskStatusVisual(statusId);
-                  const Icon = visual.Icon;
-                  const selected = status === statusId;
-                  return (
-                    <DropdownMenuItem
-                      key={statusId}
-                      disabled={isUpdating || selected}
-                      onSelect={() => void handleStatusChange(statusId)}
-                      className="gap-2"
-                    >
-                      <span
-                        className={cn(
-                          "inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-[4px]",
-                          visual.blockClassName
-                        )}
-                      >
-                        <Icon className={cn("h-3 w-3", visual.iconClassName)} aria-hidden />
-                      </span>
-                      <span className={cn(selected && "font-semibold")}>{visual.label}</span>
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : null}
-          {canManageTask && (
-            <DropdownMenu modal={false}>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 shrink-0 shadow-e1 text-foreground"
-                  aria-label="More"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="z-[120]">
-                <DropdownMenuItem
-                  onSelect={() => {
-                    setTaskEditOpen(true);
-                    requestAnimationFrame(() => {
-                      panelScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-                    });
-                  }}
-                >
-                  <Pencil className="h-4 w-4 mr-2" />
-                  Edit
-                </DropdownMenuItem>
-                {taskEditOpen ? (
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      setTaskEditOpen(false);
-                      setOpenChipSlot(null);
-                    }}
-                  >
-                    Done editing
-                  </DropdownMenuItem>
-                ) : null}
-                {hasEdits ? (
-                  <DropdownMenuItem
-                    onSelect={() => handleUpdateTask()}
-                    disabled={isUpdating}
-                  >
-                    Save changes
-                  </DropdownMenuItem>
-                ) : null}
-                <TaskDetailChecklistActions
-                  taskId={taskId}
-                  canEdit={canManageTask}
-                  canManageTemplates={canManageTemplates}
-                  hasItems
-                  menuOnly
-                />
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (isUpdating || !task) return;
-                    setIsUpdating(true);
-                    try {
-                      const { error } = await supabase
-                        .from("tasks")
-                        .insert({
-                          org_id: (task as any).org_id,
-                          title: `${(task as any).title} (copy)`,
-                          property_id: (task as any).property_id ?? null,
-                          priority: (task as any).priority ?? "normal",
-                          due_date: (task as any).due_date ?? null,
-                          description: (task as any).description ?? null,
-                          status: "open",
-                        })
-                        .select("id")
-                        .single();
-                      if (error) throw error;
-                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                      toast({ title: "Task duplicated", description: "A copy has been added to your task list." });
-                      onClose();
-                    } catch (err: any) {
-                      toast({ title: "Couldn't duplicate task", description: err.message, variant: "destructive" });
-                    } finally {
-                      setIsUpdating(false);
-                    }
-                  }}
-                  disabled={isUpdating}
-                >
-                  <Copy className="h-4 w-4 mr-2" />
-                  Duplicate
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    if (isUpdating) return;
-                    setIsUpdating(true);
-                    try {
-                      const { error } = await supabase
-                        .from("tasks")
-                        .update({ status: "archived" })
-                        .eq("id", taskId);
-                      if (error) throw error;
-                      queryClient.invalidateQueries({ queryKey: ["tasks"] });
-                      toast({ title: "Task archived" });
-                      onClose();
-                    } catch (err: any) {
-                      toast({ title: "Couldn't archive task", description: err.message, variant: "destructive" });
-                    } finally {
-                      setIsUpdating(false);
-                    }
-                  }}
-                  disabled={isUpdating}
-                >
-                  <Archive className="h-4 w-4 mr-2" />
-                  Archive
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => setShowDeleteDialog(true)}
-                  disabled={isUpdating}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
+      <div className="flex flex-col gap-1.5 px-4 pb-4 pt-2 text-foreground">
+        <TaskMessaging
+          taskId={taskId}
+          variant="chat"
+          focusComposeKey={focusComposeKey}
+          onDraftChange={handleMessageDraftChange}
+        />
+
+        <TaskDetailActionBar
+          status={status}
+          isUpdating={isUpdating}
+          canManage={canManageTask}
+          taskEditOpen={taskEditOpen}
+          hasEdits={hasEdits}
+          showUpdate={
+            !taskEditOpen && (hasEdits || checklistSessionDirty || messageDraftPending)
+          }
+          taskId={taskId}
+          canManageTemplates={canManageTemplates}
+          onStartTask={() => void handleStatusChange("in_progress")}
+          onAddUpdate={() => setProgressUpdateOpen(true)}
+          onMarkComplete={() => void handleStatusChange("completed")}
+          onStatusChange={(next) => void handleStatusChange(next)}
+          onEditDetails={() => {
+            setTaskEditOpen(true);
+            requestAnimationFrame(() => {
+              panelScrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+            });
+          }}
+          onDoneEditing={() => {
+            setTaskEditOpen(false);
+            setOpenChipSlot(null);
+          }}
+          onSaveEdits={() => handleUpdateTask()}
+          onShare={async () => {
+            const url = `${window.location.origin}/task/${taskId}`;
+            try {
+              if (navigator.share) {
+                await navigator.share({ title: taskTitle, url });
+                return;
+              }
+            } catch {
+              /* fall through to clipboard */
+            }
+            try {
+              await navigator.clipboard.writeText(url);
+              toast({ title: "Link copied", description: "Task link copied to clipboard." });
+            } catch {
+              toast({
+                title: "Couldn't share",
+                description: url,
+                variant: "destructive",
+              });
+            }
+          }}
+          onDuplicate={async () => {
+            if (isUpdating || !task) return;
+            setIsUpdating(true);
+            try {
+              const { error } = await supabase
+                .from("tasks")
+                .insert({
+                  org_id: (task as any).org_id,
+                  title: `${(task as any).title} (copy)`,
+                  property_id: (task as any).property_id ?? null,
+                  priority: (task as any).priority ?? "normal",
+                  due_date: (task as any).due_date ?? null,
+                  description: (task as any).description ?? null,
+                  status: "open",
+                })
+                .select("id")
+                .single();
+              if (error) throw error;
+              queryClient.invalidateQueries({ queryKey: ["tasks"] });
+              toast({
+                title: "Task duplicated",
+                description: "A copy has been added to your task list.",
+              });
+              onClose();
+            } catch (err: any) {
+              toast({
+                title: "Couldn't duplicate task",
+                description: err.message,
+                variant: "destructive",
+              });
+            } finally {
+              setIsUpdating(false);
+            }
+          }}
+          onDelete={() => setShowDeleteDialog(true)}
+        />
         <div className="flex items-start justify-between gap-3 px-0.5">
           {canManageTask && status !== "completed" ? (
             <p className="min-w-0 flex-1 text-caption leading-snug text-muted-foreground">
@@ -1689,67 +1650,121 @@ export function TaskDetailPanel({ taskId, onClose, variant = "modal" }: TaskDeta
         >
           <div className="min-h-0 overflow-hidden">
             {activityExpanded ? (
-              <div className="max-h-[min(40vh,320px)] overflow-y-auto border-t border-border/20 pt-3">
+              <div className="border-t border-border/20 pt-3">
                 {activitySection}
               </div>
             ) : null}
           </div>
         </div>
       </div>
-
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete task?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete "{(task as any)?.title ?? "this task"}" and cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={() => {
-                if (isUpdating) return;
-                setIsUpdating(true);
-                const orgId = (task as any)?.org_id;
-                const propId = (task as any)?.property_id ?? null;
-                deleteTaskMutation.mutate(
-                  { taskId, orgId, propertyId: propId },
-                  {
-                    onSuccess: () => {
-                      toast({ title: "Task deleted" });
-                      onClose();
-                    },
-                    onError: (err) => {
-                      toast({ title: "Couldn't delete task", description: (err as Error).message, variant: "destructive" });
-                    },
-                    onSettled: () => {
-                      setIsUpdating(false);
-                      setShowDeleteDialog(false);
-                    },
-                  }
-                );
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+    </div>
   );
 
-  // Single-scroll detail body + sticky task actions
+  // Single-scroll detail body (hero → checklist → messages → actions → activity)
   return (
     <>
     {panelWrapper(
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
           {panelContent}
         </div>,
       "Task Details",
       { hideCloseButton: true }
     )}
+
+    <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete task?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete "{(task as any)?.title ?? "this task"}" and cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            onClick={() => {
+              if (isUpdating) return;
+              setIsUpdating(true);
+              const orgId = (task as any)?.org_id;
+              const propId = (task as any)?.property_id ?? null;
+              deleteTaskMutation.mutate(
+                { taskId, orgId, propertyId: propId },
+                {
+                  onSuccess: () => {
+                    toast({ title: "Task deleted" });
+                    onClose();
+                  },
+                  onError: (err) => {
+                    toast({ title: "Couldn't delete task", description: (err as Error).message, variant: "destructive" });
+                  },
+                  onSettled: () => {
+                    setIsUpdating(false);
+                    setShowDeleteDialog(false);
+                  },
+                }
+              );
+            }}
+          >
+            Delete
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+
+    <TaskProgressUpdateSheet
+      open={progressUpdateOpen}
+      onOpenChange={setProgressUpdateOpen}
+      taskId={taskId}
+      propertyId={(task as any)?.property_id ?? null}
+      onOpenChecklist={() => {
+        const el = document.getElementById("task-detail-checklist");
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }}
+    />
+
+    <AlertDialog
+      open={nextTaskOfferId !== null}
+      onOpenChange={(open) => {
+        if (!open) setNextTaskOfferId(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Task completed</AlertDialogTitle>
+          <AlertDialogDescription>
+            {nextTaskOfferId
+              ? "Ready for the next open task?"
+              : "Nice work — no other open tasks in scope right now."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel
+            onClick={() => {
+              setNextTaskOfferId(null);
+              onClose();
+            }}
+          >
+            Close
+          </AlertDialogCancel>
+          {nextTaskOfferId ? (
+            <AlertDialogAction
+              onClick={() => {
+                const id = nextTaskOfferId;
+                setNextTaskOfferId(null);
+                if (id && onOpenTask) {
+                  onOpenTask(id);
+                } else if (id) {
+                  onClose();
+                }
+              }}
+            >
+              Next task
+            </AlertDialogAction>
+          ) : null}
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     
     <InviteUserModal
       open={inviteModalOpen}
