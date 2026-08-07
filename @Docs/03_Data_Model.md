@@ -19,7 +19,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 
 **Properties & Assets:**
 *   `properties` (address, type, nickname, icon fields, thumbnail, `is_archived` — inactive properties do not count toward billing; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
-*   Billing: `subscription_tiers`, `org_subscriptions`, `org_usage` (+ `metrics` JSONB) — see `@Docs/20_Billing.md`
+*   Billing: `subscription_tiers`, `org_subscriptions` (+ `billing_state`, `grace_ends_at`, seat add-ons via `seat_count`, evidence packs via `storage_addon_bytes`), `org_usage` (+ `metrics` JSONB incl. evidence breakdown), `billing_events` (webhook idempotency) — see `@Docs/20_Billing.md`
 *   `spaces` (property_id, type, icon_name, thumbnail_url — mini-card / photo path for space identity; floor_level)
 *   `assets` (property_id, space_id, serial, condition_score)
 

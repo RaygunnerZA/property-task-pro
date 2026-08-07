@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronUp } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
@@ -42,6 +42,13 @@ const sectionRevealStyle = (index: number): CSSProperties => ({
   animationDelay: `${index * 60}ms`,
   animationFillMode: "both",
 });
+
+/** Home left-rail metrics: auto-collapse after idle so the strip settles. */
+const METRICS_AUTO_COLLAPSE_MS = 2 * 60 * 1000;
+const metricsCollapseMotionClass =
+  "grid transition-[grid-template-rows] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
+const metricsChevronMotionClass =
+  "h-4 w-4 transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 
 const STAT_CENTRE_TABS: readonly CentreWorkbenchTab[] = ["inflow", "tasks", "calendar"];
 
@@ -365,7 +372,19 @@ export function PropertySummaryPanel({
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [metricsExpanded, setMetricsExpanded] = useState(true);
+  const metricsAutoCollapsedRef = useRef(false);
   const propertyName = property.nickname || property.address;
+
+  useEffect(() => {
+    if (variant !== "full" || metricsAutoCollapsedRef.current) return;
+
+    const timeoutId = window.setTimeout(() => {
+      metricsAutoCollapsedRef.current = true;
+      setMetricsExpanded(false);
+    }, METRICS_AUTO_COLLAPSE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [variant]);
   const { data: scopedSignals = [] } = useSignalsQuery({
     propertyIds: portfolioSignals ? undefined : [property.id],
   });
@@ -575,7 +594,7 @@ export function PropertySummaryPanel({
           <div className={cn(sectionRevealClass)} style={sectionRevealStyle(1)}>
             <div
               className={cn(
-                "grid transition-[grid-template-rows] duration-300 ease-in-out motion-reduce:transition-none",
+                metricsCollapseMotionClass,
                 metricsExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
               )}
             >
@@ -619,7 +638,7 @@ export function PropertySummaryPanel({
               >
                 <ChevronUp
                   className={cn(
-                    "h-4 w-4 transition-transform duration-300 ease-in-out motion-reduce:transition-none",
+                    metricsChevronMotionClass,
                     !metricsExpanded && "rotate-180"
                   )}
                   strokeWidth={2.2}

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
+import { useOrgBillingStatus } from "@/hooks/useOrgBillingStatus";
 import {
   resolveEffectiveAccess,
   type EffectiveAccess,
@@ -11,6 +12,7 @@ export function useEffectiveAccess(): EffectiveAccess & { isLoading: boolean } {
   const { role, assignedProperties, isPrimaryOwner, isLoading: orgLoading } =
     useActiveOrg();
   const { entitlements, loading: entsLoading } = useOrgEntitlements();
+  const { billing, loading: billingLoading } = useOrgBillingStatus();
 
   const access = useMemo(
     () =>
@@ -19,12 +21,13 @@ export function useEffectiveAccess(): EffectiveAccess & { isLoading: boolean } {
         entitlements,
         assignedPropertyIds: assignedProperties,
         isPrimaryOwner,
+        expansionAllowed: billing.expansion_allowed,
       }),
-    [role, entitlements, assignedProperties, isPrimaryOwner]
+    [role, entitlements, assignedProperties, isPrimaryOwner, billing.expansion_allowed]
   );
 
   return {
     ...access,
-    isLoading: orgLoading || entsLoading,
+    isLoading: orgLoading || entsLoading || billingLoading,
   };
 }

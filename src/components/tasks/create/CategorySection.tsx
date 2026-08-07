@@ -72,13 +72,12 @@ export function CategorySection({
   const [createName, setCreateName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // Close inline editing when row deactivates
+  // Close inline editing when row deactivates. Leave Create Tag alone — it is
+  // portaled and must survive outside-click slot teardown.
   useEffect(() => {
     if (!isActive) {
       setIsEditing(false);
       setQuery("");
-      setShowCreate(false);
-      setCreateName("");
     }
   }, [isActive]);
 
@@ -171,10 +170,11 @@ export function CategorySection({
         .select("id")
         .single();
       if (error) throw error;
+      // Refresh shared categories cache first so parent chip builders resolve the name.
+      await refresh?.();
       if (data?.id) {
         onThemesChange([...selectedThemeIds, data.id]);
       }
-      await refresh?.();
       setShowCreate(false);
       setIsEditing(false);
       setQuery("");

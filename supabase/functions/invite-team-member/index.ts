@@ -284,6 +284,21 @@ Deno.serve(async (req) => {
     const isCoordinatingInvite =
       normalizedInviteRole === "owner" || normalizedInviteRole === "manager";
 
+    const { data: expansionOk, error: expansionError } = await supabaseAdmin.rpc(
+      "org_expansion_allowed",
+      { p_org_id: org_id }
+    );
+    if (expansionError) {
+      console.error("[invite:expansion-error]", { executionId, error: expansionError.message });
+      return jsonErr("Could not verify billing status", 500);
+    }
+    if (expansionOk === false && (isStaffInvite || isCoordinatingInvite)) {
+      return jsonErr(
+        "Billing restriction: inviting members is paused until payment is restored. Existing work continues.",
+        403
+      );
+    }
+
     if (isStaffInvite && !canAddStaff) {
       return jsonErr(
         "Your plan does not include Staff collaboration. Upgrade to Home Plus to invite helpers.",

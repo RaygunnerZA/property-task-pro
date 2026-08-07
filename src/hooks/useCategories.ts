@@ -1,46 +1,44 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables } from "@/integrations/supabase/types";
 import { useActiveOrg } from "./useActiveOrg";
 
 type ThemeRow = Tables<"themes">;
 
+/** Shared cache key — must match useThemes("category") so create/refresh syncs all consumers. */
+export const categoriesQueryKey = (orgId: string | null | undefined) =>
+  ["themes", orgId, "category"] as const;
+
 export function useCategories() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
-  const [categories, setCategories] = useState<ThemeRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  async function fetchCategories() {
-    if (!orgId) {
-      setCategories([]);
-      setLoading(false);
-      return;
-    }
+  const query = useQuery({
+    queryKey: categoriesQueryKey(orgId),
+    queryFn: async (): Promise<ThemeRow[]> => {
+      if (!orgId) return [];
+      const { data, error } = await supabase
+        .from("themes")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("type", "category")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !orgLoading && Boolean(orgId),
+    staleTime: 60_000,
+    retry: 1,
+  });
 
-    setLoading(true);
-    setError(null);
-
-    const { data, error: err } = await supabase
-      .from("themes")
-      .select("*")
-      .eq("org_id", orgId)
-      .eq("type", "category")
-      .order("created_at", { ascending: true });
-
-    if (err) setError(err.message);
-    else setCategories(data ?? []);
-
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    if (!orgLoading) {
-      fetchCategories();
-    }
-  }, [orgId, orgLoading]);
-
-  return { categories, loading, error, refresh: fetchCategories };
+  return {
+    categories: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ? (query.error as Error).message : null,
+    refresh: async () => {
+      await query.refetch();
+    },
+  };
 }
 
 // Note: category_members table was removed in themes migration
@@ -92,4 +90,3 @@ export function useTaskCategories(taskId?: string) {
 
   return { taskCategories, loading, error, refresh: fetchTaskCategories };
 }
-

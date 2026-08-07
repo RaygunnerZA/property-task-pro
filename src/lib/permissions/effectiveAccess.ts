@@ -17,6 +17,8 @@ export type EffectiveAccessInput = {
   /** null/empty = all properties (Owner, or unscoped Manager/Staff). */
   assignedPropertyIds?: string[] | null;
   isPrimaryOwner?: boolean;
+  /** When false (post-grace billing lock), block expansion actions. */
+  expansionAllowed?: boolean;
 };
 
 export type EffectiveAccess = {
@@ -34,6 +36,7 @@ export type EffectiveAccess = {
   canTransferOwnership: boolean;
   canAddProperty: boolean;
   multiPropertyEnabled: boolean;
+  expansionAllowed: boolean;
   /** null = all properties in org; array = scoped. */
   propertyScopeIds: string[] | null;
 };
@@ -51,6 +54,7 @@ export function resolveEffectiveAccess(input: EffectiveAccessInput): EffectiveAc
   const role = normalizeOrgRole(input.role);
   const entitlements = input.entitlements ?? HOME_ENTITLEMENTS;
   const isPrimaryOwner = !!input.isPrimaryOwner;
+  const expansionAllowed = input.expansionAllowed !== false;
   const propertyScopeIds = scopedPropertyIds(role, input.assignedPropertyIds);
 
   const isOwner = role === "owner";
@@ -65,17 +69,19 @@ export function resolveEffectiveAccess(input: EffectiveAccessInput): EffectiveAc
     canCreateTask: isOwner || isManager,
     canAssignWork: isOwner || isManager,
     canInviteStaff:
-      (isOwner || isManager) && entitlements.can_add_staff,
-    canInviteManagers: isOwner,
+      expansionAllowed && (isOwner || isManager) && entitlements.can_add_staff,
+    canInviteManagers: expansionAllowed && isOwner,
     canManageRoles: isOwner,
     canManageProperties: isOwner,
     canManageBilling: isPrimaryOwner,
     canTransferOwnership: isPrimaryOwner,
     canAddProperty:
+      expansionAllowed &&
       isOwner &&
       (entitlements.multi_property_enabled ||
         entitlements.active_properties_limit > 1),
     multiPropertyEnabled: entitlements.multi_property_enabled,
+    expansionAllowed,
     propertyScopeIds,
   };
 }

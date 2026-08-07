@@ -730,6 +730,13 @@
     background-size: 110%;
     background-blend-mode: multiply;
   }
+
+  /* Soft paper grain on solid Create Task / Add Record CTAs */
+  .intake-cta-grain {
+    background-image: var(--paper-texture);
+    background-size: 100%;
+    background-blend-mode: soft-light;
+  }
   
   /* Neumorphic Text Shadows for headings */
   .text-shadow-neu {

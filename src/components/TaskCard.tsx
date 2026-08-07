@@ -1,6 +1,6 @@
 import { mapTask } from "../utils/mapTask";
 import { cn } from "@/lib/utils";
-import { Calendar, Check, Clock, MapPin, MessageSquare, MoreHorizontal, ArrowRight } from "lucide-react";
+import { Calendar, Check, ChevronRight, Clock, MapPin, MessageSquare, MoreHorizontal } from "lucide-react";
 import {
   COMPLETE_COLLAPSE_MS,
   clearTaskCompletionMotion,
@@ -134,7 +134,7 @@ function PropertyIconChips({ properties }: { properties: any[] }) {
   );
 }
 
-/** Assigner → assignee avatars (no FROM/FOR labels). Alone: avatar only, no label. */
+/** Initials-only person marks — same size/fill style as TaskStatusMark; no photos/arrows. */
 function TaskCardPeopleMeta({
   assigner,
   assignee,
@@ -145,52 +145,47 @@ function TaskCardPeopleMeta({
   className?: string;
 }) {
   if (!assigner && !assignee) return null;
-  const size = TASK_CARD_AVATAR_SIZE;
 
-  if (assigner && assignee) {
-    return (
-      <div
-        className={cn("flex items-center gap-0.5 shrink-0", className)}
-        title={
-          [assigner.name && `From ${assigner.name}`, assignee.name && `For ${assignee.name}`]
-            .filter(Boolean)
-            .join(" → ") || undefined
-        }
-      >
-        <UserAvatar
-          imageUrl={assigner.imageUrl}
-          name={assigner.name}
-          propertyColor={assigner.accentColor}
-          size={size}
-          shape="card"
-        />
-        <ArrowRight className="h-2.5 w-2.5 shrink-0 text-muted-foreground" aria-hidden />
-        <UserAvatar
-          imageUrl={assignee.imageUrl}
-          name={assignee.name}
-          propertyColor={assignee.accentColor}
-          size={size}
-          shape="card"
-        />
-      </div>
-    );
-  }
+  // Initials marks only (no photos / arrows). Assigner then assignee when both present.
+  const shown =
+    assigner && assignee && assigner.name !== assignee.name
+      ? [assigner, assignee]
+      : [assignee ?? assigner!];
 
-  const alone = assignee ?? assigner;
-  if (!alone) return null;
+  const showChevron = shown.length === 2;
 
   return (
     <div
-      className={cn("flex items-center shrink-0", className)}
-      title={alone.name || undefined}
+      className={cn("flex items-center gap-0.5 shrink-0", className)}
+      title={
+        [assigner?.name && `From ${assigner.name}`, assignee?.name && `For ${assignee.name}`]
+          .filter(Boolean)
+          .join(" → ") || undefined
+      }
     >
       <UserAvatar
-        imageUrl={alone.imageUrl}
-        name={alone.name}
-        propertyColor={alone.accentColor}
-        size={size}
-        shape="card"
+        name={shown[0].name}
+        propertyColor={shown[0].accentColor}
+        size={TASK_CARD_AVATAR_SIZE}
+        shape="statusMark"
+        initialsOnly
       />
+      {showChevron ? (
+        <ChevronRight
+          className="h-2.5 w-2.5 shrink-0 text-muted-foreground"
+          strokeWidth={2.5}
+          aria-hidden
+        />
+      ) : null}
+      {showChevron ? (
+        <UserAvatar
+          name={shown[1].name}
+          propertyColor={shown[1].accentColor}
+          size={TASK_CARD_AVATAR_SIZE}
+          shape="statusMark"
+          initialsOnly
+        />
+      ) : null}
     </div>
   );
 }
@@ -532,7 +527,29 @@ function TaskCardComponent({
     </div>
   );
 
-  /** Status locked top-left on the thumbnail — force completed green while confirming. */
+  /** Category / tags under the title — all tags from task details, in a horizontal row. */
+  const themeTagChips =
+    themes.length > 0 ? (
+      <div className="mt-[6px] flex min-w-0 flex-wrap items-center gap-1">
+        {themes.map((theme: { id?: string; name?: string }, index: number) => {
+          const label = theme?.name ? String(theme.name).toUpperCase() : null;
+          if (!label) return null;
+          return (
+            <span
+              key={theme.id ?? `${label}-${index}`}
+              className={cn(
+                "box-border inline-block h-[22px] w-fit max-w-full shrink-0 rounded-[6px] px-2",
+                "bg-primary/20 font-mono text-2xs font-medium uppercase leading-[22px] tracking-wide text-primary-deep",
+                "whitespace-nowrap overflow-hidden text-ellipsis align-top"
+              )}
+            >
+              {label}
+            </span>
+          );
+        })}
+      </div>
+    ) : null;
+
   const statusMark = (
     <div className="pointer-events-none absolute left-1.5 top-1.5 z-10">
       <TaskStatusMark
@@ -613,7 +630,7 @@ function TaskCardComponent({
               "rounded-card bg-card/60",
               "shadow-e1",
               "cursor-pointer hover:scale-[1.01] active:scale-[0.99] transition-[transform,box-shadow,background-color] duration-150",
-              "overflow-hidden flex flex-row min-h-[80px] relative group",
+              "overflow-hidden flex flex-row h-[108px] relative group",
               isSelected && "bg-card shadow-e3"
             )}
             onClick={onClick}
@@ -621,41 +638,38 @@ function TaskCardComponent({
             {completionOverlay}
             {newCommentBubble}
             {thumbnailFirst ? horizontalMedia : null}
-            {/* Content */}
-            <div className="relative flex-1 px-[14px] py-4 flex flex-col justify-center min-w-0">
-              {/* Theme/Category */}
-              {!metaCompact && themes.length > 0 && (
-                <div className="text-2xs text-muted-foreground uppercase tracking-wide mb-1">
-                  {themes[0].name}
-                </div>
-              )}
-
-              {/* Task Title */}
+            {/* Content — +3px down from prior py-4 centering */}
+            <div className="relative flex min-w-0 flex-1 flex-col justify-center px-[14px] pb-[13px] pt-[12px]">
+              {/* Title: reserved 2-line box, text bottom-aligned */}
               <div
                 className={cn(
-                  "flex justify-start items-center gap-2 min-h-[44px] flex-wrap",
+                  "flex h-[37.5px] min-w-0 items-end gap-2",
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-40 group-focus-within:opacity-40"
                 )}
               >
-                <h3 className="text-base font-medium text-foreground line-clamp-2 leading-tight">
+                <h3 className="min-w-0 flex-1 text-[15px] font-medium leading-tight text-foreground line-clamp-2">
                   {t.title}
                 </h3>
                 {educationChipLabel ? (
                   <Badge
                     variant="neutral"
                     size="sm"
-                    className="h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
+                    className="mb-0.5 h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
                   >
                     {educationChipLabel}
                   </Badge>
                 ) : null}
               </div>
 
+              {/* Tag chip under title (compact + default) */}
+              {themeTagChips}
+
               {/* Property Icon + Space + Date/Time + Teams + From / For */}
               <div
                 className={cn(
-                  "mt-[7px] flex gap-2 flex-wrap items-center",
+                  "flex gap-2 flex-wrap items-center",
+                  themeTagChips ? "mt-1" : "mt-[7px]",
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none"
                 )}
@@ -720,7 +734,7 @@ function TaskCardComponent({
               </div>
 
               {isCompleted ? (
-                <div className="absolute inset-y-0 right-3 z-10 flex items-center opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto">
+                <div className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 opacity-0 pointer-events-none transition-opacity duration-150 group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(pointer:coarse)]:opacity-100 [@media(pointer:coarse)]:pointer-events-auto">
                   {completedHoverActions}
                 </div>
               ) : null}
@@ -754,20 +768,15 @@ function TaskCardComponent({
       <TaskCardMediaZone imageUrl={imageUrl} alt={t.title} variant="vertical">
         {statusMark}
         {dueUrgencyChip}
-        {!metaCompact && themes.length > 0 ? (
-          <div className="absolute bottom-2 left-2 z-10">
-            <Badge variant="neutral" size="sm" className="text-2xs px-[5px] font-mono uppercase h-[24px]">
-              {themes[0].name}
-            </Badge>
-          </div>
-        ) : null}
       </TaskCardMediaZone>
 
       {/* Content */}
       <div className="flex flex-1 flex-col px-[12px] pt-[12px] pb-[12px] min-h-0">
-        <h3 className="pb-[5px] text-base font-medium text-foreground line-clamp-2 leading-tight">
+        <h3 className="pb-[5px] text-[15px] font-medium text-foreground line-clamp-2 leading-tight">
           {t.title}
         </h3>
+
+        {themeTagChips}
 
         {locationLine ? (
           <p className="mt-2 flex min-w-0 items-center gap-1.5 text-caption leading-none text-muted-foreground">

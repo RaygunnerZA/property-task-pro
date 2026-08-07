@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { checkEvidenceUpload } from "@/lib/evidence/uploadLimits";
 
 interface UseFileUploadOptions {
   bucket: string;
@@ -9,6 +10,12 @@ interface UseFileUploadOptions {
   generateThumbnail?: boolean;
   recordId?: string;
   table?: string;
+  /** When set, apply Phase 4 type/size (and optional quota) checks before upload. */
+  evidenceCheck?: {
+    storageUsedBytes?: number;
+    evidenceBytesAllowance?: number;
+    enforceQuota?: boolean;
+  };
 }
 
 interface UseFileUploadResult {
@@ -40,6 +47,19 @@ export function useFileUpload(options: UseFileUploadOptions): UseFileUploadResul
     setError(null);
 
     try {
+      if (options.evidenceCheck) {
+        const check = checkEvidenceUpload({
+          file,
+          storageUsedBytes: options.evidenceCheck.storageUsedBytes ?? 0,
+          evidenceBytesAllowance:
+            options.evidenceCheck.evidenceBytesAllowance ?? Number.MAX_SAFE_INTEGER,
+          enforceQuota: options.evidenceCheck.enforceQuota ?? false,
+        });
+        if (!check.ok) {
+          throw new Error(check.message);
+        }
+      }
+
       // Generate file path
       const fileExt = file.name.split(".").pop();
       const timestamp = Date.now();

@@ -7,20 +7,23 @@ export const APP_USER_AVATAR_SIZE = 32;
 /** Task card property icon chips — match META_CHIP_AVATAR_SIZE (28×28). */
 export const TASK_CARD_META_CHIP_SIZE = 28;
 
-/** Task card assigner / assignee avatars. */
+/** Task card assigner / assignee — matches TaskStatusMark (22×22). */
 export const TASK_CARD_AVATAR_SIZE = 22;
 
 interface UserAvatarProps {
   imageUrl?: string | null;
   name?: string;
-  /** Fallback fill when no photo. */
+  /** Fallback fill when no photo (or initials color for statusMark). */
   propertyColor?: string;
   size?: number;
   /**
    * `card` — same radius as property icon chips (`rounded-card`).
    * `circle` / `square` — legacy shapes.
+   * `statusMark` — same size/radius/deboss as task status box; initials in user color.
    */
-  shape?: "square" | "circle" | "card";
+  shape?: "square" | "circle" | "card" | "statusMark";
+  /** Force initials — never show photo. */
+  initialsOnly?: boolean;
   className?: string;
 }
 
@@ -34,6 +37,7 @@ export function UserAvatar({
   propertyColor = "#8EC9CE",
   size = 24,
   shape = "card",
+  initialsOnly = false,
   className,
 }: UserAvatarProps) {
   const getInitials = (value: string): string => {
@@ -46,6 +50,36 @@ export function UserAvatar({
   };
 
   const initials = getInitials(name);
+  const showImage = !initialsOnly && !!imageUrl;
+
+  if (shape === "statusMark") {
+    const dim = TASK_CARD_AVATAR_SIZE;
+    return (
+      <span
+        className={cn(
+          "inline-flex shrink-0 items-center justify-center rounded-[5px]",
+          "bg-background",
+          "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.12),-1px_-1px_2px_0px_rgba(255,255,255,0.85)]",
+          className
+        )}
+        style={{ width: dim, height: dim, minWidth: dim, minHeight: dim }}
+        title={name || undefined}
+        aria-label={name || "Assignee"}
+      >
+        <span
+          className="font-bold leading-none select-none"
+          style={{
+            color: propertyColor,
+            // ~1pt larger than prior 0.38×22 (~8.4px → ~9.7px)
+            fontSize: `${dim * 0.44}px`,
+          }}
+        >
+          {initials}
+        </span>
+      </span>
+    );
+  }
+
   const radiusClass =
     shape === "square" ? "rounded-sharp" : shape === "circle" ? "rounded-full" : "rounded-card";
 
@@ -54,7 +88,7 @@ export function UserAvatar({
       className={cn(radiusClass, shape === "square" && "border-2 border-background", className)}
       style={{ width: size, height: size, minWidth: size, minHeight: size }}
     >
-      {imageUrl && <AvatarImage src={imageUrl} alt={name} className={cn("object-cover", radiusClass)} />}
+      {showImage && <AvatarImage src={imageUrl!} alt={name} className={cn("object-cover", radiusClass)} />}
       <AvatarFallback
         className={cn(radiusClass, "text-white font-medium text-xs")}
         style={{

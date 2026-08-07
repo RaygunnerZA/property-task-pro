@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "./useActiveOrg";
+import { useOrgEntitlements } from "./useOrgEntitlements";
 import { captureGeoForAction } from "@/services/location/geoCapture";
+import { assertEvidenceUpload } from "@/lib/evidence/assertUpload";
 
 interface UseFileUploadOptions {
   taskId?: string;
@@ -17,19 +19,6 @@ interface UploadProgress {
   status: "uploading" | "processing" | "complete" | "error";
   error?: string;
 }
-
-const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024; // 10MB
-const ALLOWED_IMAGE_MIME_TYPES = new Set([
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/heic",
-  "image/heif",
-]);
-const ALLOWED_IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "heic", "heif"]);
-
-const getFileExtension = (fileName: string) =>
-  (fileName.split(".").pop() || "").trim().toLowerCase();
 
 type UploadMutationResult = {
   attachment: { id: string };
@@ -47,34 +36,21 @@ type UploadMutationResult = {
  */
 export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }: UseFileUploadOptions = {}) {
   const { orgId } = useActiveOrg();
+  const { entitlements, usage } = useOrgEntitlements();
   const [progress, setProgress] = useState<UploadProgress[]>([]);
-
-  const validateImageFile = (file: File) => {
-    const extension = getFileExtension(file.name);
-    const mime = (file.type || "").toLowerCase();
-
-    if (file.size > MAX_FILE_SIZE_BYTES) {
-      const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-      throw new Error(
-        `File "${file.name}" is ${fileSizeMB}MB. Task image uploads are limited to 10MB per file.`
-      );
-    }
-
-    const mimeAllowed = mime ? ALLOWED_IMAGE_MIME_TYPES.has(mime) : false;
-    const extensionAllowed = ALLOWED_IMAGE_EXTENSIONS.has(extension);
-    if (!mimeAllowed && !extensionAllowed) {
-      throw new Error(
-        `File "${file.name}" is not supported. Accepted formats: HEIC, PNG, JPG/JPEG.`
-      );
-    }
-  };
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File): Promise<UploadMutationResult> => {
       if (!orgId) throw new Error("Organization ID not found");
       if (!taskId) throw new Error("Task ID is required");
 
-      validateImageFile(file);
+      const gate = await assertEvidenceUpload(supabase, {
+        orgId,
+        file,
+        storageUsedBytes: usage?.storage_used_bytes ?? 0,
+        evidenceBytesAllowance: entitlements.evidence_bytes_allowance,
+      });
+      if (!gate.ok) throw new Error(gate.message);
 
       const fileExt = file.name.split(".").pop() || "bin";
       const fileName = `org/${orgId}/tasks/${taskId}/${crypto.randomUUID()}.${fileExt}`;

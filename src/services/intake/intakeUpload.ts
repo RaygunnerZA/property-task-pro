@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { IntakeItem } from "@/types/intake-item";
-
-const MAX_FILE_BYTES = 50 * 1024 * 1024;
+import { assertEvidenceUpload } from "@/lib/evidence/assertUpload";
+import { checkEvidenceUpload } from "@/lib/evidence/uploadLimits";
 
 const sanitizeFileName = (fileName: string) =>
   fileName
@@ -11,17 +11,32 @@ const sanitizeFileName = (fileName: string) =>
     .slice(0, 120);
 
 export function validateIntakeFile(file: File): void {
-  if (file.size > MAX_FILE_BYTES) {
-    throw new Error(`"${file.name}" exceeds 50MB limit`);
-  }
+  const check = checkEvidenceUpload({
+    file,
+    storageUsedBytes: 0,
+    evidenceBytesAllowance: Number.MAX_SAFE_INTEGER,
+    enforceQuota: false,
+  });
+  if (!check.ok) throw new Error(check.message);
 }
 
 export async function uploadIntakeFile(
   supabase: SupabaseClient,
-  options: { orgId: string; file: File }
+  options: {
+    orgId: string;
+    file: File;
+    storageUsedBytes?: number;
+    evidenceBytesAllowance?: number;
+  }
 ): Promise<IntakeItem> {
   const { orgId, file } = options;
-  validateIntakeFile(file);
+  const gate = await assertEvidenceUpload(supabase, {
+    orgId,
+    file,
+    storageUsedBytes: options.storageUsedBytes ?? 0,
+    evidenceBytesAllowance: options.evidenceBytesAllowance,
+  });
+  if (!gate.ok) throw new Error(gate.message);
 
   const intakeId = crypto.randomUUID();
   const cleanedName = sanitizeFileName(file.name) || `upload-${Date.now()}`;

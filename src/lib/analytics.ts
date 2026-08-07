@@ -20,7 +20,11 @@ export type AnalyticsEvent =
   | "issue_flagged"
   | "ai_suggestion_accepted"
   | "ai_suggestion_edited"
-  | "ai_suggestion_rejected";
+  | "ai_suggestion_rejected"
+  | "quota_warned"
+  | "quota_blocked"
+  | "addon_checkout_started"
+  | "upgrade_cta_clicked";
 
 export function initAnalytics(): void {
   const key = import.meta.env.VITE_POSTHOG_KEY;

@@ -146,13 +146,24 @@ export function IntakeChipRow({
   const containerRef = useRef<HTMLDivElement>(null);
   const railScrollRef = useRef<HTMLDivElement>(null);
 
-  // Close open slot when user clicks outside the chip row
+  // Close open slot when user clicks outside the chip row.
+  // Ignore portaled overlays (dialogs/popovers/selects) — Create Tag etc. render
+  // outside this container; treating those clicks as "outside" closes the slot and
+  // unmounts the modal before Create can run.
   useEffect(() => {
     if (!openSlot) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        onCloseSlot();
+      const target = e.target as HTMLElement | null;
+      if (!target || !containerRef.current) return;
+      if (containerRef.current.contains(target)) return;
+      if (
+        target.closest(
+          '[role="dialog"], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-menu-content]'
+        )
+      ) {
+        return;
       }
+      onCloseSlot();
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);

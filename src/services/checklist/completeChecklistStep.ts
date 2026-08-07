@@ -1,5 +1,6 @@
 import { supabase as _supabase } from "@/integrations/supabase/client";
 import type { ChecklistStepResponseInput } from "@/lib/checklistStepResponse";
+import { assertEvidenceUpload } from "@/lib/evidence/assertUpload";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const supabase = _supabase as any;
@@ -88,6 +89,16 @@ async function uploadSubtaskEvidence(params: {
     rollupToTaskGallery = true,
     metadata,
   } = params;
+  const asFile =
+    file instanceof File
+      ? file
+      : new File([file], fileName, { type: fileType || "application/octet-stream" });
+  const gate = await assertEvidenceUpload(supabase, {
+    orgId,
+    file: asFile,
+  });
+  if (!gate.ok) throw new Error(gate.message);
+
   const ext = fileName.split(".").pop() || "bin";
   const path = `org/${orgId}/tasks/${taskId}/subtasks/${subtaskId}/${crypto.randomUUID()}.${ext}`;
 

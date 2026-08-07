@@ -50,6 +50,8 @@ export interface AiRequestLog {
   input_tokens?: number | null;
   output_tokens?: number | null;
   cost_usd?: number | null;
+  /** Product-level cost units (Phase 5). Defaults from function name if omitted. */
+  cost_units?: number | null;
   latency_ms?: number | null;
   status: AiRequestStatus;
   error_message?: string | null;
@@ -57,6 +59,15 @@ export interface AiRequestLog {
   entity_id?: string | null;
   metadata?: Record<string, unknown>;
 }
+
+const DEFAULT_COST_UNITS: Record<string, number> = {
+  "ai-extract": 1,
+  "ai-image-analyse": 2,
+  "ai-doc-analyse": 3,
+  "ai-doc-reanalyse": 3,
+  "compliance-clause-rewrite": 2,
+  "building-plan-process": 5,
+};
 
 /**
  * Non-blocking fire-and-forget insert into ai_requests.
@@ -67,9 +78,14 @@ export function logAiRequest(
   serviceClient: SupabaseClient,
   log: AiRequestLog
 ): void {
+  const cost_units =
+    log.cost_units ??
+    DEFAULT_COST_UNITS[log.function_name] ??
+    1;
+
   serviceClient
     .from("ai_requests")
-    .insert(log)
+    .insert({ ...log, cost_units })
     .then(({ error }: { error: { message: string } | null }) => {
       if (error) {
         console.error("[aiObservability] Failed to log ai_request:", error.message);

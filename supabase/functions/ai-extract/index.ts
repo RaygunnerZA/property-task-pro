@@ -2,6 +2,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
+import { assertAiOpsAllowed } from "../_shared/aiEntitlements.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,6 +55,19 @@ Deno.serve(async (req) => {
 
     console.log('Processing AI extraction:', { descriptionLength: description.length, orgId, aiProvider: AI_PROVIDER });
 
+    // Phase 5: if AI allowance exhausted, skip provider and use rule-based (manual path).
+    let aiAllowanceBlocked = false;
+    if (SUPABASE_SERVICE_ROLE_KEY) {
+      const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const gate = await assertAiOpsAllowed(serviceClient, orgId, "ai-extract");
+      if (!gate.allowed) {
+        aiAllowanceBlocked = true;
+        console.log("[ai-extract] allowance exhausted — rule-based fallback");
+      }
+    }
+
     // 1. Semantic AI Extraction
     let ai;
     const aiModelUsed = AI_PROVIDER === "OPENAI" ? "gpt-4o-mini" : AI_PROVIDER === "GEMINI" ? "gemini-2.0-flash" : "google/gemini-2.0-flash";
@@ -61,8 +75,13 @@ Deno.serve(async (req) => {
     let aiStatus: AiRequestStatus = "success";
     let aiErrorMessage: string | null = null;
     try {
-      ai = await withTimeout(callAI(description), 9000); // 9s timeout
-      console.log('AI extraction successful:', JSON.stringify(ai));
+      if (aiAllowanceBlocked) {
+        aiStatus = "fallback";
+        ai = ruleBased(description);
+      } else {
+        ai = await withTimeout(callAI(description), 9000); // 9s timeout
+        console.log('AI extraction successful:', JSON.stringify(ai));
+      }
     } catch (error) {
       const isTimeout = (error as Error)?.message === "Timeout";
       aiStatus = isTimeout ? "timeout" : "error";
@@ -70,7 +89,7 @@ Deno.serve(async (req) => {
       console.log('AI extraction error, falling back to rule-based:', error);
       ai = ruleBased(description);
     } finally {
-      if (SUPABASE_SERVICE_ROLE_KEY) {
+      if (SUPABASE_SERVICE_ROLE_KEY && !aiAllowanceBlocked) {
         const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
           auth: { autoRefreshToken: false, persistSession: false },
         });

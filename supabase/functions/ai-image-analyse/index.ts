@@ -5,6 +5,10 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
+import {
+  assertAiOpsAllowed,
+  aiAllowanceExhaustedResponse,
+} from "../_shared/aiEntitlements.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -519,6 +523,26 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: "Missing required field: org_id" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    {
+      const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (serviceRoleKey) {
+        const gateClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const gate = await assertAiOpsAllowed(gateClient, org_id, "ai-image-analyse");
+        if (!gate.allowed) {
+          return aiAllowanceExhaustedResponse(gate, corsHeaders, {
+            skipped: true,
+            ocr_text: "",
+            detected_labels: [],
+            detected_objects: [],
+            anomalies: [],
+            metadata: { ai_allowance_exhausted: true },
+          });
+        }
+      }
     }
 
     // Phase 3: Idempotency guard - skip if analysis already exists and overwrite is false

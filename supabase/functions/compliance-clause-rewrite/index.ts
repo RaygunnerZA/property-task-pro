@@ -8,6 +8,7 @@ import {
   logAiRequest,
   type AiRequestStatus,
 } from "../_shared/aiObservability.ts";
+import { assertAiOpsAllowed } from "../_shared/aiEntitlements.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -166,6 +167,18 @@ Deno.serve(async (req) => {
     .maybeSingle();
 
   if (!member) return jsonErr("Forbidden", 403);
+
+  const aiGate = await assertAiOpsAllowed(service, orgId, "compliance-clause-rewrite");
+  if (!aiGate.allowed) {
+    return jsonOk({
+      ok: false,
+      error: "ai_allowance_exhausted",
+      message: aiGate.message,
+      suggestion: null,
+      reasoning:
+        "AI rewrite skipped — allowance reached. Edit the clause manually or add an AI pack.",
+    });
+  }
 
   const prompt = buildPrompt(clauseText, body.critic_notes);
   const modelUsed =

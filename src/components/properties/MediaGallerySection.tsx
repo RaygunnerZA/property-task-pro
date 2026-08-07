@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { usePropertyPhotos } from "@/hooks/property/usePropertyPhotos";
 import { useFileUpload } from "@/hooks/useFileUpload";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useEvidenceQuota } from "@/hooks/useEvidenceQuota";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,7 @@ export function MediaGallerySection({
 }: MediaGallerySectionProps) {
   const { photos } = usePropertyPhotos(propertyId);
   const { orgId } = useActiveOrg();
+  const { storageUsedBytes, allowance } = useEvidenceQuota();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -33,6 +35,11 @@ export function MediaGallerySection({
     generateThumbnail: true,
     recordId: propertyId,
     table: "properties",
+    evidenceCheck: {
+      storageUsedBytes,
+      evidenceBytesAllowance: allowance,
+      enforceQuota: true,
+    },
     onSuccess: async (url, thumbnailUrl) => {
       if (propertyId) {
         try {

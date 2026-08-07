@@ -353,7 +353,11 @@ export type AnalyticsEvent =
   | 'issue_flagged'
   | 'ai_suggestion_accepted'
   | 'ai_suggestion_edited'
-  | 'ai_suggestion_rejected';
+  | 'ai_suggestion_rejected'
+  | 'quota_warned'
+  | 'quota_blocked'
+  | 'addon_checkout_started'
+  | 'upgrade_cta_clicked';
 ```
 
 **Environment variable required:**
@@ -410,6 +414,10 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 | `document_uploaded` | `src/hooks/use-file-upload.ts` | Yes |
 | `issue_flagged` | — | **No** — add when issue-creation mutation ships |
 | `ai_suggestion_accepted` / `edited` / `rejected` | `src/services/ai/resolutionAudit.ts` (`logChipResolution`) | Yes |
+| `quota_warned` | `src/lib/billing/quotaTelemetry.ts` (call from data-layer gates) | Partial |
+| `quota_blocked` | `src/lib/billing/quotaTelemetry.ts` ← `assertEvidenceUpload` | Yes (evidence) |
+| `addon_checkout_started` | `src/lib/billing/quotaTelemetry.ts` ← `useBillingActions` | Yes |
+| `upgrade_cta_clicked` | `src/lib/billing/quotaTelemetry.ts` | Helper ready |
 
 ### Privacy and FADP
 

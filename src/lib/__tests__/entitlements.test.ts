@@ -24,6 +24,21 @@ describe("mergeEntitlements", () => {
     expect(merged.active_properties_limit).toBe(1);
     expect(merged.coordinating_seats_limit).toBe(5);
     expect(merged.multi_property_enabled).toBe(false);
+    expect(merged.advanced_audit_export_enabled).toBe(false);
+  });
+
+  it("merges Business governance flags", () => {
+    const merged = mergeEntitlements({
+      api_enabled: true,
+      advanced_audit_export_enabled: true,
+      configurable_retention_enabled: true,
+      sso_enabled: true,
+    });
+    expect(merged.api_enabled).toBe(true);
+    expect(merged.advanced_audit_export_enabled).toBe(true);
+    expect(merged.configurable_retention_enabled).toBe(true);
+    expect(merged.sso_enabled).toBe(true);
+    expect(hasEntitlement(merged, "advanced_audit_export_enabled")).toBe(true);
   });
 
   it("accepts legacy max_properties alias", () => {

@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { Calendar, Cloud, Loader2 } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Calendar, Cloud, KeyRound, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConnectedAccounts, startOAuthConnect } from "@/hooks/useConnectedAccounts";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -108,10 +110,51 @@ export function ConnectedAccountsPanel({ className }: ConnectedAccountsPanelProp
   );
 }
 
+function ApiAccessPanel() {
+  const { has, loading } = useOrgEntitlements();
+  if (loading) return null;
+
+  if (!has("api_enabled")) {
+    return (
+      <section className="space-y-3 rounded-[10px] bg-card/60 px-4 py-3 shadow-e1">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-5 w-5 text-muted-foreground" />
+          <h2 className="text-base font-semibold text-foreground">API access</h2>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Organisation API keys require the <span className="font-mono text-xs">api_enabled</span>{" "}
+          entitlement (Business). Connected Google/Microsoft accounts above remain available
+          without it.
+        </p>
+        <Button type="button" size="sm" variant="secondary" asChild>
+          <Link to="/settings/billing">Explore Business</Link>
+        </Button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3 rounded-[10px] bg-card/60 px-4 py-3 shadow-e1">
+      <div className="flex items-center gap-2">
+        <KeyRound className="h-5 w-5 text-primary" />
+        <h2 className="text-base font-semibold text-foreground">API access</h2>
+      </div>
+      <p className="text-sm text-muted-foreground">
+        Mint and revoke API keys from Settings → Billing → Governance. Public REST surface
+        ships later; keys are ready for integration pilots.
+      </p>
+      <Button type="button" size="sm" variant="secondary" asChild>
+        <Link to="/settings/billing">Manage API keys</Link>
+      </Button>
+    </section>
+  );
+}
+
 export default function SettingsIntegrations() {
   return (
     <div className="space-y-6">
       <ConnectedAccountsPanel />
+      <ApiAccessPanel />
     </div>
   );
 }

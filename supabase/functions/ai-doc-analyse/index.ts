@@ -4,6 +4,10 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
+import {
+  assertAiOpsAllowed,
+  aiAllowanceExhaustedResponse,
+} from "../_shared/aiEntitlements.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -411,11 +415,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (serviceRoleKeyForLog) {
+      const gateClient = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        serviceRoleKeyForLog,
+        { auth: { autoRefreshToken: false, persistSession: false } }
+      );
+      const gate = await assertAiOpsAllowed(gateClient, org_id, "ai-doc-analyse");
+      if (!gate.allowed) {
+        return aiAllowanceExhaustedResponse(gate, corsHeaders, {
+          // Upload already succeeded on client — analysis skipped only.
+          skipped: true,
+        });
+      }
+    }
+
     let result: ResponseBody;
 
     const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
     const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
-    const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
     let aiModelUsed = "gemini-2.0-flash";
     let aiProviderUsed = "GEMINI";

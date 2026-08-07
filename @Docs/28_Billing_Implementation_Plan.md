@@ -133,6 +133,8 @@ Implement four access models and scoped property access.
 
 ## Phase 3 — Plans, property limits and seats
 
+**Status (2026-08-07):** Shipped foundation — grace/expansion-lock billing state, seat add-ons in entitlements, Stripe Checkout + Customer Portal + idempotent webhook edge functions, Settings Billing plan comparison / recovery / downgrade property picker, invite+property expansion gates. Requires Stripe price secrets + webhook endpoint before live checkout. Seat add-on purchase and proration still go through Stripe Customer Portal when a subscription already exists.
+
 ### Objectives
 
 Launch commercial packaging without variable-cost overages.
@@ -166,6 +168,8 @@ Launch commercial packaging without variable-cost overages.
 
 ## Phase 4 — Evidence controls
 
+**Status (2026-08-07):** Shipped core controls — real `storage_used_bytes` meter (`file_size` + intake), `assert_evidence_upload_allowed`, client gates on task/intake/compliance/gallery/checklist uploads, type/size/video/executable denylist, per-property usage breakdown, 10 GiB storage packs via Stripe (`STRIPE_PRICE_STORAGE_PACK`), Settings evidence card. Existing files never revoked on overage. Still open: full antivirus scanner, CDN delivered-bytes metering, cold-archive lifecycle for old originals.
+
 ### Objectives
 
 Control the largest probable data-cost risk.
@@ -193,6 +197,8 @@ Control the largest probable data-cost risk.
 ---
 
 ## Phase 5 — AI and premium messaging controls
+
+**Status (2026-08-07):** Shipped core controls — product cost units on `ai_requests`, `assert_ai_ops_allowed`, edge gates on extract/doc/image/clause-rewrite (fallback to manual/rule-based; never blocks uploads or task completion), `premium_messaging_allowance` + `messaging_usage_events` foundation, Settings AI card, Stripe `STRIPE_PRICE_AI_PACK` / `STRIPE_PRICE_MESSAGING_PACK`. Outbound SMS/WhatsApp send provider still greenfield.
 
 ### Objectives
 
@@ -222,6 +228,8 @@ Prevent unpredictable third-party usage costs.
 
 ## Phase 6 — Business governance
 
+**Status (2026-08-07):** Shipped foundation — governance entitlement keys on Business (`approval_workflows_enabled`, `advanced_audit_export_enabled`, `configurable_retention_enabled`, `teams_regions_enabled`, `sso_enabled`), `org_entitlement_overrides` merged in `get_org_entitlements`, retention settings + API key stub RPCs, Settings Governance card, audit export / API gates. Still open: approval workflow engine, SSO/SCIM IdP, regional org hierarchy, hard-delete lifecycle jobs.
+
 ### Objectives
 
 Defensible Business upgrade based on governance, not only higher limits.
@@ -247,6 +255,8 @@ Defensible Business upgrade based on governance, not only higher limits.
 ---
 
 ## Phase 7 — Optimization
+
+**Status (2026-08-07):** Shipped foundation — `admin_billing_utilization_snapshot` + Admin Utilization CSV, client `packagingConfig` mirror of tier numbers, quota frustration telemetry (`quota_warned` / `quota_blocked` / `addon_checkout_started`), soft-warn vs enforce matrix documented. Full contribution-margin dashboards and package number changes remain analysis-driven follow-ups.
 
 ### Objectives
 
@@ -380,5 +390,24 @@ Boolean / numeric keys stored on `subscription_tiers.entitlements` (JSONB):
 * `compliance_enabled` (boolean)
 * `advanced_reports_enabled` (boolean)
 * `api_enabled` (boolean)
-* `evidence_bytes_allowance` (number, observe)
-* `ai_ops_allowance` (number, observe)
+* `evidence_bytes_allowance` (number)
+* `ai_ops_allowance` (number)
+* `premium_messaging_allowance` (number)
+* `approval_workflows_enabled` (boolean) — Business; engine roadmap
+* `advanced_audit_export_enabled` (boolean) — Business
+* `configurable_retention_enabled` (boolean) — Business
+* `teams_regions_enabled` (boolean) — Business; regional hierarchy roadmap
+* `sso_enabled` (boolean) — Business; IdP roadmap
+
+### Soft-warn vs enforce matrix (Phase 7)
+
+| Meter | Mode |
+|---|---|
+| Active properties | Enforce (+ expansion lock) |
+| Coordinating seats | Enforce on invite |
+| Staff monthly-active | Observe (headcount in Settings) |
+| Evidence bytes | Enforce new uploads; soft-warn ≥85%; never revoke existing reads |
+| AI ops | Enforce AI path; manual work continues; soft-warn ≥85% |
+| Premium messaging | Foundation assert; send provider greenfield |
+
+Packaging numbers: DB `subscription_tiers.entitlements` is source of truth; client mirror `src/lib/billing/packagingConfig.ts`.

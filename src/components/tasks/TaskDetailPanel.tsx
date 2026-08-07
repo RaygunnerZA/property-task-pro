@@ -583,10 +583,18 @@ export function TaskDetailPanel({
   const handleThemesChange = async (themeIds: string[]) => {
     setSelectedThemeIds(themeIds);
     try {
-      await supabase.from("task_themes").delete().eq("task_id", taskId);
-      const realIds = themeIds.filter(id => !id.startsWith("ghost-"));
+      const { error: deleteError } = await supabase
+        .from("task_themes")
+        .delete()
+        .eq("task_id", taskId);
+      if (deleteError) throw deleteError;
+
+      const realIds = themeIds.filter((id) => !id.startsWith("ghost-"));
       if (realIds.length > 0) {
-        await supabase.from("task_themes").insert(realIds.map(id => ({ task_id: taskId, theme_id: id })));
+        const { error: insertError } = await supabase
+          .from("task_themes")
+          .insert(realIds.map((id) => ({ task_id: taskId, theme_id: id })));
+        if (insertError) throw insertError;
       }
       queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -799,8 +807,8 @@ export function TaskDetailPanel({
       }
       const fromTask = taskCategories.find((c: { id: string }) => c.id === themeId);
       const fromOrg = orgCategories.find((c) => c.id === themeId);
-      const label = fromTask?.name || fromOrg?.name;
-      if (!label) return;
+      // Never drop the chip when the id is selected — name may lag a tick after Create Tag.
+      const label = fromTask?.name || fromOrg?.name || "Tag";
       chips.push({
         id: `category-${themeId}`,
         slot: "category",

@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from "react";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
 import { supabase } from "@/integrations/supabase/client";
+import { assertEvidenceUpload } from "@/lib/evidence/assertUpload";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -52,6 +54,7 @@ export function DocumentUploadDialog({
   };
   const [isSaving, setIsSaving] = useState(false);
   const { orgId } = useActiveOrg();
+  const { entitlements, usage } = useOrgEntitlements();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
@@ -93,6 +96,18 @@ export function DocumentUploadDialog({
     setIsSaving(true);
 
     try {
+      const gate = await assertEvidenceUpload(supabase, {
+        orgId,
+        file: selectedFile,
+        storageUsedBytes: usage?.storage_used_bytes ?? 0,
+        evidenceBytesAllowance: entitlements.evidence_bytes_allowance,
+      });
+      if (!gate.ok) {
+        toast.error(gate.message);
+        setIsSaving(false);
+        return;
+      }
+
       // Upload file to Supabase Storage
       const fileExt = selectedFile.name.split(".").pop();
       const fileName = `${orgId}/${Date.now()}.${fileExt}`;

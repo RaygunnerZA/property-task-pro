@@ -40,14 +40,14 @@ export function TaskCardMediaZone({
 
   const verticalIllustrationZoneClass =
     variant === "vertical" &&
-    cn("flex items-center justify-center bg-background", VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS);
+    cn("flex items-center justify-center bg-transparent", VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS);
 
   if (!imageUrl) {
     return (
       <div className={cn(baseZoneClass, verticalIllustrationZoneClass, className)}>
         <div
           className={cn(
-            "absolute inset-0 bg-background flex items-center justify-center",
+            "absolute inset-0 bg-transparent flex items-center justify-center",
             placeholderClassName
           )}
         >
@@ -67,7 +67,7 @@ export function TaskCardMediaZone({
     <div
       className={cn(
         baseZoneClass,
-        isIllustration && "flex items-center justify-center bg-background",
+        isIllustration && "flex items-center justify-center bg-transparent",
         isIllustration &&
           variant === "horizontal" &&
           HORIZONTAL_ILLUSTRATION_INSET_SHADOW_CLASS,
@@ -87,7 +87,7 @@ export function TaskCardMediaZone({
           (e.target as HTMLImageElement).style.display = "none";
           const parent = (e.target as HTMLImageElement).parentElement;
           if (parent && !isIllustration) {
-            parent.classList.add("bg-background");
+            parent.classList.add("bg-transparent");
           }
         }}
       />

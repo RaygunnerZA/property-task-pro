@@ -37,6 +37,7 @@ import { toast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useOrgEntitlements } from "@/hooks/useOrgEntitlements";
+import { useOrgBillingStatus } from "@/hooks/useOrgBillingStatus";
 import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useTeams } from "@/hooks/useTeams";
@@ -44,6 +45,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { EXTERNAL_ORG_ROLES, INTERNAL_ORG_ROLES } from "@/lib/orgRoles";
 import { edgeFunctionErrorMessage } from "@/lib/edgeFunctionErrors";
 import { isCoordinatingRole, isStaffRole } from "@/lib/permissions/normalizeOrgRole";
+import { isExpansionLocked } from "@/lib/billing/billingState";
+import { Link } from "react-router-dom";
 
 type UserType = "internal" | "external";
 
@@ -88,9 +91,11 @@ export function InviteUserForm({
   const { orgId } = useActiveOrg();
   const { members, refresh: refreshMembers } = useOrgMembers();
   const { entitlements, planLabel } = useOrgEntitlements();
+  const { billing } = useOrgBillingStatus();
   const { canInviteManagers, canInviteStaff } = useEffectiveAccess();
   const { data: properties = [] } = usePropertiesQuery();
   const { teams } = useTeams();
+  const expansionLocked = isExpansionLocked(billing);
 
   // --- Form state ---
   const [userType, setUserType] = useState<UserType>("internal");
@@ -250,9 +255,22 @@ export function InviteUserForm({
   const handleSubmit = async () => {
     if (!canSubmit) return;
 
+    if (expansionLocked && (isStaffRole(role) || isCoordinatingRole(role))) {
+      toast.error("Invites paused", {
+        description:
+          "Billing expansion is locked. Restore payment in Settings → Billing to invite more people. Existing work continues.",
+      });
+      return;
+    }
     if (isStaffRole(role) && !entitlements.can_add_staff) {
       toast.error("Upgrade required", {
-        description: `${planLabel} does not include Staff collaboration. Upgrade to Home Plus to invite helpers.`,
+        description: `${planLabel} does not include Staff collaboration. Upgrade to Home Plus in Billing.`,
+        action: {
+          label: "Billing",
+          onClick: () => {
+            window.location.assign("/settings/billing");
+          },
+        },
       });
       return;
     }
@@ -260,7 +278,13 @@ export function InviteUserForm({
       const coordinatingUsed = members.filter((m) => isCoordinatingRole(m.role)).length;
       if (coordinatingUsed >= entitlements.coordinating_seats_limit) {
         toast.error("Coordinating seat limit reached", {
-          description: `Your plan allows ${entitlements.coordinating_seats_limit} Owner/Manager seat(s). Upgrade to invite another.`,
+          description: `Your plan allows ${entitlements.coordinating_seats_limit} Owner/Manager seat(s). Upgrade or add seats in Billing.`,
+          action: {
+            label: "Billing",
+            onClick: () => {
+              window.location.assign("/settings/billing");
+            },
+          },
         });
         return;
       }
@@ -622,9 +646,22 @@ export function InviteUserForm({
                 ))}
               </SelectContent>
             </Select>
+            {expansionLocked && (
+              <p className="text-xs text-destructive leading-relaxed">
+                Invites are paused while billing expansion is locked.{" "}
+                <Link to="/settings/billing" className="underline text-primary">
+                  Restore payment
+                </Link>
+                .
+              </p>
+            )}
             {!entitlements.can_add_staff && (isStaffRole(role) || userType === "external") && (
               <p className="text-xs text-warning-foreground leading-relaxed">
-                {planLabel} does not include Staff collaboration. Upgrade to Home Plus to invite helpers.
+                {planLabel} does not include Staff collaboration.{" "}
+                <Link to="/settings/billing" className="underline text-primary">
+                  Upgrade to Home Plus
+                </Link>{" "}
+                to invite helpers.
               </p>
             )}
             {showOwnerWarning && role === "owner" && (

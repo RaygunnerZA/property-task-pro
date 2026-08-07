@@ -59,4 +59,21 @@ describe("resolveEffectiveAccess", () => {
     expect(access.role).toBe("staff");
     expect(access.canCreateTask).toBe(false);
   });
+
+  it("blocks expansion when billing expansion is locked", () => {
+    const access = resolveEffectiveAccess({
+      role: "owner",
+      isPrimaryOwner: true,
+      entitlements: mergeEntitlements({
+        can_add_staff: true,
+        multi_property_enabled: true,
+        active_properties_limit: 5,
+      }),
+      expansionAllowed: false,
+    });
+    expect(access.canAddProperty).toBe(false);
+    expect(access.canInviteStaff).toBe(false);
+    expect(access.canManageBilling).toBe(true);
+    expect(access.canCreateTask).toBe(true);
+  });
 });

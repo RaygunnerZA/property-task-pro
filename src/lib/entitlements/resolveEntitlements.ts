@@ -61,6 +61,27 @@ export function mergeEntitlements(raw: unknown): OrgEntitlements {
       base.evidence_bytes_allowance
     ),
     ai_ops_allowance: asNumber(o.ai_ops_allowance, base.ai_ops_allowance),
+    premium_messaging_allowance: asNumber(
+      o.premium_messaging_allowance,
+      base.premium_messaging_allowance
+    ),
+    approval_workflows_enabled: asBoolean(
+      o.approval_workflows_enabled,
+      base.approval_workflows_enabled
+    ),
+    advanced_audit_export_enabled: asBoolean(
+      o.advanced_audit_export_enabled,
+      base.advanced_audit_export_enabled
+    ),
+    configurable_retention_enabled: asBoolean(
+      o.configurable_retention_enabled,
+      base.configurable_retention_enabled
+    ),
+    teams_regions_enabled: asBoolean(
+      o.teams_regions_enabled,
+      base.teams_regions_enabled
+    ),
+    sso_enabled: asBoolean(o.sso_enabled, base.sso_enabled),
   };
 }
 

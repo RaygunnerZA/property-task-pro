@@ -3653,8 +3653,8 @@ export function IntakeModal({
             "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-card px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             intakeMode === m
               ? m === "report_issue"
-                ? "bg-primary text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
-                : "bg-[hsl(16_82%_56%)] text-white shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
+                ? "bg-primary text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                : "bg-[hsl(16_82%_56%)] text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
               : "text-muted-foreground hover:text-foreground"
           )}
         >
@@ -3741,10 +3741,10 @@ export function IntakeModal({
         .select("id")
         .single();
       if (error) throw error;
+      await refreshCategories();
       if (data?.id) {
         setSelectedThemeIds((prev) => (prev.includes(data.id) ? prev : [...prev, data.id]));
       }
-      await refreshCategories();
       setTagCreateOpen(false);
       setTagCreateName("");
       setIntakeTagQuery("");

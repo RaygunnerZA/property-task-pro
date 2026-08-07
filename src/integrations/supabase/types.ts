@@ -1933,39 +1933,60 @@ export type Database = {
       }
       org_subscriptions: {
         Row: {
+          billing_state: string
           cancel_at_period_end: boolean
           created_at: string
           current_period_end: string | null
+          current_period_start: string | null
+          grace_ends_at: string | null
+          last_payment_failed_at: string | null
           org_id: string
           plan_id: string | null
           seat_count: number | null
           status: string
+          storage_addon_bytes: number
+          ai_addon_ops: number
+          messaging_addon_units: number
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
           updated_at: string
           usage_limits: Json | null
         }
         Insert: {
+          billing_state?: string
           cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
+          grace_ends_at?: string | null
+          last_payment_failed_at?: string | null
           org_id: string
           plan_id?: string | null
           seat_count?: number | null
           status: string
+          storage_addon_bytes?: number
+          ai_addon_ops?: number
+          messaging_addon_units?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
           usage_limits?: Json | null
         }
         Update: {
+          billing_state?: string
           cancel_at_period_end?: boolean
           created_at?: string
           current_period_end?: string | null
+          current_period_start?: string | null
+          grace_ends_at?: string | null
+          last_payment_failed_at?: string | null
           org_id?: string
           plan_id?: string | null
           seat_count?: number | null
           status?: string
+          storage_addon_bytes?: number
+          ai_addon_ops?: number
+          messaging_addon_units?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
           updated_at?: string
@@ -3732,6 +3753,94 @@ export type Database = {
         Returns: Json
       }
       get_org_entitlements: { Args: { p_org_id: string }; Returns: Json }
+      get_org_billing_status: { Args: { p_org_id: string }; Returns: Json }
+      set_org_entitlement_override: {
+        Args: {
+          p_org_id: string
+          p_entitlement_key: string
+          p_value: Json
+          p_reason: string
+          p_effective_until?: string | null
+        }
+        Returns: string
+      }
+      revoke_org_entitlement_override: {
+        Args: { p_override_id: string }
+        Returns: undefined
+      }
+      upsert_org_retention_settings: {
+        Args: {
+          p_org_id: string
+          p_policy: string
+          p_retention_days: number
+          p_legal_hold?: boolean
+        }
+        Returns: Json
+      }
+      create_org_api_key: {
+        Args: { p_org_id: string; p_name: string }
+        Returns: Json
+      }
+      revoke_org_api_key: { Args: { p_key_id: string }; Returns: undefined }
+      export_org_audit_logs: {
+        Args: { p_org_id: string; p_days?: number }
+        Returns: Json
+      }
+      admin_billing_utilization_snapshot: { Args: never; Returns: Json }
+      assert_evidence_upload_allowed: {
+        Args: {
+          p_org_id: string
+          p_file_size: number
+          p_mime_type?: string | null
+        }
+        Returns: Json
+      }
+      assert_ai_ops_allowed: {
+        Args: {
+          p_org_id: string
+          p_function_name: string
+          p_cost_units?: number
+        }
+        Returns: Json
+      }
+      assert_premium_messaging_allowed: {
+        Args: { p_org_id: string; p_units?: number }
+        Returns: Json
+      }
+      record_messaging_usage: {
+        Args: {
+          p_org_id: string
+          p_channel: string
+          p_units?: number
+          p_metadata?: Json
+        }
+        Returns: string
+      }
+      org_expansion_allowed: { Args: { p_org_id: string }; Returns: boolean }
+      select_active_properties_for_limit: {
+        Args: { p_org_id: string; p_keep_property_ids: string[] }
+        Returns: number
+      }
+      upsert_org_subscription_from_billing: {
+        Args: {
+          p_org_id: string
+          p_plan_id: string
+          p_status: string
+          p_billing_state: string
+          p_stripe_customer_id?: string
+          p_stripe_subscription_id?: string
+          p_seat_count?: number
+          p_cancel_at_period_end?: boolean
+          p_current_period_start?: string
+          p_current_period_end?: string
+          p_grace_ends_at?: string
+          p_last_payment_failed_at?: string
+          p_storage_addon_bytes?: number
+          p_ai_addon_ops?: number
+          p_messaging_addon_units?: number
+        }
+        Returns: Json
+      }
       home_entitlement_defaults: { Args: never; Returns: Json }
       transfer_primary_ownership: {
         Args: { p_org_id: string; p_new_primary_user_id: string }
