@@ -39,7 +39,7 @@ const TASKS_LIST_TABS: {
     label: "All",
     subtitle:
       "Every task in scope —\nincluding completed work and work assigned to others.",
-    illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
+    illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.allTasks,
   },
   {
     id: "urgent",
@@ -58,7 +58,8 @@ const TASKS_LIST_TABS: {
 const MESSAGES_TAB_META = {
   id: "messages" as const,
   subtitle: "Open tasks with unread messages.",
-  illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview,
+  /** Former “All” header art — speech / conversation cue for the messages tab. */
+  illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
 };
 
 const TERMINAL_TASK_STATUSES = new Set(["completed", "archived", "done"]);
@@ -248,7 +249,14 @@ export function TasksWorkbenchPanel({
           CentreWorkbench owns the 55px space above this title.
         */}
         <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
-          <div className="min-w-0 flex-1 pr-[min(5.5rem,24%)] md:pr-[min(6.5rem,28%)]">
+          <div
+            className={cn(
+              "min-w-0 flex-1",
+              listTab === "all"
+                ? "pr-[min(6.6rem,28%)] md:pr-[min(7.8rem,33%)]"
+                : "pr-[min(5.5rem,24%)] md:pr-[min(6.5rem,28%)]"
+            )}
+          >
             <div
               role="tablist"
               aria-label="Task lists"
@@ -349,7 +357,13 @@ export function TasksWorkbenchPanel({
           </div>
 
           <div
-            className="pointer-events-none absolute right-2 top-0 flex aspect-square w-[min(5.25rem,22%)] max-h-[5.25rem] items-start justify-end md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
+            className={cn(
+              "pointer-events-none absolute right-2 top-0 flex aspect-square items-start justify-end",
+              // All-tasks art: +20% vs other tab illustrations (grows upward from the header).
+              listTab === "all"
+                ? "mt-[-6px] w-[min(6.3rem,26%)] max-h-[6.3rem] md:w-[min(7.5rem,31%)] md:max-h-[7.5rem]"
+                : "w-[min(5.25rem,22%)] max-h-[5.25rem] md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
+            )}
             aria-hidden
           >
             <img

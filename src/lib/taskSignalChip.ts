@@ -6,12 +6,13 @@ import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
  * Precedence (highest first):
  * 1. EXPIRED — validity / compliance past end (when caller supplies `expired`)
  * 2. OVERDUE — due date before today
- * 3. URGENT — priority flag (wins over due-soon; loses to overdue)
- * 4. DUE SOON — due within 7 days
+ * 3. URGENT — priority flag (wins over high / due-soon; loses to overdue)
+ * 4. HIGH — priority flag (amber; loses to urgent / overdue)
+ * 5. DUE SOON — due within 7 days
  *
  * One chip only: schedule breach beats priority; priority beats soft due-soon.
  */
-export type TaskSignalChipKind = "expired" | "overdue" | "urgent" | "due_soon";
+export type TaskSignalChipKind = "expired" | "overdue" | "urgent" | "high" | "due_soon";
 
 export type TaskSignalChipTone = "coral" | "amber";
 
@@ -42,9 +43,12 @@ export function resolveTaskSignalChip(input: {
     return { kind: "overdue", label: "OVERDUE", tone: "coral" };
   }
 
-  const urgent = (input.priority ?? "").toLowerCase() === "urgent";
-  if (urgent) {
+  const priority = (input.priority ?? "").toLowerCase();
+  if (priority === "urgent") {
     return { kind: "urgent", label: "URGENT", tone: "coral" };
+  }
+  if (priority === "high") {
+    return { kind: "high", label: "HIGH", tone: "amber" };
   }
 
   if (due === "due_soon") {

@@ -570,7 +570,7 @@ function TaskCardComponent({
   );
 
   /**
-   * Merged signal chip (EXPIRED → OVERDUE → URGENT → DUE SOON) — top-right,
+   * Merged signal chip (EXPIRED → OVERDUE → URGENT → HIGH → DUE SOON) — top-right,
    * same 22px height as status mark. One chip only.
    * Kept as `dueUrgencyChip` so HMR/call sites stay stable after the merge.
    */

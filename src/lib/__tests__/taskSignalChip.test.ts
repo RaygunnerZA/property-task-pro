@@ -61,10 +61,34 @@ describe("resolveTaskSignalChip", () => {
     expect(
       resolveTaskSignalChip({
         due_date: "2026-05-28",
-        priority: "high",
+        priority: "medium",
         status: "open",
       })
     ).toMatchObject({ kind: "due_soon", label: "DUE SOON", tone: "amber" });
+  });
+
+  it("shows HIGH (amber) over DUE SOON", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T12:00:00"));
+    expect(
+      resolveTaskSignalChip({
+        due_date: "2026-05-28",
+        priority: "high",
+        status: "open",
+      })
+    ).toMatchObject({ kind: "high", label: "HIGH", tone: "amber" });
+  });
+
+  it("shows HIGH with no due date", () => {
+    expect(
+      resolveTaskSignalChip({ priority: "high", status: "open" })
+    ).toMatchObject({ kind: "high", label: "HIGH", tone: "amber" });
+  });
+
+  it("prefers URGENT over HIGH", () => {
+    expect(
+      resolveTaskSignalChip({ priority: "urgent", status: "open" })
+    ).toMatchObject({ kind: "urgent", label: "URGENT", tone: "coral" });
   });
 
   it("shows URGENT with no due date", () => {

@@ -121,7 +121,9 @@ function MetaChipRow({
               ? "Overdue"
               : signalChip.kind === "urgent"
                 ? "Urgent"
-                : "Expired"}
+                : signalChip.kind === "high"
+                  ? "High"
+                  : "Expired"}
         </span>
       ) : null}
       {(tagLabels ?? []).map((tag) => (
