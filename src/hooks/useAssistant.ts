@@ -16,6 +16,11 @@ import { useActiveOrg } from "./useActiveOrg";
 import { useDevMode } from "@/context/useDevMode";
 import { supabase } from "@/integrations/supabase/client";
 import { track } from "@/lib/analytics";
+import {
+  trackKnowledgeQuestionAnswered,
+  trackKnowledgeReused,
+  trackKnowledgeTimeSaved,
+} from "@/lib/knowledge/knowledgeTelemetry";
 import type { AssistantMessage, ProposedAction } from "@/components/assistant/AssistantPanel";
 
 type AssistantExecutorType = "create_task" | "link_compliance";
@@ -126,6 +131,24 @@ export function useAssistant() {
           ...prev,
           { role: "assistant", content: reasonerData.answer ?? "No response." },
         ]);
+
+        const sources = Array.isArray(reasonerData.sources)
+          ? (reasonerData.sources as string[])
+          : [];
+        if (
+          sources.includes("knowledge") &&
+          orgId &&
+          Number(reasonerData.knowledge_cited_count ?? 0) > 0
+        ) {
+          const cited = Number(reasonerData.knowledge_cited_count);
+          trackKnowledgeQuestionAnswered({ org_id: orgId, cited_count: cited });
+          trackKnowledgeReused({ org_id: orgId, via: "assistant" });
+          trackKnowledgeTimeSaved({
+            org_id: orgId,
+            estimated_minutes: 5,
+            via: "assistant_question_answered",
+          });
+        }
 
         if (reasonerData.proposed_action) {
           setProposedAction(reasonerData.proposed_action as ProposedAction);

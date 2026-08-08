@@ -17,15 +17,15 @@ const corsHeaders = {
 };
 
 const intentToCalls: Record<string, string[]> = {
-  summarise: ["tasks", "compliance", "assets"],
-  query: ["tasks", "graph"],
+  summarise: ["tasks", "compliance", "assets", "knowledge"],
+  query: ["tasks", "graph", "knowledge"],
   risk: ["graph-insight", "compliance"],
-  recommend: ["compliance"],
+  recommend: ["compliance", "knowledge"],
   predictive: ["filla-brain-infer"],
   graph: ["graph"],
   create_task: [],
   link: [],
-  unknown: ["tasks", "compliance", "assets"],
+  unknown: ["tasks", "compliance", "assets", "knowledge"],
 };
 
 type Intent =
@@ -128,6 +128,10 @@ function classifyIntent(query: string): Intent {
     { re: /\bgraph\b|\bconnected\b|\bshow\s+me\s+(everything\s+)?(connected|linked)\b|\bconnections\b/i, intent: "graph" },
     { re: /\brecommend\b|\bwhat\s+should\b|\bsuggest\b|\badvice\b/i, intent: "recommend" },
     { re: /\bpredictive\b|\bfail\s+soon\b|\bmight\s+fail\b|\bwhat\s+might\s+fail\b/i, intent: "predictive" },
+    {
+      re: /\bhow\s+(often|do|should|to)\b|\bregulation\b|\bpolicy\b|\bguidance\b|\bbest\s+practice\b|\bplaybook\b|\bmanual\b/i,
+      intent: "recommend",
+    },
     { re: /\bquery\b|\bwhat\b|\bwhere\b|\bwhich\b|\bhow\s+many\b/i, intent: "query" },
   ];
 
@@ -268,6 +272,7 @@ Deno.serve(async (req) => {
 
   let answer = "";
   const sources: string[] = [];
+  let knowledgeCitedCount = 0;
   const proposedAction: { type: string; payload: Record<string, unknown> } | null = null;
   const calls = intentToCalls[intent] ?? intentToCalls.unknown;
   const queryLower = query.toLowerCase();
@@ -515,6 +520,70 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Published Knowledge (platform + org) — never candidates
+  if (calls.includes("knowledge")) {
+    try {
+      const { data: knowledgeRows } = await supabase.rpc("list_published_knowledge", {
+        p_org_id: orgId,
+        p_query: query.slice(0, 120),
+      });
+      const rows = (knowledgeRows ?? []) as Array<{
+        id: string;
+        title: string;
+        summary: string | null;
+        scope: string;
+        source_kind: string;
+      }>;
+      if (rows.length > 0) {
+        sources.push("knowledge");
+        const sample = rows.slice(0, 4).map((k) => {
+          const bit = k.summary ? `: ${k.summary}` : "";
+          return `- ${k.title}${bit} (${k.scope}/${k.source_kind}) [knowledge:${k.id}]`;
+        });
+        answer += `Verified knowledge:\n${sample.join("\n")}\n`;
+        // Metrics: question answered + reuse per cited knowledge (org that asked benefits)
+        try {
+          await supabase.rpc("record_knowledge_usage", {
+            p_event_type: "question_answered",
+            p_org_id: orgId,
+            p_knowledge_id: rows[0]?.id ?? null,
+            p_estimated_minutes: null,
+            p_actor_id: null,
+            p_metadata: {
+              source: "assistant-reasoner",
+              cited_count: rows.length,
+              knowledge_ids: rows.slice(0, 8).map((k) => k.id),
+            },
+          });
+          for (const k of rows.slice(0, 4)) {
+            // Count reuse; minutes already attributed on question_answered
+            await supabase.rpc("record_knowledge_usage", {
+              p_event_type: "reused",
+              p_org_id: orgId,
+              p_knowledge_id: k.id,
+              p_estimated_minutes: 0,
+              p_actor_id: null,
+              p_metadata: { source: "assistant-reasoner" },
+            });
+          }
+        } catch (metricErr) {
+          console.error("[assistant-reasoner] knowledge metrics failed:", metricErr);
+        }
+        knowledgeCitedCount = rows.length;
+      } else if (
+        /\bhow\s+(often|do|should|to)\b|\bregulation\b|\bpolicy\b|\bguidance\b|\bbest\s+practice\b/i.test(
+          queryLower
+        )
+      ) {
+        sources.push("knowledge");
+        answer +=
+          "No published knowledge matched that yet. Ask an Owner/Manager to review Knowledge candidates, or check Compliance for this property's records.\n";
+      }
+    } catch (err) {
+      console.error("[assistant-reasoner] knowledge query failed:", err);
+    }
+  }
+
   // Filla Brain predictive inference
   if (calls.includes("filla-brain-infer")) {
     try {
@@ -564,6 +633,7 @@ Deno.serve(async (req) => {
     ok: true,
     answer: answer.trim(),
     sources,
+    knowledge_cited_count: knowledgeCitedCount,
     proposed_action: proposedAction,
   });
 });

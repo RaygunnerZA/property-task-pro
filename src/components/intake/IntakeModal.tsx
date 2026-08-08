@@ -1099,6 +1099,8 @@ export function IntakeModal({
   );
 
   const hasUpload = images.length > 0 || taskFiles.length > 0;
+  /** Cancel only after the user has started composing (description or upload). */
+  const showCancelAction = Boolean(description.trim()) || hasUpload;
 
   const canSubmitPrimary = useMemo(() => {
     if (!orgId || isSubmitting) return false;
@@ -4301,12 +4303,28 @@ export function IntakeModal({
         aria-hidden={variant === "column" && headless && collapseComposer}
       >
         <div className="flex gap-2">
-          <Button variant="outline" className="flex-1 border-0 btn-neomorphic" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancel
-          </Button>
+          <div
+            className={cn(
+              "min-w-0 overflow-hidden transition-[flex-grow,flex-basis,opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              showCancelAction
+                ? "max-w-[50%] flex-1 opacity-100"
+                : "pointer-events-none max-w-0 flex-[0_0_0%] opacity-0"
+            )}
+            aria-hidden={!showCancelAction}
+          >
+            <Button
+              variant="outline"
+              className="w-full min-w-[7.5rem] border-0 btn-neomorphic"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting || !showCancelAction}
+              tabIndex={showCancelAction ? undefined : -1}
+            >
+              Cancel
+            </Button>
+          </div>
           <Button
             className={cn(
-              "flex-1 border-0",
+              "min-w-0 flex-1 border-0",
               primaryIsDocument && "shadow-primary-btn",
               primaryIsCompliance && intakeFooterSubmitAddRecordClassName,
               !primaryIsDocument && !primaryIsCompliance && intakeFooterSubmitReportIssueClassName
@@ -4319,13 +4337,25 @@ export function IntakeModal({
         </div>
         {!fromIntakeReview && (
         <div className="flex flex-col gap-1.5 text-center">
-          <button
-            type="button"
-            onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
-            className="w-full pt-1.5 flex justify-end items-start text-xs text-muted-foreground hover:text-foreground underline"
+          <div
+            className={cn(
+              "overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
+              showCancelAction
+                ? "max-h-10 opacity-100"
+                : "pointer-events-none max-h-0 opacity-0"
+            )}
+            aria-hidden={!showCancelAction}
           >
-            {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Create Task"}
-          </button>
+            <button
+              type="button"
+              onClick={() => trySetIntakeMode(intakeMode === "report_issue" ? "add_record" : "report_issue")}
+              disabled={!showCancelAction}
+              tabIndex={showCancelAction ? undefined : -1}
+              className="w-full pt-1.5 flex justify-end items-start text-xs text-muted-foreground hover:text-foreground underline"
+            >
+              {intakeMode === "report_issue" ? "Switch to Add Record" : "Switch to Create Task"}
+            </button>
+          </div>
           {userChoseWorkflow !== null && (
             <button
               type="button"

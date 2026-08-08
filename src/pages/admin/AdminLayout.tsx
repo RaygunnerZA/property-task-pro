@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
 import { useNavigate, NavLink, Outlet } from "react-router-dom";
-import { Building2, Shield, BarChart3 } from "lucide-react";
+import { Building2, Shield, BarChart3, BookOpen } from "lucide-react";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -65,6 +65,18 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
             >
               <BarChart3 className="w-4 h-4" />
               Utilization
+            </NavLink>
+            <NavLink
+              to="/admin/knowledge"
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-1.5 text-sm font-medium transition-colors",
+                  isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )
+              }
+            >
+              <BookOpen className="w-4 h-4" />
+              Knowledge
             </NavLink>
           </nav>
         </div>

@@ -21,6 +21,7 @@ const ALLOWED_TRACK_INVOKER_PATHS = new Set([
   "src/hooks/useMarkComplianceComplete.ts",
   "src/services/ai/resolutionAudit.ts",
   "src/lib/billing/quotaTelemetry.ts",
+  "src/lib/knowledge/knowledgeTelemetry.ts",
 ]);
 
 function* walkSourceFiles(dir: string): Generator<string> {

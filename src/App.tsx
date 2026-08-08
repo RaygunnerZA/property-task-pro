@@ -135,6 +135,7 @@ const AdminOrgList        = lazy(() => import("./pages/admin/AdminOrgList"));
 const AdminOrgDetail      = lazy(() => import("./pages/admin/AdminOrgDetail"));
 const AdminOrgAiRequests  = lazy(() => import("./pages/admin/AdminOrgAiRequests"));
 const AdminBillingUtilization = lazy(() => import("./pages/admin/AdminBillingUtilization"));
+const AdminKnowledgeQueue = lazy(() => import("./pages/admin/AdminKnowledgeQueue"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -323,6 +324,7 @@ const App = () => {
                         <Route path="orgs/:orgId" element={<RouteBoundary title="Admin — Org detail"><AdminOrgDetail /></RouteBoundary>} />
                         <Route path="orgs/:orgId/ai" element={<RouteBoundary title="Admin — AI requests"><AdminOrgAiRequests /></RouteBoundary>} />
                         <Route path="billing" element={<RouteBoundary title="Admin — Billing utilization"><AdminBillingUtilization /></RouteBoundary>} />
+                        <Route path="knowledge" element={<RouteBoundary title="Admin — Knowledge"><AdminKnowledgeQueue /></RouteBoundary>} />
                       </Route>
 
                       {/* All main app routes wrapped in AppLayout */}

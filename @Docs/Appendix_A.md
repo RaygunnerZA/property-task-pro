@@ -168,6 +168,39 @@ Context Areas
 
 ⸻
 
+KNOWLEDGE
+
+Knowledge represents verified information that can be linked to operational entities. It does not replace Compliance, Records, Documents, or Tasks.
+
+Axes (see `@Docs/03_Data_Model.md`): `scope` (`platform` | `organisation`) and `status` (`candidate` | `verified` | `published` | `stale` | `archived`).
+
+Context Areas
+
+* Overview
+* Sources
+* Linked Entities
+* Activity
+
+Overview
+
+Title, summary, body, scope, status, trust score, source kind, version.
+
+Sources
+
+Citations, attachments, URLs, and brain-pattern provenance that back the knowledge row.
+
+Linked Entities
+
+Org-scoped links to Properties, Spaces, Assets, Compliance, Tasks, and Reports via `knowledge_links` (not graph nodes).
+
+Activity
+
+Verification history: extractor, critic, human review, publish, and stale events.
+
+Customer-facing Knowledge activity area shows **published** platform and organisation knowledge only. Candidates and non-published platform rows are review surfaces (org Owner/Manager or `/admin`).
+
+⸻
+
 CONTEXT PANEL PRINCIPLE
 
 Desktop:

@@ -24,7 +24,13 @@ export type AnalyticsEvent =
   | "quota_warned"
   | "quota_blocked"
   | "addon_checkout_started"
-  | "upgrade_cta_clicked";
+  | "upgrade_cta_clicked"
+  | "knowledge_created"
+  | "knowledge_verified"
+  | "knowledge_reused"
+  | "knowledge_question_answered"
+  | "knowledge_automation_created"
+  | "knowledge_time_saved";
 
 export function initAnalytics(): void {
   const key = import.meta.env.VITE_POSTHOG_KEY;

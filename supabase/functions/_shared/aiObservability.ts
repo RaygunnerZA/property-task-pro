@@ -67,6 +67,8 @@ const DEFAULT_COST_UNITS: Record<string, number> = {
   "ai-doc-reanalyse": 3,
   "compliance-clause-rewrite": 2,
   "building-plan-process": 5,
+  "knowledge-critic": 2,
+  "knowledge-discovery": 1,
 };
 
 /**

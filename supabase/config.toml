@@ -30,6 +30,12 @@ verify_jwt = false
 [functions.ai-doc-analyse]
 verify_jwt = false
 
+[functions.knowledge-critic]
+verify_jwt = false
+
+[functions.knowledge-discovery]
+verify_jwt = false
+
 [functions.ai-image-analyse]
 verify_jwt = false
 

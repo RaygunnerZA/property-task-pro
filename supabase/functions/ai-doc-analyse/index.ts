@@ -720,6 +720,68 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Knowledge candidate from document analysis (org-scoped; never auto-published)
+    if (serviceRoleKey && result.title && org_id) {
+      try {
+        const admin = createClient(supabaseUrl, serviceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const summaryParts = [
+          result.document_type ? `Type: ${result.document_type}` : null,
+          result.category ? `Category: ${result.category}` : null,
+          result.expiry_date ? `Expiry: ${result.expiry_date}` : null,
+          result.renewal_frequency ? `Renewal: ${result.renewal_frequency}` : null,
+        ].filter(Boolean);
+        const { data: candidate, error: candErr } = await admin.rpc("create_knowledge_candidate", {
+          p_scope: "organisation",
+          p_org_id: org_id,
+          p_title: result.title,
+          p_summary: summaryParts.join(" · ") || null,
+          p_body: result.ocr_text?.slice(0, 4000) || null,
+          p_source_kind: "org_upload",
+          p_content: {
+            document_type: result.document_type,
+            category: result.category,
+            hazards: result.hazards ?? [],
+          },
+          p_provenance: {
+            extractor_function: "ai-doc-analyse",
+            extractor_provider: aiProviderUsed,
+            extractor_model: aiModelUsed,
+            attachment_id: attachment_id ?? null,
+            compliance_document_id: compliance_document_id ?? null,
+            property_id: property_id ?? null,
+          },
+          p_cohort_size: null,
+          p_trust_score: result.confidence ?? null,
+          p_created_by: null,
+        });
+        if (!candErr && candidate?.id) {
+          result.metadata = {
+            ...result.metadata,
+            knowledge_candidate_id: candidate.id,
+          };
+          // Fire-and-forget second-model critic (different provider than extractor)
+          fetch(`${supabaseUrl}/functions/v1/knowledge-critic`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceRoleKey}`,
+            },
+            body: JSON.stringify({
+              knowledge_id: candidate.id,
+              org_id,
+              extractor_provider: aiProviderUsed,
+            }),
+          }).catch((err) => console.error("knowledge-critic invoke failed:", err));
+        } else if (candErr) {
+          console.error("create_knowledge_candidate failed:", candErr.message);
+        }
+      } catch (err) {
+        console.error("knowledge candidate path failed:", err);
+      }
+    }
+
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

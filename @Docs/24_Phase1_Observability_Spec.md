@@ -357,7 +357,13 @@ export type AnalyticsEvent =
   | 'quota_warned'
   | 'quota_blocked'
   | 'addon_checkout_started'
-  | 'upgrade_cta_clicked';
+  | 'upgrade_cta_clicked'
+  | 'knowledge_created'
+  | 'knowledge_verified'
+  | 'knowledge_reused'
+  | 'knowledge_question_answered'
+  | 'knowledge_automation_created'
+  | 'knowledge_time_saved';
 ```
 
 **Environment variable required:**
@@ -417,6 +423,10 @@ Do not scatter `track()` calls throughout the codebase. Fire events at the data 
 | `quota_warned` | `src/lib/billing/quotaTelemetry.ts` (call from data-layer gates) | Partial |
 | `quota_blocked` | `src/lib/billing/quotaTelemetry.ts` ← `assertEvidenceUpload` | Yes (evidence) |
 | `addon_checkout_started` | `src/lib/billing/quotaTelemetry.ts` ← `useBillingActions` | Yes |
+| `knowledge_created` | `src/lib/knowledge/knowledgeTelemetry.ts` ← org/admin upsert hooks | Yes |
+| `knowledge_verified` | `knowledgeTelemetry` ← status → verified/published | Yes |
+| `knowledge_reused` / `knowledge_question_answered` / `knowledge_time_saved` | `knowledgeTelemetry` ← `useAssistant` when sources include knowledge; DB via `record_knowledge_usage` | Yes |
+| `knowledge_automation_created` | DB `record_knowledge_usage` from `knowledge-discovery` (PostHog optional follow-up) | Partial (DB) |
 | `upgrade_cta_clicked` | `src/lib/billing/quotaTelemetry.ts` | Helper ready |
 
 ### Privacy and FADP

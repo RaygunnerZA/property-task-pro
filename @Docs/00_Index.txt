@@ -43,4 +43,5 @@
 26_CreateTaskModal_Inventory.md : Create Task modal inventory (implementation aid).
 27_Manual_QA_Matrix_Template.md : Manual QA matrix template.
 28_Billing_Implementation_Plan.md : Phased build plan for billing, roles, entitlements (defers to Ch 2 + Ch 20).
+29_Knowledge.md             : Knowledge capability guide (defers to Ch 3 + Appendix A + Ch 7).
 Appendix_A.md               : Entity -> Context Map.

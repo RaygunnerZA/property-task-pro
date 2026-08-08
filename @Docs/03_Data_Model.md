@@ -1,7 +1,8 @@
 # CHAPTER 3 — DATA MODEL & SUPABASE ARCHITECTURE
 
 **3.1 — Core Principles**
-Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is strict.
+Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is strict.
+**Exception — Platform Knowledge:** verified Filla-curated Knowledge rows may have `org_id IS NULL` and are readable cross-org when `status = published` via explicit table policies (not `OR is_platform_admin()` on every org table). See Knowledge below.
 
 **3.2 — Complete Schema (Canonical)**
 
@@ -15,7 +16,7 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `platform_admins` — `user_id` (PK → `auth.users`), `added_by`, `added_at`, `notes`. Separate privilege from org membership; grants cross-org **read** only via SECURITY DEFINER RPCs. RLS: authenticated users may SELECT their own row (`user_id = auth.uid()`); no app-level INSERT/DELETE. Rows are added in the Supabase dashboard or a controlled migration.
 *   `is_platform_admin()` — stable SQL helper (SECURITY DEFINER) used by RPCs and the frontend guard.
 *   Sentinel org UUID `00000000-0000-0000-0000-000000000000` — reserved `_platform` row in `organisations` so platform-scoped `audit_logs` rows can satisfy `org_id` FK; real org list queries exclude this id.
-*   Admin RPCs (each checks admin, logs to `audit_logs`, returns empty if not admin): `admin_list_orgs`, `admin_get_org`, `admin_list_org_members`, `admin_get_org_activity`, `admin_get_org_ai_requests`.
+*   Admin RPCs (each checks admin, logs to `audit_logs`, returns empty if not admin): `admin_list_orgs`, `admin_get_org`, `admin_list_org_members`, `admin_get_org_activity`, `admin_get_org_ai_requests`, `admin_list_knowledge_review_queue`, `admin_get_knowledge`, `admin_set_knowledge_status`, `admin_upsert_platform_knowledge`, `admin_knowledge_metrics_snapshot`.
 
 **Properties & Assets:**
 *   `properties` (address, type, nickname, icon fields, thumbnail, `is_archived` — inactive properties do not count toward billing; **location:** `latitude`, `longitude`, `place_id`, `address_formatted`, `address_components`, `geocoded_at`, `address_validated_at`, `geo_accuracy_m`)
@@ -61,7 +62,25 @@ Everything is org-scoped. Identity ≠ Permissions. Media is first-class. RLS is
 *   `ai_requests` — append-only infrastructure log: every AI provider call made by an edge function. Columns: `id`, `org_id`, `user_id`, `function_name`, `model_used`, `provider`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_usd`, `latency_ms`, `status` (success/error/timeout/fallback), `error_message`, `entity_type`, `entity_id`, `metadata`, `created_at`. Service-role INSERT only; org members can SELECT.
 *   `ai_resolution_audit` — UX-level log: what AI suggested vs what the user chose. RLS now correctly references `organisation_members` (fixed in Phase 1).
 
+**Knowledge (first-class entity — two axes):**
+*   **Axes (independent):** `scope` (`platform` | `organisation`); `status` (`candidate` | `verified` | `published` | `stale` | `archived`).
+*   **Source kinds (provenance, not scope):** `filla_curated` | `org_upload` | `operational_discovery` | `community_brain`.
+*   `knowledge` — `id`, `scope`, `status`, `org_id` (NULL iff `scope = platform`; CHECK: platform ⇒ `org_id` NULL, organisation ⇒ `org_id` NOT NULL), `title`, `summary`, `body`, `content` (jsonb), `source_kind`, `trust_score` (critic-written numeric), `provenance` (jsonb: extractor/critic models, prompt versions, source refs), `cohort_size` (nullable; required ≥ `BRAIN_MIN_COHORT` = 5 before publish when `source_kind = community_brain`), `version`, `supersedes_id` (self-FK), `created_by`, `reviewed_by`, `published_at`, timestamps.
+*   `knowledge_sources` — citations / attachments / URLs / brain pattern keys backing a knowledge row.
+*   `knowledge_links` — org-scoped join: `org_id`, `knowledge_id`, `entity_type`, `entity_id`, `relationship`; unique `(org_id, knowledge_id, entity_type, entity_id)`. Knowledge is **not** a `property_graph_edges` node.
+*   `knowledge_verification_events` — append-only: extractor, critic, human approve/reject/edit, stale flags.
+*   **RLS:** Organisation rows — members SELECT; Owner/Manager INSERT/UPDATE candidates and verified; publish/archive Owner/Manager only; customers never UPDATE `scope = platform`. Platform `published` — SELECT for any authenticated org member. Platform non-published — no direct client SELECT; platform_admins via SECURITY DEFINER RPCs only. Service role writes candidates from edges.
+*   **Org RPCs:** `list_published_knowledge`, `list_org_knowledge_review_queue`, `set_knowledge_status`, `upsert_org_knowledge`, `link_knowledge_entity`.
+*   **Service helpers:** `create_knowledge_candidate`, `apply_knowledge_critic_result`, `list_brain_patterns_for_community` (cohort-gated Brain read for Community candidates).
+*   **Publish rules:** never auto-publish; community publish gated by `cohort_size >= 5` in RPC; Discovery may emit organisation `candidate` rows only; Community candidates extend Filla Brain (`filla_brain.*` patterns), never a second anonymization pipeline.
+*   Knowledge does **not** replace Compliance, Records, Tasks, Signals, or Messages.
+*   **Knowledge metrics:** `knowledge_usage_events` — `reused` | `question_answered` | `automation_created` | `time_saved` with `estimated_minutes`. Defaults: answered 5m, reused 2m, automation 10m (`knowledge_metric_default_minutes`). Write via `record_knowledge_usage`. Snapshots: `admin_knowledge_metrics_snapshot`, `org_knowledge_metrics`. Counts: created = knowledge rows; verified = status in verified|published; reused/answered/automation/time saved from usage events.
+
+**Filla Brain cohort floor:**
+*   `brain_infer_asset` / `brain_infer_compliance` return zero-sample fallbacks when aggregated `sample_count < 5` (`BRAIN_MIN_COHORT`). Same floor applies to Community Knowledge promotion. Threshold is SQL/code, never LLM judgement.
+
 **3.3 — RLS POLICY MAP**
-*   **Universal:** `org_id = active_org_id`.
+*   **Universal (operational tables):** `org_id = active_org_id`.
 *   **Staff:** `AND property_id IN assigned_properties`.
 *   **Contractor Free:** `task.contractor_token = jwt.token`.
+*   **Platform Knowledge published:** authenticated members of any org may SELECT `knowledge` where `scope = platform` AND `status = published`.
