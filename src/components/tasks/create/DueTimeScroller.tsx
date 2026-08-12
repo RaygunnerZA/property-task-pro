@@ -291,11 +291,12 @@ export function DueTimeScroller({ dueDate, onDueDateChange, className }: DueTime
   };
 
   return (
-    <div className={cn("flex flex-col items-center", className)}>
-      <div className="text-center mt-0 mb-[-7px] h-6 w-[75px] text-[14px] font-semibold text-foreground">
+    <div className={cn("flex flex-col items-center pt-2", className)}>
+      {/* Match FillaMiniCalendar embedded caption: p-2 offset + h-[26px] row + mb-1 */}
+      <div className="mb-1 flex h-[26px] w-[75px] items-center justify-center text-center text-base font-semibold text-foreground">
         Time
       </div>
-      <div className="flex items-start gap-0.5 pt-1">
+      <div className="flex items-start gap-0.5">
         {editing === "hour" ? (
           <TimeTextField
             value={String(hour12)}

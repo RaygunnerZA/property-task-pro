@@ -31,8 +31,9 @@ export function ReportKpiRow({ kpis, previousKpis, onSelect, className }: Props)
             type={interactive ? "button" : undefined}
             onClick={interactive ? () => onSelect?.(seed) : undefined}
             className={cn(
-              "rounded-xl bg-card/70 p-4 text-left shadow-e1 transition-shadow",
-              interactive && "hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              "rounded-xl bg-card/70 p-4 text-left shadow-e1 transition-all duration-200",
+              interactive &&
+                "hover:-translate-y-0.5 hover:shadow-e2 active:translate-y-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             )}
           >
             <div className="text-3xl font-semibold tracking-tight tabular-nums text-foreground">

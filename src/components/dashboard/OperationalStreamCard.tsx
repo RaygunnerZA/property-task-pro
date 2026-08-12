@@ -9,9 +9,10 @@ import {
   IssuesReviewSignalRow,
 } from "@/components/dashboard/issues/IssuesSignalRowCards";
 import { IssuesStreamThumbnail } from "@/components/dashboard/issues/IssuesStreamThumbnail";
-import type {
-  SignalCategoryVariant,
-  SignalConfidenceLevel,
+import {
+  issuesSignalSecondaryButtonClassName,
+  type SignalCategoryVariant,
+  type SignalConfidenceLevel,
 } from "@/components/dashboard/issues/IssuesSignalListParts";
 type CardAccent = "red" | "amber" | "green" | "slate" | "teal";
 
@@ -139,6 +140,7 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
     id === "signal-assign" ||
     id === "signal-open" ||
     id === "upload-document" ||
+    id === "upload-certificate" ||
     id === "categorise-document" ||
     id === "review-certificate" ||
     id === "review-documents" ||
@@ -158,10 +160,7 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
   ) {
     return intakeAddRecordMicroClassName;
   }
-  return cn(
-    "inline-flex items-center justify-center rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-foreground",
-    "bg-card shadow-e1 transition-all hover:shadow-md"
-  );
+  return issuesSignalSecondaryButtonClassName;
 }
 
 function ActionRow({ actions }: { actions: CardAction[] }) {

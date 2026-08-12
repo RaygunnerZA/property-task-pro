@@ -307,7 +307,7 @@ export function AddAssetWorkspaceForm({
             type="button"
             onClick={onCancel}
             disabled={isSaving}
-            className="input-neomorphic"
+            className="shadow-e1"
           >
             Cancel
           </Button>
@@ -315,7 +315,6 @@ export function AddAssetWorkspaceForm({
             type="button"
             onClick={onSave}
             disabled={isSaving || !propertyId || !name.trim()}
-            className="btn-accent-vibrant"
           >
             {isSaving ? "Saving…" : "Save Asset"}
           </Button>
@@ -328,7 +327,7 @@ export function AddAssetWorkspaceForm({
               variant="outline"
               onClick={onRailReset}
               disabled={isSaving}
-              className="input-neomorphic"
+              className="shadow-e1"
             >
               Clear form
             </Button>
@@ -337,7 +336,6 @@ export function AddAssetWorkspaceForm({
             type="button"
             onClick={onSave}
             disabled={isSaving || !propertyId || !name.trim()}
-            className="btn-accent-vibrant"
           >
             {isSaving ? "Saving…" : "Save Asset"}
           </Button>

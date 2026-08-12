@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { SemanticChip } from "@/components/chips/semantic";
 import type { RepeatRule } from "@/types/database";
 import { WhenPanel } from "@/components/tasks/create/panels/WhenPanel";
+import { formatCustomRepeatLabel, type CustomRepeatUnit } from "@/components/tasks/create/CustomRepeatBuilder";
 
 const QUICK_DATES = [
   { id: "today", label: "Today", days: 0 },
@@ -29,8 +30,19 @@ const REPEAT_OPTIONS = [
   { id: "daily", label: "Daily", type: "daily" as const },
   { id: "weekly", label: "Weekly", type: "weekly" as const },
   { id: "monthly", label: "Monthly", type: "monthly" as const },
-  { id: "custom", label: "Custom", type: "weekly" as const },
+  { id: "custom", label: "Custom", type: "custom" as const },
 ];
+
+function repeatTypeToUnit(type: RepeatRule["type"]): CustomRepeatUnit {
+  if (type === "daily") return "days";
+  if (type === "weekly") return "weeks";
+  if (type === "monthly") return "months";
+  return "years";
+}
+
+function formatRepeatFactLabel(rule: RepeatRule): string {
+  return formatCustomRepeatLabel(rule.interval || 1, repeatTypeToUnit(rule.type));
+}
 
 export type MilestoneItem = { id: string; dateTime: string; label?: string };
 
@@ -71,6 +83,7 @@ export function WhenSection({
 }: WhenSectionProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [showRepeatOptions, setShowRepeatOptions] = useState(false);
+  const [showCustomRepeatBuilder, setShowCustomRepeatBuilder] = useState(false);
 
   const [_internalMs, _setInternalMs] = useState<MilestoneItem[]>([]);
   const milestones = externalMilestones ?? _internalMs;
@@ -135,6 +148,7 @@ export function WhenSection({
     editingAtCloseRef.current = editing;
     setEditing(null);
     setShowRepeatOptions(false);
+    setShowCustomRepeatBuilder(false);
     onDeactivate?.();
   };
 
@@ -146,25 +160,39 @@ export function WhenSection({
     }
     setEditing({ kind: "due" });
     setShowRepeatOptions(false);
+    setShowCustomRepeatBuilder(false);
   };
 
   const handleRepeatClick = () => {
     setShowRepeatOptions((prev) => !prev);
+    setShowCustomRepeatBuilder(false);
   };
 
   const startAddMilestone = () => {
     editingAtCloseRef.current = null;
     onActivate();
     setShowRepeatOptions(false);
+    setShowCustomRepeatBuilder(false);
     const id = `milestone-${Date.now()}`;
     const initial = `${format(today, "yyyy-MM-dd")}T${timePartForDefault}`;
     setMilestones((prev) => [...prev, { id, dateTime: initial }]);
     setEditing({ kind: "milestone", id });
   };
 
-  const handleRepeatOption = (type: "daily" | "weekly" | "monthly") => {
+  const handleRepeatOption = (type: "daily" | "weekly" | "monthly" | "custom") => {
+    if (type === "custom") {
+      onActivate();
+      if (!dueDate) {
+        onDueDateChange(`${format(today, "yyyy-MM-dd")}T${timePartForDefault}`);
+      }
+      setShowRepeatOptions(false);
+      setShowCustomRepeatBuilder(true);
+      setEditing({ kind: "due" });
+      return;
+    }
     onRepeatRuleChange({ type, interval: 1 });
     setShowRepeatOptions(false);
+    setShowCustomRepeatBuilder(false);
   };
 
   const dateFactLabel = formatDueLabel();
@@ -206,12 +234,21 @@ export function WhenSection({
     return true;
   };
 
-  // Click outside / row click closes selector and commits draft
+  // Click outside / row click closes selector and commits draft.
+  // Ignore portaled menus/selects — otherwise picking from Repeat [# ▾] closes the panel
+  // before onSelect runs (dropdown looks broken).
   useEffect(() => {
     if (!editing) return;
     const handler = (e: PointerEvent) => {
       const t = e.target as HTMLElement | null;
       if (!t) return;
+      if (
+        t.closest(
+          '[role="dialog"], [data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-menu-content], [role="menu"], [role="listbox"]'
+        )
+      ) {
+        return;
+      }
       if (panelRef.current && panelRef.current.contains(t)) return;
       if (containerRef.current && containerRef.current.contains(t)) {
         // If the click was on an explicit action chip, allow it (it will switch editing target).
@@ -287,14 +324,18 @@ export function WhenSection({
           {repeatRule && (
             <SemanticChip
               epistemic="fact"
-              label={repeatRule.type.toUpperCase()}
+              label={formatRepeatFactLabel(repeatRule)}
               icon={<Repeat className="h-3 w-3" />}
-              truncate
-              onPress={() => setShowRepeatOptions((prev) => !prev)}
+              truncate={false}
+              onPress={() => {
+                setShowCustomRepeatBuilder(true);
+                setEditing({ kind: "due" });
+                onActivate();
+              }}
               pressOnPointerDown
               removable
               onRemove={() => onRepeatRuleChange(undefined)}
-              className="shrink-0"
+              className="shrink-0 max-w-none"
             />
           )}
           {milestones.map((m) => (
@@ -415,6 +456,8 @@ export function WhenSection({
             onDueDateChange={handlePanelDateChange}
             onRepeatRuleChange={onRepeatRuleChange}
             showQuickDates={false}
+            showCustomRepeatBuilder={showCustomRepeatBuilder}
+            onCustomRepeatCommitted={() => setShowCustomRepeatBuilder(false)}
           />
         </div>
       )}

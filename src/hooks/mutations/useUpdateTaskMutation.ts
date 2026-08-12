@@ -30,7 +30,7 @@ export interface UpdateTaskVariables {
     status?: TaskStatus;
     priority?: TaskPriority;
     due_date?: string | null;
-    milestones?: string[];
+    milestones?: unknown[] | null;
   };
 }
 

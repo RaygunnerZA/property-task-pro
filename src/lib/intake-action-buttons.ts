@@ -117,19 +117,22 @@ export const intakeFabSatelliteAddClassName = cn(
   "shadow-[1px_3px_4px_0px_rgba(0,0,0,0.1),inset_1px_1px_1px_rgba(255,255,255,0.4)] hover:translate-y-[-2px]"
 );
 
-/** Inline / compliance card footers */
+/**
+ * Inline / compliance card footers — same footprint as Issues signal row CTAs
+ * (`h-7`, `rounded-card`, primary shadow), not soft-UI pills.
+ */
 export const intakeReportIssueMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-white",
+  "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-card border-0 px-3 text-xs font-semibold leading-none text-white",
   createTaskBg,
   ctaGrain,
-  "shadow-e1 transition-all hover:shadow-md hover:bg-primary/90"
+  "shadow-primary-btn transition-all hover:brightness-105 active:shadow-btn-pressed"
 );
 
 export const intakeAddRecordMicroClassName = cn(
-  "inline-flex items-center justify-center gap-1 rounded-card border-0 px-2 py-1 text-caption font-semibold leading-none text-white",
+  "inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-card border-0 px-3 text-xs font-semibold leading-none text-white",
   addRecordBg,
   ctaGrain,
-  "shadow-e1 transition-all hover:shadow-md hover:brightness-95"
+  "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)] transition-all hover:brightness-95"
 );
 
 /** Intake modal/column footer primary — Create Task = turquoise. */

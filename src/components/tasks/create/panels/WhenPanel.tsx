@@ -12,6 +12,11 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import type { RepeatRule } from "@/types/database";
 import { cn } from "@/lib/utils";
 import { format, parseISO, addDays, startOfDay, isSameDay } from "date-fns";
+import {
+  CustomRepeatBuilder,
+  unitToRepeatType,
+  type CustomRepeatUnit,
+} from "@/components/tasks/create/CustomRepeatBuilder";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -24,6 +29,10 @@ interface WhenPanelProps {
   onRepeatRuleChange: (rule: RepeatRule | undefined) => void;
   /** Hide the quick-date chip row when the parent already renders it inline. */
   showQuickDates?: boolean;
+  /** Show the Custom Repeat [# ▾] [WEEKS ▾] builder (Custom from repeat presets). */
+  showCustomRepeatBuilder?: boolean;
+  /** Called after custom repeat is confirmed so parent can leave builder mode. */
+  onCustomRepeatCommitted?: () => void;
 }
 
 /* ------------------------------------------------------------------ */
@@ -184,10 +193,21 @@ function ScrollWheel({
 export function WhenPanel({
   dueDate,
   onDueDateChange,
+  onRepeatRuleChange,
   showQuickDates = true,
+  showCustomRepeatBuilder = false,
+  onCustomRepeatCommitted,
 }: WhenPanelProps) {
   const dateScrollRef = useRef<HTMLDivElement>(null);
   const dateScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleCustomRepeatConfirm = (interval: number, unit: CustomRepeatUnit) => {
+    onRepeatRuleChange({
+      type: unitToRepeatType(unit),
+      interval,
+    });
+    onCustomRepeatCommitted?.();
+  };
 
   /* ---------- date parsing ---------- */
 
@@ -339,6 +359,13 @@ export function WhenPanel({
         </div>
       )}
 
+      {showCustomRepeatBuilder ? (
+        <CustomRepeatBuilder
+          resetKey={showCustomRepeatBuilder}
+          onConfirm={handleCustomRepeatConfirm}
+        />
+      ) : null}
+
       {/* Two-column: Calendar (110px) + Time */}
       <div className="flex gap-3 items-start">
         {/* ── Left Column: Horizontal date scroller ── */}
@@ -443,7 +470,6 @@ export function WhenPanel({
           </div>
         </div>
       </div>
-
     </div>
   );
 }

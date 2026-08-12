@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, FileText, Plus, X, Check, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Plus, X, Repeat } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +26,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import {
+  CustomRepeatBuilder,
+  formatCustomRepeatLabel,
+  type CustomRepeatUnit,
+} from "@/components/tasks/create/CustomRepeatBuilder";
 import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDataContext } from "@/contexts/DataContext";
@@ -447,14 +451,8 @@ export function IntakeModal({
   const [repeatInterval, setRepeatInterval] = useState(1);
   /** Optional display label from extracted phrase (e.g. "Twice a week"). */
   const [repeatFactLabel, setRepeatFactLabel] = useState<string | null>(null);
-  /** CUSTOM repeat builder: REPEAT EVERY [n ▾] [unit ▾] */
+  /** CUSTOM repeat builder open */
   const [repeatCustomOpen, setRepeatCustomOpen] = useState(false);
-  const [repeatCustomIntervalDraft, setRepeatCustomIntervalDraft] = useState(2);
-  const [repeatCustomUnitDraft, setRepeatCustomUnitDraft] = useState<"days" | "weeks" | "months" | "years">(
-    "weeks"
-  );
-  /** True after the user picks a count in CUSTOM — unlocks confirm / unit auto-commit. */
-  const [repeatCustomIntervalPicked, setRepeatCustomIntervalPicked] = useState(false);
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -1394,7 +1392,6 @@ export function IntakeModal({
     setRepeatInterval(1);
     setRepeatFactLabel(null);
     setRepeatCustomOpen(false);
-    setRepeatCustomIntervalPicked(false);
   }, []);
 
   const applyRepeatSelection = useCallback(
@@ -1408,28 +1405,17 @@ export function IntakeModal({
       setRepeatInterval(interval);
       setRepeatFactLabel(label ?? null);
       setRepeatCustomOpen(false);
-      setRepeatCustomIntervalPicked(false);
       setWhenTab("due");
     },
     []
   );
 
   const commitCustomRepeat = useCallback(
-    (interval: number, unit: "days" | "weeks" | "months" | "years") => {
+    (interval: number, unit: CustomRepeatUnit) => {
       const type =
         unit === "days" ? "daily" : unit === "weeks" ? "weekly" : unit === "months" ? "monthly" : "yearly";
       const n = Math.max(1, Math.min(99, interval || 1));
-      const unitLabel =
-        n === 1
-          ? unit === "days"
-            ? "DAY"
-            : unit === "weeks"
-              ? "WEEK"
-              : unit === "months"
-                ? "MONTH"
-                : "YEAR"
-          : unit.toUpperCase();
-      applyRepeatSelection(type, n, `${n} ${unitLabel}`);
+      applyRepeatSelection(type, n, formatCustomRepeatLabel(n, unit));
     },
     [applyRepeatSelection]
   );
@@ -2670,7 +2656,6 @@ export function IntakeModal({
         const hideRepeat = milestones.length > 0;
         const whenSectionWordClass =
           "inline-flex h-6 shrink-0 items-center font-mono text-caption uppercase tracking-wide text-muted-foreground leading-none";
-        const customUnitLabel = repeatCustomUnitDraft.toUpperCase();
         const milestoneChip = milestoneEntryOpen ? (
           <SemanticChip
             epistemic="proposal"
@@ -2706,7 +2691,6 @@ export function IntakeModal({
               onPress={() => {
                 setWhenTab("repeat");
                 setRepeatCustomOpen(false);
-                setRepeatCustomIntervalPicked(false);
                 setMilestoneEntryOpen(false);
                 setMilestoneNameDraft("");
               }}
@@ -2743,7 +2727,6 @@ export function IntakeModal({
                 setIntakeWhenCustom(true);
                 setWhenTab("due");
                 setRepeatCustomOpen(false);
-                setRepeatCustomIntervalPicked(false);
               }}
               className="shrink-0 text-caption"
             />
@@ -2757,89 +2740,30 @@ export function IntakeModal({
             <div className="flex w-full min-w-0 shrink-0 flex-col gap-2">
             {whenTab === "repeat" && (
               <div className="flex flex-wrap items-center gap-2">
-                <span className={whenSectionWordClass}>REPEAT</span>
                 {repeatCustomOpen ? (
-                  <>
-                    <span className={whenSectionWordClass}>EVERY</span>
-                    <SemanticChip
-                      epistemic={repeatCustomIntervalPicked ? "fact" : "proposal"}
-                      label={String(repeatCustomIntervalDraft)}
-                      truncate={false}
-                      dropdown
-                      dropdownContent={
-                        <div className="max-h-48 overflow-y-auto">
-                          {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
-                            <DropdownMenuItem
-                              key={n}
-                              className="font-mono text-2xs uppercase tracking-wide"
-                              onSelect={() => {
-                                setRepeatCustomIntervalDraft(n);
-                                setRepeatCustomIntervalPicked(true);
-                              }}
-                            >
-                              {n}
-                            </DropdownMenuItem>
-                          ))}
-                        </div>
-                      }
-                      className="shrink-0 max-w-none"
-                    />
-                    <SemanticChip
-                      epistemic="proposal"
-                      label={customUnitLabel}
-                      truncate={false}
-                      dropdown
-                      dropdownContent={
-                        <>
-                          {(
-                            [
-                              ["days", "DAYS"],
-                              ["weeks", "WEEKS"],
-                              ["months", "MONTHS"],
-                              ["years", "YEARS"],
-                            ] as const
-                          ).map(([unit, label]) => (
-                            <DropdownMenuItem
-                              key={unit}
-                              className="font-mono text-2xs uppercase tracking-wide"
-                              onSelect={() => {
-                                setRepeatCustomUnitDraft(unit);
-                                if (repeatCustomIntervalPicked) {
-                                  commitCustomRepeat(repeatCustomIntervalDraft, unit);
-                                }
-                              }}
-                            >
-                              {label}
-                            </DropdownMenuItem>
-                          ))}
-                        </>
-                      }
-                      className="shrink-0 max-w-none"
-                    />
-                    {repeatCustomIntervalPicked ? (
-                      <SemanticChip
-                        epistemic="proposal"
-                        label="confirm"
-                        icon={<Check className="h-3 w-3" />}
-                        truncate={false}
-                        pressOnPointerDown
-                        onPress={() =>
-                          commitCustomRepeat(repeatCustomIntervalDraft, repeatCustomUnitDraft)
-                        }
-                        className="shrink-0 max-w-none"
-                      />
-                    ) : null}
-                  </>
+                  <CustomRepeatBuilder
+                    resetKey={repeatCustomOpen}
+                    onConfirm={commitCustomRepeat}
+                  />
                 ) : (
                   <>
+                    <span className={whenSectionWordClass}>REPEAT</span>
                     {(["daily", "weekly", "monthly"] as const).map((option) => (
                       <SemanticChip
                         key={option}
                         epistemic={repeatPreset === option ? "fact" : "proposal"}
                         label={option.toUpperCase()}
                         truncate={false}
-                        pressOnPointerDown
-                        onPress={() => applyRepeatSelection(option, 1, null)}
+                        onPress={() =>
+                          applyRepeatSelection(
+                            option,
+                            1,
+                            formatCustomRepeatLabel(
+                              1,
+                              option === "daily" ? "days" : option === "weekly" ? "weeks" : "months"
+                            )
+                          )
+                        }
                         className="shrink-0"
                       />
                     ))}
@@ -2847,12 +2771,8 @@ export function IntakeModal({
                       epistemic="proposal"
                       label="CUSTOM"
                       truncate={false}
-                      pressOnPointerDown
                       onPress={() => {
                         setRepeatCustomOpen(true);
-                        setRepeatCustomIntervalDraft(2);
-                        setRepeatCustomUnitDraft("weeks");
-                        setRepeatCustomIntervalPicked(false);
                       }}
                       className="shrink-0"
                     />
@@ -2892,21 +2812,6 @@ export function IntakeModal({
                     />
                   ) : null}
                 </div>
-                {milestones.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                    {milestones.map((milestone) => (
-                      <SemanticChip
-                        key={milestone.id}
-                        epistemic="fact"
-                        label={formatMilestoneFactLabel(milestone.name, milestone.date)}
-                        truncate={false}
-                        removable
-                        onRemove={() => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id))}
-                        className="shrink-0"
-                      />
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 
@@ -3348,9 +3253,6 @@ export function IntakeModal({
       repeatPreset,
       repeatFactLabel,
       repeatCustomOpen,
-      repeatCustomIntervalDraft,
-      repeatCustomUnitDraft,
-      repeatCustomIntervalPicked,
       applyRepeatSelection,
       commitCustomRepeat,
       clearDueDateSelection,
@@ -3777,9 +3679,6 @@ export function IntakeModal({
     setRepeatInterval(1);
     setRepeatFactLabel(null);
     setRepeatCustomOpen(false);
-    setRepeatCustomIntervalDraft(2);
-    setRepeatCustomUnitDraft("weeks");
-    setRepeatCustomIntervalPicked(false);
     if (!opts?.preserveWhere) {
       setPropertyId(defaultPropertyId || "");
       setSelectedSpaceIds([]);

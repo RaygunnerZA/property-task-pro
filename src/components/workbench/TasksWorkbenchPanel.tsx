@@ -12,6 +12,10 @@ import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
 import { useTaskMessageActivity } from "@/hooks/useTaskMessageActivity";
 import { setTasksMessagesTabActive } from "@/lib/tasksMessagesTab";
+import {
+  filterTasksByWorkbenchFilters,
+  sortTasksByWorkbenchSort,
+} from "@/lib/workbenchTaskListFilters";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import {
   isOnboardingDemoTask,
@@ -125,7 +129,7 @@ export function TasksWorkbenchPanel({
   selectedPropertyIds,
 }: MyWorkPanelProps) {
   const { userId } = useDataContext();
-  const { setSelectedFilters } = useWorkbenchControls();
+  const { setSelectedFilters, selectedFilters, sortBy, searchQuery } = useWorkbenchControls();
   const { mode: identityMode } = useIdentityMode();
   const memberRole =
     identityMode === "manager" ? "manager" : identityMode === "staff" ? "staff" : "owner";
@@ -241,20 +245,42 @@ export function TasksWorkbenchPanel({
   }, [messageTasks, latestByTask, recentAuthors]);
 
   const filteredMessageTasks = useMemo(() => {
-    if (!authorFilterKey) return messageTasks;
-    return messageTasks.filter((task) => {
-      const preview = latestByTask[String(task.id)];
-      if (!preview) return false;
-      const key = preview.authorUserId ?? `name:${preview.authorName}`;
-      return key === authorFilterKey;
+    let list = messageTasks;
+    if (authorFilterKey) {
+      list = list.filter((task) => {
+        const preview = latestByTask[String(task.id)];
+        if (!preview) return false;
+        const key = preview.authorUserId ?? `name:${preview.authorName}`;
+        return key === authorFilterKey;
+      });
+    }
+    list = filterTasksByWorkbenchFilters(list, selectedFilters, {
+      userId,
+      properties,
+      selectedPropertyIds,
+      searchQuery,
     });
-  }, [messageTasks, authorFilterKey, latestByTask]);
+    // "recent" on Messages = latest message order (already applied). Other sorts override.
+    if (sortBy !== "recent") {
+      list = sortTasksByWorkbenchSort(list, sortBy);
+    }
+    return list;
+  }, [
+    messageTasks,
+    authorFilterKey,
+    latestByTask,
+    selectedFilters,
+    userId,
+    properties,
+    selectedPropertyIds,
+    searchQuery,
+    sortBy,
+  ]);
 
-  const tabCounts: Record<TasksListTab, number> = {
+  const tabCounts: Record<Exclude<TasksListTab, "messages">, number> = {
     all: allTasks.length,
     urgent: urgentTasks.length,
     my: myTasks.length,
-    messages: messageTasks.length,
   };
 
   const visibleTasks = useMemo(() => {
@@ -357,7 +383,7 @@ export function TasksWorkbenchPanel({
                   aria-label={
                     unreadMessageCount > 0
                       ? `Messages, ${unreadMessageCount} unread`
-                      : `Messages, ${tabCounts.messages} conversations`
+                      : "Messages"
                   }
                   onClick={() => setListTab("messages")}
                   className={cn(
@@ -383,7 +409,7 @@ export function TasksWorkbenchPanel({
                         : "text-muted-foreground/60"
                     )}
                   >
-                    {tabCounts.messages}
+                    {unreadMessageCount}
                   </span>
                 </button>
               </div>

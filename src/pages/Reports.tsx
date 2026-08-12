@@ -18,6 +18,10 @@ import { useReportLiveData } from "@/hooks/useReportLiveData";
 import { useReportInstances } from "@/hooks/useReportInstances";
 import { DATE_RANGE_OPTIONS } from "@/lib/reports/dateRange";
 import { REPORT_TEMPLATES } from "@/lib/reports/templates";
+import {
+  REPORT_EMPTY_ILLUSTRATION,
+  REPORT_TEMPLATE_ILLUSTRATION,
+} from "@/lib/reportIllustrations";
 import type {
   ReportDateRangePreset,
   ReportTemplateId,
@@ -144,38 +148,44 @@ export default function Reports() {
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {REPORT_TEMPLATES.map((template) => {
-              const Icon = template.icon;
-              return (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => handleOpenTemplate(template.id)}
+            {REPORT_TEMPLATES.map((template) => (
+              <button
+                key={template.id}
+                type="button"
+                onClick={() => handleOpenTemplate(template.id)}
+                className={cn(
+                  "group relative flex items-center gap-3 overflow-hidden rounded-xl bg-card/70 p-4 text-left shadow-e1",
+                  "transition-all duration-200 hover:-translate-y-0.5 hover:shadow-e2 active:translate-y-0",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                )}
+              >
+                <div className="min-w-0 flex-1">
+                  <span className="font-medium text-foreground">
+                    {template.title}
+                  </span>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {template.question}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground/80">
+                    {template.description}
+                  </p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary-deep opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                    Open workspace
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5" />
+                  </span>
+                </div>
+                <img
+                  src={REPORT_TEMPLATE_ILLUSTRATION[template.id]}
+                  alt=""
+                  decoding="async"
+                  loading="lazy"
                   className={cn(
-                    "group flex items-start gap-3 rounded-xl bg-card/70 p-4 text-left shadow-e1",
-                    "transition-shadow hover:shadow-e2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    "h-20 w-20 shrink-0 object-contain drop-shadow-sm sm:h-24 sm:w-24",
+                    "transition-transform duration-300 ease-out group-hover:-rotate-3 group-hover:scale-110"
                   )}
-                >
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
-                    <Icon className="h-5 w-5" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-foreground">
-                        {template.title}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                    </div>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      {template.question}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-foreground/80">
-                      {template.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+                />
+              </button>
+            ))}
           </div>
         </section>
 
@@ -184,9 +194,32 @@ export default function Reports() {
             Recent reports
           </h2>
           {instances.length === 0 ? (
-            <div className="rounded-xl bg-card/50 p-5 text-sm text-muted-foreground shadow-e1">
-              No saved workspaces yet. Open a template to start one — it stays
-              editable until you finalize and export.
+            <div className="flex flex-col items-center gap-4 rounded-xl bg-card/50 px-5 py-8 text-center shadow-e1 sm:flex-row sm:text-left">
+              <img
+                src={REPORT_EMPTY_ILLUSTRATION}
+                alt=""
+                decoding="async"
+                loading="lazy"
+                className="h-28 w-28 shrink-0 object-contain drop-shadow-sm"
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  No saved workspaces yet
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Open a template to start one — it stays editable until you
+                  finalize and export.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="mt-3 gap-1.5"
+                  onClick={() => handleOpenTemplate("executive")}
+                >
+                  <Plus className="h-4 w-4" />
+                  Start with an Executive Summary
+                </Button>
+              </div>
             </div>
           ) : (
             <ul className="divide-y divide-border/40 overflow-hidden rounded-xl bg-card/70 shadow-e1">
@@ -195,20 +228,37 @@ export default function Reports() {
                   <button
                     type="button"
                     onClick={() => navigate(`/reports/${r.id}`)}
-                    className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
+                    className="group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/40"
                   >
-                    <div className="min-w-0">
+                    <img
+                      src={REPORT_TEMPLATE_ILLUSTRATION[r.templateId]}
+                      alt=""
+                      decoding="async"
+                      loading="lazy"
+                      className="h-10 w-10 shrink-0 object-contain drop-shadow-sm transition-transform duration-200 group-hover:scale-110"
+                    />
+                    <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-medium text-foreground">
                         {r.title}
                       </div>
                       <div className="text-xs text-muted-foreground">
-                        {r.status === "finalized" ? "Finalized" : "Draft"} · Updated{" "}
+                        Updated{" "}
                         {formatDistanceToNow(new Date(r.updatedAt), {
                           addSuffix: true,
                         })}
                       </div>
                     </div>
-                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-card px-2 py-0.5 font-mono text-2xs uppercase tracking-wide shadow-e1",
+                        r.status === "finalized"
+                          ? "bg-success/30 text-success-foreground"
+                          : "bg-warning/40 text-warning-foreground"
+                      )}
+                    >
+                      {r.status === "finalized" ? "Final" : "Draft"}
+                    </span>
+                    <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
                   </button>
                 </li>
               ))}

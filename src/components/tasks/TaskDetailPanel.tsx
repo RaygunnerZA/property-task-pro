@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil, Repeat } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -43,6 +43,15 @@ import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { WhoSection } from "./create/WhoSection";
 import type { PendingInvitation } from "./create/tabs/WhoTab";
 import { WhenSection, type MilestoneItem } from "./create/WhenSection";
+import {
+  formatCustomRepeatLabel,
+  type CustomRepeatUnit,
+} from "@/components/tasks/create/CustomRepeatBuilder";
+import {
+  normalizeTaskMilestones,
+  nextRunFromRepeatRule,
+  parseRepeatRule,
+} from "@/lib/taskWhenNormalize";
 import { WhereSection } from "./create/WhereSection";
 import { AssetSection } from "./create/AssetSection";
 import { CategorySection } from "./create/CategorySection";
@@ -239,8 +248,7 @@ export function TaskDetailPanel({
       setDueDate((task as any)?.due_date || (task as any)?.due_at || "");
       setLocalPropertyId((task as any)?.property_id || "");
       setSelectedPropertyIds((task as any)?.property_id ? [(task as any).property_id] : []);
-      const rawMs = (task as any)?.milestones;
-      setMilestones(Array.isArray(rawMs) ? rawMs : (typeof rawMs === 'string' ? JSON.parse(rawMs) : []));
+      setMilestones(normalizeTaskMilestones((task as any)?.milestones));
       const attachmentList = Array.isArray((task as any).images) ? (task as any).images : [];
       const hasImageAttachment = attachmentList.some((attachment: any) => {
         if (isSignatureEvidenceAttachment(attachment)) return false;
@@ -251,6 +259,40 @@ export function TaskDetailPanel({
       setSelectedImageIndex(hasImageAttachment ? 0 : null);
     }
   }, [task]);
+
+  // Hydrate repeat rule (task_recurrence / RPC) when switching tasks
+  useEffect(() => {
+    if (!taskId) {
+      setRepeatRule(undefined);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: rpcData, error: rpcError } = await supabase.rpc("task_get_repeat_rule", {
+          task_id: taskId,
+        });
+        if (!cancelled && !rpcError) {
+          const parsed = parseRepeatRule(rpcData);
+          if (parsed) {
+            setRepeatRule(parsed);
+            return;
+          }
+        }
+        const { data: row } = await supabase
+          .from("task_recurrence")
+          .select("rule")
+          .eq("task_id", taskId)
+          .maybeSingle();
+        if (!cancelled) setRepeatRule(parseRepeatRule(row?.rule));
+      } catch {
+        if (!cancelled) setRepeatRule(undefined);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [taskId]);
 
   // Collection ids: replace when switching tasks; merge on refresh (preserve optimistic edits)
   useEffect(() => {
@@ -415,6 +457,9 @@ export function TaskDetailPanel({
       {
         onSuccess: async () => {
           await refreshTask();
+          setChecklistSessionDirty(false);
+          setTaskEditOpen(false);
+          setOpenChipSlot(null);
           toast({ title: "Task updated", description: "Changes saved successfully" });
         },
         onError: (err) => {
@@ -466,12 +511,12 @@ export function TaskDetailPanel({
     }
   };
 
-  const handleDueDateChange = async (date: string) => {
+  const handleDueDateChange = useCallback(async (date: string) => {
     setDueDate(date);
     try {
       const { error } = await supabase
         .from("tasks")
-        .update({ due_date: date || null })
+        .update({ due_at: date || null })
         .eq("id", taskId);
       if (error) throw error;
       await refreshTask();
@@ -479,7 +524,64 @@ export function TaskDetailPanel({
     } catch (err: any) {
       toast({ title: "Couldn't update due date", description: err.message, variant: "destructive" });
     }
-  };
+  }, [taskId, refreshTask, queryClient, toast]);
+
+  const handleMilestonesChange = useCallback(async (next: MilestoneItem[]) => {
+    setMilestones(next);
+    try {
+      const { error } = await supabase
+        .from("tasks")
+        .update({ milestones: next.length > 0 ? next : [] })
+        .eq("id", taskId);
+      if (error) throw error;
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (err: any) {
+      toast({ title: "Couldn't update milestones", description: err.message, variant: "destructive" });
+    }
+  }, [taskId, refreshTask, queryClient, toast]);
+
+  const handleRepeatRuleChange = useCallback(async (rule: RepeatRule | undefined) => {
+    setRepeatRule(rule);
+    const orgId = (task as any)?.org_id as string | undefined;
+    try {
+      if (!rule) {
+        const { error } = await supabase.from("task_recurrence").delete().eq("task_id", taskId);
+        if (error) throw error;
+      } else {
+        if (!orgId) throw new Error("Missing organisation for recurrence");
+        const payload = {
+          task_id: taskId,
+          org_id: orgId,
+          rule,
+          next_run: nextRunFromRepeatRule(dueDate, rule),
+        };
+        const { data: existing } = await supabase
+          .from("task_recurrence")
+          .select("id")
+          .eq("task_id", taskId)
+          .maybeSingle();
+        if (existing?.id) {
+          const { error } = await supabase
+            .from("task_recurrence")
+            .update({ rule: payload.rule, next_run: payload.next_run })
+            .eq("task_id", taskId);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from("task_recurrence").insert(payload);
+          if (error) throw error;
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["task", taskId] });
+    } catch (err: any) {
+      toast({
+        title: "Couldn't update repeat",
+        description: err.message || "Something didn't work. Try again.",
+        variant: "destructive",
+      });
+    }
+  }, [task, taskId, dueDate, queryClient, toast]);
 
   const handlePriorityChange = async (next: string) => {
     const dbPriority = toTaskPriorityDb(next);
@@ -710,6 +812,18 @@ export function TaskDetailPanel({
     return isValid(d) ? format(d, "EEE d MMM").toUpperCase() : dateStr.toUpperCase();
   }, []);
 
+  const formatRepeatChipLabel = useCallback((rule: RepeatRule) => {
+    const unit: CustomRepeatUnit =
+      rule.type === "daily"
+        ? "days"
+        : rule.type === "weekly"
+          ? "weeks"
+          : rule.type === "monthly"
+            ? "months"
+            : "years";
+    return formatCustomRepeatLabel(rule.interval || 1, unit);
+  }, []);
+
   const taskDetailChips: IntakeChipRowChip[] = useMemo(() => {
     const chips: IntakeChipRowChip[] = [];
     const openSlot = (slot: IntakeChipSlotId) => {
@@ -769,15 +883,31 @@ export function TaskDetailPanel({
       });
     }
 
+    if (repeatRule) {
+      chips.push({
+        id: `when-repeat-${repeatRule.type}-${repeatRule.interval}`,
+        slot: "when",
+        label: formatRepeatChipLabel(repeatRule),
+        epistemic: "fact",
+        icon: <Repeat className="h-3 w-3" />,
+        removable: true,
+        onPress: () => openSlot("when"),
+        onRemove: () => void handleRepeatRuleChange(undefined),
+      });
+    }
+
     milestones.forEach((milestone) => {
       chips.push({
         id: `when-milestone-${milestone.id}`,
         slot: "when",
-        label: `${milestone.name} ${milestone.date ? formatDueChipLabel(milestone.date) : ""}`.trim().toUpperCase(),
+        label: `${milestone.label ? `${milestone.label} ` : ""}${
+          milestone.dateTime ? formatDueChipLabel(milestone.dateTime) : ""
+        }`.trim().toUpperCase(),
         epistemic: "fact",
         removable: true,
         onPress: () => openSlot("when"),
-        onRemove: () => setMilestones((prev) => prev.filter((m) => m.id !== milestone.id)),
+        onRemove: () =>
+          void handleMilestonesChange(milestones.filter((m) => m.id !== milestone.id)),
       });
     });
 
@@ -858,16 +988,20 @@ export function TaskDetailPanel({
     task,
     selectedSpaceIds,
     dueDate,
+    repeatRule,
     milestones,
     taskAssets,
     selectedAssetIds,
     priority,
     selectedThemeIds,
     formatDueChipLabel,
+    formatRepeatChipLabel,
     handleUserChange,
     handleTeamsChange,
     handleSpacesChange,
     handleDueDateChange,
+    handleMilestonesChange,
+    handleRepeatRuleChange,
     handlePriorityChange,
     handleAssetsChange,
     handleThemesChange,
@@ -936,9 +1070,9 @@ export function TaskDetailPanel({
                 dueDate={dueDate}
                 repeatRule={repeatRule}
                 onDueDateChange={handleDueDateChange}
-                onRepeatRuleChange={setRepeatRule}
+                onRepeatRuleChange={(rule) => void handleRepeatRuleChange(rule)}
                 milestones={milestones}
-                onMilestonesChange={setMilestones}
+                onMilestonesChange={(next) => void handleMilestonesChange(next)}
               />
             ),
             row3,
@@ -1075,6 +1209,8 @@ export function TaskDetailPanel({
       handlePropertyChangeSection,
       handleSpacesChange,
       handleDueDateChange,
+      handleMilestonesChange,
+      handleRepeatRuleChange,
       handlePriorityChange,
       handleAssetsChange,
       handleThemesChange,
@@ -1251,8 +1387,8 @@ export function TaskDetailPanel({
   const canManageTask = !!userId && (isAssigner || isAssignee || !createdBy);
 
   const hasEdits = useMemo(() => {
-    const origMs = (task as any)?.milestones;
-    const origMsJson = JSON.stringify(Array.isArray(origMs) ? origMs : []);
+    const origMs = normalizeTaskMilestones((task as any)?.milestones);
+    const origMsJson = JSON.stringify(origMs);
     return (
       title !== ((task as any)?.title || "") ||
       descriptionDraft !== String((task as any)?.description ?? "") ||
@@ -1610,15 +1746,11 @@ export function TaskDetailPanel({
           isUpdating={isUpdating}
           canManage={canManageTask}
           taskEditOpen={taskEditOpen}
-          hasEdits={hasEdits}
-          showUpdate={
-            !taskEditOpen && (hasEdits || checklistSessionDirty || messageDraftPending)
-          }
+          hasEdits={hasEdits || checklistSessionDirty}
+          showUpdate={taskEditOpen || hasEdits || checklistSessionDirty}
           taskId={taskId}
           canManageTemplates={canManageTemplates}
-          onStartTask={() => void handleStatusChange("in_progress")}
           onAddUpdate={() => setProgressUpdateOpen(true)}
-          onMarkComplete={() => void handleStatusChange("completed")}
           onStatusChange={(next) => void handleStatusChange(next)}
           onEditDetails={() => {
             setTaskEditOpen(true);
