@@ -30,8 +30,12 @@ import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { FilterChip } from "@/components/chips/filter";
-import { PropertyWorkspaceLayout, WorkspaceSurfaceCard } from "@/components/property-workspace";
+import { PropertyWorkspaceLayout, WorkspaceSurfaceCard, WorkspaceSectionHeading, WorkspaceTabList, WorkspaceTabTrigger } from "@/components/property-workspace";
 import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
+import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
+import { PropertyAssetGroupCarousel } from "@/components/assets/PropertyAssetGroupCarousel";
+import { AllAssetsDirectory } from "@/components/assets/AllAssetsDirectory";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
 import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
@@ -59,6 +63,8 @@ const STATUS_FILTERS = [
   { value: "inactive", label: "Inactive" },
   { value: "retired", label: "Retired" },
 ];
+
+type AssetsWorkTab = "groups" | "issues";
 
 const WORKSPACE_WIDE_MQ = "(min-width: 1100px)";
 
@@ -93,6 +99,7 @@ const Assets = () => {
   /** `?attention=1` — active assets with poor condition or open tasks (matches property hub tile). */
   const [attentionIssuesOnly, setAttentionIssuesOnly] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
+  const [assetsWorkTab, setAssetsWorkTab] = useState<AssetsWorkTab>("groups");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isWide = useWorkspaceWide();
@@ -165,6 +172,9 @@ const Assets = () => {
 
   useEffect(() => {
     setAttentionIssuesOnly(searchParams.get("attention") === "1");
+    if (searchParams.get("attention") === "1") {
+      setAssetsWorkTab("issues");
+    }
   }, [searchParams]);
 
   useEffect(() => {
@@ -391,6 +401,29 @@ const Assets = () => {
     return list.filter((a) => a.property_id === filterPropertyId);
   }, [assets, filterPropertyId]);
 
+  const assetsWithIssuesCount = useMemo(() => {
+    return contextAssets.filter((a) => {
+      const active = (a.status || "active") === "active";
+      if (!active) return false;
+      const score = a.condition_score ?? 100;
+      const openTasks = a.open_tasks_count ?? 0;
+      return score < 60 || openTasks > 0;
+    }).length;
+  }, [contextAssets]);
+
+  const assetsForIssuesList = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return contextAssets.filter((a) => {
+      const active = (a.status || "active") === "active";
+      if (!active) return false;
+      const score = a.condition_score ?? 100;
+      const openTasks = a.open_tasks_count ?? 0;
+      if (score >= 60 && openTasks === 0) return false;
+      if (q && !(a.name ?? "").toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [contextAssets, searchQuery]);
+
   /** Matches left-column metric tile to current filters (same grammar as attention chips). */
   const assetsSummaryHighlightedFilter = useMemo(():
     | "active"
@@ -582,142 +615,288 @@ const Assets = () => {
       {isWide ? (
         <PropertyWorkspaceLayout
           contextColumn={
-            <>
-              {propertyScopeBar != null ? (
-                <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
-                  {propertyScopeBar}
+            isPropertyScoped && effectiveScopeId ? (
+              <div className="space-y-4">
+                {propertyScopeBar != null ? (
+                  <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
+                    {propertyScopeBar}
+                  </div>
+                ) : null}
+                <WorkspaceSurfaceCard title="Context" description="How this property is equipped">
+                  <ul className="text-xs text-muted-foreground space-y-2">
+                    <li>
+                      <span className="font-semibold text-foreground">{contextAssets.length}</span> assets
+                    </li>
+                    <li>
+                      <span className="font-semibold text-foreground">{assetsWithIssuesCount}</span> need attention
+                    </li>
+                    <li className="text-2xs pt-1">
+                      Groups: HVAC, Plumbing, Electrical — use the work column to browse each.
+                    </li>
+                  </ul>
+                </WorkspaceSurfaceCard>
+                <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
+                  <PropertyRecentAssetsList
+                    propertyId={effectiveScopeId}
+                    onAssetClick={setSelectedAssetId}
+                  />
                 </div>
-              ) : null}
-              <AssetsSummaryRow
-                assets={contextAssets}
-                highlightedFilter={assetsSummaryHighlightedFilter}
-                onFilterClick={(filter) => {
-                  if (filter === "active") {
-                    setStatusFilters([]);
-                    setComplianceOnly(false);
-                    setNeedsInspectionOnly(false);
-                  }
-                  if (filter === "retired") {
-                    setStatusFilters(["retired"]);
-                    setComplianceOnly(false);
-                    setNeedsInspectionOnly(false);
-                  }
-                  if (filter === "needsInspection") {
-                    setStatusFilters(["active"]);
-                    setComplianceOnly(false);
-                    setNeedsInspectionOnly(true);
-                  }
-                  if (filter === "nonCompliant") {
-                    setStatusFilters(["active"]);
-                    setComplianceOnly(true);
-                    setNeedsInspectionOnly(false);
-                  }
-                }}
-              />
-            </>
+                <AssetsSummaryRow
+                  assets={contextAssets}
+                  highlightedFilter={assetsSummaryHighlightedFilter}
+                  onFilterClick={(filter) => {
+                    if (filter === "active") {
+                      setStatusFilters([]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(false);
+                    }
+                    if (filter === "retired") {
+                      setStatusFilters(["retired"]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(false);
+                    }
+                    if (filter === "needsInspection") {
+                      setStatusFilters(["active"]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(true);
+                      setAssetsWorkTab("issues");
+                    }
+                    if (filter === "nonCompliant") {
+                      setStatusFilters(["active"]);
+                      setComplianceOnly(true);
+                      setNeedsInspectionOnly(false);
+                    }
+                  }}
+                />
+              </div>
+            ) : (
+              <>
+                {propertyScopeBar != null ? (
+                  <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
+                    {propertyScopeBar}
+                  </div>
+                ) : null}
+                <AssetsSummaryRow
+                  assets={contextAssets}
+                  highlightedFilter={assetsSummaryHighlightedFilter}
+                  onFilterClick={(filter) => {
+                    if (filter === "active") {
+                      setStatusFilters([]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(false);
+                    }
+                    if (filter === "retired") {
+                      setStatusFilters(["retired"]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(false);
+                    }
+                    if (filter === "needsInspection") {
+                      setStatusFilters(["active"]);
+                      setComplianceOnly(false);
+                      setNeedsInspectionOnly(true);
+                    }
+                    if (filter === "nonCompliant") {
+                      setStatusFilters(["active"]);
+                      setComplianceOnly(true);
+                      setNeedsInspectionOnly(false);
+                    }
+                  }}
+                />
+              </>
+            )
           }
           workColumn={
-            <>
-              <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
-              <div className="space-y-4 mb-6">
-                <div className="flex flex-wrap gap-3 items-center">
-                  <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <NeomorphicInput
-                      placeholder="Search name, serial, manufacturer, model..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-9"
-                    />
-                  </div>
-                  <Select
-                    value={filterPropertyId || "all"}
-                    onValueChange={(v) => {
-                      setFilterPropertyId(v === "all" ? "" : v);
-                      setFilterSpaceId("");
-                    }}
-                  >
-                    <SelectTrigger className="input-neomorphic w-[180px]">
-                      <SelectValue placeholder="Property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All properties</SelectItem>
-                      {properties.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.address}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {filterPropertyId && (
-                    <Select
-                      value={filterSpaceId || "all"}
-                      onValueChange={(v) => setFilterSpaceId(v === "all" ? "" : v)}
+            isPropertyScoped && effectiveScopeId ? (
+              <div className="space-y-5">
+                <PageContentTitle
+                  title="Assets"
+                  subtitle={
+                    scopedPropertyForChrome
+                      ? `${(scopedPropertyForChrome as { nickname?: string | null; address?: string }).nickname || (scopedPropertyForChrome as { address?: string }).address}`
+                      : "Organise your assets"
+                  }
+                />
+                <div className="min-w-0">
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search assets"
+                    className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
+                    aria-label="Search assets"
+                  />
+                </div>
+                <div>
+                  <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+                  <WorkspaceTabList>
+                    <WorkspaceTabTrigger
+                      selected={assetsWorkTab === "groups"}
+                      onClick={() => setAssetsWorkTab("groups")}
                     >
-                      <SelectTrigger className="input-neomorphic w-[160px]">
-                        <SelectValue placeholder="Space" />
+                      By group
+                    </WorkspaceTabTrigger>
+                    <WorkspaceTabTrigger
+                      selected={assetsWorkTab === "issues"}
+                      onClick={() => setAssetsWorkTab("issues")}
+                    >
+                      With issues ({assetsWithIssuesCount})
+                    </WorkspaceTabTrigger>
+                  </WorkspaceTabList>
+                </div>
+
+                {assetsWorkTab === "groups" ? (
+                  <div className="space-y-4">
+                    <PropertyAssetGroupCarousel
+                      propertyId={effectiveScopeId}
+                      assetFilter={searchQuery}
+                      onViewAsset={setSelectedAssetId}
+                    />
+                    <div className="border-t border-border/30 pt-5">
+                      <AllAssetsDirectory
+                        propertyId={effectiveScopeId}
+                        assetFilter={searchQuery}
+                        onAssetClick={setSelectedAssetId}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      Active assets with poor condition or open tasks — open an asset to work it in detail.
+                    </p>
+                    <ul className="space-y-2">
+                      {assetsForIssuesList.map((a) => (
+                        <li key={a.id}>
+                          <button
+                            type="button"
+                            onClick={() => a.id && setSelectedAssetId(a.id)}
+                            className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
+                          >
+                            {a.name || "Unnamed asset"}
+                          </button>
+                        </li>
+                      ))}
+                      {assetsForIssuesList.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-6">
+                          {searchQuery.trim()
+                            ? "No assets match your search."
+                            : "No assets need attention."}
+                        </p>
+                      )}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
+                <div className="space-y-4 mb-6">
+                  <div className="flex flex-wrap gap-3 items-center">
+                    <div className="relative flex-1 min-w-[200px]">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <NeomorphicInput
+                        placeholder="Search name, serial, manufacturer, model..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                      />
+                    </div>
+                    <Select
+                      value={filterPropertyId || "all"}
+                      onValueChange={(v) => {
+                        setFilterPropertyId(v === "all" ? "" : v);
+                        setFilterSpaceId("");
+                      }}
+                    >
+                      <SelectTrigger className="input-neomorphic w-[180px]">
+                        <SelectValue placeholder="Property" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All spaces</SelectItem>
-                        {filterSpaces.map((s) => (
-                          <SelectItem key={s.id} value={s.id}>
-                            {s.name}
+                        <SelectItem value="all">All properties</SelectItem>
+                        {properties.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.address}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  )}
-                </div>
-                <div className="flex flex-wrap gap-2 items-center">
-                  {STATUS_FILTERS.map((s) => (
-                    <FilterChip
-                      key={s.value}
-                      label={s.label}
-                      selected={statusFilters.includes(s.value)}
-                      onSelect={() => toggleStatusFilter(s.value)}
-                    />
-                  ))}
-                  <FilterChip
-                    label="Compliance"
-                    selected={complianceOnly}
-                    onSelect={() => setComplianceOnly((prev) => !prev)}
-                  />
-                </div>
-              </div>
-              {assets.length === 0 ? (
-                <FrameworkEmptyState
-                  icon={Package}
-                  title="No assets yet"
-                  description="Add your first asset to get started"
-                  action={{ label: "Add Asset", onClick: openAddFlow }}
-                />
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {filteredAssets
-                    .filter((a) => a.id)
-                    .map((asset) => (
-                      <AssetCard
-                        key={asset.id!}
-                        asset={asset}
-                        propertyName={propertyMap.get(asset.property_id ?? "")}
-                        property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
-                        spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
-                        imageUrl={imageMap.get(asset.id!)}
-                        onClick={() => setSelectedAssetId(asset.id!)}
+                    {filterPropertyId && (
+                      <Select
+                        value={filterSpaceId || "all"}
+                        onValueChange={(v) => setFilterSpaceId(v === "all" ? "" : v)}
+                      >
+                        <SelectTrigger className="input-neomorphic w-[160px]">
+                          <SelectValue placeholder="Space" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All spaces</SelectItem>
+                          {filterSpaces.map((s) => (
+                            <SelectItem key={s.id} value={s.id}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    {STATUS_FILTERS.map((s) => (
+                      <FilterChip
+                        key={s.value}
+                        label={s.label}
+                        selected={statusFilters.includes(s.value)}
+                        onSelect={() => toggleStatusFilter(s.value)}
                       />
                     ))}
-                  {filteredAssets.length === 0 && assets.length > 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-8 col-span-full">
-                      No assets match your filters.
-                    </p>
-                  )}
+                    <FilterChip
+                      label="Compliance"
+                      selected={complianceOnly}
+                      onSelect={() => setComplianceOnly((prev) => !prev)}
+                    />
+                  </div>
                 </div>
-              )}
-            </>
+                {assets.length === 0 ? (
+                  <FrameworkEmptyState
+                    icon={Package}
+                    title="No assets yet"
+                    description="Add your first asset to get started"
+                    action={{ label: "Add Asset", onClick: openAddFlow }}
+                  />
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredAssets
+                      .filter((a) => a.id)
+                      .map((asset) => (
+                        <AssetCard
+                          key={asset.id!}
+                          asset={asset}
+                          propertyName={propertyMap.get(asset.property_id ?? "")}
+                          property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
+                          spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
+                          imageUrl={imageMap.get(asset.id!)}
+                          onClick={() => setSelectedAssetId(asset.id!)}
+                        />
+                      ))}
+                    {filteredAssets.length === 0 && assets.length > 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8 col-span-full">
+                        No assets match your filters.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
+            )
           }
           actionColumn={
             <div ref={railFormRef} className="space-y-4 scroll-mt-6">
-              <WorkspaceSurfaceCard>
+              <WorkspaceSurfaceCard
+                title={isPropertyScoped ? "Create asset" : undefined}
+                description={
+                  isPropertyScoped
+                    ? "Add an asset when you already know the name and type."
+                    : undefined
+                }
+              >
                 <AddAssetWorkspaceForm
                   variant="rail"
                   {...addAssetFormProps}

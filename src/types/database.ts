@@ -20,7 +20,7 @@ export interface TaskMetadata {
 }
 
 export interface RepeatRule {
-  type: "daily" | "weekly" | "monthly";
+  type: "daily" | "weekly" | "monthly" | "yearly";
   interval: number;
   day?: string;
   weekend_push?: boolean;

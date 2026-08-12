@@ -99,6 +99,8 @@ const SCROLLER_ROW_CLASS = cn(
 export interface IntakeSlotPanelRows {
   row2: React.ReactNode;
   row3: React.ReactNode;
+  /** Optional chips rendered on the stagger fact row (e.g. ADD MILESTONE beside due). */
+  inlineActions?: React.ReactNode;
 }
 
 export interface IntakeChipRowChip {
@@ -106,6 +108,7 @@ export interface IntakeChipRowChip {
   slot: IntakeChipSlotId;
   label: string;
   epistemic: EpistemicState;
+  icon?: ReactNode;
   onPress?: () => void;
   removable?: boolean;
   onRemove?: () => void;
@@ -118,7 +121,7 @@ export interface IntakeChipRowProps {
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   openSlot: IntakeChipSlotId | null;
   onCloseSlot: () => void;
-  renderSlotContent: (slot: IntakeChipSlotId, onClose: () => void) => IntakeSlotViewRows;
+  renderSlotContent: (slot: IntakeChipSlotId, onClose: () => void) => IntakeSlotPanelRows;
   /** stacked: icon rail + panel + summary row (intake modal). interleaved: [icon][chip] pairs (task detail edit). */
   layout?: IntakeChipRowLayout;
   /**
@@ -211,6 +214,7 @@ export function IntakeChipRow({
             key={chip.id}
             epistemic={chip.epistemic}
             label={chip.label}
+            icon={chip.icon}
             onPress={chip.onPress ?? (() => toggleSlot(chip.slot))}
             pressOnPointerDown
             truncate
@@ -289,6 +293,7 @@ export function IntakeChipRow({
                 key={chip.id}
                 epistemic={chip.epistemic}
                 label={chip.label}
+                icon={chip.icon}
                 onPress={chip.onPress ?? (() => toggleSlot(chip.slot))}
                 pressOnPointerDown
                 truncate
@@ -306,10 +311,16 @@ export function IntakeChipRow({
 
   const panelRow2 = panel ? (
     layout === "interleaved" ? (
-      <div className="min-w-0 w-full">{panel.row2}</div>
-    ) : (
-      <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>{panel.row2}</HorizontalOverflowRow>
-    )
+      <div className="min-w-0 w-full">
+        {panel.inlineActions}
+        {panel.row2}
+      </div>
+    ) : panel.row2 || panel.inlineActions ? (
+      <HorizontalOverflowRow className={SCROLLER_ROW_CLASS}>
+        {panel.inlineActions}
+        {panel.row2}
+      </HorizontalOverflowRow>
+    ) : null
   ) : null;
 
   const panelBlock = (

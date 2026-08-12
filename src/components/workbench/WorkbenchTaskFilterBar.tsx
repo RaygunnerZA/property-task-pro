@@ -11,6 +11,10 @@ import {
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { SortBar } from "@/components/ui/filters/SortBar";
 import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
+import {
+  MessageAuthorAvatarStrip,
+  type MessageAuthorFilterOption,
+} from "@/components/ui/filters/MessageAuthorAvatarStrip";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
@@ -25,6 +29,13 @@ type WorkbenchTaskFilterBarProps = {
   hidePrimaryQuickChips?: boolean;
   /** Show SORT immediately to the right of FILTER (expands options inline). */
   showSortBar?: boolean;
+  /**
+   * Messages tab: status chips are replaced by recent-message author avatars.
+   */
+  messagesMode?: boolean;
+  messageAuthors?: MessageAuthorFilterOption[];
+  selectedMessageAuthorKey?: string | null;
+  onSelectMessageAuthor?: (authorKey: string | null) => void;
   className?: string;
   collapseInteractionRootRef?: RefObject<HTMLElement | null>;
 };
@@ -35,6 +46,10 @@ export function WorkbenchTaskFilterBar({
   hidePrimaryUrgentChip = false,
   hidePrimaryQuickChips = false,
   showSortBar = false,
+  messagesMode = false,
+  messageAuthors = [],
+  selectedMessageAuthorKey = null,
+  onSelectMessageAuthor,
   className,
   collapseInteractionRootRef,
 }: WorkbenchTaskFilterBarProps) {
@@ -211,6 +226,19 @@ export function WorkbenchTaskFilterBar({
     [setSelectedFilters]
   );
 
+  const midControls = messagesMode ? (
+    <MessageAuthorAvatarStrip
+      authors={messageAuthors}
+      selectedAuthorKey={selectedMessageAuthorKey}
+      onSelectAuthor={(key) => onSelectMessageAuthor?.(key)}
+    />
+  ) : (
+    <StatusFilterIconStrip
+      selectedFilters={selectedFilters}
+      onFilterChange={handleFilterChange}
+    />
+  );
+
   return (
     <FilterBar
       primaryOptions={primaryOptions}
@@ -223,10 +251,7 @@ export function WorkbenchTaskFilterBar({
       onExpandedChange={showSortBar ? setFilterExpanded : undefined}
       afterFilterTrigger={
         <>
-          <StatusFilterIconStrip
-            selectedFilters={selectedFilters}
-            onFilterChange={handleFilterChange}
-          />
+          {midControls}
           {showSortBar ? (
             <SortBar
               sortBy={sortBy}

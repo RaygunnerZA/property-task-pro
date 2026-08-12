@@ -33,6 +33,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo, type MouseEvent, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
+import { formatMessageDayLabel } from "@/lib/formatMessageDayLabel";
 import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
 import {
@@ -40,6 +41,7 @@ import {
   TASK_CARD_AVATAR_SIZE,
   TASK_CARD_META_CHIP_SIZE,
 } from "@/components/tasks/UserAvatar";
+import type { TaskMessagePreview } from "@/hooks/useTaskMessageActivity";
 import { resolveTaskDisplayImageUrl } from "@/lib/taskIllustration";
 import {
   resolveTaskAssigneeUsers,
@@ -210,16 +212,19 @@ function TaskCardComponent({
   layout = 'horizontal',
   imagePosition = 'right',
   metaDensity = 'default',
+  messagePreview = null,
 }: { 
   task: any; 
   property?: any; 
   onClick?: () => void;
   isSelected?: boolean;
-  layout?: 'horizontal' | 'vertical';
+  layout?: 'horizontal' | 'vertical' | 'messages';
   /** Horizontal layout only — thumbnail side. */
   imagePosition?: 'left' | 'right';
   /** "compact" = fewer badges (Issues Open work). */
   metaDensity?: 'default' | 'compact';
+  /** Tasks → Messages tab amended card content. */
+  messagePreview?: TaskMessagePreview | null;
 }) {
   const { orgId } = useActiveOrg();
   const { members } = useOrgMembers();
@@ -522,14 +527,14 @@ function TaskCardComponent({
   const withCompletionSettle = (card: ReactNode) => (
     <div
       className={cn(
-        "grid transition-[grid-template-rows,opacity] ease-out",
+        "grid min-w-0 max-w-full transition-[grid-template-rows,opacity] ease-out",
         isCollapsingComplete ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr]",
         isConfirmingComplete && "pointer-events-none"
       )}
       style={{ transitionDuration: `${COMPLETE_COLLAPSE_MS}ms` }}
       aria-hidden={isCollapsingComplete || undefined}
     >
-      <div className={cn("min-h-0", isCollapsingComplete && "overflow-hidden")}>{card}</div>
+      <div className={cn("min-h-0 min-w-0 max-w-full", isCollapsingComplete && "overflow-hidden")}>{card}</div>
     </div>
   );
 
@@ -605,7 +610,71 @@ function TaskCardComponent({
     </span>
   ) : null;
 
-  // Horizontal layout (thumbnail left or right)
+  // Messages tab — compact message-first card (85px).
+  if (layout === "messages") {
+    const dimmed = !messagePreview?.isUnread;
+    const dayLabel =
+      formatMessageDayLabel(messagePreview?.createdAt, { includeToday: true }) ??
+      "TODAY";
+
+    return (
+      <>
+        {withCompletionSettle(
+          <div
+            className={cn(
+              "task-card-messages",
+              "rounded-card bg-card/60",
+              "shadow-e1",
+              "cursor-pointer hover:bg-card/80 active:scale-[0.99] transition-[transform,box-shadow,background-color,opacity] duration-150",
+              "flex w-full max-w-full flex-row h-[85px] max-h-[85px] overflow-hidden relative group",
+              isSelected && "bg-card shadow-e3",
+              dimmed && "opacity-55"
+            )}
+            onClick={onClick}
+          >
+            {completionOverlay}
+            <TaskCardMediaZone
+              imageUrl={imageUrl}
+              alt={t.title}
+              variant="horizontal"
+              fixedSize={85}
+              dimmed={dimThumbnail || isConfirmingComplete}
+              className="shrink-0"
+            />
+            <div className="relative flex min-w-0 flex-1 flex-col justify-center gap-0.5 overflow-hidden px-2.5 py-1.5">
+              <h3 className="min-w-0 max-w-full truncate text-[11px] font-medium leading-tight text-foreground opacity-50">
+                {t.title}
+              </h3>
+              {messagePreview ? (
+                <div className="flex min-w-0 max-w-full items-start gap-1.5 overflow-hidden">
+                  <UserAvatar
+                    imageUrl={messagePreview.authorAvatarUrl}
+                    name={messagePreview.authorName}
+                    propertyColor={messagePreview.accentColor}
+                    size={18}
+                    shape="circle"
+                    className="mt-0.5 shrink-0"
+                  />
+                  <p className="min-w-0 flex-1 line-clamp-2 text-[13px] font-medium leading-snug text-foreground">
+                    {messagePreview.body}
+                  </p>
+                </div>
+              ) : (
+                <p className="min-w-0 max-w-full line-clamp-2 text-[13px] leading-snug text-muted-foreground">
+                  No messages
+                </p>
+              )}
+              <p className="shrink-0 font-mono text-[10px] uppercase tracking-wide text-muted-foreground/65">
+                {dayLabel}
+              </p>
+            </div>
+          </div>
+        )}
+        {deleteConfirmDialog}
+      </>
+    );
+  }
+
   if (layout === 'horizontal') {
     const thumbnailFirst = imagePosition === 'left';
 
@@ -986,6 +1055,11 @@ const TaskCard = memo(TaskCardComponent, (prevProps, nextProps) => {
   if (prevProps.imagePosition !== nextProps.imagePosition) return false;
 
   if (prevProps.metaDensity !== nextProps.metaDensity) return false;
+
+  if (prevProps.messagePreview?.messageId !== nextProps.messagePreview?.messageId) return false;
+  if (prevProps.messagePreview?.isUnread !== nextProps.messagePreview?.isUnread) return false;
+  if (prevProps.messagePreview?.body !== nextProps.messagePreview?.body) return false;
+  if (prevProps.messagePreview?.isOwnLatest !== nextProps.messagePreview?.isOwnLatest) return false;
   
   // If property changed, re-render
   if (prevProps.property?.id !== nextProps.property?.id) return false;

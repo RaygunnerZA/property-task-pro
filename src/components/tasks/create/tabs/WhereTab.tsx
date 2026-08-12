@@ -15,6 +15,7 @@ import { SemanticChip } from "@/components/chips/semantic";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { PROPERTY_CORE_ICON_POOL, PROPERTY_DEFAULT_ICON_POOL } from "@/lib/propertyVisualUniqueness";
+import { rankLikelySpaces } from "@/lib/rankLikelySpaces";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -84,14 +85,19 @@ export function WhereTab({
     if (propertyFileInputRef.current) propertyFileInputRef.current.value = "";
   };
 
-  // Filter properties and spaces by search
+  // Filter properties by search; spaces: search match OR likely suggestions (never full dump)
   const filteredProperties = properties.filter(p => 
     (p.nickname || p.address).toLowerCase().includes(searchQuery.toLowerCase())
   );
   
-  const filteredSpaces = spaces.filter(s =>
-    s.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredSpaces = searchQuery.trim()
+    ? spaces.filter((s) => s.name.toLowerCase().includes(searchQuery.toLowerCase())).slice(0, 12)
+    : rankLikelySpaces({
+        spaces,
+        selectedIds: spaceIds.filter((id) => !id.startsWith("ghost-")),
+        suggestedLabels: suggestedSpaces,
+        limit: 8,
+      });
 
   // Identify ghost chips (suggested but not in DB)
   const existingSpaceNames = spaces.map(s => s.name.toLowerCase());
@@ -331,17 +337,14 @@ export function WhereTab({
         ) : (
           <div className="flex flex-wrap gap-2">
             {/* Existing spaces */}
-            {filteredSpaces.map(space => {
-              const SpaceIcon = getAssetIcon((space as { icon_name?: string }).icon_name);
-              return (
+            {filteredSpaces.map(space => (
               <SemanticChip
                 key={space.id}
                 epistemic={spaceIds.includes(space.id) ? "fact" : "proposal"}
                 label={space.name.toUpperCase()}
                 onPress={() => toggleSpace(space.id)}
-                icon={<SpaceIcon className="h-3.5 w-3.5" />}
               />
-            );})}
+            ))}
             
             {/* Ghost chips for AI suggestions not in DB */}
             {ghostSpaces.map((ghostName, idx) => {

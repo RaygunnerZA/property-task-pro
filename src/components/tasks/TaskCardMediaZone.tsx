@@ -19,6 +19,8 @@ interface TaskCardMediaZoneProps {
   imageUrl?: string | null;
   alt: string;
   variant: "horizontal" | "vertical";
+  /** Force a fixed square media frame (Messages tab cards). */
+  fixedSize?: number;
   className?: string;
   placeholderClassName?: string;
   /** Dim thumbnail media (e.g. completed / on hold) — overlays stay full opacity. */
@@ -30,24 +32,35 @@ export function TaskCardMediaZone({
   imageUrl,
   alt,
   variant,
+  fixedSize,
   className,
   placeholderClassName,
   dimmed = false,
   children,
 }: TaskCardMediaZoneProps) {
   const isIllustration = isTaskSpaceIllustrationUrl(imageUrl);
-  const baseZoneClass =
-    variant === "horizontal"
+  const baseZoneClass = fixedSize
+    ? "relative shrink-0 overflow-hidden"
+    : variant === "horizontal"
       ? "w-24 sm:w-28 flex-shrink-0 relative overflow-hidden"
       : "w-full h-[140px] relative flex-shrink-0 overflow-hidden pt-0 rounded-t-xl";
 
+  const fixedStyle =
+    fixedSize != null
+      ? { width: fixedSize, height: fixedSize, minWidth: fixedSize, minHeight: fixedSize }
+      : undefined;
+
   const verticalIllustrationZoneClass =
     variant === "vertical" &&
+    !fixedSize &&
     cn("flex items-center justify-center bg-transparent", VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS);
 
   if (!imageUrl) {
     return (
-      <div className={cn(baseZoneClass, verticalIllustrationZoneClass, className)}>
+      <div
+        className={cn(baseZoneClass, verticalIllustrationZoneClass, className)}
+        style={fixedStyle}
+      >
         <div
           className={cn(
             "absolute inset-0 bg-transparent flex items-center justify-center",
@@ -58,7 +71,7 @@ export function TaskCardMediaZone({
           <div
             className={cn(
               "rounded bg-muted/50",
-              variant === "horizontal" ? "w-8 h-8" : "w-12 h-12"
+              fixedSize ? "h-8 w-8" : variant === "horizontal" ? "w-8 h-8" : "w-12 h-12"
             )}
           />
         </div>
@@ -75,9 +88,10 @@ export function TaskCardMediaZone({
         isIllustration &&
           variant === "horizontal" &&
           HORIZONTAL_ILLUSTRATION_INSET_SHADOW_CLASS,
-        isIllustration && variant === "vertical" && VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS,
+        isIllustration && variant === "vertical" && !fixedSize && VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS,
         className
       )}
+      style={fixedStyle}
     >
       <img
         src={imageUrl}

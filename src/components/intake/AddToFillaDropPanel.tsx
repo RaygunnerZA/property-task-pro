@@ -23,6 +23,11 @@ interface AddToFillaDropPanelProps {
   className?: string;
   /** Smaller layout for minimised workbench toolbar */
   compact?: boolean;
+  /**
+   * Tasks → Messages tab: fixed ~100px tall drop zone (still interactive).
+   * Overrides the default 220px height when not compact.
+   */
+  collapsedHeight?: boolean;
   onUploadComplete?: (uploadedCount: number) => void;
   /** Opens the full Add to Filla sheet (inbox, email forward, etc.) */
   onReviewClick?: () => void;
@@ -31,6 +36,7 @@ interface AddToFillaDropPanelProps {
 export function AddToFillaDropPanel({
   className,
   compact = false,
+  collapsedHeight = false,
   onUploadComplete,
   onReviewClick,
 }: AddToFillaDropPanelProps) {
@@ -136,6 +142,18 @@ export function AddToFillaDropPanel({
     void handleFiles(event.dataTransfer.files);
   };
 
+  const panelHeightClass = compact
+    ? null
+    : collapsedHeight
+      ? "h-[100px]"
+      : "h-[220px]";
+  const illustrationH = collapsedHeight
+    ? Math.round(ILLUSTRATION_H_PX * 0.55)
+    : ILLUSTRATION_H_PX;
+  const illustrationW = collapsedHeight
+    ? Math.round(ILLUSTRATION_W_PX * 0.55)
+    : ILLUSTRATION_W_PX;
+
   return (
     <section className={cn("min-w-0", className)}>
       <input
@@ -165,7 +183,10 @@ export function AddToFillaDropPanel({
           "relative w-full rounded-xl text-left transition-all cursor-pointer",
           compact
             ? "bg-background/90 shadow-e1 px-3 py-2.5 shadow-[inset_1px_1px_2px_rgba(255,255,255,0.65),2px_3px_6px_rgba(174,174,178,0.18)]"
-            : "border-2 border-white pl-1 pr-4 h-[220px] shadow-[2px_3px_2px_0px_rgba(255,255,255,0.5),-1px_-2px_2px_1px_rgba(0,0,0,0.05)]",
+            : cn(
+                "border-2 border-white pl-1 pr-4 shadow-[2px_3px_2px_0px_rgba(255,255,255,0.5),-1px_-2px_2px_1px_rgba(0,0,0,0.05)]",
+                panelHeightClass
+              ),
           dragActive && "ring-2 ring-primary/50",
           !dragActive && "hover:ring-1 hover:ring-primary/35",
           uploading && "opacity-80 cursor-progress"
@@ -174,7 +195,12 @@ export function AddToFillaDropPanel({
         <div
           className={cn(
             "flex items-center min-w-0",
-            compact ? "gap-3" : "h-[220px] justify-center gap-[15px] px-1"
+            compact
+              ? "gap-3"
+              : cn(
+                  "justify-center gap-[15px] px-1",
+                  collapsedHeight ? "h-[100px]" : "h-[220px]"
+                )
           )}
         >
           <div
@@ -185,7 +211,7 @@ export function AddToFillaDropPanel({
             style={
               compact
                 ? undefined
-                : { height: ILLUSTRATION_H_PX, width: ILLUSTRATION_W_PX }
+                : { height: illustrationH, width: illustrationW }
             }
           >
             {uploading ? (
@@ -202,8 +228,8 @@ export function AddToFillaDropPanel({
                   compact
                     ? undefined
                     : {
-                        height: ILLUSTRATION_H_PX,
-                        width: ILLUSTRATION_W_PX,
+                        height: illustrationH,
+                        width: illustrationW,
                         opacity:
                           illustrationDimmed && !dragActive
                             ? ILLUSTRATION_DIM_OPACITY
@@ -216,10 +242,10 @@ export function AddToFillaDropPanel({
           </div>
 
           <div className="min-w-0 flex-1 flex flex-col gap-[5px]">
-            <p className={cn("font-semibold text-foreground", compact ? "text-xs" : "text-sm")}>
+            <p className={cn("font-semibold text-foreground", compact || collapsedHeight ? "text-xs" : "text-sm")}>
               Add to Filla
             </p>
-            <p className={cn("text-muted-foreground leading-snug", compact ? "text-2xs" : "text-xs")}>
+            <p className={cn("text-muted-foreground leading-snug", compact || collapsedHeight ? "text-2xs" : "text-xs")}>
               {uploading ? "Uploading…" : "Drop anything here. Filla will understand it."}
             </p>
             {readyCount > 0 && onReviewClick && (
@@ -231,7 +257,7 @@ export function AddToFillaDropPanel({
                 }}
                 className={cn(
                   "inline-flex items-center rounded-card bg-primary px-2 py-0.5 font-semibold text-primary-foreground",
-                  compact ? "text-2xs h-[20px]" : "text-2xs h-[24px]"
+                  compact || collapsedHeight ? "text-2xs h-[20px]" : "text-2xs h-[24px]"
                 )}
               >
                 {readyCount} ready to review

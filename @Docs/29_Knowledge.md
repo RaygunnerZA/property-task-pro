@@ -3,7 +3,8 @@
 **Status:** Implementation guide (defers to constitution for schema/IA)  
 **Canonical schema/RLS:** `@Docs/03_Data_Model.md`  
 **Entity context:** `@Docs/Appendix_A.md` (KNOWLEDGE)  
-**Assistant / critic:** `@Docs/07_AI_Intelligence.md`
+**Assistant / critic:** `@Docs/07_AI_Intelligence.md`  
+**Phase 2 build order:** `@Docs/30_Phase2_Knowledge_First.md`
 
 ---
 

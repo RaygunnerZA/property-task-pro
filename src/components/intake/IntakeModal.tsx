@@ -4,7 +4,7 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useLayoutEffect, useRef } from "react";
-import { ChevronLeft, ChevronRight, FileText, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, FileText, Plus, X, Check, Repeat } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -86,6 +87,7 @@ import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { CreateAssetDialog } from "@/components/assets/CreateAssetDialog";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { getAssetIcon } from "@/lib/icon-resolver";
+import { rankLikelySpaces } from "@/lib/rankLikelySpaces";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage, createTempImage } from "@/utils/image-optimization";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
@@ -441,7 +443,18 @@ export function IntakeModal({
   const [milestoneDraftDate, setMilestoneDraftDate] = useState(format(startOfDay(new Date()), "yyyy-MM-dd"));
   const [milestoneEntryOpen, setMilestoneEntryOpen] = useState(false);
   const [milestoneNameDraft, setMilestoneNameDraft] = useState("");
-  const [repeatPreset, setRepeatPreset] = useState<"none" | "daily" | "weekly" | "monthly">("none");
+  const [repeatPreset, setRepeatPreset] = useState<"none" | "daily" | "weekly" | "monthly" | "yearly">("none");
+  const [repeatInterval, setRepeatInterval] = useState(1);
+  /** Optional display label from extracted phrase (e.g. "Twice a week"). */
+  const [repeatFactLabel, setRepeatFactLabel] = useState<string | null>(null);
+  /** CUSTOM repeat builder: REPEAT EVERY [n ▾] [unit ▾] */
+  const [repeatCustomOpen, setRepeatCustomOpen] = useState(false);
+  const [repeatCustomIntervalDraft, setRepeatCustomIntervalDraft] = useState(2);
+  const [repeatCustomUnitDraft, setRepeatCustomUnitDraft] = useState<"days" | "weeks" | "months" | "years">(
+    "weeks"
+  );
+  /** True after the user picks a count in CUSTOM — unlocks confirm / unit auto-commit. */
+  const [repeatCustomIntervalPicked, setRepeatCustomIntervalPicked] = useState(false);
   const [propertyId, setPropertyId] = useState(defaultPropertyId || "");
   const [selectedSpaceIds, setSelectedSpaceIds] = useState<string[]>([]);
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
@@ -450,6 +463,11 @@ export function IntakeModal({
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   /** Prevents resolved person chips from bouncing back after the user clears WHO. */
   const userClearedAssigneeRef = useRef(false);
+  /** Prevents extracted date chips from re-applying after the user clears WHEN. */
+  const userClearedDueDateRef = useRef(false);
+  /** Prevents extracted recurrence from re-applying after the user clears REPEAT. */
+  const userClearedRepeatRef = useRef(false);
+  const prevOpenChipSlotRef = useRef<typeof openChipSlot>(null);
   const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
   const [subtasks, setSubtasks] = useState<SubtaskData[]>([]);
   const [templateId, setTemplateId] = useState("");
@@ -1018,25 +1036,52 @@ export function IntakeModal({
     }
   }, [chipSuggestions, priorityDefined]);
 
-  // Auto-apply extracted date and person when we have resolved chips and field is still empty (so we don't overwrite user edits)
+  // Reset WHEN tab only when entering the slot — not on every milestoneDraftDate change
+  // (that previously forced whenTab back to "due" and broke the Repeat flow).
   useEffect(() => {
-    if (openChipSlot === "when") {
+    const prev = prevOpenChipSlotRef.current;
+    prevOpenChipSlotRef.current = openChipSlot;
+    if (openChipSlot === "when" && prev !== "when") {
       setWhenTab("due");
-      if (!milestoneDraftDate) setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
-    } else {
+      setMilestoneDraftDate((d) => d || format(startOfDay(new Date()), "yyyy-MM-dd"));
+    } else if (openChipSlot !== "when" && prev === "when") {
       setMilestoneEntryOpen(false);
       setMilestoneNameDraft("");
     }
-  }, [openChipSlot, milestoneDraftDate]);
+  }, [openChipSlot]);
 
-  // Auto-apply date when empty.
+  // Auto-apply date when empty (do not bounce back after user clears the chip).
   useEffect(() => {
+    if (dueDate || userClearedDueDateRef.current) return;
     const dateChip = chipSuggestions.find((c) => c.type === "date" && c.resolvedEntityId);
-    if (!dueDate && dateChip?.resolvedEntityId && typeof dateChip.resolvedEntityId === "string") {
+    if (dateChip?.resolvedEntityId && typeof dateChip.resolvedEntityId === "string") {
       const v = dateChip.resolvedEntityId;
       if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v.split("T")[0] || v);
     }
   }, [chipSuggestions, dueDate]);
+
+  // Auto-apply recurrence when empty (do not bounce back after user clears REPEAT).
+  useEffect(() => {
+    if (repeatPreset !== "none" || userClearedRepeatRef.current) return;
+    const recurrenceChip = chipSuggestions.find(
+      (c) => c.type === "recurrence" && (c.resolvedEntityId || c.metadata?.type)
+    );
+    if (!recurrenceChip) return;
+    const typeRaw =
+      (typeof recurrenceChip.metadata?.type === "string"
+        ? recurrenceChip.metadata.type
+        : recurrenceChip.resolvedEntityId) || "";
+    const type = typeRaw.toLowerCase();
+    if (type !== "daily" && type !== "weekly" && type !== "monthly" && type !== "yearly") return;
+    const intervalRaw = recurrenceChip.metadata?.interval;
+    const interval =
+      typeof intervalRaw === "number" && intervalRaw > 0
+        ? intervalRaw
+        : Number(String(recurrenceChip.value || "").split(":")[1]) || 1;
+    setRepeatPreset(type);
+    setRepeatInterval(interval);
+    setRepeatFactLabel(recurrenceChip.label || null);
+  }, [chipSuggestions, repeatPreset]);
 
   // Auto-apply a single org member named in the message into WHO (e.g. "matthew, …").
   // Guarded by userClearedAssigneeRef so clearing WHO does not bounce the chip back.
@@ -1312,6 +1357,83 @@ export function IntakeModal({
     return format(dateObj, "EEE d MMM").toUpperCase();
   }, []);
 
+  const formatRepeatFactChipLabel = useCallback(() => {
+    if (repeatPreset === "none") return "";
+    if (repeatFactLabel?.trim()) return repeatFactLabel.trim().toUpperCase();
+    if (repeatInterval === 2) {
+      return repeatPreset === "daily"
+        ? "TWICE A DAY"
+        : repeatPreset === "weekly"
+          ? "TWICE A WEEK"
+          : repeatPreset === "monthly"
+            ? "TWICE A MONTH"
+            : "TWICE A YEAR";
+    }
+    if (repeatInterval > 1) {
+      const unit =
+        repeatPreset === "daily"
+          ? "DAYS"
+          : repeatPreset === "weekly"
+            ? "WEEKS"
+            : repeatPreset === "monthly"
+              ? "MONTHS"
+              : "YEARS";
+      return `${repeatInterval} ${unit}`;
+    }
+    return `REPEAT ${repeatPreset.toUpperCase()}`;
+  }, [repeatPreset, repeatInterval, repeatFactLabel]);
+
+  const clearDueDateSelection = useCallback(() => {
+    userClearedDueDateRef.current = true;
+    setDueDate("");
+  }, []);
+
+  const clearRepeatSelection = useCallback(() => {
+    userClearedRepeatRef.current = true;
+    setRepeatPreset("none");
+    setRepeatInterval(1);
+    setRepeatFactLabel(null);
+    setRepeatCustomOpen(false);
+    setRepeatCustomIntervalPicked(false);
+  }, []);
+
+  const applyRepeatSelection = useCallback(
+    (
+      type: "daily" | "weekly" | "monthly" | "yearly",
+      interval = 1,
+      label?: string | null
+    ) => {
+      userClearedRepeatRef.current = false;
+      setRepeatPreset(type);
+      setRepeatInterval(interval);
+      setRepeatFactLabel(label ?? null);
+      setRepeatCustomOpen(false);
+      setRepeatCustomIntervalPicked(false);
+      setWhenTab("due");
+    },
+    []
+  );
+
+  const commitCustomRepeat = useCallback(
+    (interval: number, unit: "days" | "weeks" | "months" | "years") => {
+      const type =
+        unit === "days" ? "daily" : unit === "weeks" ? "weekly" : unit === "months" ? "monthly" : "yearly";
+      const n = Math.max(1, Math.min(99, interval || 1));
+      const unitLabel =
+        n === 1
+          ? unit === "days"
+            ? "DAY"
+            : unit === "weeks"
+              ? "WEEK"
+              : unit === "months"
+                ? "MONTH"
+                : "YEAR"
+          : unit.toUpperCase();
+      applyRepeatSelection(type, n, `${n} ${unitLabel}`);
+    },
+    [applyRepeatSelection]
+  );
+
   const formatMilestoneFactLabel = useCallback(
     (name: string, date: string) => `${name.trim().toUpperCase()} ${formatDueDateLabel(date)}`,
     [formatDueDateLabel]
@@ -1377,18 +1499,19 @@ export function IntakeModal({
         label: formatDueDateLabel(dueDate),
         epistemic: "fact",
         removable: true,
-        onRemove: () => setDueDate(""),
+        onRemove: clearDueDateSelection,
       });
-      if (repeatPreset !== "none") {
-        chips.push({
-          id: `when-repeat-${repeatPreset}`,
-          slot: "when",
-          label: `REPEAT ${repeatPreset.toUpperCase()}`,
-          epistemic: "fact",
-          removable: true,
-          onRemove: () => setRepeatPreset("none"),
-        });
-      }
+    }
+    if (repeatPreset !== "none") {
+      chips.push({
+        id: `when-repeat-${repeatPreset}-${repeatInterval}`,
+        slot: "when",
+        label: formatRepeatFactChipLabel(),
+        epistemic: "fact",
+        icon: <Repeat className="h-3 w-3" />,
+        removable: true,
+        onRemove: clearRepeatSelection,
+      });
     }
 
     milestones.forEach((milestone) => {
@@ -1450,15 +1573,19 @@ export function IntakeModal({
     assignedTeamIds,
     assignedUserId,
     categories,
+    clearDueDateSelection,
+    clearRepeatSelection,
     defaultPropertyId,
     dueDate,
     milestones,
     formatDueDateLabel,
     formatMilestoneFactLabel,
+    formatRepeatFactChipLabel,
     members,
     priority,
     priorityDefined,
     properties?.length,
+    repeatInterval,
     repeatPreset,
     propertyId,
     selectedAssets,
@@ -1482,10 +1609,14 @@ export function IntakeModal({
       if (chip.type === "date" && dueDate && chip.resolvedEntityId) {
         if (dueDate.startsWith(chip.resolvedEntityId) || chip.resolvedEntityId.startsWith(dueDate.split("T")[0])) return false;
       }
+      if (chip.type === "recurrence" && repeatPreset !== "none") {
+        const chipType = String(chip.metadata?.type || chip.resolvedEntityId || "").toLowerCase();
+        if (chipType === repeatPreset) return false;
+      }
       if (chip.type === "asset" && chip.resolvedEntityId && selectedAssetIds.includes(chip.resolvedEntityId)) return false;
       return true;
     });
-  }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, selectedAssetIds]);
+  }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, repeatPreset, selectedAssetIds]);
 
   /**
    * Person invite verbs lead the strip. When the org is small (≤3 others),
@@ -1609,7 +1740,26 @@ export function IntakeModal({
           break;
         case "date": {
           const v = resolutionEntityId.split("T")[0] ?? resolutionEntityId;
-          if (/^\d{4}-\d{2}-\d{2}/.test(v)) setDueDate(v);
+          if (/^\d{4}-\d{2}-\d{2}/.test(v)) {
+            userClearedDueDateRef.current = false;
+            setDueDate(v);
+          }
+          break;
+        }
+        case "recurrence": {
+          const typeRaw = String(
+            (typeof chip.metadata?.type === "string" ? chip.metadata.type : null) ||
+              resolutionEntityId ||
+              ""
+          ).toLowerCase();
+          if (typeRaw === "daily" || typeRaw === "weekly" || typeRaw === "monthly" || typeRaw === "yearly") {
+            const intervalRaw = chip.metadata?.interval;
+            const interval =
+              typeof intervalRaw === "number" && intervalRaw > 0
+                ? intervalRaw
+                : Number(String(chip.value || "").split(":")[1]) || 1;
+            applyRepeatSelection(typeRaw, interval, chip.label || null);
+          }
           break;
         }
         case "priority": {
@@ -1625,7 +1775,7 @@ export function IntakeModal({
           break;
       }
     },
-    [propertyId, spaces, toggleSpaceSelection]
+    [propertyId, spaces, toggleSpaceSelection, applyRepeatSelection]
   );
 
   const handleIntakeGhostGroup = useCallback(
@@ -1816,7 +1966,21 @@ export function IntakeModal({
         } else if (chip.type === "priority") {
           setOpenChipSlot("priority");
         } else if (chip.type === "recurrence") {
+          const typeRaw = String(
+            (typeof chip.metadata?.type === "string" ? chip.metadata.type : null) ||
+              chip.resolvedEntityId ||
+              ""
+          ).toLowerCase();
+          if (typeRaw === "daily" || typeRaw === "weekly" || typeRaw === "monthly" || typeRaw === "yearly") {
+            const intervalRaw = chip.metadata?.interval;
+            const interval =
+              typeof intervalRaw === "number" && intervalRaw > 0
+                ? intervalRaw
+                : Number(String(chip.value || "").split(":")[1]) || 1;
+            applyRepeatSelection(typeRaw, interval, chip.label || null);
+          }
           setOpenChipSlot("when");
+          setIntakeWhenCustom(true);
           setWhenTab("repeat");
         }
       }
@@ -1832,6 +1996,7 @@ export function IntakeModal({
       properties,
       toast,
       applyResolvedChipToIntake,
+      applyRepeatSelection,
       splitName,
     ]
   );
@@ -2179,11 +2344,24 @@ export function IntakeModal({
             !chip.resolvedEntityId &&
             !selectedSpaces.some((space) => space.name.toLowerCase() === chip.label.toLowerCase())
         );
+        const spaceSuggestionChips = chipSuggestions.filter((chip) => chip.type === "space");
+        const likelySpaces = rankLikelySpaces({
+          spaces,
+          selectedIds: selectedSpaceIds,
+          contextText: [title, description].filter(Boolean).join(" "),
+          suggestedEntityIds: spaceSuggestionChips
+            .map((chip) => chip.resolvedEntityId)
+            .filter((id): id is string => Boolean(id)),
+          suggestedLabels: spaceSuggestionChips.map((chip) => chip.label || chip.value),
+          limit: 8,
+        });
         const sq = intakeWhereSpaceQuery.trim().toLowerCase();
         const spacePickSuggestions =
           propertyId && sq
-            ? spaces.filter((s) => s.name.toLowerCase().includes(sq)).slice(0, 4)
-            : [];
+            ? spaces.filter((s) => s.name.toLowerCase().includes(sq)).slice(0, 6)
+            : propertyId && intakeWhereSpaceEditing
+              ? likelySpaces.slice(0, 6)
+              : [];
         const hasExactSpaceMatch =
           Boolean(sq) && spaces.some((s) => s.name.toLowerCase() === sq);
         const spaceInputW = intakeInlineInputWidth(intakeWhereSpaceQuery.length);
@@ -2404,15 +2582,13 @@ export function IntakeModal({
               )}
               {propertyId &&
                 !intakeWhereSpaceEditing &&
-                spaces.map((space) => {
-                  const Icon = getAssetIcon((space as { icon_name?: string }).icon_name);
+                likelySpaces.map((space) => {
                   const selected = selectedSpaceIds.includes(space.id);
                   return (
                     <SemanticChip
                       key={space.id}
                       epistemic={selected ? "fact" : "proposal"}
                       label={space.name.toUpperCase()}
-                      icon={<Icon className="h-3.5 w-3.5" />}
                       truncate
                       pressOnPointerDown
                       onPress={() => toggleSpaceSelection(space.id)}
@@ -2420,6 +2596,14 @@ export function IntakeModal({
                     />
                   );
                 })}
+              {propertyId &&
+                !intakeWhereSpaceEditing &&
+                likelySpaces.length === 0 &&
+                spaces.length > 0 && (
+                  <span className="shrink-0 text-caption text-muted-foreground whitespace-nowrap">
+                    Search or + Space to pick a location
+                  </span>
+                )}
               {!intakeWhereSpaceEditing &&
                 unresolvedSpaceSuggestions.map((chip) => (
                   <SemanticChip
@@ -2453,16 +2637,11 @@ export function IntakeModal({
           : undefined;
         const selectedMilestoneDate = milestoneDraftDate ? new Date(`${milestoneDraftDate}T00:00:00`) : undefined;
         const activeWhenDate = dueDate ? dueDate.split("T")[0] : "";
-        const dueDateChipLabel = dueDate
-          ? (() => {
-              const d = new Date(dueDate.includes("T") ? dueDate : `${dueDate}T09:00:00`);
-              return format(d, dueDate.includes("T") ? "d MMM · h:mma" : "d MMMM").toUpperCase();
-            })()
-          : "DUE DATE";
         const applyQuick = (date: string) => {
           setIntakeWhenCustom(false);
           setMilestoneEntryOpen(false);
           setMilestoneNameDraft("");
+          userClearedDueDateRef.current = false;
           setDueDate(date);
         };
         const startMilestoneEntry = () => {
@@ -2485,10 +2664,63 @@ export function IntakeModal({
           setMilestones((prev) => [...prev, { id: crypto.randomUUID(), date: milestoneDraftDate, name }]);
           setMilestoneEntryOpen(false);
           setMilestoneNameDraft("");
-          if (repeatPreset !== "none") setRepeatPreset("none");
+          if (repeatPreset !== "none") clearRepeatSelection();
         };
         const calendarSelected = milestoneEntryOpen ? selectedMilestoneDate : selectedDueDate;
         const hideRepeat = milestones.length > 0;
+        const whenSectionWordClass =
+          "inline-flex h-6 shrink-0 items-center font-mono text-caption uppercase tracking-wide text-muted-foreground leading-none";
+        const customUnitLabel = repeatCustomUnitDraft.toUpperCase();
+        const milestoneChip = milestoneEntryOpen ? (
+          <SemanticChip
+            epistemic="proposal"
+            interaction="entry"
+            entryPlaceholder="Milestone Name..."
+            entryValue={milestoneNameDraft}
+            onEntryChange={setMilestoneNameDraft}
+            onCommit={commitMilestoneWithName}
+            onCancel={() => {
+              setMilestoneEntryOpen(false);
+              setMilestoneNameDraft("");
+            }}
+            truncate={false}
+            className="relative z-[1] h-6 shrink-0 min-w-[140px] max-w-[220px] text-caption"
+          />
+        ) : (
+          <SemanticChip
+            epistemic="proposal"
+            label="ADD MILESTONE"
+            truncate={false}
+            pressOnPointerDown
+            onPress={startMilestoneEntry}
+            className="h-6 shrink-0 max-w-none text-caption"
+          />
+        );
+        const repeatProposalChip =
+          !hideRepeat && repeatPreset === "none" && whenTab !== "repeat" ? (
+            <SemanticChip
+              epistemic="proposal"
+              label="REPEAT"
+              truncate={false}
+              pressOnPointerDown
+              onPress={() => {
+                setWhenTab("repeat");
+                setRepeatCustomOpen(false);
+                setRepeatCustomIntervalPicked(false);
+                setMilestoneEntryOpen(false);
+                setMilestoneNameDraft("");
+              }}
+              className="shrink-0 text-caption"
+            />
+          ) : null;
+
+        const whenInlineActions = intakeWhenCustom ? (
+          <>
+            {milestoneChip}
+            {repeatProposalChip}
+          </>
+        ) : null;
+
         const whenRow2 = !intakeWhenCustom ? (
           <>
             {quick.map(({ label: ql, date }) => (
@@ -2510,93 +2742,121 @@ export function IntakeModal({
               onPress={() => {
                 setIntakeWhenCustom(true);
                 setWhenTab("due");
+                setRepeatCustomOpen(false);
+                setRepeatCustomIntervalPicked(false);
               }}
               className="shrink-0 text-caption"
             />
           </>
-        ) : (
-          <>
-            <SemanticChip
-              epistemic={whenTab === "due" && dueDate ? "fact" : "proposal"}
-              label={dueDateChipLabel}
-              truncate={false}
-              pressOnPointerDown
-              onPress={() => {
-                setWhenTab("due");
-                setMilestoneEntryOpen(false);
-                setMilestoneNameDraft("");
-              }}
-              className="shrink-0 text-caption"
-            />
-            {whenTab !== "repeat" &&
-              (milestoneEntryOpen ? (
-                <SemanticChip
-                  epistemic="proposal"
-                  interaction="entry"
-                  entryPlaceholder="Milestone Name..."
-                  entryValue={milestoneNameDraft}
-                  onEntryChange={setMilestoneNameDraft}
-                  onCommit={commitMilestoneWithName}
-                  onCancel={() => {
-                    setMilestoneEntryOpen(false);
-                    setMilestoneNameDraft("");
-                  }}
-                  truncate={false}
-                  className="relative z-[1] shrink-0 min-w-[140px] max-w-[220px] text-caption"
-                />
-              ) : (
-                <SemanticChip
-                  epistemic="proposal"
-                  label="ADD MILESTONE"
-                  truncate={false}
-                  pressOnPointerDown
-                  onPress={startMilestoneEntry}
-                  className="shrink-0 text-caption"
-                />
-              ))}
-            {!hideRepeat && (
-              <SemanticChip
-                epistemic={whenTab === "repeat" ? "fact" : "proposal"}
-                label="REPEAT"
-                truncate={false}
-                pressOnPointerDown
-                onPress={() => {
-                  setWhenTab("repeat");
-                  setMilestoneEntryOpen(false);
-                  setMilestoneNameDraft("");
-                }}
-                className="shrink-0 text-caption"
-              />
-            )}
-          </>
-        );
+        ) : null;
 
         return {
           row2: whenRow2,
+          inlineActions: whenInlineActions,
           row3: (
             <div className="flex w-full min-w-0 shrink-0 flex-col gap-2">
             {whenTab === "repeat" && (
-              <div className="flex flex-wrap gap-2">
-                {(["daily", "weekly", "monthly"] as const).map((option) => (
-                  <SemanticChip
-                    key={option}
-                    epistemic={repeatPreset === option ? "fact" : "proposal"}
-                    label={option.toUpperCase()}
-                    truncate={false}
-                    pressOnPointerDown
-                    onPress={() => setRepeatPreset(option)}
-                    className="shrink-0"
-                  />
-                ))}
-                {repeatPreset !== "none" && (
-                  <SemanticChip
-                    epistemic="proposal"
-                    label="CLEAR"
-                    truncate={false}
-                    pressOnPointerDown
-                    onPress={() => setRepeatPreset("none")}
-                    className="shrink-0"
-                  />
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={whenSectionWordClass}>REPEAT</span>
+                {repeatCustomOpen ? (
+                  <>
+                    <span className={whenSectionWordClass}>EVERY</span>
+                    <SemanticChip
+                      epistemic={repeatCustomIntervalPicked ? "fact" : "proposal"}
+                      label={String(repeatCustomIntervalDraft)}
+                      truncate={false}
+                      dropdown
+                      dropdownContent={
+                        <div className="max-h-48 overflow-y-auto">
+                          {Array.from({ length: 30 }, (_, i) => i + 1).map((n) => (
+                            <DropdownMenuItem
+                              key={n}
+                              className="font-mono text-2xs uppercase tracking-wide"
+                              onSelect={() => {
+                                setRepeatCustomIntervalDraft(n);
+                                setRepeatCustomIntervalPicked(true);
+                              }}
+                            >
+                              {n}
+                            </DropdownMenuItem>
+                          ))}
+                        </div>
+                      }
+                      className="shrink-0 max-w-none"
+                    />
+                    <SemanticChip
+                      epistemic="proposal"
+                      label={customUnitLabel}
+                      truncate={false}
+                      dropdown
+                      dropdownContent={
+                        <>
+                          {(
+                            [
+                              ["days", "DAYS"],
+                              ["weeks", "WEEKS"],
+                              ["months", "MONTHS"],
+                              ["years", "YEARS"],
+                            ] as const
+                          ).map(([unit, label]) => (
+                            <DropdownMenuItem
+                              key={unit}
+                              className="font-mono text-2xs uppercase tracking-wide"
+                              onSelect={() => {
+                                setRepeatCustomUnitDraft(unit);
+                                if (repeatCustomIntervalPicked) {
+                                  commitCustomRepeat(repeatCustomIntervalDraft, unit);
+                                }
+                              }}
+                            >
+                              {label}
+                            </DropdownMenuItem>
+                          ))}
+                        </>
+                      }
+                      className="shrink-0 max-w-none"
+                    />
+                    {repeatCustomIntervalPicked ? (
+                      <SemanticChip
+                        epistemic="proposal"
+                        label="confirm"
+                        icon={<Check className="h-3 w-3" />}
+                        truncate={false}
+                        pressOnPointerDown
+                        onPress={() =>
+                          commitCustomRepeat(repeatCustomIntervalDraft, repeatCustomUnitDraft)
+                        }
+                        className="shrink-0 max-w-none"
+                      />
+                    ) : null}
+                  </>
+                ) : (
+                  <>
+                    {(["daily", "weekly", "monthly"] as const).map((option) => (
+                      <SemanticChip
+                        key={option}
+                        epistemic={repeatPreset === option ? "fact" : "proposal"}
+                        label={option.toUpperCase()}
+                        truncate={false}
+                        pressOnPointerDown
+                        onPress={() => applyRepeatSelection(option, 1, null)}
+                        className="shrink-0"
+                      />
+                    ))}
+                    <SemanticChip
+                      epistemic="proposal"
+                      label="CUSTOM"
+                      truncate={false}
+                      pressOnPointerDown
+                      onPress={() => {
+                        setRepeatCustomOpen(true);
+                        setRepeatCustomIntervalDraft(2);
+                        setRepeatCustomUnitDraft("weeks");
+                        setRepeatCustomIntervalPicked(false);
+                      }}
+                      className="shrink-0"
+                    />
+                  </>
                 )}
               </div>
             )}
@@ -2614,6 +2874,7 @@ export function IntakeModal({
                       if (milestoneEntryOpen) {
                         setMilestoneDraftDate(next);
                       } else {
+                        userClearedDueDateRef.current = false;
                         const existingTime = dueDate.includes("T")
                           ? dueDate.split("T")[1]?.slice(0, 8) || "09:00:00"
                           : "09:00:00";
@@ -2624,7 +2885,10 @@ export function IntakeModal({
                   {!milestoneEntryOpen ? (
                     <DueTimeScroller
                       dueDate={dueDate || `${format(today, "yyyy-MM-dd")}T09:00:00`}
-                      onDueDateChange={setDueDate}
+                      onDueDateChange={(next) => {
+                        userClearedDueDateRef.current = false;
+                        setDueDate(next);
+                      }}
                     />
                   ) : null}
                 </div>
@@ -3072,13 +3336,26 @@ export function IntakeModal({
       teams,
       whoIntakePersonProposals,
       whoIntakeTeamProposals,
+      title,
+      description,
       milestoneDraftDate,
       milestoneEntryOpen,
       milestoneNameDraft,
       milestones,
       priority,
       properties,
+      repeatInterval,
       repeatPreset,
+      repeatFactLabel,
+      repeatCustomOpen,
+      repeatCustomIntervalDraft,
+      repeatCustomUnitDraft,
+      repeatCustomIntervalPicked,
+      applyRepeatSelection,
+      commitCustomRepeat,
+      clearDueDateSelection,
+      clearRepeatSelection,
+      formatRepeatFactChipLabel,
       propertyId,
       availableAssets,
       selectedProperty,
@@ -3497,6 +3774,12 @@ export function IntakeModal({
     setMilestoneEntryOpen(false);
     setMilestoneNameDraft("");
     setRepeatPreset("none");
+    setRepeatInterval(1);
+    setRepeatFactLabel(null);
+    setRepeatCustomOpen(false);
+    setRepeatCustomIntervalDraft(2);
+    setRepeatCustomUnitDraft("weeks");
+    setRepeatCustomIntervalPicked(false);
     if (!opts?.preserveWhere) {
       setPropertyId(defaultPropertyId || "");
       setSelectedSpaceIds([]);
@@ -3505,6 +3788,8 @@ export function IntakeModal({
     setPriority("medium");
     setPriorityDefined(false);
     userClearedAssigneeRef.current = false;
+    userClearedDueDateRef.current = false;
+    userClearedRepeatRef.current = false;
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
     setSubtasks([]);
@@ -4152,7 +4437,13 @@ export function IntakeModal({
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
               whenFacts={intakeRowChips
                 .filter((c) => c.slot === "when")
-                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+                .map((c) => ({
+                  id: c.id,
+                  label: c.label,
+                  icon: c.icon,
+                  onRemove: c.onRemove,
+                  onPress: c.onPress,
+                }))}
               priorityFacts={intakeRowChips
                 .filter((c) => c.slot === "priority")
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
@@ -4181,32 +4472,40 @@ export function IntakeModal({
                   id: "when-today",
                   label: "TODAY",
                   onPress: () => {
+                    userClearedDueDateRef.current = false;
                     setIntakeWhenCustom(false);
                     setDueDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
+                    setOpenChipSlot(null);
                   },
                 },
                 {
                   id: "when-tom",
                   label: "TOM",
                   onPress: () => {
+                    userClearedDueDateRef.current = false;
                     setIntakeWhenCustom(false);
                     setDueDate(format(addDays(startOfDay(new Date()), 1), "yyyy-MM-dd"));
+                    setOpenChipSlot(null);
                   },
                 },
                 {
                   id: "when-7d",
                   label: "7D",
                   onPress: () => {
+                    userClearedDueDateRef.current = false;
                     setIntakeWhenCustom(false);
                     setDueDate(format(addDays(startOfDay(new Date()), 7), "yyyy-MM-dd"));
+                    setOpenChipSlot(null);
                   },
                 },
                 {
                   id: "when-14d",
                   label: "14D",
                   onPress: () => {
+                    userClearedDueDateRef.current = false;
                     setIntakeWhenCustom(false);
                     setDueDate(format(addDays(startOfDay(new Date()), 14), "yyyy-MM-dd"));
+                    setOpenChipSlot(null);
                   },
                 },
                 {
@@ -4261,13 +4560,20 @@ export function IntakeModal({
               openSlot={openChipSlot}
               onOpenSlot={setOpenChipSlot}
               whereSatisfiedWithoutChip={(properties?.length ?? 0) <= 1 && Boolean(propertyId)}
+              whenInlineActions={
+                openChipSlot === "when"
+                  ? renderSlotContent("when", () => setOpenChipSlot(null)).inlineActions
+                  : undefined
+              }
               slotPanel={
                 openChipSlot
                   ? (() => {
                       const rows = renderSlotContent(openChipSlot, () => setOpenChipSlot(null));
                       return (
                         <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-1.5">{rows.row2}</div>
+                          {rows.row2 ? (
+                            <div className="flex flex-wrap items-center gap-1.5">{rows.row2}</div>
+                          ) : null}
                           {rows.row3 ? <div>{rows.row3}</div> : null}
                         </div>
                       );

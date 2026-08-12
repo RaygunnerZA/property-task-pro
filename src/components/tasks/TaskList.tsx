@@ -108,6 +108,9 @@ interface TaskListProps {
   embeddedVerticalList?: boolean;
   /** When `embeddedVerticalList`, lay out cards in this many columns (default 1). */
   embeddedColumns?: 1 | 2;
+  /** Tasks → Messages tab: 70px message cards + preview map. */
+  messagesLayout?: boolean;
+  messagePreviewsByTaskId?: Record<string, import("@/hooks/useTaskMessageActivity").TaskMessagePreview>;
 }
 
 export function TaskList({ 
@@ -128,6 +131,8 @@ export function TaskList({
   embeddedSliderOnly = false,
   embeddedVerticalList = false,
   embeddedColumns = 1,
+  messagesLayout = false,
+  messagePreviewsByTaskId,
 }: TaskListProps = {}) {
   const navigate = useNavigate();
   
@@ -796,9 +801,14 @@ export function TaskList({
                         <div key={props.task.id} className="min-w-0">
                           <TaskCard
                             {...props}
-                            layout="horizontal"
+                            layout={messagesLayout ? "messages" : "horizontal"}
                             imagePosition="left"
                             metaDensity={compactTaskMeta ? "compact" : "default"}
+                            messagePreview={
+                              messagesLayout
+                                ? messagePreviewsByTaskId?.[String(props.task.id)] ?? null
+                                : null
+                            }
                           />
                         </div>
                       ))}
@@ -809,9 +819,14 @@ export function TaskList({
                       <div key={props.task.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
                         <TaskCard
                           {...props}
-                          layout="horizontal"
+                          layout={messagesLayout ? "messages" : "horizontal"}
                           imagePosition="left"
                           metaDensity={compactTaskMeta ? "compact" : "default"}
+                          messagePreview={
+                            messagesLayout
+                              ? messagePreviewsByTaskId?.[String(props.task.id)] ?? null
+                              : null
+                          }
                         />
                       </div>
                     ))}

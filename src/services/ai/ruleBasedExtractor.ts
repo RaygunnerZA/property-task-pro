@@ -132,6 +132,12 @@ export function extractChipsFromText(
   if (dateChip) {
     chips.push(dateChip);
   }
+
+  // 6b. Recurrence / repeat schedule detection
+  const recurrenceChip = detectRecurrence(text);
+  if (recurrenceChip) {
+    chips.push(recurrenceChip);
+  }
   
   // 7. Urgency-based ghost group
   if (priorityChip?.value === 'urgent') {
@@ -930,6 +936,211 @@ const RE_RELATIVE_TIME = new RegExp(
   "i"
 );
 const RE_STANDALONE_WEEKDAY = new RegExp(`\\b(${WEEKDAY_TOKEN_PATTERN})\\b`, "i");
+
+const RELATIVE_WORD_TO_COUNT: Record<string, number> = {
+  a: 1,
+  an: 1,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+function parseRepeatCount(raw: string): number | null {
+  const t = raw.trim().toLowerCase();
+  if (/^\d+$/.test(t)) {
+    const n = Number(t);
+    return n > 0 ? n : null;
+  }
+  return RELATIVE_WORD_TO_COUNT[t] ?? null;
+}
+
+function unitToRepeatType(unit: string): "daily" | "weekly" | "monthly" | null {
+  const u = unit.toLowerCase();
+  if (u.startsWith("day")) return "daily";
+  if (u.startsWith("week")) return "weekly";
+  if (u.startsWith("month")) return "monthly";
+  return null;
+}
+
+function formatRecurrenceLabel(
+  type: "daily" | "weekly" | "monthly",
+  interval: number,
+  matchedText?: string
+): string {
+  if (matchedText) {
+    const trimmed = matchedText.trim().replace(/\s+/g, " ");
+    if (trimmed.length > 0 && trimmed.length <= 28) {
+      return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    }
+  }
+  if (interval === 1) {
+    return type === "daily" ? "Daily" : type === "weekly" ? "Weekly" : "Monthly";
+  }
+  if (interval === 2) {
+    return type === "daily"
+      ? "Twice a day"
+      : type === "weekly"
+        ? "Twice a week"
+        : "Twice a month";
+  }
+  const unit =
+    type === "daily" ? "days" : type === "weekly" ? "weeks" : "months";
+  return `Every ${interval} ${unit}`;
+}
+
+/**
+ * Detect repeating schedule phrases ("twice a week", "every month", "weekly").
+ */
+function detectRecurrence(text: string): SuggestedChip | null {
+  const twiceMatch = text.match(
+    /\b(?:twice|2\s*x|two\s+times)\s+(?:a\s+|per\s+)?(day|week|month|daily|weekly|monthly)\b/i
+  );
+  if (twiceMatch) {
+    const type =
+      unitToRepeatType(twiceMatch[1]) ??
+      (twiceMatch[1].toLowerCase().startsWith("daily")
+        ? "daily"
+        : twiceMatch[1].toLowerCase().startsWith("week")
+          ? "weekly"
+          : "monthly");
+    const label = formatRecurrenceLabel(type, 2, twiceMatch[0]);
+    return {
+      id: `recurrence-${type}-2`,
+      type: "recurrence",
+      value: `${type}:2`,
+      label,
+      score: 0.9,
+      source: "rule",
+      resolvedEntityId: type,
+      blockingRequired: false,
+      metadata: { type, interval: 2, originalText: twiceMatch[0] },
+    };
+  }
+
+  const biweeklyMatch = text.match(/\b(?:bi[-\s]?weekly|every\s+other\s+week)\b/i);
+  if (biweeklyMatch) {
+    return {
+      id: "recurrence-weekly-2",
+      type: "recurrence",
+      value: "weekly:2",
+      label: formatRecurrenceLabel("weekly", 2, biweeklyMatch[0]),
+      score: 0.88,
+      source: "rule",
+      resolvedEntityId: "weekly",
+      blockingRequired: false,
+      metadata: { type: "weekly", interval: 2, originalText: biweeklyMatch[0] },
+    };
+  }
+
+  const everyNMatch = text.match(
+    /\bevery\s+(\d+|a|an|one|two|three|four|five|six|seven|eight|nine|ten)\s+(days?|weeks?|months?)\b/i
+  );
+  if (everyNMatch) {
+    const interval = parseRepeatCount(everyNMatch[1]);
+    const type = unitToRepeatType(everyNMatch[2]);
+    if (interval && type) {
+      return {
+        id: `recurrence-${type}-${interval}`,
+        type: "recurrence",
+        value: `${type}:${interval}`,
+        label: formatRecurrenceLabel(type, interval, everyNMatch[0]),
+        score: 0.88,
+        source: "rule",
+        resolvedEntityId: type,
+        blockingRequired: false,
+        metadata: { type, interval, originalText: everyNMatch[0] },
+      };
+    }
+  }
+
+  const everyUnitMatch = text.match(/\b(?:every|each)\s+(day|week|month)\b/i);
+  if (everyUnitMatch) {
+    const type = unitToRepeatType(everyUnitMatch[1]);
+    if (type) {
+      return {
+        id: `recurrence-${type}-1`,
+        type: "recurrence",
+        value: `${type}:1`,
+        label: formatRecurrenceLabel(type, 1, everyUnitMatch[0]),
+        score: 0.88,
+        source: "rule",
+        resolvedEntityId: type,
+        blockingRequired: false,
+        metadata: { type, interval: 1, originalText: everyUnitMatch[0] },
+      };
+    }
+  }
+
+  const onceMatch = text.match(/\bonce\s+a\s+(day|week|month)\b/i);
+  if (onceMatch) {
+    const type = unitToRepeatType(onceMatch[1]);
+    if (type) {
+      return {
+        id: `recurrence-${type}-1`,
+        type: "recurrence",
+        value: `${type}:1`,
+        label: formatRecurrenceLabel(type, 1, onceMatch[0]),
+        score: 0.86,
+        source: "rule",
+        resolvedEntityId: type,
+        blockingRequired: false,
+        metadata: { type, interval: 1, originalText: onceMatch[0] },
+      };
+    }
+  }
+
+  const everyWeekdayMatch = text.match(
+    new RegExp(`\\bevery\\s+(${WEEKDAY_TOKEN_PATTERN})\\b`, "i")
+  );
+  if (everyWeekdayMatch) {
+    const day = normalizeWeekdayToken(everyWeekdayMatch[1]);
+    if (day) {
+      const label = `Every ${day.charAt(0).toUpperCase()}${day.slice(1)}`;
+      return {
+        id: "recurrence-weekly-1",
+        type: "recurrence",
+        value: "weekly:1",
+        label,
+        score: 0.86,
+        source: "rule",
+        resolvedEntityId: "weekly",
+        blockingRequired: false,
+        metadata: {
+          type: "weekly",
+          interval: 1,
+          day,
+          originalText: everyWeekdayMatch[0],
+        },
+      };
+    }
+  }
+
+  const bareMatch = text.match(/\b(daily|weekly|monthly)\b/i);
+  if (bareMatch) {
+    const raw = bareMatch[1].toLowerCase();
+    const type = raw as "daily" | "weekly" | "monthly";
+    return {
+      id: `recurrence-${type}-1`,
+      type: "recurrence",
+      value: `${type}:1`,
+      label: formatRecurrenceLabel(type, 1, bareMatch[0]),
+      score: 0.72,
+      source: "rule",
+      resolvedEntityId: type,
+      blockingRequired: false,
+      metadata: { type, interval: 1, originalText: bareMatch[0] },
+    };
+  }
+
+  return null;
+}
 
 function detectDate(text: string): SuggestedChip | null {
   const { datePatterns } = extractionPatterns;

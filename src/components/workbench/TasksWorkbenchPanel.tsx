@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
+import { TasksMessagesCardGrid } from "@/components/workbench/TasksMessagesCardGrid";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import {
   workbenchSectionTitleClassName,
@@ -9,13 +10,8 @@ import {
 import { useDataContext } from "@/contexts/DataContext";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
-import {
-  useTaskCommentSignalsMap,
-} from "@/hooks/useTaskCommentSignals";
-import {
-  isTaskCommentSignalNew,
-  TASK_COMMENT_SEEN_EVENT,
-} from "@/lib/taskCommentSeen";
+import { useTaskMessageActivity } from "@/hooks/useTaskMessageActivity";
+import { setTasksMessagesTabActive } from "@/lib/tasksMessagesTab";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import {
   isOnboardingDemoTask,
@@ -57,7 +53,7 @@ const TASKS_LIST_TABS: {
 
 const MESSAGES_TAB_META = {
   id: "messages" as const,
-  subtitle: "Open tasks with unread messages.",
+  subtitle: "Conversations on open tasks — always available here.",
   /** Former “All” header art — speech / conversation cue for the messages tab. */
   illustrationSrc: ISSUES_WORKBENCH_SECTION_ILLUSTRATION.recentSignals,
 };
@@ -105,18 +101,19 @@ function sortRecentlyAdded(tasks: any[]) {
   );
 }
 
-function useTaskCommentSeenTick() {
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const onSeen = () => setTick((n) => n + 1);
-    window.addEventListener(TASK_COMMENT_SEEN_EVENT, onSeen);
-    return () => window.removeEventListener(TASK_COMMENT_SEEN_EVENT, onSeen);
-  }, []);
-  return tick;
+function sortByLatestMessage(
+  tasks: any[],
+  latestByTask: Record<string, { createdAt: string }>
+) {
+  return [...tasks].sort((a, b) => {
+    const aAt = latestByTask[String(a.id)]?.createdAt ?? a.created_at ?? 0;
+    const bAt = latestByTask[String(b.id)]?.createdAt ?? b.created_at ?? 0;
+    return new Date(bAt).getTime() - new Date(aAt).getTime();
+  });
 }
 
 /**
- * Tasks tab — single list with All / Urgent / My tasks (+ Messages when unread).
+ * Tasks tab — All / Urgent / My tasks / Messages (always available).
  * All (default) is sorted by recently added; includes work assigned to others.
  */
 export function TasksWorkbenchPanel({
@@ -133,8 +130,8 @@ export function TasksWorkbenchPanel({
   const memberRole =
     identityMode === "manager" ? "manager" : identityMode === "staff" ? "staff" : "owner";
   const [listTab, setListTab] = useState<TasksListTab>("all");
-  const { data: latestByTask } = useTaskCommentSignalsMap();
-  const seenTick = useTaskCommentSeenTick();
+  const [authorFilterKey, setAuthorFilterKey] = useState<string | null>(null);
+  const { latestByTask, recentAuthors } = useTaskMessageActivity();
 
   // List tabs replace Due / Urgent / My Tasks chips — clear them so they don't double-filter.
   useEffect(() => {
@@ -153,6 +150,19 @@ export function TasksWorkbenchPanel({
       return next;
     });
   }, [setSelectedFilters]);
+
+  // Collapse Create Task / Add Record + Add to Filla while Messages is active.
+  useEffect(() => {
+    const active = listTab === "messages";
+    setTasksMessagesTabActive(active);
+    return () => {
+      if (active) setTasksMessagesTabActive(false);
+    };
+  }, [listTab]);
+
+  useEffect(() => {
+    if (listTab !== "messages") setAuthorFilterKey(null);
+  }, [listTab]);
 
   const scopedOpenTasks = useMemo(
     () =>
@@ -196,29 +206,49 @@ export function TasksWorkbenchPanel({
     [scopedAllTasks]
   );
 
+  /** Open tasks that have any recent message activity (not only unread). */
   const messageTasks = useMemo(() => {
-    void seenTick;
-    if (!latestByTask) return [];
-    return scopedOpenTasks.filter((task) => {
-      const latest = latestByTask[String(task.id)];
-      if (!latest) return false;
-      return isTaskCommentSignalNew({
-        taskId: String(task.id),
-        createdAt: latest.createdAt,
-        authorUserId: latest.authorUserId,
-        currentUserId: userId,
+    const withMessages = scopedOpenTasks.filter(
+      (task) => Boolean(latestByTask[String(task.id)])
+    );
+    return sortByLatestMessage(withMessages, latestByTask);
+  }, [scopedOpenTasks, latestByTask]);
+
+  const unreadMessageCount = useMemo(
+    () => messageTasks.filter((t) => latestByTask[String(t.id)]?.isUnread).length,
+    [messageTasks, latestByTask]
+  );
+
+  /** Authors for the Messages filter strip — scoped to visible message tasks, unique, newest first. */
+  const scopedMessageAuthors = useMemo(() => {
+    const seen = new Set<string>();
+    const authors: typeof recentAuthors = [];
+    for (const task of messageTasks) {
+      const preview = latestByTask[String(task.id)];
+      if (!preview) continue;
+      const key = preview.authorUserId ?? `name:${preview.authorName}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      authors.push({
+        authorKey: key,
+        authorUserId: preview.authorUserId,
+        authorName: preview.authorName,
+        authorAvatarUrl: preview.authorAvatarUrl,
+        accentColor: preview.accentColor,
       });
-    });
-  }, [scopedOpenTasks, latestByTask, userId, seenTick]);
-
-  const messagesTabVisible = messageTasks.length >= 1;
-
-  // If unread messages clear while on the Messages tab, fall back to All.
-  useEffect(() => {
-    if (listTab === "messages" && !messagesTabVisible) {
-      setListTab("all");
     }
-  }, [listTab, messagesTabVisible]);
+    return authors.length > 0 ? authors : recentAuthors;
+  }, [messageTasks, latestByTask, recentAuthors]);
+
+  const filteredMessageTasks = useMemo(() => {
+    if (!authorFilterKey) return messageTasks;
+    return messageTasks.filter((task) => {
+      const preview = latestByTask[String(task.id)];
+      if (!preview) return false;
+      const key = preview.authorUserId ?? `name:${preview.authorName}`;
+      return key === authorFilterKey;
+    });
+  }, [messageTasks, authorFilterKey, latestByTask]);
 
   const tabCounts: Record<TasksListTab, number> = {
     all: allTasks.length,
@@ -230,16 +260,22 @@ export function TasksWorkbenchPanel({
   const visibleTasks = useMemo(() => {
     if (listTab === "urgent") return sortRecentlyAdded(urgentTasks);
     if (listTab === "my") return sortRecentlyAdded(myTasks);
-    if (listTab === "messages") return sortRecentlyAdded(messageTasks);
+    if (listTab === "messages") return filteredMessageTasks;
     return allTasks;
-  }, [listTab, allTasks, urgentTasks, myTasks, messageTasks]);
+  }, [listTab, allTasks, urgentTasks, myTasks, filteredMessageTasks]);
 
   const activeTabMeta =
     listTab === "messages"
       ? MESSAGES_TAB_META
       : TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
 
-  const MessagesIcon = messageTasks.length > 1 ? MessageSquareMore : MessageSquare;
+  const MessagesIcon = unreadMessageCount > 1 ? MessageSquareMore : MessageSquare;
+
+  const handleSelectTaskFromMessages = (taskId: string) => {
+    window.dispatchEvent(
+      new CustomEvent("filla:open-task-from-messages", { detail: { taskId } })
+    );
+  };
 
   return (
     <div className="min-w-0">
@@ -307,48 +343,50 @@ export function TasksWorkbenchPanel({
                 );
               })}
 
-              {messagesTabVisible ? (
-                <div className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2">
-                  <span
-                    className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+              <div className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2">
+                <span
+                  className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                  aria-hidden
+                >
+                  |
+                </span>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={listTab === "messages"}
+                  aria-label={
+                    unreadMessageCount > 0
+                      ? `Messages, ${unreadMessageCount} unread`
+                      : `Messages, ${tabCounts.messages} conversations`
+                  }
+                  onClick={() => setListTab("messages")}
+                  className={cn(
+                    "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                    listTab === "messages"
+                      ? cn(
+                          workbenchSectionTitleClassName,
+                          "text-lg text-foreground md:text-xl"
+                        )
+                      : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                  )}
+                >
+                  <MessagesIcon
+                    className="h-[calc(1.3cap+4px)] w-[calc(1.3cap+4px)] shrink-0 translate-y-[1px]"
+                    strokeWidth={listTab === "messages" ? 2.25 : 2}
                     aria-hidden
-                  >
-                    |
-                  </span>
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={listTab === "messages"}
-                    aria-label={`Messages, ${tabCounts.messages} unread`}
-                    onClick={() => setListTab("messages")}
+                  />
+                  <span
                     className={cn(
-                      "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                      "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
                       listTab === "messages"
-                        ? cn(
-                            workbenchSectionTitleClassName,
-                            "text-lg text-foreground md:text-xl"
-                          )
-                        : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                        ? "text-muted-foreground"
+                        : "text-muted-foreground/60"
                     )}
                   >
-                    <MessagesIcon
-                      className="h-[calc(1.3cap+4px)] w-[calc(1.3cap+4px)] shrink-0 translate-y-[1px]"
-                      strokeWidth={listTab === "messages" ? 2.25 : 2}
-                      aria-hidden
-                    />
-                    <span
-                      className={cn(
-                        "inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-white/80 px-1 text-2xs font-medium tabular-nums",
-                        listTab === "messages"
-                          ? "text-muted-foreground"
-                          : "text-muted-foreground/60"
-                      )}
-                    >
-                      {tabCounts.messages}
-                    </span>
-                  </button>
-                </div>
-              ) : null}
+                    {tabCounts.messages}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
@@ -382,24 +420,38 @@ export function TasksWorkbenchPanel({
             properties={properties}
             hidePrimaryQuickChips
             showSortBar
+            messagesMode={listTab === "messages"}
+            messageAuthors={scopedMessageAuthors}
+            selectedMessageAuthorKey={authorFilterKey}
+            onSelectMessageAuthor={setAuthorFilterKey}
           />
         </div>
 
         <div className="mt-3 px-2 md:mt-0">
-          <TaskList
-            tasks={visibleTasks}
-            properties={properties}
-            tasksLoading={tasksLoading}
-            onTaskClick={onTaskClick}
-            selectedTaskId={selectedTaskId}
-            selectedPropertyIds={selectedPropertyIds}
-            hidePrimaryUrgentChip
-            embeddedInIssuesWorkbench
-            embeddedVerticalList
-            embeddedColumns={2}
-            compactTaskMeta
-            hideDoneSection={listTab !== "all"}
-          />
+          {listTab === "messages" ? (
+            <TasksMessagesCardGrid
+              tasks={visibleTasks}
+              properties={properties}
+              selectedTaskId={selectedTaskId}
+              onTaskClick={handleSelectTaskFromMessages}
+              messagePreviewsByTaskId={latestByTask}
+            />
+          ) : (
+            <TaskList
+              tasks={visibleTasks}
+              properties={properties}
+              tasksLoading={tasksLoading}
+              onTaskClick={onTaskClick}
+              selectedTaskId={selectedTaskId}
+              selectedPropertyIds={selectedPropertyIds}
+              hidePrimaryUrgentChip
+              embeddedInIssuesWorkbench
+              embeddedVerticalList
+              embeddedColumns={2}
+              compactTaskMeta
+              hideDoneSection={listTab !== "all"}
+            />
+          )}
         </div>
       </section>
     </div>

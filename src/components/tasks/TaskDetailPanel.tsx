@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, FileText, Pencil } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -96,6 +96,8 @@ interface TaskDetailPanelProps {
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
   /** Open another task after Mark complete → Next task. */
   onOpenTask?: (taskId: string) => void;
+  /** When true (Messages tab selection), start with checklist collapsed. */
+  initialChecklistCollapsed?: boolean;
 }
 
 /**
@@ -110,6 +112,7 @@ export function TaskDetailPanel({
   onClose,
   variant = "modal",
   onOpenTask,
+  initialChecklistCollapsed = false,
 }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { capture: captureGeo } = useGeoCaptureOnAction();
@@ -169,6 +172,7 @@ export function TaskDetailPanel({
   const [nextTaskOfferId, setNextTaskOfferId] = useState<string | null>(null);
   const [checklistSessionDirty, setChecklistSessionDirty] = useState(false);
   const [messageDraftPending, setMessageDraftPending] = useState(false);
+  const [checklistCollapsed, setChecklistCollapsed] = useState(initialChecklistCollapsed);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [evidenceSlideIndex, setEvidenceSlideIndex] = useState(0);
   const [focusComposeKey] = useState(0);
@@ -205,7 +209,8 @@ export function TaskDetailPanel({
     setChecklistSessionDirty(false);
     setMessageDraftPending(false);
     setProgressUpdateOpen(false);
-  }, [taskId]);
+    setChecklistCollapsed(initialChecklistCollapsed);
+  }, [taskId, initialChecklistCollapsed]);
 
   const markChecklistSessionDirty = useCallback(() => {
     setChecklistSessionDirty(true);
@@ -1548,9 +1553,36 @@ export function TaskDetailPanel({
         sections={[
           {
             id: "checklist",
-            title: null,
+            title: (
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 text-left"
+                aria-expanded={!checklistCollapsed}
+                onClick={() => setChecklistCollapsed((v) => !v)}
+              >
+                <span className="text-sm font-medium text-foreground">
+                  Checklist
+                  {checklistItemCount > 0 ? (
+                    <span className="ml-1.5 text-muted-foreground tabular-nums">
+                      ({checklistItemCount})
+                    </span>
+                  ) : null}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                    checklistCollapsed ? "-rotate-90" : "rotate-0"
+                  )}
+                  aria-hidden
+                />
+              </button>
+            ),
             elevated: true,
-            content: (
+            content: checklistCollapsed ? (
+              <p className="text-[11px] text-muted-foreground">
+                Checklist collapsed — expand to review steps.
+              </p>
+            ) : (
               <TaskDetailChecklistTab
                 taskId={taskId}
                 canEdit={canManageTask}

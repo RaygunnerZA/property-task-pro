@@ -259,12 +259,7 @@ export function SemanticChip({
         </span>
       )}
       {dropdown && (
-        <span
-          className={cn(
-            "flex items-center justify-end flex-shrink-0 overflow-hidden transition-[width] duration-150",
-            "w-0 group-hover:w-[12px] group-data-[state=open]:w-[12px]"
-          )}
-        >
+        <span className="flex w-[12px] items-center justify-end flex-shrink-0">
           <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform duration-150" />
         </span>
       )}

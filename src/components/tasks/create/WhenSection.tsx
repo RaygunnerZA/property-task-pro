@@ -347,26 +347,29 @@ export function WhenSection({
                   {!hideRepeat && (
                     <>
                       {!repeatRule && (
-                        <SemanticChip
-                          epistemic="proposal"
-                          label="Repeat"
-                          icon={<Repeat className="h-3 w-3" />}
-                          truncate
-                          onPress={handleRepeatClick}
-                          pressOnPointerDown
-                          className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
-                        />
+                        <span data-when-action="true" className="shrink-0">
+                          <SemanticChip
+                            epistemic="proposal"
+                            label="Repeat"
+                            icon={<Repeat className="h-3 w-3" />}
+                            truncate
+                            onPress={handleRepeatClick}
+                            pressOnPointerDown
+                            className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+                          />
+                        </span>
                       )}
                       {showRepeatOptions &&
                         REPEAT_OPTIONS.map(({ id, label, type }) => (
-                          <SemanticChip
-                            key={id}
-                            epistemic="proposal"
-                            label={label}
-                            truncate
-                            onPress={() => handleRepeatOption(type)}
-                            className="shrink-0"
-                          />
+                          <span key={id} data-when-action="true" className="shrink-0">
+                            <SemanticChip
+                              epistemic="proposal"
+                              label={label}
+                              truncate
+                              onPress={() => handleRepeatOption(type)}
+                              className="shrink-0"
+                            />
+                          </span>
                         ))}
                     </>
                   )}

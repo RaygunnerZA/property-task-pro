@@ -474,6 +474,54 @@ describe("extractChipsFromText — date detection", () => {
   });
 });
 
+describe("extractChipsFromText — recurrence detection", () => {
+  it("'Twice a week' → weekly recurrence with interval 2", () => {
+    const result = extract("Clean the lobby Twice a week");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("weekly");
+    expect(chip!.metadata?.interval).toBe(2);
+    expect(chip!.label.toLowerCase()).toContain("twice");
+  });
+
+  it("'every day' → daily recurrence", () => {
+    const result = extract("Check the boiler every day");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("daily");
+    expect(chip!.metadata?.interval).toBe(1);
+  });
+
+  it("'every week' → weekly recurrence", () => {
+    const result = extract("Inspect fire doors every week");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("weekly");
+  });
+
+  it("'every month' → monthly recurrence", () => {
+    const result = extract("Service the HVAC every month");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("monthly");
+  });
+
+  it("'biweekly' → weekly interval 2", () => {
+    const result = extract("Mow the lawn biweekly");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("weekly");
+    expect(chip!.metadata?.interval).toBe(2);
+  });
+
+  it("'every Monday' → weekly recurrence", () => {
+    const result = extract("Empty bins every Monday");
+    const chip = result.chips.find((c) => c.type === "recurrence");
+    expect(chip).toBeDefined();
+    expect(chip!.resolvedEntityId).toBe("weekly");
+  });
+});
+
 // ─── Asset Detection ────────────────────────────────────────────────────────
 
 describe("extractChipsFromText — asset detection", () => {

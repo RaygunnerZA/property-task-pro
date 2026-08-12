@@ -15,6 +15,7 @@ export type StaggerFactChip = {
   label: string;
   onRemove?: () => void;
   onPress?: () => void;
+  icon?: ReactNode;
 };
 
 export type StaggerHoverChip = {
@@ -52,6 +53,8 @@ export type IntakeStaggeredSectionsProps = {
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   /** Expanded slot panel (quick chips / calendar / etc.) */
   slotPanel?: ReactNode;
+  /** Actions rendered on the open WHEN fact row, to the right of date/repeat chips. */
+  whenInlineActions?: ReactNode;
   /** Single-property orgs treat location as satisfied without showing a property chip. */
   whereSatisfiedWithoutChip?: boolean;
   className?: string;
@@ -65,11 +68,14 @@ function StaggerRow({
   isOpen,
   onOpenSlot,
   slotPanel,
+  inlineActions,
 }: {
   section: CoreSection;
   isOpen: boolean;
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   slotPanel?: ReactNode;
+  /** Proposal/action chips rendered on the fact row (e.g. ADD MILESTONE beside due date). */
+  inlineActions?: ReactNode;
 }) {
   const [hovered, setHovered] = useState(false);
   const Icon = section.icon;
@@ -122,12 +128,13 @@ function StaggerRow({
                   key={chip.id}
                   epistemic="fact"
                   label={chip.label}
+                  icon={chip.icon}
                   truncate={false}
                   removable={Boolean(chip.onRemove)}
                   onRemove={chip.onRemove}
                   onPress={chip.onPress}
                   pressOnPointerDown={Boolean(chip.onPress)}
-                  className="h-6 shrink-0 text-caption"
+                  className="h-6 shrink-0 max-w-none text-caption"
                 />
               ))
             : null}
@@ -140,31 +147,43 @@ function StaggerRow({
 
           {showHoverChips
             ? availableHoverChips.map((chip) => (
-                <SemanticChip
+                <span
                   key={chip.id}
-                  epistemic="proposal"
-                  label={chip.label}
-                  truncate={false}
-                  pressOnPointerDown
-                  onPress={() => chip.onPress()}
-                  className="h-6 shrink-0 max-w-none py-0 text-caption"
-                />
+                  className="inline-flex shrink-0"
+                  // Prevent row onClick from opening the slot before the chip action runs,
+                  // and skip pressOnPointerDown transfer — that delay unmounts these chips
+                  // (hover → open) and clears the pending onPress (CUSTOM looked like a no-op).
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <SemanticChip
+                    epistemic="proposal"
+                    label={chip.label}
+                    truncate={false}
+                    onPress={() => chip.onPress()}
+                    className="h-6 shrink-0 max-w-none py-0 text-caption"
+                  />
+                </span>
               ))
             : null}
 
-          {!hasFacts && isOpen
-            ? availableHoverChips.map((chip) => (
-                <SemanticChip
-                  key={`open-${chip.id}`}
-                  epistemic="proposal"
-                  label={chip.label}
-                  truncate={false}
-                  pressOnPointerDown
-                  onPress={() => chip.onPress()}
-                  className="h-6 shrink-0 max-w-none py-0 text-caption"
-                />
-              ))
-            : null}
+          {/* When open with no facts yet, keep the section word — never re-render
+              hover chips here; slotPanel already owns TODAY/TOM/CUSTOM etc. */}
+          {!hasFacts && isOpen && !showHoverChips ? (
+            <span className="inline-flex h-6 items-center font-mono text-caption uppercase tracking-wide text-muted-foreground leading-none">
+              {section.word}
+            </span>
+          ) : null}
+
+          {isOpen && inlineActions ? (
+            <span
+              className="inline-flex flex-wrap items-center gap-1"
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              {inlineActions}
+            </span>
+          ) : null}
         </div>
       </div>
       {isOpen && slotPanel ? (
@@ -188,6 +207,7 @@ export function IntakeStaggeredSections({
   openSlot,
   onOpenSlot,
   slotPanel,
+  whenInlineActions,
   whereSatisfiedWithoutChip = false,
   className,
 }: IntakeStaggeredSectionsProps) {
@@ -241,6 +261,9 @@ export function IntakeStaggeredSections({
             isOpen={openSlot === section.id}
             onOpenSlot={onOpenSlot}
             slotPanel={openSlot === section.id ? slotPanel : undefined}
+            inlineActions={
+              openSlot === section.id && section.id === "when" ? whenInlineActions : undefined
+            }
           />
         );
       })}

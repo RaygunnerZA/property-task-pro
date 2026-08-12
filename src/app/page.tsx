@@ -50,6 +50,11 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AddToFillaDropPanel } from "@/components/intake/AddToFillaDropPanel";
+import { TasksMessagesThirdColumnList } from "@/components/workbench/TasksMessagesThirdColumnList";
+import {
+  TASKS_MESSAGES_TAB_EVENT,
+  isTasksMessagesTabEvent,
+} from "@/lib/tasksMessagesTab";
 import { AddToFillaSheet } from "@/components/intake/AddToFillaSheet";
 import { cn } from "@/lib/utils";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
@@ -133,6 +138,8 @@ export default function Dashboard({
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedItem, setSelectedItem] = useState<SelectedItem>(null);
   const [intakeMinimized, setIntakeMinimized] = useState(false);
+  const [tasksMessagesTabActive, setTasksMessagesTabActiveState] = useState(false);
+  const [openTaskChecklistCollapsed, setOpenTaskChecklistCollapsed] = useState(false);
   const isLargeScreen = useMinLayoutBreakpoint();
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
@@ -520,6 +527,37 @@ export default function Dashboard({
   }, [isLargeScreen]);
 
   useEffect(() => {
+    const onMessagesTab = (event: Event) => {
+      if (!isTasksMessagesTabEvent(event)) return;
+      const active = Boolean(event.detail?.active);
+      setTasksMessagesTabActiveState(active);
+      if (active) {
+        setIntakeMinimized(true);
+      }
+    };
+    window.addEventListener(TASKS_MESSAGES_TAB_EVENT, onMessagesTab);
+    return () => window.removeEventListener(TASKS_MESSAGES_TAB_EVENT, onMessagesTab);
+  }, []);
+
+  useEffect(() => {
+    const onOpenFromMessages = (event: Event) => {
+      const customEvent = event as CustomEvent<{ taskId?: string }>;
+      const taskId = customEvent.detail?.taskId;
+      if (!taskId) return;
+      setOpenTaskChecklistCollapsed(true);
+      if (isLargeScreen) {
+        setExpandedSection("details");
+        setIntakeMinimized(true);
+        pinThirdColumnTop();
+      }
+      setSelectedItem({ type: "task", id: taskId });
+    };
+    window.addEventListener("filla:open-task-from-messages", onOpenFromMessages);
+    return () =>
+      window.removeEventListener("filla:open-task-from-messages", onOpenFromMessages);
+  }, [isLargeScreen, pinThirdColumnTop]);
+
+  useEffect(() => {
     const onApplyFilters = (event: Event) => {
       const customEvent = event as CustomEvent<{ filterIds?: string[] }>;
       const filterIds = Array.isArray(customEvent.detail?.filterIds)
@@ -553,6 +591,7 @@ export default function Dashboard({
   }, [isLargeScreen, handleWorkbenchTabChange, pinThirdColumnTop]);
 
   const handleTaskClick = (taskId: string) => {
+    setOpenTaskChecklistCollapsed(false);
     if (isLargeScreen) {
       setExpandedSection("details");
       setIntakeMinimized(true);
@@ -923,7 +962,11 @@ export default function Dashboard({
                           taskId={selectedItem.id}
                           onClose={handleClosePanel}
                           variant="column"
-                          onOpenTask={(id) => setSelectedItem({ type: "task", id })}
+                          initialChecklistCollapsed={openTaskChecklistCollapsed}
+                          onOpenTask={(id) => {
+                            setOpenTaskChecklistCollapsed(false);
+                            setSelectedItem({ type: "task", id });
+                          }}
                         />
                       ) : selectedItem.type === "message" ? (
                         <MessageDetailPanel
@@ -950,9 +993,28 @@ export default function Dashboard({
             title: "",
             variant: "static" as const,
             children: (
-              <AddToFillaDropPanel onReviewClick={() => setShowAddToFilla(true)} />
+              <AddToFillaDropPanel
+                collapsedHeight={tasksMessagesTabActive}
+                onReviewClick={() => setShowAddToFilla(true)}
+              />
             ),
           },
+          ...(tasksMessagesTabActive
+            ? [
+                {
+                  id: "task-conversations" as const,
+                  title: "",
+                  variant: "static" as const,
+                  children: (
+                    <TasksMessagesThirdColumnList
+                      tasks={tasks}
+                      properties={properties}
+                      selectedPropertyIds={selectedPropertyIds}
+                    />
+                  ),
+                },
+              ]
+            : []),
           {
             id: 'assistant',
             title: 'Filla AI',
@@ -1169,7 +1231,11 @@ export default function Dashboard({
             taskId={selectedItem.id}
             onClose={handleClosePanel}
             variant="modal"
-            onOpenTask={(id) => setSelectedItem({ type: "task", id })}
+            initialChecklistCollapsed={openTaskChecklistCollapsed}
+            onOpenTask={(id) => {
+              setOpenTaskChecklistCollapsed(false);
+              setSelectedItem({ type: "task", id });
+            }}
           />
         ) : selectedItem.type === "message" ? (
           <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />

@@ -21,6 +21,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { pickBestNameMatch, scheduleInlineInputBlur } from "@/lib/inlineChipInput";
+import { rankLikelySpaces } from "@/lib/rankLikelySpaces";
 
 interface SpaceSuggestion {
   id: string;
@@ -97,11 +98,20 @@ export function WhereSection({
 
   const spaceSuggestions = useMemo(() => {
     const q = spaceQuery.trim().toLowerCase();
-    if (!q || !propertyId) return [];
-    return spaces
-      .filter((s) => s.name.toLowerCase().includes(q))
-      .slice(0, 4);
-  }, [spaceQuery, spaces, propertyId]);
+    if (!propertyId) return [];
+    if (q) {
+      return spaces.filter((s) => s.name.toLowerCase().includes(q)).slice(0, 6);
+    }
+    return rankLikelySpaces({
+      spaces,
+      selectedIds: selectedSpaceIds,
+      suggestedEntityIds: suggestedChips
+        .map((chip) => chip.resolvedEntityId)
+        .filter((id): id is string => Boolean(id)),
+      suggestedLabels: suggestedChips.map((chip) => chip.label),
+      limit: 6,
+    });
+  }, [spaceQuery, spaces, propertyId, selectedSpaceIds, suggestedChips]);
 
   const hasExactSpaceMatch = useMemo(() => {
     const q = spaceQuery.trim().toLowerCase();

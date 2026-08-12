@@ -36,6 +36,7 @@ import { ContextResolver } from "../ContextResolver";
 import { InstructionBlock } from "../InstructionBlock";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
+import { rankLikelySpaces } from "@/lib/rankLikelySpaces";
 
 interface WherePanelProps {
   propertyId: string;
@@ -146,9 +147,14 @@ export function WherePanel({
     if (propertyFileInputRef.current) propertyFileInputRef.current.value = "";
   };
 
-  // No filtering needed - show all properties and spaces
+  // Prefer spaces suggested by AI / context — never dump the full property catalog.
   const filteredProperties = properties;
-  const filteredSpaces = spaces;
+  const filteredSpaces = rankLikelySpaces({
+    spaces,
+    selectedIds: spaceIds.filter((id) => !id.startsWith("ghost-")),
+    suggestedLabels: suggestedSpaces,
+    limit: 8,
+  });
 
   // Identify ghost chips (suggested but not in DB)
   const existingSpaceNames = spaces.map(s => s.name.toLowerCase());
@@ -425,19 +431,15 @@ export function WherePanel({
                   <p className="text-xs text-muted-foreground whitespace-nowrap">Loading spaces…</p>
                 ) : filteredSpaces.length > 0 || ghostSpaces.length > 0 ? (
                   <>
-                    {filteredSpaces.map(space => {
-                      const SpaceIcon = getAssetIcon((space as { icon_name?: string }).icon_name);
-                      return (
+                    {filteredSpaces.map(space => (
                       <SemanticChip
                         key={space.id}
                         epistemic={spaceIds.includes(space.id) ? "fact" : "proposal"}
                         label={space.name.toUpperCase()}
                         onPress={() => toggleSpace(space.id)}
-                        icon={<SpaceIcon className="h-3.5 w-3.5" />}
                         className="shrink-0"
                       />
-                    );})}
-                    
+                    ))}
                     {ghostSpaces.map((ghostName, idx) => {
                       const ghostId = `ghost-space-${ghostName}`;
                       const isSelected = spaceIds.includes(ghostId);
@@ -455,7 +457,9 @@ export function WherePanel({
                   </>
                 ) : (
                   <p className="text-xs text-muted-foreground whitespace-nowrap">
-                    No spaces for this property
+                    {spaces.length > 0
+                      ? "Use SPACES + to search or add a location"
+                      : "No spaces for this property"}
                   </p>
                 )}
               </div>
