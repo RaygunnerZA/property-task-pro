@@ -3,6 +3,9 @@ import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { inferCalendarType } from "@/lib/calendarTypes";
 import { parseScheduleDateTime } from "@/lib/calendarTaskSchedule";
 
+/** Calendar toolbar / workbench assignee scope for tasks, repeats, and milestones. */
+export type CalendarTaskScope = "all" | "mine" | "due";
+
 export type DayUrgency = "none" | "low" | "normal" | "high" | "urgent" | "overdue";
 
 export type TaskDateData = {
@@ -167,7 +170,52 @@ export function filterTasksForCalendar(
   });
 }
 
-/** Header search + workbench filter chips applied to calendar task lists. */
+/** Due dates + milestone dates that place a task (or its repeats) on the calendar. */
+export function taskCalendarScheduleValues(task: {
+  due_date?: string | null;
+  due_at?: string | null;
+  milestones?: unknown;
+}): string[] {
+  const values: string[] = [];
+  const due = task.due_date || task.due_at;
+  if (due) values.push(String(due));
+
+  let milestones = task.milestones as
+    | Array<{ dateTime?: string }>
+    | string
+    | null
+    | undefined;
+  if (typeof milestones === "string") {
+    try {
+      const parsed = JSON.parse(milestones);
+      milestones = Array.isArray(parsed) ? parsed : [];
+    } catch {
+      milestones = [];
+    }
+  }
+  if (Array.isArray(milestones)) {
+    for (const m of milestones) {
+      if (m?.dateTime) values.push(m.dateTime);
+    }
+  }
+  return values;
+}
+
+function taskMatchesDayPredicate(
+  task: { due_date?: string | null; due_at?: string | null; milestones?: unknown },
+  predicate: (day: Date) => boolean
+): boolean {
+  for (const value of taskCalendarScheduleValues(task)) {
+    const dt = parseScheduleDateTime(value);
+    if (!dt) continue;
+    const day = new Date(dt);
+    day.setHours(0, 0, 0, 0);
+    if (predicate(day)) return true;
+  }
+  return false;
+}
+
+/** Header search + assignee scope + workbench filter chips for calendar task lists. */
 export function applyCalendarDisplayFilters(
   tasks: any[],
   options: {
@@ -175,10 +223,18 @@ export function applyCalendarDisplayFilters(
     propertyMap?: Map<string, { nickname?: string; name?: string; address?: string }>;
     selectedWorkbenchFilters?: Set<string>;
     userId?: string | null;
+    /**
+     * Explicit calendar scope. When set, overrides workbench `filter-assigned-me` for assignee:
+     * - all: every in-scope task (and their milestones / repeats)
+     * - mine: only tasks assigned to `userId` (and their milestones / repeats)
+     * - due: due/milestone within the next 7 days
+     */
+    taskScope?: CalendarTaskScope;
   }
 ): any[] {
-  const { searchQuery, propertyMap, selectedWorkbenchFilters, userId } = options;
+  const { searchQuery, propertyMap, selectedWorkbenchFilters, userId, taskScope } = options;
   let list = tasks;
+  const filters = selectedWorkbenchFilters ?? new Set<string>();
 
   const q = (searchQuery ?? "").trim().toLowerCase();
   if (q) {
@@ -198,29 +254,45 @@ export function applyCalendarDisplayFilters(
     });
   }
 
-  if (!selectedWorkbenchFilters || selectedWorkbenchFilters.size === 0) {
-    return list;
+  const mineOnly =
+    taskScope === "mine" || (taskScope == null && filters.has("filter-assigned-me"));
+  if (mineOnly && userId) {
+    list = list.filter((t) => t.assigned_user_id === userId);
   }
 
-  const filters = selectedWorkbenchFilters;
-
-  if (filters.has("filter-due")) {
+  if (taskScope === "due" || filters.has("filter-due") || filters.has("filter-date-this-week")) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    list = list.filter((task) => {
-      if (!task.due_date) return false;
-      const dueDate = new Date(task.due_date);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate >= today;
-    });
+    const end = new Date(today);
+    // "due" toolbar + this-week chip: next 7 days; plain filter-due: from today onward
+    if (taskScope === "due" || filters.has("filter-date-this-week")) {
+      end.setDate(end.getDate() + 7);
+      list = list.filter((task) =>
+        taskMatchesDayPredicate(task, (day) => day >= today && day < end)
+      );
+    } else {
+      list = list.filter((task) => taskMatchesDayPredicate(task, (day) => day >= today));
+    }
+  }
+
+  if (filters.has("filter-date-today")) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    list = list.filter((task) =>
+      taskMatchesDayPredicate(task, (day) => day >= today && day < tomorrow)
+    );
+  }
+
+  if (filters.has("filter-date-overdue")) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    list = list.filter((task) => taskMatchesDayPredicate(task, (day) => day < today));
   }
 
   if (filters.has("filter-urgent")) {
     list = list.filter((t) => t.priority === "urgent" || t.priority === "high");
-  }
-
-  if (filters.has("filter-assigned-me") && userId) {
-    list = list.filter((t) => t.assigned_user_id === userId);
   }
 
   const statusFilters = [

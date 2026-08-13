@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { addMonths, format, startOfMonth, subMonths } from "date-fns";
+import { addMonths, startOfMonth, subMonths } from "date-fns";
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid";
 import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
-import { SegmentControl, type SegmentOption } from "@/components/filla";
 import { Button } from "@/components/ui/button";
+import {
+  WorkbenchTaskFilterBar,
+  type CalendarListScope,
+} from "@/components/workbench/WorkbenchTaskFilterBar";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -14,18 +17,32 @@ import { useToast } from "@/hooks/use-toast";
 import {
   applyCalendarDisplayFilters,
   filterTasksForCalendar,
+  type CalendarTaskScope,
 } from "@/lib/calendarDayMeta";
-import { filterTasksForScheduleDate } from "@/lib/calendarTaskSchedule";
+import { filterTasksForScheduleAgenda } from "@/lib/calendarTaskSchedule";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
+import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
 import type { CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 type WorkspaceCalendarView = "calendar" | "schedule";
 
-const VIEW_OPTIONS: SegmentOption[] = [
-  { id: "calendar", label: "Calendar" },
-  { id: "schedule", label: "Schedule" },
+const VIEW_TABS: {
+  id: WorkspaceCalendarView;
+  label: string;
+  subtitle: string;
+}[] = [
+  {
+    id: "calendar",
+    label: "Calendar",
+    subtitle: "Month view of due dates, repeats, and milestones.",
+  },
+  {
+    id: "schedule",
+    label: "Schedule",
+    subtitle: "Upcoming work from today — including milestones. Use filters to narrow the list.",
+  },
 ];
 
 export type CalendarWorkbenchPanelProps = MyWorkPanelProps & {
@@ -62,8 +79,12 @@ export function CalendarWorkbenchPanel({
   const [selectedCalendarTypes] = useState<Set<CalendarTypeId>>(
     () => new Set(CALENDAR_TYPES.map((t) => t.id))
   );
+  const [listScope, setListScope] = useState<CalendarListScope>(() =>
+    workbenchControls?.selectedFilters?.has("filter-assigned-me") ? "mine" : "all"
+  );
 
   const selectedDate = selectedDateProp ?? internalSelectedDate;
+  const activeViewMeta = VIEW_TABS.find((tab) => tab.id === view) ?? VIEW_TABS[0];
 
   useEffect(() => {
     if (!selectedDateProp) return;
@@ -107,6 +128,17 @@ export function CalendarWorkbenchPanel({
     return map;
   }, [properties, parsedTasks]);
 
+  const taskScope: CalendarTaskScope = listScope === "mine" ? "mine" : "all";
+
+  const displayFilters = useMemo(() => {
+    const next = new Set(workbenchControls?.selectedFilters ?? []);
+    next.delete("filter-assigned-me");
+    next.delete("filter-urgent");
+    next.delete("filter-due");
+    if (listScope === "urgent") next.add("filter-urgent");
+    return next;
+  }, [workbenchControls?.selectedFilters, listScope]);
+
   const displayTasks = useMemo(() => {
     const scoped = filterTasksForCalendar(parsedTasks, {
       selectedPropertyIds: effectivePropertyIds,
@@ -116,8 +148,9 @@ export function CalendarWorkbenchPanel({
     return applyCalendarDisplayFilters(scoped, {
       searchQuery: workbenchControls?.searchQuery ?? "",
       propertyMap,
-      selectedWorkbenchFilters: workbenchControls?.selectedFilters,
+      selectedWorkbenchFilters: displayFilters,
       userId,
+      taskScope,
     });
   }, [
     parsedTasks,
@@ -125,15 +158,16 @@ export function CalendarWorkbenchPanel({
     allPropertyIds,
     selectedCalendarTypes,
     workbenchControls?.searchQuery,
-    workbenchControls?.selectedFilters,
+    displayFilters,
     propertyMap,
     userId,
+    taskScope,
   ]);
 
-  /** Day agenda for the pinned mini-calendar date (includes overdue + milestone-only). */
+  /** Agenda from today forward (plus overdue), limited by All / Urgent / My filters. */
   const scheduleTasks = useMemo(
-    () => filterTasksForScheduleDate(displayTasks, selectedDate),
-    [displayTasks, selectedDate]
+    () => filterTasksForScheduleAgenda(displayTasks),
+    [displayTasks]
   );
 
   const handleDateSelect = useCallback((date: Date | undefined) => {
@@ -181,20 +215,74 @@ export function CalendarWorkbenchPanel({
   );
 
   return (
-    <div className="flex min-h-0 flex-col space-y-4 pt-0">
-      <SegmentControl
-        options={VIEW_OPTIONS}
-        selectedId={view}
-        onChange={(id) => setView(id as WorkspaceCalendarView)}
-        className="w-full max-w-xs"
-      />
+    <div className="min-w-0 flex min-h-0 flex-1 flex-col pt-0">
+      <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
+        <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
+          <div className="min-w-0 flex-1">
+            <div
+              role="tablist"
+              aria-label="Calendar views"
+              className="flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
+            >
+              {VIEW_TABS.map((tab, index) => {
+                const selected = view === tab.id;
+                return (
+                  <div
+                    key={tab.id}
+                    className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2"
+                  >
+                    {index > 0 ? (
+                      <span
+                        className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                        aria-hidden
+                      >
+                        |
+                      </span>
+                    ) : null}
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={selected}
+                      onClick={() => setView(tab.id)}
+                      className={cn(
+                        "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                        selected
+                          ? cn(
+                              workbenchSectionTitleClassName,
+                              "text-lg text-foreground md:text-xl"
+                            )
+                          : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                      )}
+                    >
+                      {tab.label}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
+              {activeViewMeta.subtitle}
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-3 px-2 md:mt-5 md:mb-5">
+          <WorkbenchTaskFilterBar
+            tasks={tasksProp}
+            properties={properties}
+            calendarListScope={{ value: listScope, onChange: setListScope }}
+            showSortBar
+          />
+        </div>
+      </section>
 
       {view === "calendar" ? (
-        <section className="flex min-h-0 flex-col gap-3">
+        <section className="flex min-h-0 flex-col gap-3 px-2">
           <div
             className={cn(
               "flex flex-wrap items-center justify-between gap-2 rounded-xl",
-              "bg-transparent px-3 py-[3px]"
+              "bg-transparent py-[3px]"
             )}
           >
             <div className="flex items-center gap-0">
@@ -245,7 +333,7 @@ export function CalendarWorkbenchPanel({
           </div>
         </section>
       ) : (
-        <section className="-mt-4 flex min-h-0 flex-1 flex-col">
+        <section className="flex min-h-0 flex-1 flex-col px-2">
           <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl bg-muted/10">
             {tasksLoading ? (
               <div className="space-y-3 p-4">
@@ -259,16 +347,15 @@ export function CalendarWorkbenchPanel({
                 selectedDate={selectedDate}
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedTaskId}
-                showDateHeaders={false}
               />
             ) : (
               <div className="flex h-full min-h-[200px] flex-col items-center justify-center px-4 text-center">
                 <Calendar className="mb-3 h-12 w-12 text-muted-foreground/50" />
                 <p className="mb-1 text-sm font-medium text-foreground">
-                  {`No tasks scheduled for ${format(selectedDate, "EEEE, MMMM d")}`}
+                  No scheduled tasks
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Create a task with a due date to see it in your agenda.
+                  Create a task with a due date, or adjust All / Urgent / My tasks filters.
                 </p>
               </div>
             )}

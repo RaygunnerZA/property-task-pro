@@ -867,6 +867,21 @@
   .list-stagger > *:nth-child(11) { animation-delay: 300ms; }
   .list-stagger > *:nth-child(n+12) { animation-delay: 330ms; }
 
+  /* ── Magnetic scroll areas (MagneticScrollArea) ──────────────────────────
+     Subtle magnetism: items gently settle onto list positions at the end of a
+     scroll gesture. `backwards` (instead of `both`) lets the entry stagger
+     still play while allowing the scroll-linked inline transform/opacity to
+     take over once it finishes — `both` would pin the final keyframe forever. */
+  .magnetic-scroll-viewport {
+    scroll-snap-type: y proximity;
+  }
+
+  .magnetic-scroll-viewport .list-stagger > * {
+    animation-fill-mode: backwards;
+    scroll-snap-align: start;
+    scroll-margin-top: 12px;
+  }
+
   /* Panel/tab continuity — content fades in with a soft rise */
   .panel-enter {
     animation: list-enter var(--duration-slow) var(--ease-out) both;

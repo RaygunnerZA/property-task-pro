@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { addDays, format, subDays } from "date-fns";
-import { buildTasksByDate } from "../calendarDayMeta";
+import {
+  applyCalendarDisplayFilters,
+  buildTasksByDate,
+} from "../calendarDayMeta";
 
 describe("buildTasksByDate", () => {
   it("includes maxUrgency for due dates and milestones", () => {
@@ -52,5 +55,80 @@ describe("buildTasksByDate", () => {
       },
     ]);
     expect(map.get(milestoneKey)?.maxUrgency).toBe("high");
+  });
+});
+
+describe("applyCalendarDisplayFilters", () => {
+  const me = "user-me";
+  const other = "user-other";
+  const milestoneSoon = format(addDays(new Date(), 2), "yyyy-MM-dd");
+
+  const tasks = [
+    {
+      id: "mine-due",
+      assigned_user_id: me,
+      due_date: format(addDays(new Date(), 1), "yyyy-MM-dd"),
+      priority: "normal",
+      status: "open",
+    },
+    {
+      id: "mine-milestone-only",
+      assigned_user_id: me,
+      due_date: null,
+      milestones: [{ dateTime: `${milestoneSoon}T09:00` }],
+      priority: "normal",
+      status: "open",
+    },
+    {
+      id: "theirs",
+      assigned_user_id: other,
+      due_date: format(addDays(new Date(), 1), "yyyy-MM-dd"),
+      milestones: [{ dateTime: `${milestoneSoon}T10:00` }],
+      priority: "normal",
+      status: "open",
+    },
+  ];
+
+  it("All tasks keeps everyone's due dates and milestone-only rows", () => {
+    const result = applyCalendarDisplayFilters(tasks, {
+      userId: me,
+      taskScope: "all",
+    });
+    expect(result.map((t) => t.id).sort()).toEqual([
+      "mine-due",
+      "mine-milestone-only",
+      "theirs",
+    ]);
+  });
+
+  it("My tasks keeps only assigned-to-me rows including milestone-only", () => {
+    const result = applyCalendarDisplayFilters(tasks, {
+      userId: me,
+      taskScope: "mine",
+    });
+    expect(result.map((t) => t.id).sort()).toEqual(["mine-due", "mine-milestone-only"]);
+  });
+
+  it("Due this week includes milestone-only tasks in range", () => {
+    const result = applyCalendarDisplayFilters(
+      [
+        {
+          id: "milestone-week",
+          assigned_user_id: other,
+          due_date: null,
+          milestones: [{ dateTime: `${milestoneSoon}T09:00` }],
+          status: "open",
+        },
+        {
+          id: "milestone-later",
+          assigned_user_id: other,
+          due_date: null,
+          milestones: [{ dateTime: `${format(addDays(new Date(), 20), "yyyy-MM-dd")}T09:00` }],
+          status: "open",
+        },
+      ],
+      { taskScope: "due" }
+    );
+    expect(result.map((t) => t.id)).toEqual(["milestone-week"]);
   });
 });

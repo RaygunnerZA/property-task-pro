@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef } from "react";
 import { format, startOfDay } from "date-fns";
 import TaskCard from "@/components/TaskCard";
+import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import {
   CALENDAR_AFTERNOON_TIME,
   CALENDAR_MORNING_TIME,
@@ -133,8 +134,12 @@ export function ScheduleView({
 
   return (
     <div className="flex h-full w-full relative">
-      {/* Task Stack */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-2 pt-0.5 pb-4">
+      {/* Task Stack — internal scroll with magnetic edge squish + top/bottom shadow hints */}
+      <MagneticScrollArea
+        ref={scrollContainerRef}
+        className="min-w-0 flex-1"
+        viewportClassName="px-2 pt-0.5 pb-4"
+      >
         <div className="space-y-6">
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {
@@ -233,11 +238,11 @@ export function ScheduleView({
           {/* Empty state */}
           {datedTasks.length === 0 && anyTimeTasks.length === 0 && (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
-              <p>No tasks scheduled for this date</p>
+              <p>No scheduled tasks</p>
             </div>
           )}
         </div>
-      </div>
+      </MagneticScrollArea>
     </div>
   );
 }

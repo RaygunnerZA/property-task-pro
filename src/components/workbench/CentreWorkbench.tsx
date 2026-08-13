@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CentreWorkbenchTabStrip } from "@/components/workbench/CentreWorkbenchTabStrip";
 import { CentreWorkbenchMobileCalendar } from "@/components/workbench/CentreWorkbenchMobileCalendar";
 import { InflowPanel } from "@/components/workbench/InflowPanel";
@@ -6,6 +6,7 @@ import { TasksWorkbenchPanel } from "@/components/workbench/TasksWorkbenchPanel"
 import { CalendarWorkbenchPanel } from "@/components/workbench/CalendarWorkbenchPanel";
 import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
 import { cn } from "@/lib/utils";
+import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
@@ -53,6 +54,9 @@ export function CentreWorkbench({
   hideViewAllLinks = false,
   hideTabStrip = false,
 }: CentreWorkbenchProps) {
+  /** Driven by Tasks All / My tabs so the phone calendar matches the list scope. */
+  const [tasksCalendarScope, setTasksCalendarScope] = useState<CalendarTaskScope>("all");
+
   const sharedPanelProps = useMemo(
     () => ({
       tasks,
@@ -133,6 +137,7 @@ export function CentreWorkbench({
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
               selectedPropertyIds={selectedPropertyIds}
+              taskScope={activeTab === "tasks" ? tasksCalendarScope : undefined}
               className="mb-0"
             />
           </div>
@@ -141,14 +146,20 @@ export function CentreWorkbench({
         <div
           key={activeTab}
           className={cn(
-            "panel-enter min-h-0 flex-1",
+            // flex-col so panels can claim the full height and scroll their lists internally.
+            "panel-enter flex min-h-0 flex-1 flex-col",
             // Inflow / Tasks / Calendar: 55px from tab border → first title.
             // Phone with week calendar above: tighter gap after the calendar.
             showMobileCalendar ? "pt-3 md:pt-[55px]" : PANEL_BELOW_TABS_GAP_CLASS
           )}
         >
           {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}
-          {activeTab === "tasks" && <TasksWorkbenchPanel {...sharedPanelProps} />}
+          {activeTab === "tasks" && (
+            <TasksWorkbenchPanel
+              {...sharedPanelProps}
+              onCalendarTaskScopeChange={setTasksCalendarScope}
+            />
+          )}
           {activeTab === "calendar" && (
             <CalendarWorkbenchPanel
               {...sharedPanelProps}

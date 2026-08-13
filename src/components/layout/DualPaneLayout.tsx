@@ -25,6 +25,13 @@ interface DualPaneLayoutProps {
    * reliably generated in this project's Tailwind build.
    */
   stackOnPhone?: boolean;
+  /**
+   * Pin the centre column to the visible viewport (sticky, like the side rail)
+   * so inner panes scroll their own lists instead of growing the page.
+   * The grid rows are auto-sized, so `h-full` alone never bounds the centre —
+   * this gives it an explicit viewport-based height on tablet/desktop.
+   */
+  viewportBoundCentre?: boolean;
 }
 
 /**
@@ -55,6 +62,7 @@ export function DualPaneLayout({
   collapseCentreOnPhone = false,
   collapseLeftOnPhone = false,
   stackOnPhone = false,
+  viewportBoundCentre = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
@@ -73,6 +81,15 @@ export function DualPaneLayout({
       "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-2 layout:pr-2"
   );
 
+  // Explicit viewport height (not h-full — auto grid rows make h-full circular),
+  // sticky beside the side rail so page scroll from a taller rail doesn't move it.
+  const boundCentreMd = hasHeader
+    ? "md:sticky md:top-[var(--header-height,0px)] md:self-start md:h-[calc(100dvh-var(--header-height,0px)-14px)]"
+    : "md:sticky md:top-0 md:self-start md:h-[calc(100dvh-14px)]";
+  const boundCentreSm = hasHeader
+    ? "sm:sticky sm:top-[var(--header-height,0px)] sm:self-start sm:h-[calc(100dvh-var(--header-height,0px)-14px)]"
+    : "sm:sticky sm:top-0 sm:self-start sm:h-[calc(100dvh-14px)]";
+
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
     // When collapsing centre on phone, avoid a bare `flex` that would override `hidden`.
@@ -80,10 +97,19 @@ export function DualPaneLayout({
     // track edge and reads as a thick divider against the third column. Inner panes
     // (CentreWorkbench, TaskPanel) own vertical scroll, inset by this padding.
     collapseCentreOnPhone
-      ? "hidden md:flex md:h-full md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4"
+      ? cn(
+          "hidden md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
+          viewportBoundCentre ? boundCentreMd : "md:h-full"
+        )
       : dualGridFromPhone
-        ? "md:flex md:h-full md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4"
-        : "sm:flex sm:h-full sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
+        ? cn(
+            "md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
+            viewportBoundCentre ? boundCentreMd : "md:h-full"
+          )
+        : cn(
+            "sm:flex sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
+            viewportBoundCentre ? boundCentreSm : "sm:h-full"
+          ),
     hasThirdColumn
       ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-x-clip layout:px-2 layout:pb-5"
       : "layout:max-w-none layout:px-1 layout:pb-5",

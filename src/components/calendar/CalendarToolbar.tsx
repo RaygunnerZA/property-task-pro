@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
+import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 
 export type CalendarViewMode = "month" | "week" | "day" | "agenda";
 
@@ -20,6 +21,8 @@ type CalendarToolbarProps = {
   currentMonth: Date;
   onMonthChange: (month: Date) => void;
   onToday: () => void;
+  taskScope: CalendarTaskScope;
+  onTaskScopeChange: (scope: CalendarTaskScope) => void;
   className?: string;
 };
 
@@ -36,6 +39,8 @@ export function CalendarToolbar({
   currentMonth,
   onMonthChange,
   onToday,
+  taskScope,
+  onTaskScopeChange,
   className,
 }: CalendarToolbarProps) {
   return (
@@ -81,8 +86,11 @@ export function CalendarToolbar({
         <Button type="button" variant="outline" size="icon" className="h-8 w-8 shrink-0">
           <CalendarDays className="h-4 w-4" />
         </Button>
-        <Select defaultValue="all">
-          <SelectTrigger className="h-8 w-[120px] text-xs">
+        <Select
+          value={taskScope}
+          onValueChange={(value) => onTaskScopeChange(value as CalendarTaskScope)}
+        >
+          <SelectTrigger className="h-8 w-[120px] text-xs" aria-label="Calendar task scope">
             <SelectValue placeholder="All tasks" />
           </SelectTrigger>
           <SelectContent>

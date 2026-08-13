@@ -30,6 +30,8 @@ import type { PendingInvitation } from "./tabs/WhoTab";
 import type { CreateTaskPrefill } from "../CreateTaskModal";
 import { toErrorMessage } from "@/lib/error";
 import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
+import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
+import { isWeekendDueDate } from "@/lib/repeatWeekendPush";
 
 export interface UseCreateTaskSubmitProps {
   // Auth
@@ -46,6 +48,7 @@ export interface UseCreateTaskSubmitProps {
   priority: TaskPriority;
   dueDate: string;
   milestones: MilestoneItem[];
+  repeatRule?: RepeatRule;
   assignedUserId: string | undefined;
   assignedTeamIds: string[];
   pendingInvitations: PendingInvitation[];
@@ -79,6 +82,7 @@ export function useCreateTaskSubmit({
   priority,
   dueDate,
   milestones,
+  repeatRule,
   assignedUserId,
   assignedTeamIds,
   pendingInvitations,
@@ -393,6 +397,24 @@ export function useCreateTaskSubmit({
         if (error) console.error("[useCreateTaskSubmit] Error linking assets to task:", error);
       }
 
+      if (repeatRule) {
+        const rule: RepeatRule = {
+          ...repeatRule,
+          ...(isWeekendDueDate(dueDate) && typeof repeatRule.weekend_push !== "boolean"
+            ? { weekend_push: repeatRule.type !== "weekly" }
+            : {}),
+        };
+        const { error: recurrenceError } = await supabase.from("task_recurrence").insert({
+          task_id: taskId,
+          org_id: orgId,
+          rule,
+          next_run: nextRunFromRepeatRule(dueDateValue, rule),
+        });
+        if (recurrenceError) {
+          console.error("[useCreateTaskSubmit] Error saving repeat rule:", recurrenceError);
+        }
+      }
+
       // ── Post-create query invalidation ────────────────────────────────────
 
       if (imagesToUpload.length > 0 || filesToUpload.length > 0) {
@@ -435,7 +457,7 @@ export function useCreateTaskSubmit({
   }, [
     orgId, orgLoading, title, description, propertyId, selectedPropertyIds,
     selectedSpaceIds, selectedThemeIds, selectedAssetIds, priority, dueDate,
-    milestones, assignedUserId, assignedTeamIds, pendingInvitations,
+    milestones, repeatRule, assignedUserId, assignedTeamIds, pendingInvitations,
     images, taskFiles, subtasks, appliedChips, aiTitleGenerated, chipSuggestedIcon,
     generateVerbLabel, prefill, taskCreatedSource, resetForm, onOpenChange, onTaskCreated,
   ]);

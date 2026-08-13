@@ -159,6 +159,80 @@ export function filterTasksForScheduleDate(
   return results;
 }
 
+export type ScheduleAgendaOptions = {
+  /** Inclusive start day (defaults to today). */
+  fromDate?: Date;
+  /** When true (default), also include overdue due/milestone dates before `fromDate`. */
+  includeOverdue?: boolean;
+};
+
+/**
+ * Open tasks for Schedule agenda: from `fromDate` forward (plus overdue by default),
+ * including milestone-only hits. Caller should already apply All / Urgent / My filters.
+ */
+export function filterTasksForScheduleAgenda(
+  tasks: unknown[],
+  options: ScheduleAgendaOptions = {}
+): Array<Record<string, unknown>> {
+  const from = options.fromDate ?? new Date();
+  const fromKey = format(from, "yyyy-MM-dd");
+  const includeOverdue = options.includeOverdue !== false;
+  const results: Array<Record<string, unknown>> = [];
+  const seen = new Set<string>();
+
+  const pushUnique = (row: Record<string, unknown>, dateKey: string) => {
+    const id = String(row.id ?? "");
+    if (!id) return;
+    const key = `${id}:${dateKey}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    results.push(row);
+  };
+
+  const inRange = (dateKey: string | null) => {
+    if (!dateKey) return false;
+    if (dateKey >= fromKey) return true;
+    return includeOverdue;
+  };
+
+  for (const raw of tasks) {
+    const task = raw as Record<string, unknown>;
+    if (!task.id) continue;
+    const status = String(task.status ?? "").toLowerCase();
+    if (TERMINAL_SCHEDULE_STATUSES.has(status)) continue;
+
+    const dueValue = (task.due_date || task.due_at) as string | undefined;
+    const dueKey = scheduleDateKey(dueValue);
+    if (dueKey && inRange(dueKey)) {
+      pushUnique(task, dueKey);
+    }
+
+    for (const m of parseMilestones(task)) {
+      const mKey = scheduleDateKey(m?.dateTime);
+      if (!mKey || !inRange(mKey)) continue;
+      // Prefer the due-date row when milestone falls on the same day.
+      if (dueKey && mKey === dueKey) continue;
+      pushUnique(
+        {
+          ...task,
+          _milestoneLabel: m.label?.trim() || "Milestone",
+          due_date: m.dateTime,
+          due_at: m.dateTime,
+        },
+        mKey
+      );
+    }
+  }
+
+  results.sort((a, b) => {
+    const aTime = parseScheduleDateTime((a.due_date || a.due_at) as string | undefined)?.getTime() ?? 0;
+    const bTime = parseScheduleDateTime((b.due_date || b.due_at) as string | undefined)?.getTime() ?? 0;
+    return aTime - bTime;
+  });
+
+  return results;
+}
+
 export function buildCalendarPlacements(tasks: unknown[]): CalendarTaskPlacement[] {
   const placements: CalendarTaskPlacement[] = [];
   const seen = new Set<string>();

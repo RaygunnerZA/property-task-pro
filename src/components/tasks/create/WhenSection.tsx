@@ -17,7 +17,13 @@ import { cn } from "@/lib/utils";
 import { SemanticChip } from "@/components/chips/semantic";
 import type { RepeatRule } from "@/types/database";
 import { WhenPanel } from "@/components/tasks/create/panels/WhenPanel";
+import { WeekendPushNotice } from "@/components/tasks/create/WeekendPushNotice";
 import { formatCustomRepeatLabel, type CustomRepeatUnit } from "@/components/tasks/create/CustomRepeatBuilder";
+import {
+  defaultWeekendPush,
+  isWeekendDueDate,
+  resolveWeekendPush,
+} from "@/lib/repeatWeekendPush";
 
 const QUICK_DATES = [
   { id: "today", label: "Today", days: 0 },
@@ -190,10 +196,53 @@ export function WhenSection({
       setEditing({ kind: "due" });
       return;
     }
-    onRepeatRuleChange({ type, interval: 1 });
+    const effectiveDue =
+      dueDate || `${format(today, "yyyy-MM-dd")}T${timePartForDefault}`;
+    if (!dueDate) onDueDateChange(effectiveDue);
+    onRepeatRuleChange({
+      type,
+      interval: 1,
+      ...(isWeekendDueDate(effectiveDue)
+        ? { weekend_push: defaultWeekendPush(type) }
+        : {}),
+    });
     setShowRepeatOptions(false);
     setShowCustomRepeatBuilder(false);
   };
+
+  const dueIsWeekend = isWeekendDueDate(dueDate);
+  const showWeekendPush = Boolean(repeatRule && dueIsWeekend);
+  const weekendPushChecked =
+    repeatRule && dueIsWeekend
+      ? (resolveWeekendPush(repeatRule, dueDate) ?? defaultWeekendPush(repeatRule.type))
+      : false;
+
+  // When due lands on a weekend (or repeat type changes), apply type defaults.
+  useEffect(() => {
+    if (!repeatRule || !dueIsWeekend) return;
+    const desired = defaultWeekendPush(repeatRule.type);
+    if (typeof repeatRule.weekend_push === "boolean") return;
+    onRepeatRuleChange({ ...repeatRule, weekend_push: desired });
+  }, [dueIsWeekend, repeatRule?.type]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Re-default when type changes while already on a weekend (weekly → unchecked, etc.).
+  const prevRepeatTypeRef = useRef<RepeatRule["type"] | undefined>(undefined);
+  useEffect(() => {
+    if (!repeatRule || !dueIsWeekend) {
+      prevRepeatTypeRef.current = repeatRule?.type;
+      return;
+    }
+    if (
+      prevRepeatTypeRef.current &&
+      prevRepeatTypeRef.current !== repeatRule.type
+    ) {
+      onRepeatRuleChange({
+        ...repeatRule,
+        weekend_push: defaultWeekendPush(repeatRule.type),
+      });
+    }
+    prevRepeatTypeRef.current = repeatRule.type;
+  }, [repeatRule?.type, dueIsWeekend]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dateFactLabel = formatDueLabel();
   const hideRepeat = milestones.length > 0;
@@ -364,6 +413,14 @@ export function WhenSection({
             <>
               {!hasDate ? (
                 <>
+                  <SemanticChip
+                    epistemic="proposal"
+                    label="+ DATE"
+                    truncate
+                    onPress={() => startEditDue(true)}
+                    pressOnPointerDown
+                    className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+                  />
                   {QUICK_DATES.map(({ id, label, days }) => (
                     <SemanticChip
                       key={id}
@@ -374,14 +431,31 @@ export function WhenSection({
                       className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
                     />
                   ))}
-                  <SemanticChip
-                    epistemic="proposal"
-                    label="+Custom"
-                    truncate
-                    onPress={() => startEditDue(true)}
-                    pressOnPointerDown
-                    className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
-                  />
+                  {!hideRepeat && !repeatRule && (
+                    <span data-when-action="true" className="shrink-0">
+                      <SemanticChip
+                        epistemic="proposal"
+                        label="REPEAT"
+                        icon={<Repeat className="h-3 w-3" />}
+                        truncate
+                        onPress={handleRepeatClick}
+                        pressOnPointerDown
+                        className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
+                      />
+                    </span>
+                  )}
+                  {showRepeatOptions &&
+                    REPEAT_OPTIONS.map(({ id, label, type }) => (
+                      <span key={id} data-when-action="true" className="shrink-0">
+                        <SemanticChip
+                          epistemic="proposal"
+                          label={label}
+                          truncate
+                          onPress={() => handleRepeatOption(type)}
+                          className="shrink-0"
+                        />
+                      </span>
+                    ))}
                 </>
               ) : (
                 <>
@@ -391,7 +465,7 @@ export function WhenSection({
                         <span data-when-action="true" className="shrink-0">
                           <SemanticChip
                             epistemic="proposal"
-                            label="Repeat"
+                            label="REPEAT"
                             icon={<Repeat className="h-3 w-3" />}
                             truncate
                             onPress={handleRepeatClick}
@@ -461,6 +535,17 @@ export function WhenSection({
           />
         </div>
       )}
+
+      {showWeekendPush && repeatRule ? (
+        <div className={cn(embedded ? "px-0 pt-1" : "pl-[22px] pt-1")}>
+          <WeekendPushNotice
+            checked={weekendPushChecked}
+            onCheckedChange={(checked) =>
+              onRepeatRuleChange({ ...repeatRule, weekend_push: checked })
+            }
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

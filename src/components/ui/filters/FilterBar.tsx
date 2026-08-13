@@ -393,6 +393,10 @@ export function FilterBar({
                   </span>
                 </button>
               ) : null}
+              {mostUsedOptions.map((option, index) => {
+                const isSelected = selectedFilters.has(option.id);
+                return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
+              })}
               {afterFilterTrigger}
               {hasClearableFilters && (
                 renderIconButton(
@@ -400,10 +404,6 @@ export function FilterBar({
                   handleClearAllFilters
                 )
               )}
-              {mostUsedOptions.map((option, index) => {
-                const isSelected = selectedFilters.has(option.id);
-                return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
-              })}
               {primaryTrailing}
             </>
           )}

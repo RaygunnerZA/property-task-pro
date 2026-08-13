@@ -3,6 +3,7 @@ import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { TasksMessagesCardGrid } from "@/components/workbench/TasksMessagesCardGrid";
+import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import {
   workbenchSectionTitleClassName,
@@ -22,10 +23,16 @@ import {
   shouldHideOwnerDemoTaskForRole,
 } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
+import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 import { cn } from "@/lib/utils";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 type TasksListTab = "all" | "urgent" | "my" | "messages";
+
+export type TasksWorkbenchPanelProps = MyWorkPanelProps & {
+  /** Keeps phone/mini calendars aligned with All vs My tasks. */
+  onCalendarTaskScopeChange?: (scope: CalendarTaskScope) => void;
+};
 
 const TASKS_LIST_TABS: {
   id: Exclude<TasksListTab, "messages">;
@@ -127,7 +134,8 @@ export function TasksWorkbenchPanel({
   onTaskClick,
   selectedTaskId,
   selectedPropertyIds,
-}: MyWorkPanelProps) {
+  onCalendarTaskScopeChange,
+}: TasksWorkbenchPanelProps) {
   const { userId } = useDataContext();
   const { setSelectedFilters, selectedFilters, sortBy, searchQuery } = useWorkbenchControls();
   const { mode: identityMode } = useIdentityMode();
@@ -154,6 +162,13 @@ export function TasksWorkbenchPanel({
       return next;
     });
   }, [setSelectedFilters]);
+
+  // Keep calendars in sync: All → everyone's tasks/milestones; My tasks → assigned to me only.
+  useEffect(() => {
+    if (!onCalendarTaskScopeChange) return;
+    if (listTab === "my") onCalendarTaskScopeChange("mine");
+    else if (listTab === "all") onCalendarTaskScopeChange("all");
+  }, [listTab, onCalendarTaskScopeChange]);
 
   // Collapse Create Task / Add Record + Add to Filla while Messages is active.
   useEffect(() => {
@@ -304,8 +319,8 @@ export function TasksWorkbenchPanel({
   };
 
   return (
-    <div className="min-w-0">
-      <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-transparent pt-0 pb-1">
         {/*
           items-start so the illustration doesn’t push “All” down (was items-end → ~75px gap).
           CentreWorkbench owns the 55px space above this title.
@@ -453,7 +468,8 @@ export function TasksWorkbenchPanel({
           />
         </div>
 
-        <div className="mt-3 px-2 md:mt-0">
+        {/* Only the list scrolls — header/tabs/filters above stay put. */}
+        <MagneticScrollArea className="mt-3 min-h-0 flex-1 md:mt-0" viewportClassName="px-2 pt-0.5 pb-4">
           {listTab === "messages" ? (
             <TasksMessagesCardGrid
               tasks={visibleTasks}
@@ -478,7 +494,7 @@ export function TasksWorkbenchPanel({
               hideDoneSection={listTab !== "all"}
             />
           )}
-        </div>
+        </MagneticScrollArea>
       </section>
     </div>
   );

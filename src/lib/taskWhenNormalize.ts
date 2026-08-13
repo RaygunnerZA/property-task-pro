@@ -5,6 +5,7 @@
 
 import type { MilestoneItem } from "@/components/tasks/create/WhenSection";
 import type { RepeatRule } from "@/types/database";
+import { applyWeekendPushToDate, resolveWeekendPush } from "@/lib/repeatWeekendPush";
 
 export function normalizeTaskMilestones(raw: unknown): MilestoneItem[] {
   let arr: unknown[] = [];
@@ -65,5 +66,7 @@ export function nextRunFromRepeatRule(dueDate: string | null | undefined, rule: 
   else if (rule.type === "weekly") next.setDate(next.getDate() + n * 7);
   else if (rule.type === "monthly") next.setMonth(next.getMonth() + n);
   else next.setFullYear(next.getFullYear() + n);
-  return next.toISOString();
+
+  const push = resolveWeekendPush(rule, dueDate) === true;
+  return applyWeekendPushToDate(next, push).toISOString();
 }

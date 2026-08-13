@@ -21,12 +21,28 @@ import { useTeams } from "@/hooks/useTeams";
 import { TASK_STATUS_ORDER, TASK_STATUS_VISUALS } from "@/lib/taskStatus";
 import { cn } from "@/lib/utils";
 
+export type CalendarListScope = "all" | "urgent" | "mine";
+
+const CALENDAR_SCOPE_FILTER_IDS: Record<CalendarListScope, string> = {
+  all: "calendar-scope-all",
+  urgent: "calendar-scope-urgent",
+  mine: "calendar-scope-mine",
+};
+
 type WorkbenchTaskFilterBarProps = {
   tasks?: any[];
   properties?: any[];
   hidePrimaryUrgentChip?: boolean;
   /** Hide Due / Urgent / My Tasks quick chips (e.g. Tasks tab uses its own list tabs). */
   hidePrimaryQuickChips?: boolean;
+  /**
+   * Calendar tab: exclusive All / Urgent / My tasks chips before status icons
+   * (replaces the default Due / Urgent / My Tasks quick chips).
+   */
+  calendarListScope?: {
+    value: CalendarListScope;
+    onChange: (value: CalendarListScope) => void;
+  };
   /** Show SORT immediately to the right of FILTER (expands options inline). */
   showSortBar?: boolean;
   /**
@@ -45,6 +61,7 @@ export function WorkbenchTaskFilterBar({
   properties = [],
   hidePrimaryUrgentChip = false,
   hidePrimaryQuickChips = false,
+  calendarListScope,
   showSortBar = false,
   messagesMode = false,
   messageAuthors = [],
@@ -79,6 +96,22 @@ export function WorkbenchTaskFilterBar({
   }, [tasks]);
 
   const primaryOptions: FilterOption[] = useMemo(() => {
+    if (calendarListScope) {
+      return [
+        { id: CALENDAR_SCOPE_FILTER_IDS.all, label: "All" },
+        {
+          id: CALENDAR_SCOPE_FILTER_IDS.urgent,
+          label: "Urgent",
+          icon: <AlertTriangle className="h-4 w-4" />,
+          color: "#EB6834",
+        },
+        {
+          id: CALENDAR_SCOPE_FILTER_IDS.mine,
+          label: "My tasks",
+          icon: <User className="h-4 w-4" />,
+        },
+      ];
+    }
     if (hidePrimaryQuickChips) return [];
     const opts: FilterOption[] = [
       {
@@ -102,7 +135,15 @@ export function WorkbenchTaskFilterBar({
       return opts.filter((o) => o.id !== "filter-urgent");
     }
     return opts;
-  }, [hidePrimaryUrgentChip, hidePrimaryQuickChips]);
+  }, [calendarListScope, hidePrimaryUrgentChip, hidePrimaryQuickChips]);
+
+  const effectiveSelectedFilters = useMemo(() => {
+    if (!calendarListScope) return selectedFilters;
+    const next = new Set(selectedFilters);
+    Object.values(CALENDAR_SCOPE_FILTER_IDS).forEach((id) => next.delete(id));
+    next.add(CALENDAR_SCOPE_FILTER_IDS[calendarListScope.value]);
+    return next;
+  }, [calendarListScope, selectedFilters]);
 
   const secondaryGroups: FilterGroup[] = useMemo(
     () => [
@@ -213,6 +254,15 @@ export function WorkbenchTaskFilterBar({
 
   const handleFilterChange = useCallback(
     (filterId: string, selected: boolean) => {
+      if (calendarListScope) {
+        const scopeEntry = (
+          Object.entries(CALENDAR_SCOPE_FILTER_IDS) as Array<[CalendarListScope, string]>
+        ).find(([, id]) => id === filterId);
+        if (scopeEntry) {
+          if (selected) calendarListScope.onChange(scopeEntry[0]);
+          return;
+        }
+      }
       setSelectedFilters((prev) => {
         const next = new Set(prev);
         if (selected) {
@@ -223,7 +273,7 @@ export function WorkbenchTaskFilterBar({
         return next;
       });
     },
-    [setSelectedFilters]
+    [calendarListScope, setSelectedFilters]
   );
 
   const midControls = messagesMode ? (
@@ -234,7 +284,7 @@ export function WorkbenchTaskFilterBar({
     />
   ) : (
     <StatusFilterIconStrip
-      selectedFilters={selectedFilters}
+      selectedFilters={effectiveSelectedFilters}
       onFilterChange={handleFilterChange}
     />
   );
@@ -243,7 +293,7 @@ export function WorkbenchTaskFilterBar({
     <FilterBar
       primaryOptions={primaryOptions}
       secondaryGroups={secondaryGroups}
-      selectedFilters={selectedFilters}
+      selectedFilters={effectiveSelectedFilters}
       onFilterChange={handleFilterChange}
       className={cn(className)}
       collapseFilterChipAfterMs={2000}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCalendarPlacements,
   buildScheduleUpdate,
+  filterTasksForScheduleAgenda,
   filterTasksForScheduleDate,
   formatScheduleDateTime,
   getPeriodFromScheduleValue,
@@ -100,5 +101,42 @@ describe("calendarTaskSchedule", () => {
 
     expect(result.map((t) => t.id)).toEqual(["due", "milestone-only", "json-milestone"]);
     expect(result[1]._milestoneLabel).toBe("Inspect");
+  });
+
+  it("builds agenda from a start date forward including future days and overdue", () => {
+    const from = new Date(2026, 4, 20);
+    const result = filterTasksForScheduleAgenda(
+      [
+        { id: "overdue", status: "open", due_date: "2026-05-18" },
+        { id: "today", status: "open", due_date: "2026-05-20" },
+        { id: "tomorrow", status: "open", due_date: "2026-05-21" },
+        {
+          id: "future-milestone",
+          status: "open",
+          milestones: [{ id: "m1", dateTime: "2026-05-22T09:00", label: "Inspect" }],
+        },
+        { id: "done", status: "completed", due_date: "2026-05-21" },
+      ],
+      { fromDate: from, includeOverdue: true }
+    );
+
+    expect(result.map((t) => t.id)).toEqual([
+      "overdue",
+      "today",
+      "tomorrow",
+      "future-milestone",
+    ]);
+  });
+
+  it("can exclude overdue from the schedule agenda", () => {
+    const from = new Date(2026, 4, 20);
+    const result = filterTasksForScheduleAgenda(
+      [
+        { id: "overdue", status: "open", due_date: "2026-05-18" },
+        { id: "today", status: "open", due_date: "2026-05-20" },
+      ],
+      { fromDate: from, includeOverdue: false }
+    );
+    expect(result.map((t) => t.id)).toEqual(["today"]);
   });
 });

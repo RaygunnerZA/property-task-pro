@@ -23,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import {
   applyCalendarDisplayFilters,
   filterTasksForCalendar,
+  type CalendarTaskScope,
 } from "@/lib/calendarDayMeta";
 import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { CALENDAR_TYPES } from "@/lib/calendarTypes";
@@ -52,6 +53,7 @@ function CalendarPageContent() {
   );
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
+  const [taskScope, setTaskScope] = useState<CalendarTaskScope>("all");
   const [isLargeScreen, setIsLargeScreen] = useState(false);
 
   useEffect(() => {
@@ -108,6 +110,7 @@ function CalendarPageContent() {
       propertyMap,
       selectedWorkbenchFilters: selectedFilters,
       userId,
+      taskScope,
     });
   }, [
     tasks,
@@ -118,6 +121,7 @@ function CalendarPageContent() {
     propertyMap,
     selectedFilters,
     userId,
+    taskScope,
   ]);
 
   const headerAccentColor = useMemo(() => {
@@ -246,6 +250,8 @@ function CalendarPageContent() {
               currentMonth={currentMonth}
               onMonthChange={setCurrentMonth}
               onToday={handleToday}
+              taskScope={taskScope}
+              onTaskScopeChange={setTaskScope}
             />
             {viewMode === "month" ? (
               <div className="flex min-h-0 max-h-[777px] flex-1 flex-col overflow-hidden">

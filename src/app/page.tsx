@@ -1116,6 +1116,7 @@ export default function Dashboard({
           collapseCentreOnPhone={workbenchLayout.collapseCentreOnPhone}
           collapseLeftOnPhone={workbenchLayout.collapseLeftOnPhone}
           stackOnPhone={workbenchLayout.stackOnPhone}
+          viewportBoundCentre
           header={
             <WorkbenchGradientHeader
               headerStyle={headerStyle}

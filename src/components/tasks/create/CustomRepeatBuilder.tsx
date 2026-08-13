@@ -1,7 +1,7 @@
 /**
  * Custom repeat builder — aligned to Priority / Due Date SemanticChip rows.
- * Flow: pick [#] (chip → fact/white) → CONFIRM appears → pick period autoconfirms
- * (or tap CONFIRM). Emits interval + unit for the parent to commit.
+ * Flow: change interval or period → CONFIRM appears → tap CONFIRM to commit.
+ * Emits interval + unit for the parent to commit.
  */
 
 import { useEffect, useState } from "react";
@@ -47,12 +47,16 @@ export function CustomRepeatBuilder({ onConfirm, className, resetKey }: CustomRe
   const [intervalDraft, setIntervalDraft] = useState(2);
   const [unitDraft, setUnitDraft] = useState<CustomRepeatUnit>("weeks");
   const [intervalPicked, setIntervalPicked] = useState(false);
+  const [unitPicked, setUnitPicked] = useState(false);
 
   useEffect(() => {
     setIntervalDraft(2);
     setUnitDraft("weeks");
     setIntervalPicked(false);
+    setUnitPicked(false);
   }, [resetKey]);
+
+  const canConfirm = intervalPicked || unitPicked;
 
   const commit = (interval: number, unit: CustomRepeatUnit) => {
     onConfirm(Math.max(1, Math.min(99, interval || 1)), unit);
@@ -91,7 +95,7 @@ export function CustomRepeatBuilder({ onConfirm, className, resetKey }: CustomRe
       />
 
       <SemanticChip
-        epistemic="proposal"
+        epistemic={unitPicked ? "fact" : "proposal"}
         label={unitDraft.toUpperCase()}
         truncate={false}
         dropdown
@@ -103,7 +107,7 @@ export function CustomRepeatBuilder({ onConfirm, className, resetKey }: CustomRe
                 className="font-mono text-2xs uppercase tracking-wide"
                 onSelect={() => {
                   setUnitDraft(unit);
-                  if (intervalPicked) commit(intervalDraft, unit);
+                  setUnitPicked(true);
                 }}
               >
                 {label}
@@ -114,7 +118,7 @@ export function CustomRepeatBuilder({ onConfirm, className, resetKey }: CustomRe
         className="shrink-0 max-w-none"
       />
 
-      {intervalPicked ? (
+      {canConfirm ? (
         <SemanticChip
           epistemic="proposal"
           label="CONFIRM"

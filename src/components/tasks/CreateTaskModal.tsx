@@ -221,6 +221,7 @@ export function CreateTaskModal({
     priority,
     dueDate,
     milestones,
+    repeatRule,
     assignedUserId,
     assignedTeamIds,
     pendingInvitations,

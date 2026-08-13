@@ -121,7 +121,14 @@ function StaggerRow({
           className="h-3.5 w-3.5 shrink-0 self-center text-muted-foreground mr-0.5"
           aria-hidden
         />
-        <div className="flex min-h-6 min-w-0 flex-1 flex-wrap items-center gap-1">
+        <div
+          className={cn(
+            "flex min-h-6 min-w-0 flex-1 items-center gap-1",
+            section.id === "when"
+              ? "flex-nowrap overflow-x-auto no-scrollbar"
+              : "flex-wrap"
+          )}
+        >
           {hasFacts
             ? section.facts.map((chip) => (
                 <SemanticChip
@@ -152,7 +159,7 @@ function StaggerRow({
                   className="inline-flex shrink-0"
                   // Prevent row onClick from opening the slot before the chip action runs,
                   // and skip pressOnPointerDown transfer — that delay unmounts these chips
-                  // (hover → open) and clears the pending onPress (CUSTOM looked like a no-op).
+                  // (hover → open) and clears the pending onPress (+ DATE looked like a no-op).
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
@@ -167,9 +174,9 @@ function StaggerRow({
               ))
             : null}
 
-          {/* When open with no facts yet, keep the section word — never re-render
-              hover chips here; slotPanel already owns TODAY/TOM/CUSTOM etc. */}
-          {!hasFacts && isOpen && !showHoverChips ? (
+          {/* Open + no chips yet: keep the section word. Date/repeat chips sit on this
+              row via inlineActions so they stay with fact chips (e.g. 2 WEEKS). */}
+          {!hasFacts && isOpen && !showHoverChips && !inlineActions ? (
             <span className="inline-flex h-6 items-center font-mono text-caption uppercase tracking-wide text-muted-foreground leading-none">
               {section.word}
             </span>
@@ -177,7 +184,7 @@ function StaggerRow({
 
           {isOpen && inlineActions ? (
             <span
-              className="inline-flex flex-wrap items-center gap-1"
+              className="inline-flex shrink-0 flex-nowrap items-center gap-1"
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
             >

@@ -1,7 +1,13 @@
 import { useMemo } from "react";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
-import { buildTasksByDate } from "@/lib/calendarDayMeta";
+import {
+  applyCalendarDisplayFilters,
+  buildTasksByDate,
+  type CalendarTaskScope,
+} from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
+import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
+import { useDataContext } from "@/contexts/DataContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +18,8 @@ export type CentreWorkbenchMobileCalendarProps = {
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
   selectedPropertyIds?: Set<string>;
+  /** When set (e.g. from Tasks All / My tabs), scopes calendar to all or assigned-to-me. */
+  taskScope?: CalendarTaskScope;
   className?: string;
 };
 
@@ -26,18 +34,39 @@ export function CentreWorkbenchMobileCalendar({
   selectedDate,
   onDateSelect,
   selectedPropertyIds,
+  taskScope,
   className,
 }: CentreWorkbenchMobileCalendarProps) {
+  const { userId } = useDataContext();
+  const workbenchControls = useOptionalWorkbenchControls();
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
 
   const calendarTasks = useMemo(() => {
-    if (properties.length === 0 || isAllPropertiesActive(selectedPropertyIds, allPropertyIds)) {
-      return tasks;
-    }
-    return tasks.filter(
-      (task) => task.property_id && selectedPropertyIds?.has(task.property_id)
-    );
-  }, [allPropertyIds, properties.length, selectedPropertyIds, tasks]);
+    const propertyScoped =
+      properties.length === 0 || isAllPropertiesActive(selectedPropertyIds, allPropertyIds)
+        ? tasks
+        : tasks.filter(
+            (task) => task.property_id && selectedPropertyIds?.has(task.property_id)
+          );
+
+    return applyCalendarDisplayFilters(propertyScoped, {
+      searchQuery: workbenchControls?.searchQuery ?? "",
+      selectedWorkbenchFilters: workbenchControls?.selectedFilters,
+      userId,
+      taskScope:
+        taskScope ??
+        (workbenchControls?.selectedFilters?.has("filter-assigned-me") ? "mine" : "all"),
+    });
+  }, [
+    allPropertyIds,
+    properties.length,
+    selectedPropertyIds,
+    tasks,
+    workbenchControls?.searchQuery,
+    workbenchControls?.selectedFilters,
+    userId,
+    taskScope,
+  ]);
 
   const tasksByDate = useMemo(() => buildTasksByDate(calendarTasks), [calendarTasks]);
 

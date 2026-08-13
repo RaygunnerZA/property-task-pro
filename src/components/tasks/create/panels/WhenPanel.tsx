@@ -17,6 +17,7 @@ import {
   unitToRepeatType,
   type CustomRepeatUnit,
 } from "@/components/tasks/create/CustomRepeatBuilder";
+import { defaultWeekendPush, isWeekendDueDate } from "@/lib/repeatWeekendPush";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -202,9 +203,11 @@ export function WhenPanel({
   const dateScrollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleCustomRepeatConfirm = (interval: number, unit: CustomRepeatUnit) => {
+    const type = unitToRepeatType(unit);
     onRepeatRuleChange({
-      type: unitToRepeatType(unit),
+      type,
       interval,
+      ...(isWeekendDueDate(dueDate) ? { weekend_push: defaultWeekendPush(type) } : {}),
     });
     onCustomRepeatCommitted?.();
   };
