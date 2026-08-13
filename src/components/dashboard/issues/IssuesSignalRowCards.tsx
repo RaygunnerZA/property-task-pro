@@ -3,6 +3,9 @@ import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { IssuesStreamThumbnail } from "@/components/dashboard/issues/IssuesStreamThumbnail";
 import {
+  DemoContentLabel,
+  isDeleteDemoActionLabel,
+  issuesSignalDeleteDemoButtonClassName,
   issuesSignalOverflowButtonClassName,
   issuesSignalReviewButtonClassName,
   issuesSignalSecondaryButtonClassName,
@@ -11,6 +14,7 @@ import {
   type SignalCategoryVariant,
   type SignalConfidenceLevel,
 } from "@/components/dashboard/issues/IssuesSignalListParts";
+import { ONBOARDING_SAMPLE_LABEL } from "@/lib/onboardingEducation";
 
 interface CardAction {
   id: string;
@@ -69,7 +73,12 @@ export function IssuesRecentSignalRow({
                   e.stopPropagation();
                   viewAction.onClick();
                 }}
-                className={cn(issuesSignalReviewButtonClassName, "w-full")}
+                className={cn(
+                  isDeleteDemoActionLabel(viewAction.label)
+                    ? issuesSignalDeleteDemoButtonClassName
+                    : issuesSignalReviewButtonClassName,
+                  "w-full"
+                )}
               >
                 {viewAction.label === "Open" ? "View" : viewAction.label}
               </button>
@@ -98,7 +107,7 @@ export function IssuesReviewSignalRow({
   thumbnailUrl,
   title,
   subtitle,
-  confidenceLevel = "medium",
+  confidenceLevel,
   reviewAction,
   dismissAction,
   overflowActions = [],
@@ -130,7 +139,7 @@ export function IssuesReviewSignalRow({
       subtitle={subtitle}
       trailing={
         <SignalRowTrailingRail>
-          <SignalConfidenceIndicator level={confidenceLevel} />
+          {confidenceLevel ? <SignalConfidenceIndicator level={confidenceLevel} /> : null}
           {reviewAction ? (
             <button
               type="button"
@@ -138,12 +147,18 @@ export function IssuesReviewSignalRow({
                 e.stopPropagation();
                 reviewAction.onClick();
               }}
-              className={issuesSignalReviewButtonClassName}
+              className={
+                isDeleteDemoActionLabel(reviewAction.label)
+                  ? issuesSignalDeleteDemoButtonClassName
+                  : issuesSignalReviewButtonClassName
+              }
             >
               {reviewAction.label}
             </button>
           ) : null}
-          <SignalRowOverflowMenu actions={menuActions} open={menuOpen} onOpenChange={setMenuOpen} />
+          {menuActions.length > 0 ? (
+            <SignalRowOverflowMenu actions={menuActions} open={menuOpen} onOpenChange={setMenuOpen} />
+          ) : null}
         </SignalRowTrailingRail>
       }
     />
@@ -205,6 +220,14 @@ function SignalRowTrailingRail({ children }: { children: ReactNode }) {
   return <div className="flex h-7 shrink-0 items-center gap-3 self-center">{children}</div>;
 }
 
+function RowSubtitle({ text }: { text: string }) {
+  const trimmed = text.trim();
+  if (trimmed.toUpperCase() === ONBOARDING_SAMPLE_LABEL) {
+    return <DemoContentLabel label={ONBOARDING_SAMPLE_LABEL} />;
+  }
+  return <p className="text-caption text-muted-foreground leading-snug line-clamp-1">{trimmed}</p>;
+}
+
 function RowShell({
   id,
   thumbnailUrl,
@@ -238,9 +261,7 @@ function RowShell({
       <div className="flex items-center gap-3">
         <IssuesStreamThumbnail url={thumbnailUrl} alt={title} />
         <div className="min-w-0 flex-1">
-          {metaFirst && subtitle?.trim() ? (
-            <p className="text-caption text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
-          ) : null}
+          {metaFirst && subtitle?.trim() ? <RowSubtitle text={subtitle} /> : null}
           <p
             className={cn(
               "text-sm font-medium tracking-[-0.1px] text-foreground leading-snug line-clamp-2 break-words",
@@ -250,7 +271,9 @@ function RowShell({
             {title}
           </p>
           {!metaFirst && subtitle?.trim() ? (
-            <p className="mt-0.5 text-caption text-muted-foreground leading-snug line-clamp-1">{subtitle.trim()}</p>
+            <div className="mt-0.5">
+              <RowSubtitle text={subtitle} />
+            </div>
           ) : null}
         </div>
         <div className="shrink-0">{trailing}</div>

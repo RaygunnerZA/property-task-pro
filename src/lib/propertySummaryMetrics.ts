@@ -10,9 +10,11 @@ type TaskLike = {
   title?: string | null;
   due_date?: string | null;
   due_at?: string | null;
+  property_id?: string | null;
 };
 
 type PropertyLike = {
+  id?: string;
   open_tasks_count?: number | null;
   spaces_count?: number | null;
   assets_count?: number | null;
@@ -117,15 +119,15 @@ function countInspectionUrgency(tasks: TaskLike[], documents: PropertyDocument[]
   return { dueSoonInspections, overdueInspections };
 }
 
+/** Items that actually need a decision — expired or due within 30 days. Not valid/healthy records. */
 function countComplianceReviews(
   property: PropertyLike,
   documents: PropertyDocument[]
 ): number {
   const today = new Date().toISOString().split("T")[0];
   const expiredDocs = documents.filter((d) => d.expiry_date && d.expiry_date < today).length;
-  const fromProperty =
-    (property.expired_compliance_count ?? 0) + (property.valid_compliance_count ?? 0);
-  return Math.max(fromProperty, expiredDocs);
+  const expired = Math.max(property.expired_compliance_count ?? 0, expiredDocs);
+  return expired + countComplianceDueSoon(documents);
 }
 
 export function computePropertySummaryMetrics(
@@ -227,15 +229,9 @@ export function computeAllPropertiesSummaryMetrics(
     totalForCompletion > 0 ? Math.round((doneCount / totalForCompletion) * 100) : 0;
 
   const complianceReviews = properties.reduce(
-    (sum, p) =>
-      sum + (p.expired_compliance_count ?? 0) + (p.valid_compliance_count ?? 0),
+    (sum, p) => sum + (p.expired_compliance_count ?? 0),
     0
   );
-
-  const complianceDueSoon = properties.reduce((sum, p) => {
-    const valid = p.valid_compliance_count ?? 0;
-    return sum + valid;
-  }, 0);
 
   return {
     urgentItems,
@@ -243,7 +239,7 @@ export function computeAllPropertiesSummaryMetrics(
     dueSoonTasks,
     incompleteTasks,
     complianceReviews,
-    complianceDueSoon: Math.min(complianceDueSoon, complianceReviews),
+    complianceDueSoon: 0,
     upcomingInspections: countUpcomingInspections(scopedTasks, []),
     dueSoonInspections,
     overdueInspections,

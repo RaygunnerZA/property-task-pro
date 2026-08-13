@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { ONBOARDING_SAMPLE_LABEL } from "@/lib/onboardingEducation";
 
 export type SignalConfidenceLevel = "low" | "medium" | "high";
 
@@ -64,6 +65,28 @@ export function SignalCategoryTag({
   );
 }
 
+export function isDeleteDemoActionLabel(label?: string): boolean {
+  return (label ?? "").trim().toUpperCase() === "DELETE THIS";
+}
+
+/** On-row marker for sample / education notifications. */
+export function DemoContentLabel({
+  label = ONBOARDING_SAMPLE_LABEL,
+}: {
+  label?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex h-5 items-center rounded-md bg-primary/15 px-1.5",
+        "font-mono text-2xs font-semibold uppercase tracking-wide leading-none text-primary-deep"
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
 /** Shared 8px corner radius for Issues signal row controls. */
 const issuesSignalControlRadius = "rounded-card";
 
@@ -82,6 +105,15 @@ export const issuesSignalReviewButtonClassName = cn(
   issuesSignalControlRadius,
   "px-3 text-xs font-semibold leading-none text-white",
   "shadow-primary-btn transition-all hover:bg-primary active:shadow-btn-pressed"
+);
+
+/** Remove sample / demo education rows — coral (destructive). */
+export const issuesSignalDeleteDemoButtonClassName = cn(
+  "inline-flex h-7 shrink-0 items-center justify-center border-0 bg-accent",
+  issuesSignalControlRadius,
+  "px-3 text-xs font-semibold leading-none text-white",
+  "shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]",
+  "transition-all hover:brightness-95"
 );
 
 /** Overflow (⋯) control — same footprint as row buttons. */

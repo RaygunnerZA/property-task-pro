@@ -3,6 +3,7 @@ import { Upload, Loader2, Camera } from "lucide-react";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { markQuickWinComplete } from "@/lib/quickWins";
 
 interface DocumentUploadZoneProps {
   propertyId: string;
@@ -30,10 +31,13 @@ export function DocumentUploadZone({
     if (!files || files.length === 0) return;
     try {
       const created = await upload(Array.from(files));
-      toast({
-        title: "Upload complete",
-        description: `${created.length} document(s) uploaded`,
-      });
+      const celebrated = markQuickWinComplete("upload", propertyId);
+      if (!celebrated) {
+        toast({
+          title: "Upload complete",
+          description: `${created.length} document(s) uploaded`,
+        });
+      }
       onUploadComplete?.();
     } catch (e: any) {
       toast({

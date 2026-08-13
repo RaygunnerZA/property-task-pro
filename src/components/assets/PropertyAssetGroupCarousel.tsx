@@ -30,6 +30,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { markQuickWinComplete } from "@/lib/quickWins";
 import { Package } from "lucide-react";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { cn } from "@/lib/utils";
@@ -392,7 +393,8 @@ export function PropertyAssetGroupCarousel({
       });
       if (error) throw error;
       assignAssetToCollection(trimmed, groupId);
-      toast.success(`Added ${trimmed}`);
+      const celebrated = markQuickWinComplete("asset", propertyId);
+      if (!celebrated) toast.success(`Added ${trimmed}`);
       await invalidateAssets();
     } catch (err: unknown) {
       setPendingPinsByGroup((prev) => {

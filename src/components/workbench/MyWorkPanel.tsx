@@ -305,7 +305,7 @@ export function MyWorkPanel({
               <section className="min-w-0 rounded-2xl bg-transparent py-1">
                 <IssuesWorkbenchSectionHeader
                   title="Needs attention"
-                  subtitle="Example items that need a decision or follow-up."
+                  subtitle="Demo tasks that need a decision or follow-up."
                   count={needsAttentionTasks.length}
                   countVariant="review"
                 />
@@ -363,6 +363,7 @@ export function MyWorkPanel({
               onAttentionItemSelect={onAttentionItemSelect}
               reviewItems={groupedAttentionItems.review.filter((i) => i.isOnboardingExample !== false && !i.isUiFixture)}
               recentItems={groupedAttentionItems.recent.filter((i) => !i.isUiFixture)}
+              propertyId={focusedPropertyId}
             />
           </>
         ) : (

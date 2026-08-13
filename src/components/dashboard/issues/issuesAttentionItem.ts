@@ -165,7 +165,7 @@ export function attentionItemToSignalSnapshot(item: AttentionItem): SignalFeedDe
     description: item.description,
     whyHere: item.whyHere,
     footChipLabel: item.footChipLabel,
-    headerLabel: setupStep ? "Setup step" : item.isOnboardingExample ? "Example" : undefined,
+    headerLabel: setupStep ? "Setup step" : item.isOnboardingExample ? "DEMO CONTENT" : undefined,
     signalKind: item.signalKind,
     messageId: item.messageId,
     complianceSeed: item.complianceSeed,

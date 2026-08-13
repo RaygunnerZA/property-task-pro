@@ -1,4 +1,5 @@
-import type { MutableRefObject } from "react";
+import { useCallback, useEffect, useState, type MutableRefObject } from "react";
+import { Check } from "lucide-react";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
 import type { AttentionItem } from "@/components/dashboard/issues/issuesAttentionItem";
@@ -12,6 +13,14 @@ import {
   ONBOARDING_SIGNALS,
 } from "@/fixtures/onboardingAttentionSamples";
 import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import { useQuickWins } from "@/hooks/useQuickWins";
+import { QUICK_WINS_ALL_DONE_COPY, quickWinIdFromAttentionId } from "@/lib/quickWins";
+import {
+  dismissOnboardingSample,
+  isOnboardingSampleNotification,
+  ONBOARDING_SAMPLE_DISMISSED_EVENT,
+  readDismissedOnboardingSampleIds,
+} from "@/lib/onboardingEducation";
 
 export type OnboardingAttentionFeedProps = {
   attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
@@ -23,28 +32,13 @@ export type OnboardingAttentionFeedProps = {
   onAttentionItemSelect?: (payload: WorkbenchAttentionSelectPayload) => void;
   reviewItems?: AttentionItem[];
   recentItems?: AttentionItem[];
+  propertyId?: string | null;
 };
 
-function ExampleSectionHeader({
-  title,
-  subtitle,
-  showExampleBadge = true,
-}: {
-  title: string;
-  subtitle: string;
-  /** Tips / demo rows keep “Example”; real setup steps (Quick wins) omit it. */
-  showExampleBadge?: boolean;
-}) {
+function FeedSectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
     <div className="px-0.5">
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-        <h2 className={workbenchSectionTitleClassName}>{title}</h2>
-        {showExampleBadge ? (
-          <span className="rounded-md bg-primary/15 px-1.5 py-0.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep">
-            Example
-          </span>
-        ) : null}
-      </div>
+      <h2 className={workbenchSectionTitleClassName}>{title}</h2>
       <p className="mt-0.5 text-base text-muted-foreground">{subtitle}</p>
     </div>
   );
@@ -60,12 +54,48 @@ export function OnboardingAttentionFeed({
   onAttentionItemSelect,
   reviewItems = [],
   recentItems = [],
+  propertyId = null,
 }: OnboardingAttentionFeedProps) {
+  const { allDone, isComplete } = useQuickWins(propertyId);
+  const [dismissedSamples, setDismissedSamples] = useState(() =>
+    propertyId ? readDismissedOnboardingSampleIds(propertyId) : new Set<string>()
+  );
+
+  useEffect(() => {
+    setDismissedSamples(propertyId ? readDismissedOnboardingSampleIds(propertyId) : new Set());
+  }, [propertyId]);
+
+  useEffect(() => {
+    const sync = () => {
+      setDismissedSamples(propertyId ? readDismissedOnboardingSampleIds(propertyId) : new Set());
+    };
+    window.addEventListener(ONBOARDING_SAMPLE_DISMISSED_EVENT, sync);
+    return () => window.removeEventListener(ONBOARDING_SAMPLE_DISMISSED_EVENT, sync);
+  }, [propertyId]);
+
+  const resolveItem = useCallback(
+    (id: string) => {
+      if (isOnboardingSampleNotification({ id })) {
+        if (propertyId) {
+          setDismissedSamples(dismissOnboardingSample(propertyId, id));
+        } else {
+          setDismissedSamples((prev) => new Set([...prev, id]));
+        }
+      }
+      resolveAttentionItem(id);
+    },
+    [propertyId, resolveAttentionItem]
+  );
+
+  const quickWins = ONBOARDING_QUICK_WINS.filter((item) => {
+    const id = quickWinIdFromAttentionId(item.id);
+    return !id || !isComplete(id);
+  });
   const renderSignal = (item: AttentionItem) => (
     <IssuesSignalCard
       item={item}
       attentionCardRefs={attentionCardRefs}
-      resolveAttentionItem={resolveAttentionItem}
+      resolveAttentionItem={resolveItem}
       handleSignalAction={handleSignalAction}
       addAttentionItemToCompliance={addAttentionItemToCompliance}
       onOpenIntake={onOpenIntake}
@@ -74,79 +104,98 @@ export function OnboardingAttentionFeed({
     />
   );
 
-  const needsAttention = [...ONBOARDING_NEEDS_ATTENTION, ...reviewItems].slice(0, 4);
-  const signals = [...ONBOARDING_SIGNALS, ...recentItems].slice(0, 5);
+  const sampleNeeds = ONBOARDING_NEEDS_ATTENTION.filter((item) => !dismissedSamples.has(item.id));
+  const sampleSignals = ONBOARDING_SIGNALS.filter((item) => !dismissedSamples.has(item.id));
+  const sampleRecords = ONBOARDING_RECORDS.filter((item) => !dismissedSamples.has(item.id));
+  const needsAttention = [...sampleNeeds, ...reviewItems].slice(0, 4);
+  const signals = [...sampleSignals, ...recentItems].slice(0, 5);
 
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <section className="space-y-2">
-        <ExampleSectionHeader
+        <FeedSectionHeader
           title="Quick wins"
-          subtitle="Setup steps you can complete in under a minute."
-          showExampleBadge={false}
+          subtitle={
+            allDone
+              ? QUICK_WINS_ALL_DONE_COPY.description
+              : "Setup steps you can complete in under a minute."
+          }
         />
-        <IssuesScrollColumn
-          title=""
-          subtitle=""
-          countVariant="recent"
-          items={ONBOARDING_QUICK_WINS}
-          totalCount={countAttentionSectionItems(ONBOARDING_QUICK_WINS)}
-          renderCard={renderSignal}
-          layout="flex-columns"
-          hideHeader
-        />
+        {allDone ? (
+          <div className="flex items-center gap-2 rounded-card bg-card/80 px-3 py-2.5 shadow-md">
+            <Check className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <p className="text-sm font-medium text-foreground">{QUICK_WINS_ALL_DONE_COPY.title}</p>
+          </div>
+        ) : (
+          <IssuesScrollColumn
+            title=""
+            subtitle=""
+            countVariant="recent"
+            items={quickWins}
+            totalCount={countAttentionSectionItems(quickWins)}
+            renderCard={renderSignal}
+            layout="flex-columns"
+            hideHeader
+          />
+        )}
       </section>
 
-      <section className="space-y-2">
-        <ExampleSectionHeader
-          title="Needs attention"
-          subtitle="Compliance, maintenance, and items needing a decision."
-        />
-        <IssuesScrollColumn
-          title=""
-          subtitle=""
-          countVariant="review"
-          items={needsAttention}
-          totalCount={needsAttention.length}
-          renderCard={renderSignal}
-          layout="vertical"
-          hideHeader
-        />
-      </section>
+      {needsAttention.length > 0 ? (
+        <section className="space-y-2">
+          <FeedSectionHeader
+            title="Needs attention"
+            subtitle="Compliance, maintenance, and items needing a decision."
+          />
+          <IssuesScrollColumn
+            title=""
+            subtitle=""
+            countVariant="review"
+            items={needsAttention}
+            totalCount={needsAttention.length}
+            renderCard={renderSignal}
+            layout="vertical"
+            hideHeader
+          />
+        </section>
+      ) : null}
 
-      <section className="space-y-2">
-        <ExampleSectionHeader
-          title="Signals Filla found"
-          subtitle="How AI surfaces updates and risks across your property."
-        />
-        <IssuesScrollColumn
-          title=""
-          subtitle=""
-          countVariant="recent"
-          items={signals}
-          totalCount={signals.length}
-          renderCard={renderSignal}
-          layout="vertical"
-          hideHeader
-        />
-      </section>
+      {signals.length > 0 ? (
+        <section className="space-y-2">
+          <FeedSectionHeader
+            title="Signals Filla found"
+            subtitle="How AI surfaces updates and risks across your property."
+          />
+          <IssuesScrollColumn
+            title=""
+            subtitle=""
+            countVariant="recent"
+            items={signals}
+            totalCount={signals.length}
+            renderCard={renderSignal}
+            layout="vertical"
+            hideHeader
+          />
+        </section>
+      ) : null}
 
-      <section className="space-y-2">
-        <ExampleSectionHeader
-          title="Records to organise"
-          subtitle="Documents Filla can categorise and monitor."
-        />
-        <IssuesScrollColumn
-          title=""
-          subtitle=""
-          countVariant="review"
-          items={ONBOARDING_RECORDS}
-          totalCount={ONBOARDING_RECORDS.length}
-          renderCard={renderSignal}
-          layout="vertical"
-          hideHeader
-        />
-      </section>
+      {sampleRecords.length > 0 ? (
+        <section className="space-y-2">
+          <FeedSectionHeader
+            title="Records to organise"
+            subtitle="Documents Filla can categorise and monitor."
+          />
+          <IssuesScrollColumn
+            title=""
+            subtitle=""
+            countVariant="review"
+            items={sampleRecords}
+            totalCount={sampleRecords.length}
+            renderCard={renderSignal}
+            layout="vertical"
+            hideHeader
+          />
+        </section>
+      ) : null}
     </div>
   );
 }

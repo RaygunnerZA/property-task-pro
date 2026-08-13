@@ -648,15 +648,16 @@ export function PropertySummaryPanel({
           </div>
         ) : null}
 
-        <div
-          className={cn(
-            "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
-            variant === "compact" &&
-              "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3",
-            sectionRevealClass
-          )}
-          style={sectionRevealStyle(2)}
-        >
+          <div
+            className={cn(
+              "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
+              variant === "compact" &&
+                "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3",
+              sectionRevealClass
+            )}
+            style={sectionRevealStyle(2)}
+            aria-label="Filla suggestion"
+          >
           <div
             className={cn(
               "flex shrink-0 items-start justify-center rounded-2xl rounded-bl-sm",
@@ -672,6 +673,9 @@ export function PropertySummaryPanel({
               variant === "compact" && "w-[208px] text-xs tracking-[-0.4px]"
             )}
           >
+            <p className="font-mono text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Suggested
+            </p>
             {summaryLines.map((line, index) => (
               <SummarySuggestionLine
                 key={`${line.text}-${index}`}

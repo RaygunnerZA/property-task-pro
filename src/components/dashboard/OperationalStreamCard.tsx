@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard/issues/IssuesSignalRowCards";
 import { IssuesStreamThumbnail } from "@/components/dashboard/issues/IssuesStreamThumbnail";
 import {
+  isDeleteDemoActionLabel,
   issuesSignalSecondaryButtonClassName,
   type SignalCategoryVariant,
   type SignalConfidenceLevel,
@@ -132,6 +133,9 @@ function streamActionButtonClass(actionId: string, actionLabel?: string) {
 
   if (isCreateTaskCta) {
     return intakeReportIssueMicroClassName;
+  }
+  if (id === "delete-sample" || label.includes("delete this")) {
+    return intakeAddRecordMicroClassName;
   }
   if (
     id === "add-record" ||
@@ -335,10 +339,14 @@ export function OperationalStreamCard({
       (recentSignalMetaLine ?? "").trim() ||
       (context ?? "").trim() ||
       undefined;
-    const viewAction = actions.find((a) => a.id === "signal-open") ?? actions[0];
-    const dismiss =
-      actions.find((a) => a.id === "dismiss" || a.id === "ignore") ??
-      (dismissAction ?? undefined);
+    const deleteDemo = actions.find((a) => isDeleteDemoActionLabel(a.label));
+    const viewAction = deleteDemo
+      ?? actions.find((a) => a.id === "signal-open")
+      ?? actions[0];
+    const dismiss = deleteDemo
+      ? undefined
+      : actions.find((a) => a.id === "dismiss" || a.id === "ignore") ??
+        (dismissAction ?? undefined);
 
     return (
       <IssuesRecentSignalRow
@@ -348,7 +356,7 @@ export function OperationalStreamCard({
         thumbnailUrl={thumbnailUrl ?? ""}
         title={title}
         subtitle={subtitle}
-        categoryTag={categoryTag}
+        categoryTag={deleteDemo ? undefined : categoryTag}
         categoryTagVariant={categoryTagVariant}
         viewAction={viewAction}
         dismissAction={dismiss}
@@ -359,9 +367,12 @@ export function OperationalStreamCard({
 
   if (issuesStreamKind === "review") {
     const subtitle = (issuesMetaLine ?? "").trim() || (context ?? "").trim() || undefined;
-    const coreActions = actions.filter((a) => a.id !== "dismiss" && a.id !== "ignore");
+    const deleteDemo = actions.find((a) => isDeleteDemoActionLabel(a.label));
+    const coreActions = deleteDemo
+      ? [deleteDemo]
+      : actions.filter((a) => a.id !== "dismiss" && a.id !== "ignore");
     const reviewAction = coreActions[0];
-    const overflow = overflowActions.length > 0 ? overflowActions : coreActions.slice(1);
+    const overflow = deleteDemo ? [] : overflowActions.length > 0 ? overflowActions : coreActions.slice(1);
 
     return (
       <IssuesReviewSignalRow
@@ -371,9 +382,9 @@ export function OperationalStreamCard({
         thumbnailUrl={thumbnailUrl ?? ""}
         title={title}
         subtitle={subtitle}
-        confidenceLevel={confidenceLevel ?? "medium"}
+        confidenceLevel={deleteDemo ? undefined : confidenceLevel}
         reviewAction={reviewAction}
-        dismissAction={dismissAction ?? undefined}
+        dismissAction={deleteDemo ? undefined : dismissAction ?? undefined}
         overflowActions={overflow}
         onCardActivate={onCardActivate}
       />

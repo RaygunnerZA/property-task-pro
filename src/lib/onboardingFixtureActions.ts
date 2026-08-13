@@ -1,4 +1,5 @@
 import { propertyHubPath } from "@/lib/propertyRoutes";
+import { OPEN_PROPERTY_EDIT_EVENT } from "@/lib/quickWins";
 import type { IntakeMode } from "@/types/intake";
 
 /** Visual mode for panel/footer CTAs (Create Task = teal, Add Record = coral). */
@@ -54,9 +55,17 @@ export function performOnboardingFixtureAction(
     case "signal-convert":
       onOpenIntake?.("add_record");
       return "intake";
-    case "complete-profile":
-      navigate(propertyId ? propertyHubPath(propertyId) : "/home");
+    case "complete-profile": {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent(OPEN_PROPERTY_EDIT_EVENT, { detail: { propertyId } })
+        );
+      }
+      navigate(
+        propertyId ? propertyHubPath(propertyId, { editProperty: "1" }) : "/home"
+      );
       return "navigate";
+    }
     case "create-asset":
       navigate(
         propertyId
@@ -69,6 +78,7 @@ export function performOnboardingFixtureAction(
       return "navigate";
     case "ignore":
     case "dismiss":
+    case "delete-sample":
       return "dismiss";
     default:
       return "noop";

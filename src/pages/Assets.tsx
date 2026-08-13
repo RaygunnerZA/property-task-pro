@@ -24,6 +24,7 @@ import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { propertyHubPath } from "@/lib/propertyRoutes";
+import { markQuickWinComplete } from "@/lib/quickWins";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { FrameworkEmptyState } from "@/components/property-framework";
@@ -326,7 +327,8 @@ const Assets = () => {
         if (fileErr) console.warn("Failed to link file:", fileErr);
       }
 
-      toast.success("Asset added successfully");
+      const celebrated = markQuickWinComplete("asset", propertyId);
+      if (!celebrated) toast.success("Asset added successfully");
       setIsDialogOpen(false);
       setName("");
       setType("");

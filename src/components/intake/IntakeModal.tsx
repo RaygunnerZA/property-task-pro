@@ -38,6 +38,7 @@ import {
   isWeekendDueDate,
 } from "@/lib/repeatWeekendPush";
 import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
+import { markQuickWinComplete } from "@/lib/quickWins";
 import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDataContext } from "@/contexts/DataContext";
@@ -3381,7 +3382,8 @@ export function IntakeModal({
         queryClient.invalidateQueries({ queryKey: ["compliance"] });
         queryClient.invalidateQueries({ queryKey: ["compliance_recommendations"] });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
-        toast({ title: "Added to Compliance" });
+        const celebrated = markQuickWinComplete("upload", propertyId);
+        if (!celebrated) toast({ title: "Added to Compliance" });
         await markIntakeItemConfirmed();
         onOpenChange(false);
         resetForm();
@@ -3411,7 +3413,8 @@ export function IntakeModal({
           mode: "document",
         });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
-        toast({ title: "Document saved" });
+        const celebrated = markQuickWinComplete("upload", propertyId);
+        if (!celebrated) toast({ title: "Document saved" });
         await markIntakeItemConfirmed();
         onOpenChange(false);
         resetForm();
@@ -3554,7 +3557,8 @@ export function IntakeModal({
       }
 
       queryClient.invalidateQueries({ queryKey: ["task-attachments", newTask.id] });
-      toast({ title: "Task created" });
+      const celebrated = markQuickWinComplete("task", propertyId);
+      if (!celebrated) toast({ title: "Task created" });
       onTaskCreated?.(newTask.id);
       await markIntakeItemConfirmed();
       onOpenChange(false);

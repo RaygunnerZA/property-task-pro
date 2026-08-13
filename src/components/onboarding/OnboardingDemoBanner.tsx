@@ -52,10 +52,10 @@ export function OnboardingDemoBanner({ propertyId, className }: OnboardingDemoBa
     >
       <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-foreground">You&apos;re viewing example content</p>
+        <p className="text-xs font-semibold text-foreground">You&apos;re viewing demo content</p>
         <p className="mt-0.5 text-caption leading-snug text-muted-foreground">
-          Sample tasks, records, and signals teach what Filla can do. Each item is tagged Example or Learn
-          Filla. Replace with real data anytime.
+          Sample tasks, records, and signals teach what Filla can do. Each item is tagged DEMO CONTENT or
+          Learn Filla. Replace with real data anytime.
         </p>
       </div>
       <button

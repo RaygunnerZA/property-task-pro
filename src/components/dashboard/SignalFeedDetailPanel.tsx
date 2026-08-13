@@ -20,6 +20,10 @@ import {
   fixtureActionVisualMode,
   performOnboardingFixtureAction,
 } from "@/lib/onboardingFixtureActions";
+import {
+  dismissOnboardingSample,
+  isOnboardingSampleNotification,
+} from "@/lib/onboardingEducation";
 
 /** Serializable snapshot for workbench signal / attention rows (matches TaskPanel AttentionItem fields used in UI). */
 export type SignalFeedDetailSnapshot = {
@@ -92,6 +96,14 @@ export function SignalFeedDetailPanel({
   const [actionPending, setActionPending] = useState<"promote" | "dismiss" | null>(null);
 
   const runFixtureCta = (actionId: string) => {
+    if (
+      (actionId === "delete-sample" || actionId === "dismiss") &&
+      isOnboardingSampleNotification({ id: snapshot.id })
+    ) {
+      if (propertyId) dismissOnboardingSample(propertyId, snapshot.id);
+      onClose();
+      return;
+    }
     const result = performOnboardingFixtureAction(actionId, {
       navigate,
       propertyId,

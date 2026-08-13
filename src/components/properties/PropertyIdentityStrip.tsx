@@ -1,8 +1,8 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Edit2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   propertyHubIssuesPath,
   propertyHubRecordsPath,
@@ -30,6 +30,7 @@ import {
   type PropertyHubNavCardId,
 } from "@/components/properties/PropertyHubNavCards";
 import { PropertyEditSheet } from "@/components/properties/PropertyEditSheet";
+import { OPEN_PROPERTY_EDIT_EVENT } from "@/lib/quickWins";
 import { propertiesService } from "@/services/properties/properties";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -100,6 +101,7 @@ export function PropertyIdentityStrip({
   routeCentreNavToWorkSurface = false,
 }: PropertyIdentityStripProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { documents: propertyDocuments = [] } = usePropertyDocuments(property.id, undefined, {
     limit: 500,
@@ -109,6 +111,25 @@ export function PropertyIdentityStrip({
 
   const [showEditSheet, setShowEditSheet] = useState(false);
   const [showArchivePropertyDialog, setShowArchivePropertyDialog] = useState(false);
+
+  useEffect(() => {
+    const openIfMatching = (incomingId?: string | null) => {
+      if (incomingId && incomingId !== property.id) return;
+      setShowEditSheet(true);
+    };
+    if (searchParams.get("editProperty") === "1") {
+      openIfMatching(searchParams.get("property") || property.id);
+      const next = new URLSearchParams(searchParams);
+      next.delete("editProperty");
+      setSearchParams(next, { replace: true });
+    }
+    const onOpen = (event: Event) => {
+      const detail = (event as CustomEvent<{ propertyId?: string | null }>).detail;
+      openIfMatching(detail?.propertyId ?? null);
+    };
+    window.addEventListener(OPEN_PROPERTY_EDIT_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PROPERTY_EDIT_EVENT, onOpen);
+  }, [property.id, searchParams, setSearchParams]);
   const [isArchivingProperty, setIsArchivingProperty] = useState(false);
   const { settled: heroSettled, hoverBind: heroHoverBind } = usePropertyHeroSettle();
   const heroHeight = propertyHeroFrameHeight(210, heroSettled);

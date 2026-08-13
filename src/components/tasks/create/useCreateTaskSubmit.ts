@@ -32,6 +32,7 @@ import { toErrorMessage } from "@/lib/error";
 import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
 import { isWeekendDueDate } from "@/lib/repeatWeekendPush";
+import { markQuickWinComplete } from "@/lib/quickWins";
 
 export interface UseCreateTaskSubmitProps {
   // Auth
@@ -444,6 +445,7 @@ export function useCreateTaskSubmit({
 
       resetForm();
       onOpenChange(false);
+      markQuickWinComplete("task", propertyId);
       onTaskCreated?.(taskId);
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : "Something didn't work. Try again.";

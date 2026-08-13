@@ -246,6 +246,7 @@ export function InflowPanel({
           onAttentionItemSelect={onAttentionItemSelect}
           reviewItems={groupedAttentionItems.review.filter((i) => i.isOnboardingExample !== false && !i.isUiFixture)}
           recentItems={groupedAttentionItems.recent.filter((i) => !i.isUiFixture)}
+          propertyId={focusedPropertyId}
         />
       ) : (
         <>

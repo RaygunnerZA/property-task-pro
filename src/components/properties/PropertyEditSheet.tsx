@@ -31,6 +31,7 @@ import type { PlaceSelection } from "@/lib/signals/signalTypes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
+import { markQuickWinComplete } from "@/lib/quickWins";
 
 type PropertyEditSheetProps = {
   property: PropertyForStrip;
@@ -128,7 +129,8 @@ export function PropertyEditSheet({ property, open, onOpenChange, onArchive }: P
       }
 
       await queryClient.invalidateQueries({ queryKey: ["properties"] });
-      toast.success("Property updated");
+      const celebrated = markQuickWinComplete("profile", property.id);
+      if (!celebrated) toast.success("Property updated");
       onOpenChange(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't save property";

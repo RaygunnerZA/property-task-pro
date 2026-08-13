@@ -9,6 +9,12 @@ import {
 } from "@/components/dashboard/issues/issuesAttentionItem";
 import { formatRecentSignalSubtitle, signalCategoryForKind } from "@/lib/signalDisplayMeta";
 import { performOnboardingFixtureAction } from "@/lib/onboardingFixtureActions";
+import {
+  dismissOnboardingSample,
+  isOnboardingSampleNotification,
+  ONBOARDING_SAMPLE_LABEL,
+} from "@/lib/onboardingEducation";
+import { quickWinIdFromAttentionId } from "@/lib/quickWins";
 import { resolveAttentionStreamThumbnail } from "@/lib/taskIllustration";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import type { IntakeMode } from "@/types/intake";
@@ -73,8 +79,20 @@ function runFixtureAction(
     return;
   }
 
+  if (
+    (actionId === "delete-sample" || actionId === "dismiss") &&
+    isOnboardingSampleNotification(item)
+  ) {
+    if (propertyId) dismissOnboardingSample(propertyId, item.id);
+    resolveAttentionItem(item.id);
+    return;
+  }
+
   performOnboardingFixtureAction(actionId, { navigate, propertyId, onOpenIntake });
-  resolveAttentionItem(item.id);
+  // Quick wins stay visible until the real action completes (save / upload / create).
+  if (!quickWinIdFromAttentionId(item.id)) {
+    resolveAttentionItem(item.id);
+  }
 }
 
 /**
@@ -187,30 +205,40 @@ export function IssuesSignalCard({
       ? signalKindIcon(item.signalKind, "text-primary-deep")
       : <HelpCircle className="h-4 w-4 text-primary-deep" />;
 
+    const isSample = isOnboardingSampleNotification(item);
     const primaryId = item.fixtureActions?.primary.id ?? "signal-review";
     const secondaryRaw = item.fixtureActions?.secondary ?? [];
     const overflowFromFixtures = secondaryRaw.filter((a) => a.id !== "dismiss");
-    const reviewAction = {
-      id: primaryId,
-      label: "Review",
-      onClick: () => runFixtureAction(primaryId, item, ctx),
-    };
-    const overflowActions = [
-      ...overflowFromFixtures.map((a) => ({
-        id: a.id,
-        label: a.label,
-        onClick: () => runFixtureAction(a.id, item, ctx),
-      })),
-      ...(item.complianceSeed && !overflowFromFixtures.some((a) => a.id === "signal-convert")
-        ? [
-            {
-              id: "signal-convert",
-              label: "Convert to record",
-              onClick: () => runFixtureAction("signal-convert", item, ctx),
-            },
-          ]
-        : []),
-    ];
+    const reviewAction = isSample
+      ? {
+          id: item.fixtureActions?.primary.id ?? "delete-sample",
+          label: item.fixtureActions?.primary.label ?? "DELETE THIS",
+          onClick: () =>
+            runFixtureAction(item.fixtureActions?.primary.id ?? "delete-sample", item, ctx),
+        }
+      : {
+          id: primaryId,
+          label: "Review",
+          onClick: () => runFixtureAction(primaryId, item, ctx),
+        };
+    const overflowActions = isSample
+      ? []
+      : [
+          ...overflowFromFixtures.map((a) => ({
+            id: a.id,
+            label: a.label,
+            onClick: () => runFixtureAction(a.id, item, ctx),
+          })),
+          ...(item.complianceSeed && !overflowFromFixtures.some((a) => a.id === "signal-convert")
+            ? [
+                {
+                  id: "signal-convert",
+                  label: "Convert to record",
+                  onClick: () => runFixtureAction("signal-convert", item, ctx),
+                },
+              ]
+            : []),
+        ];
 
     return (
       <OperationalStreamCard
@@ -224,19 +252,24 @@ export function IssuesSignalCard({
         thumbnailUrl={thumbnailUrl}
         title={item.title}
         context={item.context}
-        confidenceLevel={item.confidenceLevel ?? "medium"}
+        confidenceLevel={isSample ? undefined : item.confidenceLevel ?? "medium"}
         actions={[reviewAction]}
         overflowActions={overflowActions}
-        dismissAction={{
-          id: "dismiss",
-          label: "Dismiss",
-          onClick: () => runFixtureAction("dismiss", item, ctx),
-        }}
+        dismissAction={
+          isSample
+            ? null
+            : {
+                id: "dismiss",
+                label: "Dismiss",
+                onClick: () => runFixtureAction("dismiss", item, ctx),
+              }
+        }
         onCardActivate={cardActivate}
       />
     );
   }
 
+  const isSample = isOnboardingSampleNotification(item);
   const icon = item.signalKind
     ? signalKindIcon(item.signalKind)
     : <Upload className="h-4 w-4 text-muted-foreground" />;
@@ -271,10 +304,11 @@ export function IssuesSignalCard({
     ? { label: item.categoryTag, variant: item.categoryTagVariant ?? "default" }
     : signalCategoryForKind(item.signalKind);
 
-  const recentSubtitle =
-    item.recentSubtitle?.trim() ||
-    formatRecentSignalSubtitle(item.context, item.signalKind) ||
-    item.context;
+  const recentSubtitle = isSample
+    ? ONBOARDING_SAMPLE_LABEL
+    : item.recentSubtitle?.trim() ||
+      formatRecentSignalSubtitle(item.context, item.signalKind) ||
+      item.context;
 
   return (
     <OperationalStreamCard
@@ -284,13 +318,13 @@ export function IssuesSignalCard({
         attentionCardRefs.current[item.id] = node;
       }}
       recentSignalMetaLine={recentSubtitle}
-      categoryTag={category?.label}
-      categoryTagVariant={category?.variant}
+      categoryTag={isSample ? undefined : category?.label}
+      categoryTagVariant={isSample ? undefined : category?.variant}
       icon={icon}
       thumbnailUrl={thumbnailUrl}
       title={item.title}
       context={item.context}
-      actions={actionsList}
+      actions={isSample ? actionsList.slice(0, 1) : actionsList}
       onCardActivate={cardActivate}
     />
   );

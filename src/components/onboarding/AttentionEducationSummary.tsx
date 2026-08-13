@@ -82,10 +82,10 @@ export function AttentionEducationSummary({
     >
       <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold text-foreground">Example workspace</p>
+        <p className="text-xs font-semibold text-foreground">You&apos;re viewing demo content</p>
         <p className="mt-0.5 text-caption leading-snug text-muted-foreground">{copy}</p>
         <p className="mt-1 text-2xs font-mono uppercase tracking-wider text-primary/90">
-          Every item below is an example
+          Sample rows are labelled DEMO CONTENT
         </p>
       </div>
       <button
@@ -96,7 +96,7 @@ export function AttentionEducationSummary({
           "hover:bg-muted/60 hover:text-foreground",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-0"
         )}
-        aria-label="Dismiss example workspace summary"
+        aria-label="Dismiss demo content summary"
       >
         <X className="h-4 w-4" />
       </button>

@@ -34,7 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo, useCallback, memo, type MouseEvent, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { formatMessageDayLabel } from "@/lib/formatMessageDayLabel";
-import { isOnboardingDemoTask } from "@/lib/onboardingEducation";
+import { isOnboardingDemoTask, ONBOARDING_SAMPLE_LABEL } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
 import {
   UserAvatar,
@@ -498,7 +498,7 @@ function TaskCardComponent({
   const educationChipLabel = isStaffTrainingTask(task)
     ? "Learn Filla"
     : isOnboardingDemoTask(task)
-      ? "Example"
+      ? ONBOARDING_SAMPLE_LABEL
       : null;
   const dueFormattedLabel = dueDateRaw ? formatTaskDate(dueDateRaw) : null;
   const dueRelativeLabel = formatTaskDueRelative(dueDateRaw);
