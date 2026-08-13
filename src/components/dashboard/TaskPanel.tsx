@@ -887,7 +887,7 @@ export function TaskPanel({
         >
           {activeTab === "issues" && (
             <div
-              className="box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
+              className="box-border max-h-full min-h-0 min-w-0 w-full max-w-[700px] overflow-x-clip overflow-y-auto px-[10px] max-sm:px-0 pt-[11px] pb-[11px] max-pane:px-2"
               style={{
                 borderWidth: "0 0 10px",
                 borderStyle: "none none solid",

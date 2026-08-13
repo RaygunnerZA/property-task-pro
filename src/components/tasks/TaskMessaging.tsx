@@ -470,8 +470,10 @@ export function TaskMessaging({
               <div
                 key={message.id}
                 className={cn(
-                  "flex max-w-[92%] gap-2",
-                  isOwnMessage ? "ml-auto flex-row-reverse" : "mr-auto"
+                  "flex min-w-0 gap-2",
+                  isOwnMessage
+                    ? "ml-auto max-w-[min(92%,calc(100%-1.75rem))] flex-row-reverse"
+                    : "mr-auto max-w-[92%]"
                 )}
               >
                 <UserAvatar

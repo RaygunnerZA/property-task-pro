@@ -1,4 +1,5 @@
 export type AnnotationStrokeWidth = "thin" | "medium" | "bold";
+export type AnnotationLineStyle = "solid" | "dashed";
 export type AnnotationColor = 
   | "charcoal" 
   | "white" 
@@ -17,6 +18,8 @@ export interface AnnotationBase {
   y: number; // 0-1 relative
   strokeColor: AnnotationColor;
   strokeWidth: AnnotationStrokeWidth;
+  lineStyle?: AnnotationLineStyle;
+  createdBy?: string;
 }
 
 export interface PinAnnotation extends AnnotationBase {
@@ -45,9 +48,11 @@ export interface CircleAnnotation extends AnnotationBase {
 export interface TextAnnotation extends AnnotationBase {
   type: "text";
   width: number; // 0-1 relative
+  height?: number; // 0-1 relative frame height
   text: string;
   textColor: AnnotationColor;
   background: AnnotationBackground;
+  fontSizePt?: number;
 }
 
 export interface FreedrawAnnotation extends AnnotationBase {

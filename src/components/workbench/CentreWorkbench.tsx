@@ -10,7 +10,7 @@ import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkben
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const centreScrollClass =
-  "box-border max-h-full min-h-0 w-full max-w-[700px] overflow-y-auto px-2 pb-4 max-pane:px-2";
+  "box-border max-h-full min-h-0 min-w-0 w-full max-w-[700px] overflow-x-clip overflow-y-auto px-2 pb-4 max-pane:px-2";
 
 /** Space from the tab strip’s white bottom border to the first panel title. */
 const PANEL_BELOW_TABS_GAP_CLASS = "pt-[55px]";
@@ -89,7 +89,7 @@ export function CentreWorkbench({
   const showMobileCalendar = activeTab === "inflow" || activeTab === "tasks";
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-transparent pb-1">
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-transparent pb-1">
       <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
         <div
           className={cn(

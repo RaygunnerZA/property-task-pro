@@ -34,6 +34,10 @@ export const LAYOUT_BREAKPOINTS = {
    * App shell: two-column tablet → three-column desktop.
    * 1280 fits default 13″ laptop scaling and most Windows laptop widths; rails flex via
    * `grid-cols-workbench-triple` minmax tracks so the third column does not force overflow.
+   * DualPaneLayout adds `column-gap: var(--gutter-rail)` between tracks so centre cards
+   * and the detail pane cannot paint into each other when OS display scaling is not 100%.
+   * Horizontal clipping on the centre grid cell uses `overflow-x: clip` (not hidden) so
+   * it does not force a vertical scrollbar onto the column seam.
    */
   layout: 1280,
 } as const;

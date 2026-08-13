@@ -33,6 +33,9 @@ interface DualPaneLayoutProps {
  * Default (desktop / tablet dual):
  * - sm–layout: 330px side rail | centre (max 700px)
  * - layout+ (≥1280px): optional third column; rails flex via workbench-triple minmax
+ *   with gutter-rail column-gap so the centre list and detail pane stay separated.
+ *   Centre must not use overflow-x-hidden on the grid cell — that couples
+ *   overflow-y to `auto` and parks a native scrollbar on the column seam.
  *
  * Home-hub phone (`collapseCentreOnPhone`):
  * - < md: left only — centre (Quick Wins / Inflow…) hidden
@@ -73,14 +76,17 @@ export function DualPaneLayout({
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
     // When collapsing centre on phone, avoid a bare `flex` that would override `hidden`.
+    // Do not put overflow-y-auto on this grid cell: the native scrollbar sits on the
+    // track edge and reads as a thick divider against the third column. Inner panes
+    // (CentreWorkbench, TaskPanel) own vertical scroll, inset by this padding.
     collapseCentreOnPhone
-      ? "hidden md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
+      ? "hidden md:flex md:h-full md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4"
       : dualGridFromPhone
-        ? "md:flex md:h-full md:max-w-[700px] md:flex-col md:overflow-y-auto md:px-1 md:pb-4"
-        : "sm:flex sm:h-full sm:max-w-[700px] sm:flex-col sm:overflow-y-auto sm:px-1 sm:pb-4",
+        ? "md:flex md:h-full md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4"
+        : "sm:flex sm:h-full sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
     hasThirdColumn
-      ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-y-auto layout:px-1 layout:pb-5"
-      : "layout:max-w-none layout:overflow-y-auto layout:px-1 layout:pb-5",
+      ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-x-clip layout:px-2 layout:pb-5"
+      : "layout:max-w-none layout:px-1 layout:pb-5",
     /** Phone work-surface: centre is the only column — no leftover left-rail gutter. */
     collapseLeftOnPhone && "px-gutter-rail pt-0 md:px-1 md:pt-0"
   );
@@ -110,7 +116,9 @@ export function DualPaneLayout({
                   : "layout:grid layout:grid-cols-workbench-center-max",
               ],
           collapseLeftOnPhone && "pt-2 md:pt-[14px]",
-          stackOnPhone && "gap-4 md:gap-0"
+          // gap-y only: the `gap` shorthand would reset layout column-gap to 0.
+          stackOnPhone && "gap-y-4 md:gap-y-0",
+          hasThirdColumn && "layout:gap-x-gutter-rail"
         )}
       >
         <div
@@ -129,7 +137,7 @@ export function DualPaneLayout({
         {hasThirdColumn && (
           <div
             data-workbench-third-column
-            className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-hidden layout:overflow-y-auto layout:self-start layout:[overflow-anchor:none]"
+            className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-clip layout:overflow-y-auto layout:self-start layout:px-2 layout:[overflow-anchor:none]"
           >
             {thirdColumn}
           </div>

@@ -2186,6 +2186,7 @@ function TaskImageAnnotationOverlay({
                 stroke={color}
                 strokeWidth={strokeWidth * strokeScale}
                 strokeLinecap="round"
+                strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
               />
             </g>
           );
@@ -2202,6 +2203,7 @@ function TaskImageAnnotationOverlay({
               fill="none"
               stroke={color}
               strokeWidth={strokeWidth * strokeScale}
+              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
             />
           );
         }
@@ -2216,21 +2218,35 @@ function TaskImageAnnotationOverlay({
               fill="none"
               stroke={color}
               strokeWidth={strokeWidth * strokeScale}
+              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
             />
           );
         }
 
         if (annotation.type === "text") {
+          const fontSize = compact
+            ? Math.max(2, (annotation.fontSizePt ?? 16) * 0.14)
+            : Math.max(2.4, (annotation.fontSizePt ?? 16) * 0.18);
+          const fill = OVERLAY_COLOR_MAP[annotation.textColor] || color;
+          const highlight = annotation.textColor === "white" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)";
           return (
-            <text
-              key={annotation.annotationId}
-              x={annotation.x * 100}
-              y={annotation.y * 100}
-              fill={OVERLAY_COLOR_MAP[annotation.textColor] || color}
-              fontSize={compact ? "2.2" : "3"}
-            >
-              {annotation.text}
-            </text>
+            <g key={annotation.annotationId}>
+              <rect
+                x={annotation.x * 100 - 0.4}
+                y={annotation.y * 100 - 0.4}
+                width={annotation.width * 100 + 0.8}
+                height={Math.max(fontSize * 1.3, (annotation.height ?? 0) * 100)}
+                fill={highlight}
+              />
+              <text
+                x={annotation.x * 100}
+                y={annotation.y * 100 + fontSize}
+                fill={fill}
+                fontSize={fontSize}
+              >
+                {annotation.text}
+              </text>
+            </g>
           );
         }
 
@@ -2245,6 +2261,7 @@ function TaskImageAnnotationOverlay({
               strokeWidth={strokeWidth * strokeScale}
               strokeLinecap="round"
               strokeLinejoin="round"
+              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
             />
           );
         }

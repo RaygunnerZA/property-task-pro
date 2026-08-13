@@ -1,10 +1,29 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { ArrowRight, Square, Circle, Type, Pen, X, RotateCcw, Undo2, Redo2 } from "lucide-react";
+import { ArrowRight, Square, Circle, Type, Pen, X, RotateCcw, Undo2, Redo2, MousePointer2, Download } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { Annotation, ArrowAnnotation, AnnotationColor, AnnotationStrokeWidth } from "@/types/image-annotations";
-import { getColorHex, getStrokeWidthPx, ANNOTATION_COLORS } from "@/utils/annotation-colors";
+import { useAuth } from "@/hooks/useAuth";
+import { UserAvatar } from "@/components/tasks/UserAvatar";
+import type {
+  Annotation,
+  AnnotationColor,
+  AnnotationLineStyle,
+  AnnotationStrokeWidth,
+  TextAnnotation,
+} from "@/types/image-annotations";
+import {
+  getColorHex,
+  getStrokeWidthPx,
+  getLineDash,
+  getTextHighlightFill,
+  ANNOTATION_COLORS,
+  TEXT_SIZE_PTS,
+  DEFAULT_FONT_SIZE_PT,
+  SELECTION_TEAL,
+} from "@/utils/annotation-colors";
+import { measureTextFrame } from "@/utils/annotation-text";
 
 /** Passive overlay for AI-detected objects (read-only, dashed boxes) */
 export interface DetectionOverlay {
@@ -37,7 +56,8 @@ interface ImageAnnotationEditorProps {
   onCancel: () => void;
 }
 
-type ToolType = "arrow" | "rect" | "circle" | "text" | "freedraw" | null;
+type ToolType = "select" | "arrow" | "rect" | "circle" | "text" | "freedraw";
+type ShapeHandle = "from" | "to" | "nw" | "ne" | "se" | "sw";
 
 // Default sizes (relative 0-1)
 const DEFAULT_SIZES = {
@@ -61,22 +81,36 @@ export function ImageAnnotationEditor({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? null;
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
-  const [currentTool, setCurrentTool] = useState<ToolType>(null);
+  const [currentTool, setCurrentTool] = useState<ToolType>("select");
   const [imageSize, setImageSize] = useState<{ width: number; height: number; naturalWidth: number; naturalHeight: number } | null>(null);
   const [selectedColor, setSelectedColor] = useState<AnnotationColor>("charcoal");
   const [selectedStrokeWidth, setSelectedStrokeWidth] = useState<AnnotationStrokeWidth>("medium");
+  const [selectedLineStyle, setSelectedLineStyle] = useState<AnnotationLineStyle>("solid");
+  const [selectedFontSizePt, setSelectedFontSizePt] = useState<number>(DEFAULT_FONT_SIZE_PT);
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number } | null>(null);
-  const [draggingHandle, setDraggingHandle] = useState<"from" | "to" | null>(null);
+  const [draggingHandle, setDraggingHandle] = useState<ShapeHandle | null>(null);
   const [inlineTextEditor, setInlineTextEditor] = useState<{
     annotationId: string;
     text: string;
     x: number;
     y: number;
+    width: number;
+    fontSizePt: number;
+    textColor: AnnotationColor;
   } | null>(null);
-  const inlineInputRef = useRef<HTMLInputElement>(null);
+  const inlineInputRef = useRef<HTMLTextAreaElement>(null);
+  const pendingTextClickRef = useRef<{
+    annotationId: string;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
+  const pointerMoveRef = useRef<(x: number, y: number) => void>(() => {});
+  const pointerEndRef = useRef<() => void>(() => {});
   const isMobile = useIsMobile();
   
   // Track drawing state for click-and-drag tools
@@ -93,356 +127,247 @@ export function ImageAnnotationEditor({
   const [lastSavedAnnotations, setLastSavedAnnotations] = useState<Annotation[]>(initialAnnotations);
   const imageElementRef = useRef<HTMLImageElement | null>(null);
   const [visibleSessionIds, setVisibleSessionIds] = useState<string[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   
   // Track if annotations have changed
   const hasUnsavedChanges = useMemo(() => {
     return JSON.stringify(annotations) !== JSON.stringify(lastSavedAnnotations);
   }, [annotations, lastSavedAnnotations]);
 
-  // Always render the live edit buffer. History versions can be loaded into it via the header.
+  // Always render the live edit buffer. History versions can be loaded into it via the layer list.
   const displayAnnotations = annotations;
 
-  // Define drawSelectionHandles first (used by drawAnnotations)
+  const canEditAnnotation = useCallback(
+    (annotation: Annotation) => {
+      if (!currentUserId) return true;
+      if (annotation.createdBy && annotation.createdBy !== currentUserId) return false;
+      const activeSession = editSessions.find((s) => s.id === activeSessionId);
+      if (activeSession?.userId && activeSession.userId !== currentUserId) return false;
+      return true;
+    },
+    [activeSessionId, currentUserId, editSessions],
+  );
+
+  const getFrameCorners = (annotation: Annotation): Array<{ handle: ShapeHandle; x: number; y: number }> => {
+    if (!imageSize) return [];
+    if (annotation.type === "text") {
+      const ctx = canvasRef.current?.getContext("2d") ?? document.createElement("canvas").getContext("2d");
+      if (!ctx) return [];
+      const frame = measureTextFrame(ctx, annotation, imageSize.width, imageSize.height);
+      return [
+        { handle: "nw", x: frame.x, y: frame.y },
+        { handle: "ne", x: frame.x + frame.width, y: frame.y },
+        { handle: "se", x: frame.x + frame.width, y: frame.y + frame.height },
+        { handle: "sw", x: frame.x, y: frame.y + frame.height },
+      ];
+    }
+    if (annotation.type === "rect") {
+      const x = annotation.x * imageSize.width;
+      const y = annotation.y * imageSize.height;
+      const width = annotation.width * imageSize.width;
+      const height = annotation.height * imageSize.height;
+      return [
+        { handle: "nw", x, y },
+        { handle: "ne", x: x + width, y },
+        { handle: "se", x: x + width, y: y + height },
+        { handle: "sw", x, y: y + height },
+      ];
+    }
+    if (annotation.type === "circle") {
+      const x = annotation.x * imageSize.width;
+      const y = annotation.y * imageSize.height;
+      const radius = annotation.radius * Math.min(imageSize.width, imageSize.height);
+      return [
+        { handle: "ne", x: x + radius, y },
+        { handle: "se", x, y: y + radius },
+        { handle: "sw", x: x - radius, y },
+        { handle: "nw", x, y: y - radius },
+      ];
+    }
+    if (annotation.type === "arrow") {
+      return [
+        { handle: "from", x: annotation.from.x * imageSize.width, y: annotation.from.y * imageSize.height },
+        { handle: "to", x: annotation.to.x * imageSize.width, y: annotation.to.y * imageSize.height },
+      ];
+    }
+    return [];
+  };
+
   const drawSelectionHandles = (ctx: CanvasRenderingContext2D, annotation: Annotation) => {
     if (!imageSize) return;
-    
-    ctx.fillStyle = "#3B82F6";
+
+    ctx.fillStyle = SELECTION_TEAL;
     ctx.strokeStyle = "#FFFFFF";
     ctx.lineWidth = 2;
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
 
-    const handleSize = 8;
-    const x = annotation.x * imageSize.width;
-    const y = annotation.y * imageSize.height;
+    const handleSize = 7;
+    const corners = getFrameCorners(annotation);
 
-    if (annotation.type === "rect" || annotation.type === "text") {
-      const width = annotation.width * imageSize.width;
-      const height = annotation.type === "rect" 
-        ? annotation.height * imageSize.height 
-        : 24; // Approximate text height
-      
-      const corners = [
-        [x, y],
-        [x + width, y],
-        [x + width, y + height],
-        [x, y + height],
-      ];
-      
-      corners.forEach(([cx, cy]) => {
-        ctx.beginPath();
-        ctx.arc(cx, cy, handleSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-    } else if (annotation.type === "circle") {
-      const radius = annotation.radius * Math.min(imageSize.width, imageSize.height);
-      // Draw handles at 4 points around circle
-      const angles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2];
-      angles.forEach((angle) => {
-        const cx = x + radius * Math.cos(angle);
-        const cy = y + radius * Math.sin(angle);
-        ctx.beginPath();
-        ctx.arc(cx, cy, handleSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-    } else if (annotation.type === "arrow") {
-      const fromX = annotation.from.x * imageSize.width;
-      const fromY = annotation.from.y * imageSize.height;
-      const toX = annotation.to.x * imageSize.width;
-      const toY = annotation.to.y * imageSize.height;
-      
-      [fromX, toX].forEach((cx, i) => {
-        const cy = i === 0 ? fromY : toY;
-        ctx.beginPath();
-        ctx.arc(cx, cy, handleSize / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-    } else if (annotation.type === "pin") {
+    if (annotation.type === "text" || annotation.type === "rect") {
+      const [nw, , se] = corners;
+      if (nw && se) {
+        ctx.strokeStyle = SELECTION_TEAL;
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(nw.x, nw.y, se.x - nw.x, se.y - nw.y);
+      }
+    }
+
+    ctx.fillStyle = SELECTION_TEAL;
+    ctx.strokeStyle = "#FFFFFF";
+    corners.forEach(({ x, y }) => {
       ctx.beginPath();
       ctx.arc(x, y, handleSize / 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-    }
-    // freedraw: no resize handles, selection shown via dashed outline
+    });
   };
 
-  const getHandleAtPoint = (clientX: number, clientY: number, arrowAnn?: ArrowAnnotation): "from" | "to" | null => {
+  const getHandleAtPoint = (clientX: number, clientY: number, target?: Annotation): ShapeHandle | null => {
     if (!imageSize || !canvasRef.current) return null;
     const rect = canvasRef.current.getBoundingClientRect();
     const canvasX = clientX - rect.left;
     const canvasY = clientY - rect.top;
     const handleRadius = 14;
-    const toCheck = arrowAnn ? [arrowAnn] : annotations.filter((a): a is ArrowAnnotation => a.type === "arrow");
-    for (const ann of toCheck) {
-      const fromX = ann.from.x * imageSize.width;
-      const fromY = ann.from.y * imageSize.height;
-      const toX = ann.to.x * imageSize.width;
-      const toY = ann.to.y * imageSize.height;
-      if (Math.sqrt((canvasX - fromX) ** 2 + (canvasY - fromY) ** 2) <= handleRadius) return "from";
-      if (Math.sqrt((canvasX - toX) ** 2 + (canvasY - toY) ** 2) <= handleRadius) return "to";
+    const annotation = target ?? annotations.find((a) => a.annotationId === selectedAnnotationId);
+    if (!annotation) return null;
+    const corners = getFrameCorners(annotation);
+    for (const corner of corners) {
+      if (Math.sqrt((canvasX - corner.x) ** 2 + (canvasY - corner.y) ** 2) <= handleRadius) {
+        return corner.handle;
+      }
     }
     return null;
   };
 
-  // Define drawAnnotations (uses drawSelectionHandles)
+  const drawOneAnnotation = (
+    ctx: CanvasRenderingContext2D,
+    annotation: Annotation,
+    options?: { hideText?: boolean },
+  ) => {
+    if (!imageSize) return;
+    const strokeColor = getColorHex(annotation.strokeColor);
+    const strokeWidth = getStrokeWidthPx(annotation.strokeWidth);
+    const dash = getLineDash(annotation.lineStyle, strokeWidth);
+    const x = annotation.x * imageSize.width;
+    const y = annotation.y * imageSize.height;
+
+    ctx.save();
+    ctx.strokeStyle = strokeColor;
+    ctx.fillStyle = strokeColor;
+    ctx.lineWidth = strokeWidth;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.setLineDash(dash);
+    ctx.shadowBlur = 0;
+
+    switch (annotation.type) {
+      case "pin":
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      case "arrow": {
+        const fromX = annotation.from.x * imageSize.width;
+        const fromY = annotation.from.y * imageSize.height;
+        const toX = annotation.to.x * imageSize.width;
+        const toY = annotation.to.y * imageSize.height;
+        ctx.beginPath();
+        ctx.moveTo(fromX, fromY);
+        ctx.lineTo(toX, toY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        const angle = Math.atan2(toY - fromY, toX - fromX);
+        const arrowLength = 11 + strokeWidth;
+        ctx.beginPath();
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(
+          toX - arrowLength * Math.cos(angle - Math.PI / 6),
+          toY - arrowLength * Math.sin(angle - Math.PI / 6),
+        );
+        ctx.moveTo(toX, toY);
+        ctx.lineTo(
+          toX - arrowLength * Math.cos(angle + Math.PI / 6),
+          toY - arrowLength * Math.sin(angle + Math.PI / 6),
+        );
+        ctx.stroke();
+        break;
+      }
+      case "rect": {
+        const rectWidth = annotation.width * imageSize.width;
+        const rectHeight = annotation.height * imageSize.height;
+        if (annotation.fillColor && annotation.fillColor !== "transparent") {
+          ctx.fillStyle = getColorHex(annotation.fillColor);
+          ctx.fillRect(x, y, rectWidth, rectHeight);
+        }
+        ctx.strokeRect(x, y, rectWidth, rectHeight);
+        break;
+      }
+      case "circle": {
+        const radius = annotation.radius * Math.min(imageSize.width, imageSize.height);
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        if (annotation.fillColor && annotation.fillColor !== "transparent") {
+          ctx.fillStyle = getColorHex(annotation.fillColor);
+          ctx.fill();
+        }
+        ctx.stroke();
+        break;
+      }
+      case "text": {
+        if (options?.hideText) break;
+        const frame = measureTextFrame(ctx, annotation, imageSize.width, imageSize.height);
+        const pad = 4;
+        ctx.setLineDash([]);
+        ctx.fillStyle = getTextHighlightFill(annotation.textColor);
+        ctx.fillRect(frame.x - pad, frame.y - pad, frame.width + pad * 2, frame.height + pad * 2);
+        ctx.font = `${frame.fontSize}px "Inter Tight", sans-serif`;
+        ctx.fillStyle = getColorHex(annotation.textColor);
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        frame.lines.forEach((line, index) => {
+          ctx.fillText(line, frame.x, frame.y + index * frame.fontSize * 1.3);
+        });
+        break;
+      }
+      case "freedraw":
+        if (annotation.points && annotation.points.length >= 2) {
+          ctx.beginPath();
+          ctx.moveTo(
+            annotation.points[0].x * imageSize.width,
+            annotation.points[0].y * imageSize.height,
+          );
+          for (let i = 1; i < annotation.points.length; i++) {
+            ctx.lineTo(
+              annotation.points[i].x * imageSize.width,
+              annotation.points[i].y * imageSize.height,
+            );
+          }
+          ctx.stroke();
+        }
+        break;
+    }
+    ctx.restore();
+  };
+
   const drawAnnotations = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!imageSize) return;
-    
     try {
-
-    // Draw all annotations
-    displayAnnotations.forEach((annotation) => {
-      const isSelected = annotation.annotationId === selectedAnnotationId;
-      const strokeColor = getColorHex(annotation.strokeColor);
-      const strokeWidth = getStrokeWidthPx(annotation.strokeWidth);
-
-      ctx.strokeStyle = strokeColor;
-      ctx.fillStyle = strokeColor;
-      ctx.lineWidth = strokeWidth;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      
-      // Soft edges (slight blur for smoothness)
-      ctx.shadowBlur = 0.5;
-      ctx.shadowColor = strokeColor;
-
-      // Dashed outline for selection
-      if (isSelected) {
-        ctx.setLineDash([4, 4]);
-        ctx.strokeStyle = "#3B82F6"; // Blue highlight
-        ctx.lineWidth = strokeWidth + 1;
-      } else {
-        ctx.setLineDash([]);
+      displayAnnotations.forEach((annotation) => {
+        const isEditing = inlineTextEditor?.annotationId === annotation.annotationId;
+        drawOneAnnotation(ctx, annotation, { hideText: isEditing });
+        if (annotation.annotationId === selectedAnnotationId) {
+          drawSelectionHandles(ctx, annotation);
+        }
+      });
+      if (tempAnnotation) {
+        drawOneAnnotation(ctx, tempAnnotation);
       }
-
-      const x = annotation.x * imageSize.width;
-      const y = annotation.y * imageSize.height;
-
-      switch (annotation.type) {
-        case "pin":
-          // Pin as small filled circle
-          ctx.beginPath();
-          ctx.arc(x, y, 8, 0, Math.PI * 2);
-          ctx.fill();
-          // Reset shadow for handles
-          ctx.shadowBlur = 0;
-          break;
-
-        case "arrow":
-          const fromX = annotation.from.x * imageSize.width;
-          const fromY = annotation.from.y * imageSize.height;
-          const toX = annotation.to.x * imageSize.width;
-          const toY = annotation.to.y * imageSize.height;
-          
-          // Draw arrow line
-          ctx.beginPath();
-          ctx.moveTo(fromX, fromY);
-          ctx.lineTo(toX, toY);
-          ctx.stroke();
-          
-          // Draw arrowhead
-          const angle = Math.atan2(toY - fromY, toX - fromX);
-          const arrowLength = 12;
-          ctx.beginPath();
-          ctx.moveTo(toX, toY);
-          ctx.lineTo(
-            toX - arrowLength * Math.cos(angle - Math.PI / 6),
-            toY - arrowLength * Math.sin(angle - Math.PI / 6)
-          );
-          ctx.moveTo(toX, toY);
-          ctx.lineTo(
-            toX - arrowLength * Math.cos(angle + Math.PI / 6),
-            toY - arrowLength * Math.sin(angle + Math.PI / 6)
-          );
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-          break;
-
-        case "rect":
-          const rectWidth = annotation.width * imageSize.width;
-          const rectHeight = annotation.height * imageSize.height;
-          if (annotation.fillColor && annotation.fillColor !== "transparent") {
-            ctx.fillStyle = getColorHex(annotation.fillColor);
-            ctx.fillRect(x, y, rectWidth, rectHeight);
-          }
-          ctx.strokeRect(x, y, rectWidth, rectHeight);
-          ctx.shadowBlur = 0;
-          break;
-
-        case "circle":
-          const radius = annotation.radius * Math.min(imageSize.width, imageSize.height);
-          ctx.beginPath();
-          ctx.arc(x, y, radius, 0, Math.PI * 2);
-          if (annotation.fillColor && annotation.fillColor !== "transparent") {
-            ctx.fillStyle = getColorHex(annotation.fillColor);
-            ctx.fill();
-          }
-          ctx.stroke();
-          ctx.shadowBlur = 0;
-          break;
-
-        case "text":
-          const textWidth = annotation.width * imageSize.width;
-          const fontSize = Math.max(14, Math.min(18, textWidth / 12));
-          ctx.font = `${fontSize}px Inter Tight, sans-serif`;
-          ctx.fillStyle = getColorHex(annotation.textColor);
-          ctx.shadowBlur = 0;
-          
-          if (annotation.background === "soft") {
-            const metrics = ctx.measureText(annotation.text);
-            const textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-            ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-            ctx.fillRect(x - 6, y - textHeight - 6, textWidth + 12, textHeight + 12);
-            ctx.fillStyle = getColorHex(annotation.textColor);
-          }
-          
-          // Simple text wrapping
-          const words = annotation.text.split(" ");
-          let line = "";
-          let lineY = y;
-          for (let i = 0; i < words.length; i++) {
-            const testLine = line + words[i] + " ";
-            const testWidth = ctx.measureText(testLine).width;
-            if (testWidth > textWidth && i > 0) {
-              ctx.fillText(line, x, lineY);
-              line = words[i] + " ";
-              lineY += fontSize * 1.3;
-            } else {
-              line = testLine;
-            }
-          }
-          ctx.fillText(line, x, lineY);
-          break;
-
-        case "freedraw":
-          if (annotation.points && annotation.points.length >= 2) {
-            ctx.beginPath();
-            const px0 = annotation.points[0].x * imageSize.width;
-            const py0 = annotation.points[0].y * imageSize.height;
-            ctx.moveTo(px0, py0);
-            for (let i = 1; i < annotation.points.length; i++) {
-              ctx.lineTo(
-                annotation.points[i].x * imageSize.width,
-                annotation.points[i].y * imageSize.height
-              );
-            }
-            ctx.stroke();
-          }
-          ctx.shadowBlur = 0;
-          break;
-      }
-
-      // Draw selection handles
-      if (isSelected) {
-        drawSelectionHandles(ctx, annotation);
-      }
-    });
-    
-    // Draw temporary annotation during drawing
-    if (tempAnnotation) {
-      const isSelected = tempAnnotation.annotationId === selectedAnnotationId;
-      // Draw the temp annotation (same drawing logic as above)
-      const x = tempAnnotation.x * imageSize.width;
-      const y = tempAnnotation.y * imageSize.height;
-      ctx.strokeStyle = getColorHex(tempAnnotation.strokeColor);
-      ctx.lineWidth = getStrokeWidthPx(tempAnnotation.strokeWidth);
-      ctx.setLineDash([]);
-      ctx.shadowBlur = 0;
-
-      switch (tempAnnotation.type) {
-        case "pin":
-          ctx.beginPath();
-          ctx.arc(x, y, 8, 0, Math.PI * 2);
-          ctx.fillStyle = getColorHex(tempAnnotation.strokeColor);
-          ctx.fill();
-          ctx.stroke();
-          break;
-
-        case "arrow":
-          const fromX = tempAnnotation.from.x * imageSize.width;
-          const fromY = tempAnnotation.from.y * imageSize.height;
-          const toX = tempAnnotation.to.x * imageSize.width;
-          const toY = tempAnnotation.to.y * imageSize.height;
-          ctx.beginPath();
-          ctx.moveTo(fromX, fromY);
-          ctx.lineTo(toX, toY);
-          ctx.stroke();
-          // Arrowhead
-          const angle = Math.atan2(toY - fromY, toX - fromX);
-          ctx.beginPath();
-          ctx.moveTo(toX, toY);
-          ctx.lineTo(toX - 10 * Math.cos(angle - Math.PI / 6), toY - 10 * Math.sin(angle - Math.PI / 6));
-          ctx.moveTo(toX, toY);
-          ctx.lineTo(toX - 10 * Math.cos(angle + Math.PI / 6), toY - 10 * Math.sin(angle + Math.PI / 6));
-          ctx.stroke();
-          break;
-
-        case "rect":
-          const rectWidth = (tempAnnotation.width || 0) * imageSize.width;
-          const rectHeight = (tempAnnotation.height || 0) * imageSize.height;
-          ctx.strokeRect(x, y, rectWidth, rectHeight);
-          if (tempAnnotation.fillColor && tempAnnotation.fillColor !== "transparent") {
-            ctx.fillStyle = getColorHex(tempAnnotation.fillColor);
-            ctx.fillRect(x, y, rectWidth, rectHeight);
-          }
-          break;
-
-        case "circle":
-          const radius = (tempAnnotation.radius || 0) * Math.min(imageSize.width, imageSize.height);
-          ctx.beginPath();
-          ctx.arc(x, y, radius, 0, Math.PI * 2);
-          ctx.stroke();
-          if (tempAnnotation.fillColor && tempAnnotation.fillColor !== "transparent") {
-            ctx.fillStyle = getColorHex(tempAnnotation.fillColor);
-            ctx.fill();
-          }
-          break;
-
-        case "text":
-          try {
-            const textWidth = (tempAnnotation.width || DEFAULT_SIZES.text.width) * imageSize.width;
-            const fontSize = Math.max(14, Math.min(18, textWidth / 12));
-            ctx.font = `${fontSize}px Inter Tight, sans-serif`;
-            ctx.fillStyle = getColorHex(tempAnnotation.textColor || "charcoal");
-            ctx.shadowBlur = 0;
-            if (tempAnnotation.background === "soft") {
-              const metrics = ctx.measureText(tempAnnotation.text || "Text");
-              const textHeight = metrics.actualBoundingBoxAscent + metrics.actualBoundingBoxDescent;
-              ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-              ctx.fillRect(x - 6, y - textHeight - 6, textWidth + 12, textHeight + 12);
-              ctx.fillStyle = getColorHex(tempAnnotation.textColor || "charcoal");
-            }
-            ctx.fillText(tempAnnotation.text || "Text", x, y);
-          } catch (error) {
-            console.error("Error drawing text annotation:", error);
-          }
-          break;
-
-        case "freedraw":
-          if (tempAnnotation.points && tempAnnotation.points.length >= 2) {
-            ctx.beginPath();
-            ctx.moveTo(
-              tempAnnotation.points[0].x * imageSize.width,
-              tempAnnotation.points[0].y * imageSize.height
-            );
-            for (let i = 1; i < tempAnnotation.points.length; i++) {
-              ctx.lineTo(
-                tempAnnotation.points[i].x * imageSize.width,
-                tempAnnotation.points[i].y * imageSize.height
-              );
-            }
-            ctx.stroke();
-          }
-          break;
-      }
-    }
     } catch (error) {
       console.error("Error in drawAnnotations:", error);
     }
-  }, [displayAnnotations, selectedAnnotationId, imageSize, tempAnnotation]);
+  }, [displayAnnotations, selectedAnnotationId, imageSize, tempAnnotation, inlineTextEditor]);
 
   // Draw detection overlays (read-only, dashed boxes) — separate from user annotations
   const drawDetectionOverlays = useCallback(
@@ -654,6 +579,7 @@ export function ImageAnnotationEditor({
       setLastSavedAnnotations(next);
       setSelectedAnnotationId(null);
       setVisibleSessionIds([sessionId]);
+      setActiveSessionId(sessionId);
     },
     [editSessions, hasUnsavedChanges]
   );
@@ -671,17 +597,22 @@ export function ImageAnnotationEditor({
 
   const startInlineTextEditing = useCallback((annotationId: string) => {
     const textAnnotation = annotations.find(
-      (ann): ann is Extract<Annotation, { type: "text" }> =>
+      (ann): ann is TextAnnotation =>
         ann.annotationId === annotationId && ann.type === "text"
     );
-    if (!textAnnotation) return;
+    if (!textAnnotation || !canEditAnnotation(textAnnotation)) return;
     setInlineTextEditor({
       annotationId: textAnnotation.annotationId,
       text: textAnnotation.text,
       x: textAnnotation.x,
       y: textAnnotation.y,
+      width: textAnnotation.width,
+      fontSizePt: textAnnotation.fontSizePt ?? DEFAULT_FONT_SIZE_PT,
+      textColor: textAnnotation.textColor,
     });
-  }, [annotations]);
+    setSelectedFontSizePt(textAnnotation.fontSizePt ?? DEFAULT_FONT_SIZE_PT);
+    setSelectedColor(textAnnotation.textColor);
+  }, [annotations, canEditAnnotation]);
 
   const commitInlineTextEditing = useCallback(() => {
     if (!inlineTextEditor) return;
@@ -692,7 +623,7 @@ export function ImageAnnotationEditor({
       }
       return prev.map((ann) =>
         ann.annotationId === inlineTextEditor.annotationId && ann.type === "text"
-          ? { ...ann, text: inlineTextEditor.text }
+          ? { ...ann, text: inlineTextEditor.text, width: inlineTextEditor.width, fontSizePt: inlineTextEditor.fontSizePt }
           : ann
       );
     });
@@ -718,10 +649,29 @@ export function ImageAnnotationEditor({
     if (!inlineTextEditor || !canvasRef.current || !containerRef.current || !imageSize) return null;
     const canvasRect = canvasRef.current.getBoundingClientRect();
     const containerRect = containerRef.current.getBoundingClientRect();
+    const widthPx = Math.max(48, inlineTextEditor.width * imageSize.width);
+    const ctx = canvasRef.current.getContext("2d");
+    const fontSize = ctx
+      ? measureTextFrame(
+          ctx,
+          {
+            ...inlineTextEditor,
+            type: "text",
+            annotationId: inlineTextEditor.annotationId,
+            version: 1,
+            strokeColor: inlineTextEditor.textColor,
+            strokeWidth: "medium",
+            background: "none",
+          } as TextAnnotation,
+          imageSize.width,
+          imageSize.height,
+        ).fontSize
+      : inlineTextEditor.fontSizePt;
     return {
       left: canvasRect.left - containerRect.left + inlineTextEditor.x * imageSize.width,
       top: canvasRect.top - containerRect.top + inlineTextEditor.y * imageSize.height,
-      width: Math.max(140, DEFAULT_SIZES.text.width * imageSize.width),
+      width: widthPx,
+      fontSize,
     };
   }, [inlineTextEditor, imageSize]);
 
@@ -731,8 +681,6 @@ export function ImageAnnotationEditor({
     const rect = canvasRef.current.getBoundingClientRect();
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
-    const relX = canvasX / imageSize.width;
-    const relY = canvasY / imageSize.height;
 
     // Check annotations in reverse order (top-most first)
     for (let i = annotations.length - 1; i >= 0; i--) {
@@ -791,18 +739,26 @@ export function ImageAnnotationEditor({
           }
           break;
 
-        case "text":
-          const textWidth = ann.width * imageSize.width;
-          const textHeight = 40; // Larger hit area for easier selection
+        case "text": {
+          const ctx = canvasRef.current.getContext("2d");
+          const frame = ctx
+            ? measureTextFrame(ctx, ann, imageSize.width, imageSize.height)
+            : {
+                x: annX,
+                y: annY,
+                width: ann.width * imageSize.width,
+                height: 40,
+              };
           if (
-            canvasX >= annX &&
-            canvasX <= annX + textWidth &&
-            canvasY >= annY - textHeight &&
-            canvasY <= annY + 8
+            canvasX >= frame.x - 4 &&
+            canvasX <= frame.x + frame.width + 4 &&
+            canvasY >= frame.y - 4 &&
+            canvasY <= frame.y + frame.height + 4
           ) {
             return ann;
           }
           break;
+        }
 
         case "freedraw":
           if (ann.points && ann.points.length >= 2) {
@@ -827,40 +783,58 @@ export function ImageAnnotationEditor({
     return null;
   };
 
-  // Unified handler for both mouse and touch
   const handlePointerStart = (clientX: number, clientY: number) => {
     if (!imageSize) return;
-    if (inlineTextEditor) {
-      commitInlineTextEditing();
-    }
-    
+    pendingTextClickRef.current = null;
+
     const hitArea = isMobile ? 20 : 15;
     const coords = getRelativeCoords(clientX, clientY);
     if (!coords) return;
 
-    const clickedAnnotation = getAnnotationAtPoint(clientX, clientY, hitArea);
-    
-    if (clickedAnnotation) {
-      setSelectedAnnotationId(clickedAnnotation.annotationId);
-      setCurrentTool(null);
-      
-      // Arrow: check if clicking on a handle for independent start/end drag, else drag whole arrow
-      if (clickedAnnotation.type === "arrow") {
-        const handle = getHandleAtPoint(clientX, clientY, clickedAnnotation);
-        if (handle) {
-          setDraggingHandle(handle);
-          return;
-        }
-        // Drag whole arrow when clicking on the line (not a handle)
-        setIsDragging(true);
-        setDragOffset({
-          x: coords.x - clickedAnnotation.x,
-          y: coords.y - clickedAnnotation.y,
-        });
+    const selected = annotations.find((a) => a.annotationId === selectedAnnotationId);
+    if (selected && currentTool === "select") {
+      const handle = getHandleAtPoint(clientX, clientY, selected);
+      if (handle) {
+        if (inlineTextEditor) commitInlineTextEditing();
+        setDraggingHandle(handle);
         return;
       }
-      
-      // Start dragging existing annotation (non-arrow)
+    }
+
+    const clickedAnnotation = currentTool === "select" || currentTool === "text"
+      ? getAnnotationAtPoint(clientX, clientY, hitArea)
+      : null;
+
+    if (currentTool === "select") {
+      if (inlineTextEditor && inlineTextEditor.annotationId !== clickedAnnotation?.annotationId) {
+        commitInlineTextEditing();
+      }
+      if (!clickedAnnotation) {
+        setSelectedAnnotationId(null);
+        return;
+      }
+      setSelectedAnnotationId(clickedAnnotation.annotationId);
+      if (clickedAnnotation.type === "text") {
+        setSelectedColor(clickedAnnotation.textColor);
+        setSelectedFontSizePt(clickedAnnotation.fontSizePt ?? DEFAULT_FONT_SIZE_PT);
+      } else {
+        setSelectedColor(clickedAnnotation.strokeColor);
+        setSelectedStrokeWidth(clickedAnnotation.strokeWidth);
+        setSelectedLineStyle(clickedAnnotation.lineStyle ?? "solid");
+      }
+      const handle = getHandleAtPoint(clientX, clientY, clickedAnnotation);
+      if (handle) {
+        setDraggingHandle(handle);
+        return;
+      }
+      if (clickedAnnotation.type === "text" && canEditAnnotation(clickedAnnotation)) {
+        pendingTextClickRef.current = {
+          annotationId: clickedAnnotation.annotationId,
+          clientX,
+          clientY,
+        };
+        return;
+      }
       setIsDragging(true);
       setDragOffset({
         x: coords.x - clickedAnnotation.x,
@@ -869,80 +843,138 @@ export function ImageAnnotationEditor({
       return;
     }
 
-    // Start drawing new annotation if tool is selected
-    if (currentTool) {
-      // Text: single click creates text directly on image (inline edit)
-      if (currentTool === "text") {
-        const newAnnotation: Annotation = {
-          annotationId: crypto.randomUUID(),
-          version: 1,
-          type: "text",
-          x: coords.x,
-          y: coords.y,
-          width: DEFAULT_SIZES.text.width,
-          text: "",
-          textColor: selectedColor,
-          background: "none",
-          strokeColor: selectedColor,
-          strokeWidth: selectedStrokeWidth,
-        };
-        setAnnotations([...annotations, newAnnotation]);
-        setSelectedAnnotationId(newAnnotation.annotationId);
-        setInlineTextEditor({
-          annotationId: newAnnotation.annotationId,
-          text: "",
-          x: coords.x,
-          y: coords.y,
-        });
-        setCurrentTool(null);
-        return;
+    if (currentTool === "text" && clickedAnnotation?.type === "text" && canEditAnnotation(clickedAnnotation)) {
+      if (inlineTextEditor && inlineTextEditor.annotationId !== clickedAnnotation.annotationId) {
+        commitInlineTextEditing();
       }
+      setSelectedAnnotationId(clickedAnnotation.annotationId);
+      startInlineTextEditing(clickedAnnotation.annotationId);
+      return;
+    }
 
-      // Freedraw: start path
-      if (currentTool === "freedraw") {
-        setIsDrawing(true);
-        const temp: Annotation = {
-          annotationId: crypto.randomUUID(),
-          version: 1,
-          type: "freedraw",
-          x: coords.x,
-          y: coords.y,
-          strokeColor: selectedColor,
-          strokeWidth: selectedStrokeWidth,
-          points: [{ x: coords.x, y: coords.y }],
-        };
-        setTempAnnotation(temp);
-        return;
-      }
+    if (inlineTextEditor) commitInlineTextEditing();
 
-      // Arrow, rect, circle: click-and-drag
+    if (currentTool === "text") {
+      const newAnnotation: TextAnnotation = {
+        annotationId: crypto.randomUUID(),
+        version: 1,
+        type: "text",
+        x: coords.x,
+        y: coords.y,
+        width: DEFAULT_SIZES.text.width,
+        text: "",
+        textColor: selectedColor,
+        background: "none",
+        strokeColor: selectedColor,
+        strokeWidth: selectedStrokeWidth,
+        fontSizePt: selectedFontSizePt,
+        createdBy: currentUserId ?? undefined,
+      };
+      setAnnotations([...annotations, newAnnotation]);
+      setSelectedAnnotationId(newAnnotation.annotationId);
+      setInlineTextEditor({
+        annotationId: newAnnotation.annotationId,
+        text: "",
+        x: coords.x,
+        y: coords.y,
+        width: newAnnotation.width,
+        fontSizePt: selectedFontSizePt,
+        textColor: selectedColor,
+      });
+      return;
+    }
+
+    if (currentTool === "freedraw") {
       setIsDrawing(true);
-      setDrawStart(coords);
       const temp: Annotation = {
         annotationId: crypto.randomUUID(),
         version: 1,
-        type: currentTool,
+        type: "freedraw",
         x: coords.x,
         y: coords.y,
         strokeColor: selectedColor,
         strokeWidth: selectedStrokeWidth,
-        ...(currentTool === "arrow" && { from: coords, to: coords }),
-        ...(currentTool === "rect" && { width: 0, height: 0 }),
-        ...(currentTool === "circle" && { radius: 0 }),
-      } as Annotation;
+        lineStyle: selectedLineStyle,
+        createdBy: currentUserId ?? undefined,
+        points: [{ x: coords.x, y: coords.y }],
+      };
       setTempAnnotation(temp);
-    } else {
-      setSelectedAnnotationId(null);
+      return;
     }
+
+    setIsDrawing(true);
+    setDrawStart(coords);
+    const temp: Annotation = {
+      annotationId: crypto.randomUUID(),
+      version: 1,
+      type: currentTool,
+      x: coords.x,
+      y: coords.y,
+      strokeColor: selectedColor,
+      strokeWidth: selectedStrokeWidth,
+      lineStyle: selectedLineStyle,
+      createdBy: currentUserId ?? undefined,
+      ...(currentTool === "arrow" && { from: coords, to: coords }),
+      ...(currentTool === "rect" && { width: 0, height: 0 }),
+      ...(currentTool === "circle" && { radius: 0 }),
+    } as Annotation;
+    setTempAnnotation(temp);
   };
 
   const handleCanvasDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const clickedAnnotation = getAnnotationAtPoint(e.clientX, e.clientY, isMobile ? 22 : 16);
-    if (clickedAnnotation?.type === "text") {
+    if (clickedAnnotation?.type === "text" && canEditAnnotation(clickedAnnotation)) {
       setSelectedAnnotationId(clickedAnnotation.annotationId);
       startInlineTextEditing(clickedAnnotation.annotationId);
     }
+  };
+
+  const resizeSelectedAnnotation = (ann: Annotation, handle: ShapeHandle, coords: { x: number; y: number }): Annotation => {
+    if (!imageSize) return ann;
+    const nx = Math.max(0, Math.min(1, coords.x));
+    const ny = Math.max(0, Math.min(1, coords.y));
+
+    if (ann.type === "arrow" && (handle === "from" || handle === "to")) {
+      const newFrom = handle === "from" ? { x: nx, y: ny } : ann.from;
+      const newTo = handle === "to" ? { x: nx, y: ny } : ann.to;
+      return {
+        ...ann,
+        from: newFrom,
+        to: newTo,
+        x: (newFrom.x + newTo.x) / 2,
+        y: (newFrom.y + newTo.y) / 2,
+      };
+    }
+
+    if (ann.type === "circle") {
+      const dx = nx - ann.x;
+      const dy = ny - ann.y;
+      return { ...ann, radius: Math.max(0.02, Math.sqrt(dx * dx + dy * dy)) };
+    }
+
+    if (ann.type === "rect" || ann.type === "text") {
+      const right = ann.x + (ann.type === "rect" ? ann.width : ann.width);
+      const bottom = ann.type === "rect"
+        ? ann.y + ann.height
+        : ann.y + (ann.height ?? 0.08);
+      let nextX = ann.x;
+      let nextY = ann.y;
+      let nextRight = right;
+      let nextBottom = bottom;
+      if (handle === "nw" || handle === "sw") nextX = nx;
+      if (handle === "ne" || handle === "se") nextRight = nx;
+      if (handle === "nw" || handle === "ne") nextY = ny;
+      if (handle === "sw" || handle === "se") nextBottom = ny;
+      const width = Math.max(0.04, nextRight - nextX);
+      const height = Math.max(0.03, nextBottom - nextY);
+      if (ann.type === "text") {
+        return { ...ann, x: nextX, y: nextY, width, height };
+      }
+      return { ...ann, x: nextX, y: nextY, width, height };
+    }
+
+    return ann;
   };
 
   const handlePointerMove = (clientX: number, clientY: number) => {
@@ -951,24 +983,40 @@ export function ImageAnnotationEditor({
     const coords = getRelativeCoords(clientX, clientY);
     if (!coords) return;
 
-    // Arrow handle drag - move only the from or to point
+    if (pendingTextClickRef.current) {
+      const dx = clientX - pendingTextClickRef.current.clientX;
+      const dy = clientY - pendingTextClickRef.current.clientY;
+      if (Math.sqrt(dx * dx + dy * dy) > 6) {
+        const ann = annotations.find((a) => a.annotationId === pendingTextClickRef.current?.annotationId);
+        if (ann) {
+          setIsDragging(true);
+          setDragOffset({
+            x: coords.x - ann.x,
+            y: coords.y - ann.y,
+          });
+        }
+        pendingTextClickRef.current = null;
+      } else {
+        return;
+      }
+    }
+
     if (draggingHandle && selectedAnnotationId) {
       setAnnotations(
         annotations.map((ann) => {
-          if (ann.annotationId !== selectedAnnotationId || ann.type !== "arrow") return ann;
-          const nx = Math.max(0, Math.min(1, coords.x));
-          const ny = Math.max(0, Math.min(1, coords.y));
-          const newFrom = draggingHandle === "from" ? { x: nx, y: ny } : ann.from;
-          const newTo = draggingHandle === "to" ? { x: nx, y: ny } : ann.to;
-          return {
-            ...ann,
-            from: newFrom,
-            to: newTo,
-            x: (newFrom.x + newTo.x) / 2,
-            y: (newFrom.y + newTo.y) / 2,
-          };
+          if (ann.annotationId !== selectedAnnotationId) return ann;
+          return resizeSelectedAnnotation(ann, draggingHandle, coords);
         })
       );
+      const selected = annotations.find((a) => a.annotationId === selectedAnnotationId);
+      if (selected?.type === "text" && inlineTextEditor?.annotationId === selected.annotationId) {
+        const next = resizeSelectedAnnotation(selected, draggingHandle, coords);
+        if (next.type === "text") {
+          setInlineTextEditor((prev) =>
+            prev ? { ...prev, x: next.x, y: next.y, width: next.width } : prev
+          );
+        }
+      }
       return;
     }
 
@@ -1065,30 +1113,84 @@ export function ImageAnnotationEditor({
   };
 
   const handlePointerEnd = () => {
+    if (pendingTextClickRef.current) {
+      const { annotationId } = pendingTextClickRef.current;
+      pendingTextClickRef.current = null;
+      startInlineTextEditing(annotationId);
+    }
     setDraggingHandle(null);
 
-    // Finish drawing new annotation
     if (isDrawing && tempAnnotation) {
-      const hasSize = 
-        (tempAnnotation.type === "arrow" && tempAnnotation.to) ||
+      let next = tempAnnotation;
+      const hasSize =
+        (tempAnnotation.type === "arrow" && tempAnnotation.to && (Math.abs(tempAnnotation.to.x - tempAnnotation.from.x) > 0.008 || Math.abs(tempAnnotation.to.y - tempAnnotation.from.y) > 0.008)) ||
         (tempAnnotation.type === "rect" && (tempAnnotation.width || 0) > 0.01 && (tempAnnotation.height || 0) > 0.01) ||
         (tempAnnotation.type === "circle" && (tempAnnotation.radius || 0) > 0.01) ||
         (tempAnnotation.type === "freedraw" && tempAnnotation.points && tempAnnotation.points.length >= 2);
-      
-      if (hasSize) {
-        setAnnotations([...annotations, tempAnnotation]);
-        setSelectedAnnotationId(tempAnnotation.annotationId);
+
+      if (!hasSize && tempAnnotation.type === "arrow") {
+        next = {
+          ...tempAnnotation,
+          to: {
+            x: Math.min(1, tempAnnotation.x + DEFAULT_SIZES.arrow.length),
+            y: tempAnnotation.y,
+          },
+        };
+      } else if (!hasSize && tempAnnotation.type === "rect") {
+        next = {
+          ...tempAnnotation,
+          width: DEFAULT_SIZES.rect.width,
+          height: DEFAULT_SIZES.rect.height,
+        };
+      } else if (!hasSize && tempAnnotation.type === "circle") {
+        next = {
+          ...tempAnnotation,
+          radius: DEFAULT_SIZES.circle.radius,
+        };
       }
-      
+
+      const keep =
+        hasSize ||
+        next.type === "arrow" ||
+        next.type === "rect" ||
+        next.type === "circle";
+
+      if (keep && next.type !== "freedraw") {
+        setAnnotations([...annotations, next]);
+        setSelectedAnnotationId(next.annotationId);
+      } else if (hasSize) {
+        setAnnotations([...annotations, next]);
+        setSelectedAnnotationId(next.annotationId);
+      }
+
       setIsDrawing(false);
       setDrawStart(null);
       setTempAnnotation(null);
-      if (tempAnnotation.type !== "freedraw") setCurrentTool(null);
     }
     
     setIsDragging(false);
     setDragOffset(null);
   };
+
+  pointerMoveRef.current = handlePointerMove;
+  pointerEndRef.current = handlePointerEnd;
+
+  useEffect(() => {
+    const active = isDrawing || isDragging || Boolean(draggingHandle);
+    if (!active) return;
+    const onMove = (event: PointerEvent) => {
+      pointerMoveRef.current(event.clientX, event.clientY);
+    };
+    const onUp = () => {
+      pointerEndRef.current();
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [isDrawing, isDragging, draggingHandle]);
 
   const handleCanvasMouseUp = () => {
     handlePointerEnd();
@@ -1197,12 +1299,14 @@ export function ImageAnnotationEditor({
 
   useEffect(() => {
     if (editSessions.length === 0) return;
+    const latestVersion = editSessions.find((s) => s.id !== "original");
+    const originalId = editSessions.find((s) => s.id === "original")?.id;
+    const nextId = latestVersion?.id ?? originalId ?? editSessions[0].id;
     setVisibleSessionIds((prev) => {
       if (prev.length > 0) return prev;
-      const latestVersion = editSessions.find((s) => s.id !== "original");
-      const originalId = editSessions.find((s) => s.id === "original")?.id;
-      return latestVersion ? [latestVersion.id] : (originalId ? [originalId] : [editSessions[0].id]);
+      return [nextId];
     });
+    setActiveSessionId((current) => current ?? nextId);
   }, [editSessions]);
 
   // Keep local editor state aligned when fresh annotation data is loaded.
@@ -1223,13 +1327,70 @@ export function ImageAnnotationEditor({
       active ? "bg-white/20 text-white" : "text-white/80 hover:bg-white/10 hover:text-white"
     );
 
+  const handleDownload = useCallback(async () => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const extension = blob.type.split("/")[1]?.replace("jpeg", "jpg") || "jpg";
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = `image.${extension}`;
+      link.click();
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      window.open(imageUrl, "_blank", "noopener,noreferrer");
+    }
+  }, [imageUrl]);
+
+  const applyColor = (color: AnnotationColor) => {
+    setSelectedColor(color);
+    if (!selectedAnnotationId) return;
+    setAnnotations((prev) =>
+      prev.map((a) => {
+        if (a.annotationId !== selectedAnnotationId) return a;
+        return a.type === "text" ? { ...a, textColor: color } : { ...a, strokeColor: color };
+      })
+    );
+    setInlineTextEditor((prev) => (prev ? { ...prev, textColor: color } : prev));
+  };
+
+  const applyStrokeWidth = (width: AnnotationStrokeWidth) => {
+    setSelectedStrokeWidth(width);
+    if (!selectedAnnotationId) return;
+    setAnnotations((prev) =>
+      prev.map((a) => (a.annotationId === selectedAnnotationId ? { ...a, strokeWidth: width } : a))
+    );
+  };
+
+  const applyLineStyle = (style: AnnotationLineStyle) => {
+    setSelectedLineStyle(style);
+    if (!selectedAnnotationId) return;
+    setAnnotations((prev) =>
+      prev.map((a) => (a.annotationId === selectedAnnotationId ? { ...a, lineStyle: style } : a))
+    );
+  };
+
+  const applyFontSize = (pt: number) => {
+    setSelectedFontSizePt(pt);
+    if (!selectedAnnotationId) return;
+    setAnnotations((prev) =>
+      prev.map((a) =>
+        a.annotationId === selectedAnnotationId && a.type === "text" ? { ...a, fontSizePt: pt } : a
+      )
+    );
+    setInlineTextEditor((prev) => (prev ? { ...prev, fontSizePt: pt } : prev));
+  };
+
   const selectTool = (tool: ToolType) => {
     if (isDrawing) {
       setIsDrawing(false);
       setDrawStart(null);
       setTempAnnotation(null);
     }
-    setCurrentTool((prev) => (prev === tool ? null : tool));
+    if (inlineTextEditor) commitInlineTextEditing();
+    setCurrentTool((prev) => (tool === "select" ? "select" : prev === tool ? "select" : tool));
+    if (tool !== "select") setSelectedAnnotationId(null);
   };
 
   return (
@@ -1273,20 +1434,19 @@ export function ImageAnnotationEditor({
           </p>
         </div>
 
-        {editSessions.length > 1 ? (
-          <select
-            className="max-w-[10rem] truncate rounded-md border border-white/15 bg-black/40 px-2 py-1.5 text-xs text-white outline-none sm:max-w-[14rem]"
-            value={visibleSessionIds[0] ?? ""}
-            onChange={(e) => loadSession(e.target.value)}
-            aria-label="Annotation version"
-          >
-            {editSessions.map((session) => (
-              <option key={session.id} value={session.id}>
-                {session.id === "original" ? "Original" : session.label}
-              </option>
-            ))}
-          </select>
-        ) : null}
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            void handleDownload();
+          }}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          aria-label="Download image"
+          title="Download original image"
+        >
+          <Download className="h-4 w-4" />
+        </button>
 
         <Button
           type="button"
@@ -1307,9 +1467,12 @@ export function ImageAnnotationEditor({
       <div
         ref={containerRef}
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) handleCancel();
+        onMouseMove={(e) => {
+          if (isDrawing || isDragging || draggingHandle) {
+            handlePointerMove(e.clientX, e.clientY);
+          }
         }}
+        onMouseUp={handlePointerEnd}
       >
         <canvas
           ref={canvasRef}
@@ -1317,32 +1480,47 @@ export function ImageAnnotationEditor({
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
           onDoubleClick={handleCanvasDoubleClick}
-          onMouseLeave={handleCanvasMouseUp}
           onTouchStart={handleCanvasTouchStart}
           onTouchMove={handleCanvasTouchMove}
           onTouchEnd={handleCanvasTouchEnd}
           onTouchCancel={handleCanvasTouchEnd}
           className={cn(
             "max-h-full max-w-full rounded-md shadow-lg",
-            inlineTextEditor ? "cursor-text" : "cursor-crosshair"
+            inlineTextEditor
+              ? "cursor-text"
+              : currentTool === "select"
+                ? "cursor-default"
+                : "cursor-crosshair"
           )}
           style={{ touchAction: "none" }}
         />
         {inlineTextEditor && (() => {
           const pos = getInlineEditorPosition();
           if (!pos) return null;
+          const highlight = getTextHighlightFill(inlineTextEditor.textColor);
+          const textColor = getColorHex(inlineTextEditor.textColor);
+          const frameHeight = Math.max(pos.fontSize * 1.4, (inlineTextEditor.text.split("\n").length) * pos.fontSize * 1.3);
+          const handles: Array<{ handle: ShapeHandle; left: number; top: number }> = [
+            { handle: "nw", left: pos.left, top: pos.top },
+            { handle: "ne", left: pos.left + pos.width, top: pos.top },
+            { handle: "se", left: pos.left + pos.width, top: pos.top + frameHeight },
+            { handle: "sw", left: pos.left, top: pos.top + frameHeight },
+          ];
           return (
-            <input
+            <>
+            <textarea
               ref={inlineInputRef}
-              type="text"
               value={inlineTextEditor.text}
               onChange={(e) => {
                 const nextText = e.target.value;
                 setInlineTextEditor((prev) => (prev ? { ...prev, text: nextText } : prev));
               }}
-              onBlur={commitInlineTextEditing}
+              onBlur={() => {
+                if (draggingHandle) return;
+                commitInlineTextEditing();
+              }}
               onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   commitInlineTextEditing();
                 } else if (e.key === "Escape") {
@@ -1350,67 +1528,91 @@ export function ImageAnnotationEditor({
                   cancelInlineTextEditing();
                 }
               }}
-              className="absolute z-20 rounded-md border border-white/20 bg-black/80 px-2 py-1.5 text-sm text-white shadow-md outline-none focus:ring-2 focus:ring-primary"
+              className="absolute z-20 resize-none overflow-hidden rounded-sm border border-primary bg-transparent p-1 outline-none"
               style={{
                 left: `${pos.left}px`,
                 top: `${pos.top}px`,
-                minWidth: `${pos.width}px`,
+                width: `${pos.width}px`,
+                minHeight: `${frameHeight}px`,
+                fontSize: `${pos.fontSize}px`,
+                lineHeight: 1.3,
+                color: textColor,
+                caretColor: textColor,
+                backgroundColor: highlight,
+                fontFamily: '"Inter Tight", sans-serif',
               }}
               autoCorrect="on"
               autoCapitalize="sentences"
               spellCheck
-              placeholder="Type text…"
+              placeholder="Type…"
             />
+            {handles.map((item) => (
+              <button
+                key={item.handle}
+                type="button"
+                aria-label={`Resize ${item.handle}`}
+                className="absolute z-30 h-2.5 w-2.5 rounded-full border-2 border-white bg-primary"
+                style={{
+                  left: `${item.left}px`,
+                  top: `${item.top}px`,
+                  transform: "translate(-50%, -50%)",
+                  cursor: item.handle === "nw" || item.handle === "se" ? "nwse-resize" : "nesw-resize",
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDraggingHandle(item.handle);
+                }}
+              />
+            ))}
+            </>
           );
         })()}
       </div>
 
-      {/* Selected annotation — compact inspector */}
-      {selectedAnnotation ? (
-        <div className="absolute bottom-24 left-1/2 z-20 w-[min(92vw,20rem)] -translate-x-1/2 rounded-xl border border-white/10 bg-black/80 p-3 shadow-lg backdrop-blur-md sm:bottom-28">
+      {/* Selected annotation / active tool style dock */}
+      {selectedAnnotation || currentTool !== "select" ? (
+        <div
+          className="absolute bottom-24 left-1/2 z-20 w-[min(92vw,22rem)] -translate-x-1/2 rounded-xl border border-white/10 bg-black/75 p-3 shadow-lg backdrop-blur-md sm:bottom-28"
+          onMouseDown={(e) => e.preventDefault()}
+        >
           <div className="mb-2 flex items-center justify-between gap-2">
             <span className="text-xs font-medium capitalize text-white/90">
-              {selectedAnnotation.type}
+              {selectedAnnotation?.type ?? currentTool}
             </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/15"
-              >
-                Delete
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedAnnotationId(null)}
-                className="rounded-md p-1 text-white/60 hover:bg-white/10 hover:text-white"
-                aria-label="Deselect"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {selectedAnnotation ? (
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="rounded-md px-2 py-1 text-xs text-destructive hover:bg-destructive/15"
+                >
+                  Delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedAnnotationId(null)}
+                  className="rounded-md p-1 text-white/60 hover:bg-white/10 hover:text-white"
+                  aria-label="Deselect"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-1.5">
             {Object.entries(ANNOTATION_COLORS).map(([color, hex]) => (
               <button
                 key={color}
                 type="button"
-                onClick={() => {
-                  setAnnotations(
-                    annotations.map((a) =>
-                      a.annotationId === selectedAnnotationId
-                        ? selectedAnnotation.type === "text"
-                          ? { ...a, textColor: color as AnnotationColor }
-                          : { ...a, strokeColor: color as AnnotationColor }
-                        : a
-                    )
-                  );
-                }}
+                onClick={() => applyColor(color as AnnotationColor)}
                 className={cn(
                   "h-6 w-6 rounded-full border-2 transition-transform",
-                  (selectedAnnotation.type === "text"
-                    ? selectedAnnotation.textColor
-                    : selectedAnnotation.strokeColor) === color
+                  (selectedAnnotation
+                    ? selectedAnnotation.type === "text"
+                      ? selectedAnnotation.textColor
+                      : selectedAnnotation.strokeColor
+                    : selectedColor) === color
                     ? "scale-110 border-white"
                     : "border-transparent"
                 )}
@@ -1419,15 +1621,127 @@ export function ImageAnnotationEditor({
               />
             ))}
           </div>
-          {selectedAnnotation.type === "text" ? (
-            <button
-              type="button"
-              onClick={() => startInlineTextEditing(selectedAnnotation.annotationId)}
-              className="mt-2 w-full rounded-md bg-white/10 px-2 py-1.5 text-left text-xs text-white hover:bg-white/15"
-            >
-              Edit text on image
-            </button>
+          {(selectedAnnotation?.type === "text" || currentTool === "text") ? (
+            <div className="mt-2 flex items-center gap-1">
+              <span className="mr-1 text-2xs uppercase tracking-wide text-white/45">Pt</span>
+              {TEXT_SIZE_PTS.map((pt) => (
+                <button
+                  key={pt}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => applyFontSize(pt)}
+                  className={cn(
+                    "rounded-md px-1.5 py-1 text-caption tabular-nums",
+                    (selectedAnnotation?.type === "text"
+                      ? selectedAnnotation.fontSizePt ?? DEFAULT_FONT_SIZE_PT
+                      : selectedFontSizePt) === pt
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-white/10 text-white/80 hover:bg-white/15"
+                  )}
+                >
+                  {pt}
+                </button>
+              ))}
+            </div>
           ) : null}
+          {((selectedAnnotation && selectedAnnotation.type !== "text" && selectedAnnotation.type !== "pin") ||
+            (currentTool !== "select" && currentTool !== "text")) ? (
+            <div className="mt-2 flex items-center gap-3">
+              <div className="flex items-center gap-0.5" role="group" aria-label="Line thickness">
+                {(["thin", "medium", "bold"] as AnnotationStrokeWidth[]).map((width) => {
+                  const stroke = width === "thin" ? 1.25 : width === "medium" ? 2.25 : 3.5;
+                  const active = (selectedAnnotation?.strokeWidth ?? selectedStrokeWidth) === width;
+                  return (
+                    <button
+                      key={width}
+                      type="button"
+                      onClick={() => applyStrokeWidth(width)}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md",
+                        active ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+                      )}
+                      title={width}
+                      aria-label={`${width} line`}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                        <line x1="2" y1="8" x2="14" y2="8" stroke="currentColor" strokeWidth={stroke} strokeLinecap="round" />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="h-5 w-px bg-white/15" />
+              <div className="flex items-center gap-0.5" role="group" aria-label="Line style">
+                {(["solid", "dashed"] as AnnotationLineStyle[]).map((style) => {
+                  const active = (selectedAnnotation?.lineStyle ?? selectedLineStyle) === style;
+                  return (
+                    <button
+                      key={style}
+                      type="button"
+                      onClick={() => applyLineStyle(style)}
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-md",
+                        active ? "bg-white/20 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+                      )}
+                      title={style}
+                      aria-label={`${style} line`}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden>
+                        <line
+                          x1="2"
+                          y1="8"
+                          x2="14"
+                          y2="8"
+                          stroke="currentColor"
+                          strokeWidth="1.75"
+                          strokeLinecap="round"
+                          strokeDasharray={style === "dashed" ? "3 2.5" : undefined}
+                        />
+                      </svg>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {editSessions.filter((session) => session.id !== "original").length > 0 ? (
+        <div className="absolute bottom-24 right-3 z-20 flex max-h-[40vh] w-[min(16rem,calc(100vw-1.5rem))] flex-col gap-1 overflow-y-auto sm:bottom-28 sm:right-4">
+          {editSessions
+            .filter((session) => session.id !== "original")
+            .map((session) => {
+              const isActive = (activeSessionId ?? visibleSessionIds[0]) === session.id;
+              const dateLabel = formatDistanceToNow(new Date(session.createdAt), { addSuffix: true });
+              return (
+                <button
+                  key={session.id}
+                  type="button"
+                  onClick={() => loadSession(session.id)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left shadow-sm backdrop-blur-md transition-colors",
+                    isActive
+                      ? "bg-black/80 ring-1 ring-primary"
+                      : "bg-black/55 hover:bg-black/70"
+                  )}
+                  title={`View ${session.userDisplayName}'s edit`}
+                >
+                  <UserAvatar
+                    imageUrl={session.userAvatarUrl}
+                    name={session.userDisplayName}
+                    size={22}
+                    shape="circle"
+                  />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-caption font-medium text-white">
+                      {session.userDisplayName}
+                    </span>
+                    <span className="block truncate text-2xs text-white/55">{dateLabel}</span>
+                  </span>
+                </button>
+              );
+            })}
         </div>
       ) : null}
 
@@ -1443,6 +1757,9 @@ export function ImageAnnotationEditor({
           <Redo2 className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", historyIndex >= history.length - 1 && "opacity-40")} />
         </button>
         <div className="mx-1 h-6 w-px bg-white/15" />
+        <button type="button" onClick={() => selectTool("select")} className={toolButtonClass(currentTool === "select")} title="Select" aria-label="Select">
+          <MousePointer2 className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
+        </button>
         <button type="button" onClick={() => selectTool("arrow")} className={toolButtonClass(currentTool === "arrow")} title="Arrow" aria-label="Arrow">
           <ArrowRight className={isMobile ? "h-5 w-5" : "h-4 w-4"} />
         </button>

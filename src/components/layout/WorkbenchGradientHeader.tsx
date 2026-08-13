@@ -132,10 +132,10 @@ export function WorkbenchGradientHeader({
       >
         <div
           className={cn(
-            "relative grid w-full min-w-0 auto-rows-min items-start gap-2 pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-0 sm:pr-40",
+            "relative grid w-full min-w-0 auto-rows-min items-start gap-y-2 pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-y-0 sm:pr-40",
             "grid-cols-1",
             "sm:grid-cols-workbench-dual",
-            "layout:grid-cols-workbench-triple"
+            "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
           )}
         >
           {/* Spacer column under the fixed logo / above the property rail */}
