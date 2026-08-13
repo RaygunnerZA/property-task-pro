@@ -62,3 +62,12 @@ verify_jwt = true
 
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.graph-query]
+verify_jwt = true
+
+[functions.graph-insight]
+verify_jwt = true
+
+[functions.graph-sync]
+verify_jwt = true

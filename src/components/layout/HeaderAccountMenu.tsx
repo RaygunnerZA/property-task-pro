@@ -1,5 +1,5 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut, Settings, UserCircle } from "lucide-react";
+import { Bell, LogOut, Settings, Trash2, UserCircle } from "lucide-react";
 import { useDataContext } from "@/contexts/DataContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -89,6 +89,12 @@ export function HeaderAccountMenu({
           <Link to="/settings" className="flex items-center gap-2">
             <Settings className="h-4 w-4 text-muted-foreground" />
             Account settings
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild className="cursor-pointer rounded-[6px]">
+          <Link to="/settings/trash" className="flex items-center gap-2">
+            <Trash2 className="h-4 w-4 text-muted-foreground" />
+            Trash
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer rounded-[6px]">

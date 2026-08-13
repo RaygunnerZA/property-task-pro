@@ -25,9 +25,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { markTaskCompleted } from "@/lib/completeTask";
+import { markTaskCompleted, patchTasksCacheStatus } from "@/lib/completeTask";
 import { archiveTask } from "@/services/tasks/taskMutations";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
+import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
+import { formatTaskTrashDeleteCopy } from "@/lib/taskTrash";
+import { getTaskStatusVisual } from "@/lib/taskStatus";
+import type { TaskStatus } from "@/types/database";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -54,7 +58,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { formatTaskDueRelative, getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
-import { TaskStatusMark } from "@/components/tasks/TaskStatusMark";
+import { TaskStatusDropdown } from "@/components/tasks/TaskStatusDropdown";
 import { useTaskCommentSignal } from "@/hooks/useTaskCommentSignals";
 import {
   issuesSignalOverflowButtonClassName,
@@ -233,11 +237,13 @@ function TaskCardComponent({
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const deleteTaskMutation = useDeleteTaskMutation();
+  const updateTaskMutation = useUpdateTaskMutation();
   const commentSignal = useTaskCommentSignal(task?.id);
   /** Property chip is only useful when the org has more than one property. */
   const showPropertyIconInMeta = orgProperties.length > 1;
   const [isCompleting, setIsCompleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isChangingStatus, setIsChangingStatus] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   // Shared confirm/settle phase — also driven by TaskDetailPanel's "Mark Complete"
   // so the list card animates no matter where completion was triggered from.
@@ -408,6 +414,64 @@ function TaskCardComponent({
     [task?.id, orgId, isArchiving, queryClient, toast]
   );
 
+  const handleStatusChange = useCallback(
+    async (next: TaskStatus) => {
+      if (!task?.id || !orgId || isChangingStatus || isCompleting) return;
+      const current = String(task.status ?? "open").toLowerCase();
+      if (next === current) return;
+
+      if (next === "completed") {
+        await handleDone();
+        return;
+      }
+
+      setIsChangingStatus(true);
+      patchTasksCacheStatus(queryClient, task.id, next);
+      try {
+        await updateTaskMutation.mutateAsync({
+          taskId: task.id,
+          orgId,
+          propertyId: task.property_id ?? property?.id ?? null,
+          updates: { status: next },
+        });
+        if (next === "archived") {
+          await queryClient.invalidateQueries({ queryKey: ["trashed-tasks"] });
+        }
+        toast({
+          title:
+            next === "in_progress"
+              ? "Task started"
+              : next === "archived"
+                ? "Task cancelled"
+                : "Status updated",
+          description: getTaskStatusVisual(next).label,
+        });
+      } catch (err) {
+        await queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        toast({
+          title: "Couldn't update status",
+          description: err instanceof Error ? err.message : "Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsChangingStatus(false);
+      }
+    },
+    [
+      task?.id,
+      task?.status,
+      task?.property_id,
+      property?.id,
+      orgId,
+      isChangingStatus,
+      isCompleting,
+      handleDone,
+      updateTaskMutation,
+      queryClient,
+      toast,
+    ]
+  );
+
   const handleConfirmDelete = useCallback(() => {
     if (!task?.id || deleteTaskMutation.isPending) return;
     deleteTaskMutation.mutate(
@@ -418,12 +482,12 @@ function TaskCardComponent({
       },
       {
         onSuccess: () => {
-          toast({ title: "Task deleted" });
+          toast({ title: "Moved to Trash", description: "Recover it within 30 days from Settings → Trash." });
           setShowDeleteDialog(false);
         },
         onError: (err) => {
           toast({
-            title: "Couldn't delete task",
+            title: "Couldn't move task to Trash",
             description: err instanceof Error ? err.message : "Please try again.",
             variant: "destructive",
           });
@@ -467,8 +531,7 @@ function TaskCardComponent({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete task?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete &quot;{task?.title ?? "this task"}&quot; and cannot be
-            undone.
+            {formatTaskTrashDeleteCopy(task?.title ?? "this task")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -480,7 +543,7 @@ function TaskCardComponent({
               handleConfirmDelete();
             }}
           >
-            {deleteTaskMutation.isPending ? "Deleting…" : "Delete"}
+            {deleteTaskMutation.isPending ? "Moving…" : "Move to Trash"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -562,14 +625,22 @@ function TaskCardComponent({
     ) : null;
 
   const statusMark = (
-    <div className="pointer-events-none absolute left-1.5 top-1.5 z-10">
-      <TaskStatusMark
+    <div
+      className="absolute left-1.5 top-1.5 z-20"
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
+    >
+      <TaskStatusDropdown
         status={
           isConfirmingComplete || task?.status === "completed"
             ? "completed"
             : task?.status
         }
-        size="chip"
+        variant="mark"
+        disabled={isChangingStatus || isCompleting || updateTaskMutation.isPending}
+        onStatusChange={(next) => {
+          void handleStatusChange(next);
+        }}
       />
     </div>
   );

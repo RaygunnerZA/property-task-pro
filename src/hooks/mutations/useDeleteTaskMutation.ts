@@ -1,13 +1,14 @@
 /**
- * Permanently deletes a task row.
+ * Moves a task to Trash (status `archived`) via archive_task RPC.
+ * Recoverable for TASK_TRASH_RETENTION_DAYS; permanent purge is handled from Trash.
  * Invalidates task list and property-timeline caches on success.
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import { archiveTask } from "@/services/tasks/taskMutations";
 
 export interface DeleteTaskVariables {
   taskId: string;
-  /** Used to invalidate property-scoped caches. */
+  /** Required to archive under org membership checks. */
   orgId?: string;
   propertyId?: string | null;
 }
@@ -16,12 +17,15 @@ export function useDeleteTaskMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ taskId }: DeleteTaskVariables) => {
-      const { error } = await supabase.from("tasks").delete().eq("id", taskId);
-      if (error) throw error;
+    mutationFn: async ({ taskId, orgId }: DeleteTaskVariables) => {
+      if (!orgId) {
+        throw new Error("Organisation is required to move a task to Trash.");
+      }
+      await archiveTask(taskId, orgId);
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["trashed-tasks"] });
       if (variables.orgId) {
         void queryClient.invalidateQueries({
           queryKey: ["tasks-briefing", variables.orgId, null],

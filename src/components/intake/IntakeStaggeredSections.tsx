@@ -1,7 +1,8 @@
 /**
  * Progressive Create Task meta rows: Who → Where → Due → Priority stagger in
- * 2s apart after the user starts typing a description. Hover swaps the section
- * word for proposal chips; confirmed fact chips replace the section word.
+ * 2s apart after the user starts typing a description. Asset, Tag, and Compliance
+ * rows appear once Priority is visible. Hover swaps the section word for proposal
+ * chips; confirmed fact chips replace the section word.
  */
 
 import { useEffect, useState, type ReactNode } from "react";
@@ -32,35 +33,33 @@ type CoreSection = {
   hoverChips: StaggerHoverChip[];
 };
 
-type OptionalChip = {
-  id: string;
-  label: string;
-  onPress: () => void;
-};
-
 export type IntakeStaggeredSectionsProps = {
   active: boolean;
   whoFacts: StaggerFactChip[];
   whereFacts: StaggerFactChip[];
   whenFacts: StaggerFactChip[];
   priorityFacts: StaggerFactChip[];
+  assetFacts: StaggerFactChip[];
+  categoryFacts: StaggerFactChip[];
+  complianceFacts: StaggerFactChip[];
   whoHover: StaggerHoverChip[];
   whereHover: StaggerHoverChip[];
   whenHover: StaggerHoverChip[];
   priorityHover: StaggerHoverChip[];
-  optionalChips: OptionalChip[];
+  assetHover: StaggerHoverChip[];
+  categoryHover: StaggerHoverChip[];
+  complianceHover: StaggerHoverChip[];
   openSlot: IntakeChipSlotId | null;
   onOpenSlot: (slot: IntakeChipSlotId) => void;
   /** Expanded slot panel (quick chips / calendar / etc.) */
   slotPanel?: ReactNode;
   /** Actions rendered on the open WHEN fact row, to the right of date/repeat chips. */
   whenInlineActions?: ReactNode;
-  /** Single-property orgs treat location as satisfied without showing a property chip. */
-  whereSatisfiedWithoutChip?: boolean;
   className?: string;
 };
 
 const STAGGER_MS = 2000;
+/** Core rows stagger in; Asset/Tag/Compliance appear together once Priority is visible. */
 const CORE_ORDER: IntakeChipSlotId[] = ["who", "where", "when", "priority"];
 
 function StaggerRow({
@@ -94,7 +93,8 @@ function StaggerRow({
         f.id === chip.id ||
         f.id.endsWith(`-${chip.id}`) ||
         f.id === `priority-${chip.id}` ||
-        f.id === `status-${chip.id}`
+        f.id === `status-${chip.id}` ||
+        f.id === `compliance-${chip.id}`
     );
   });
 
@@ -206,16 +206,20 @@ export function IntakeStaggeredSections({
   whereFacts,
   whenFacts,
   priorityFacts,
+  assetFacts,
+  categoryFacts,
+  complianceFacts,
   whoHover,
   whereHover,
   whenHover,
   priorityHover,
-  optionalChips,
+  assetHover,
+  categoryHover,
+  complianceHover,
   openSlot,
   onOpenSlot,
   slotPanel,
   whenInlineActions,
-  whereSatisfiedWithoutChip = false,
   className,
 }: IntakeStaggeredSectionsProps) {
   const [visibleCount, setVisibleCount] = useState(0);
@@ -237,7 +241,7 @@ export function IntakeStaggeredSections({
     return () => timers.forEach((id) => window.clearTimeout(id));
   }, [active]);
 
-  const sections: CoreSection[] = [
+  const coreSections: CoreSection[] = [
     { id: "who", word: "Who?", icon: User, facts: whoFacts, hoverChips: whoHover },
     { id: "where", word: "Where?", icon: MapPin, facts: whereFacts, hoverChips: whereHover },
     { id: "when", word: "Due Date", icon: Calendar, facts: whenFacts, hoverChips: whenHover },
@@ -250,16 +254,25 @@ export function IntakeStaggeredSections({
     },
   ];
 
-  const coreConfirmed =
-    whoFacts.length > 0 &&
-    (whereFacts.length > 0 || whereSatisfiedWithoutChip) &&
-    whenFacts.length > 0;
+  const metaSections: CoreSection[] = [
+    { id: "asset", word: "Asset", icon: Box, facts: assetFacts, hoverChips: assetHover },
+    { id: "category", word: "Tag", icon: Tag, facts: categoryFacts, hoverChips: categoryHover },
+    {
+      id: "compliance",
+      word: "Compliance",
+      icon: Shield,
+      facts: complianceFacts,
+      hoverChips: complianceHover,
+    },
+  ];
+
+  const showMeta = visibleCount >= CORE_ORDER.length;
 
   if (!active) return null;
 
   return (
     <div className={cn("space-y-1 pt-1.5", className)}>
-      {sections.map((section, index) => {
+      {coreSections.map((section, index) => {
         if (index >= visibleCount) return null;
         return (
           <StaggerRow
@@ -275,60 +288,17 @@ export function IntakeStaggeredSections({
         );
       })}
 
-      {coreConfirmed && optionalChips.length > 0 ? (
-        <div className="flex min-h-6 flex-wrap items-center gap-1 px-1 pt-0.5 animate-in fade-in duration-500">
-          <span className="mr-1 inline-flex h-6 items-center font-mono text-caption uppercase tracking-wide text-muted-foreground leading-none">
-            Optional
-          </span>
-          <Box className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          {optionalChips
-            .filter((c) => c.id.startsWith("asset") || c.label.includes("ASSET"))
-            .map((chip) => (
-              <SemanticChip
-                key={chip.id}
-                epistemic="proposal"
-                label={chip.label}
-                truncate={false}
-                pressOnPointerDown
-                onPress={chip.onPress}
-                className="h-6 shrink-0 max-w-none py-0 text-caption"
-              />
-            ))}
-          <Tag className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          {optionalChips
-            .filter((c) => c.id.startsWith("tag") || c.id.startsWith("category") || c.label.includes("TAG"))
-            .map((chip) => (
-              <SemanticChip
-                key={chip.id}
-                epistemic="proposal"
-                label={chip.label}
-                truncate={false}
-                pressOnPointerDown
-                onPress={chip.onPress}
-                className="h-6 shrink-0 max-w-none py-0 text-caption"
-              />
-            ))}
-          <Shield className="ml-1 h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-          {optionalChips
-            .filter(
-              (c) =>
-                c.id.startsWith("rule") ||
-                c.id.startsWith("compliance") ||
-                c.label.includes("RULE")
-            )
-            .map((chip) => (
-              <SemanticChip
-                key={chip.id}
-                epistemic="proposal"
-                label={chip.label}
-                truncate={false}
-                pressOnPointerDown
-                onPress={chip.onPress}
-                className="h-6 shrink-0 max-w-none py-0 text-caption"
-              />
-            ))}
-        </div>
-      ) : null}
+      {showMeta
+        ? metaSections.map((section) => (
+            <StaggerRow
+              key={section.id}
+              section={section}
+              isOpen={openSlot === section.id}
+              onOpenSlot={onOpenSlot}
+              slotPanel={openSlot === section.id ? slotPanel : undefined}
+            />
+          ))
+        : null}
     </div>
   );
 }

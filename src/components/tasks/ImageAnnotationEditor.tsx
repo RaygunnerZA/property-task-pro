@@ -109,12 +109,14 @@ export function ImageAnnotationEditor({
     clientX: number;
     clientY: number;
   } | null>(null);
-  const pointerMoveRef = useRef<(x: number, y: number) => void>(() => {});
-  const pointerEndRef = useRef<() => void>(() => {});
+  const pointerSessionRef = useRef(false);
+  const isDrawingRef = useRef(false);
   const isMobile = useIsMobile();
   
   // Track drawing state for click-and-drag tools
   const [isDrawing, setIsDrawing] = useState(false);
+  const pointerMoveRef = useRef<(x: number, y: number) => void>(() => {});
+  const pointerEndRef = useRef<() => void>(() => {});
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [tempAnnotation, setTempAnnotation] = useState<Annotation | null>(null);
   
@@ -490,16 +492,11 @@ export function ImageAnnotationEditor({
     if (currentJson === savedJson || currentAnnotations.length === 0) {
       return;
     }
-    
+    if (isDrawingRef.current) return;
+
     setAutosaveStatus('saving');
     try {
-      // Increment versions for append-only log
-      const versionedAnnotations = currentAnnotations.map((ann) => ({
-        ...ann,
-        version: ann.version + 1,
-      }));
-      
-      await onSave(versionedAnnotations, true); // true = autosave, don't close
+      await onSave(currentAnnotations, true);
       
       setLastSavedAnnotations(currentAnnotations);
       setAutosaveStatus('saved');
@@ -517,13 +514,14 @@ export function ImageAnnotationEditor({
   // Autosave timer (2 seconds)
   useEffect(() => {
     if (!hasUnsavedChanges || annotations.length === 0 || isInitialMount.current) return;
-    
+    if (isDrawing || inlineTextEditor) return;
+
     const timer = setTimeout(() => {
       handleAutosave();
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [annotations, hasUnsavedChanges, handleAutosave]);
+  }, [annotations, hasUnsavedChanges, handleAutosave, isDrawing, inlineTextEditor]);
 
   // Undo/redo functions
   const handleUndo = useCallback(() => {
@@ -785,6 +783,7 @@ export function ImageAnnotationEditor({
 
   const handlePointerStart = (clientX: number, clientY: number) => {
     if (!imageSize) return;
+    pointerSessionRef.current = true;
     pendingTextClickRef.current = null;
 
     const hitArea = isMobile ? 20 : 15;
@@ -885,6 +884,7 @@ export function ImageAnnotationEditor({
     }
 
     if (currentTool === "freedraw") {
+      isDrawingRef.current = true;
       setIsDrawing(true);
       const temp: Annotation = {
         annotationId: crypto.randomUUID(),
@@ -902,6 +902,7 @@ export function ImageAnnotationEditor({
       return;
     }
 
+    isDrawingRef.current = true;
     setIsDrawing(true);
     setDrawStart(coords);
     const temp: Annotation = {
@@ -1113,6 +1114,11 @@ export function ImageAnnotationEditor({
   };
 
   const handlePointerEnd = () => {
+    if (!pointerSessionRef.current && !isDrawingRef.current && !pendingTextClickRef.current) {
+      return;
+    }
+    pointerSessionRef.current = false;
+
     if (pendingTextClickRef.current) {
       const { annotationId } = pendingTextClickRef.current;
       pendingTextClickRef.current = null;
@@ -1120,7 +1126,8 @@ export function ImageAnnotationEditor({
     }
     setDraggingHandle(null);
 
-    if (isDrawing && tempAnnotation) {
+    if (isDrawingRef.current && tempAnnotation) {
+      isDrawingRef.current = false;
       let next = tempAnnotation;
       const hasSize =
         (tempAnnotation.type === "arrow" && tempAnnotation.to && (Math.abs(tempAnnotation.to.x - tempAnnotation.from.x) > 0.008 || Math.abs(tempAnnotation.to.y - tempAnnotation.from.y) > 0.008)) ||
@@ -1192,15 +1199,6 @@ export function ImageAnnotationEditor({
     };
   }, [isDrawing, isDragging, draggingHandle]);
 
-  const handleCanvasMouseUp = () => {
-    handlePointerEnd();
-  };
-  
-  const handleCanvasTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    handlePointerEnd();
-  };
-
   const handleDelete = () => {
     if (selectedAnnotationId) {
       setAnnotations(annotations.filter((a) => a.annotationId !== selectedAnnotationId));
@@ -1231,13 +1229,8 @@ export function ImageAnnotationEditor({
         setAutosaveStatus('idle');
         return "unchanged";
       }
-      
-      // Increment versions for append-only log
-      const versionedAnnotations = annotationsForSave.map((ann) => ({
-        ...ann,
-        version: ann.version + 1,
-      }));
-      await onSave(versionedAnnotations, false); // false = manual save
+
+      await onSave(annotationsForSave, false);
       setAnnotations(annotationsForSave);
       setLastSavedAnnotations(annotationsForSave);
       setInlineTextEditor(null);
@@ -1309,17 +1302,6 @@ export function ImageAnnotationEditor({
     setActiveSessionId((current) => current ?? nextId);
   }, [editSessions]);
 
-  // Keep local editor state aligned when fresh annotation data is loaded.
-  useEffect(() => {
-    if (inlineTextEditor) return;
-    if (hasUnsavedChanges) return;
-    setAnnotations(initialAnnotations);
-    setHistory([initialAnnotations]);
-    setHistoryIndex(0);
-    setLastSavedAnnotations(initialAnnotations);
-    setSelectedAnnotationId(null);
-  }, [initialAnnotations, hasUnsavedChanges, inlineTextEditor]);
-
   const toolButtonClass = (active: boolean) =>
     cn(
       "flex items-center justify-center rounded-lg transition-colors",
@@ -1384,12 +1366,13 @@ export function ImageAnnotationEditor({
 
   const selectTool = (tool: ToolType) => {
     if (isDrawing) {
+      isDrawingRef.current = false;
       setIsDrawing(false);
       setDrawStart(null);
       setTempAnnotation(null);
     }
     if (inlineTextEditor) commitInlineTextEditing();
-    setCurrentTool((prev) => (tool === "select" ? "select" : prev === tool ? "select" : tool));
+    setCurrentTool(tool);
     if (tool !== "select") setSelectedAnnotationId(null);
   };
 
@@ -1472,18 +1455,28 @@ export function ImageAnnotationEditor({
             handlePointerMove(e.clientX, e.clientY);
           }
         }}
-        onMouseUp={handlePointerEnd}
       >
         <canvas
           ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
           onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
+          onMouseUp={(e) => {
+            e.stopPropagation();
+            handlePointerEnd();
+          }}
           onDoubleClick={handleCanvasDoubleClick}
           onTouchStart={handleCanvasTouchStart}
           onTouchMove={handleCanvasTouchMove}
-          onTouchEnd={handleCanvasTouchEnd}
-          onTouchCancel={handleCanvasTouchEnd}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handlePointerEnd();
+          }}
+          onTouchCancel={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            handlePointerEnd();
+          }}
           className={cn(
             "max-h-full max-w-full rounded-md shadow-lg",
             inlineTextEditor
@@ -1494,9 +1487,13 @@ export function ImageAnnotationEditor({
           )}
           style={{ touchAction: "none" }}
         />
-        {inlineTextEditor && (() => {
-          const pos = getInlineEditorPosition();
-          if (!pos) return null;
+        {inlineTextEditor ? (() => {
+          const pos = getInlineEditorPosition() ?? {
+            left: 16,
+            top: 16,
+            width: 180,
+            fontSize: inlineTextEditor.fontSizePt,
+          };
           const highlight = getTextHighlightFill(inlineTextEditor.textColor);
           const textColor = getColorHex(inlineTextEditor.textColor);
           const frameHeight = Math.max(pos.fontSize * 1.4, (inlineTextEditor.text.split("\n").length) * pos.fontSize * 1.3);
@@ -1515,11 +1512,10 @@ export function ImageAnnotationEditor({
                 const nextText = e.target.value;
                 setInlineTextEditor((prev) => (prev ? { ...prev, text: nextText } : prev));
               }}
-              onBlur={() => {
-                if (draggingHandle) return;
-                commitInlineTextEditing();
-              }}
+              onMouseDown={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
               onKeyDown={(e) => {
+                e.stopPropagation();
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   commitInlineTextEditing();
@@ -1567,7 +1563,7 @@ export function ImageAnnotationEditor({
             ))}
             </>
           );
-        })()}
+        })() : null}
       </div>
 
       {/* Selected annotation / active tool style dock */}

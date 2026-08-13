@@ -30,14 +30,17 @@ export function useImageAnnotations(taskId: string, imageId: string) {
     );
   };
 
-  const fetchAnnotations = useCallback(async () => {
+  const hasLoadedRef = useRef(false);
+
+  const fetchAnnotations = useCallback(async (opts?: { silent?: boolean }) => {
     if (!orgId || !taskId || !imageId) {
       setAnnotations([]);
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    const silent = Boolean(opts?.silent) || hasLoadedRef.current;
+    if (!silent) setLoading(true);
     setError(null);
 
     try {
@@ -86,6 +89,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         setError(err.message || "Failed to fetch annotations");
       }
     } finally {
+      hasLoadedRef.current = true;
       setLoading(false);
     }
   }, [orgId, taskId, imageId]);
@@ -180,15 +184,26 @@ export function useImageAnnotations(taskId: string, imageId: string) {
 
       // Update last saved reference
       lastSavedRef.current = newJson;
-      await fetchAnnotations();
+      setAnnotations(nextAnnotations);
+      setAnnotationVersions((prev) => {
+        const latest = prev[0];
+        if (latest && latest.created_by === user.id) {
+          return [{ ...latest, annotations: nextAnnotations }, ...prev.slice(1)];
+        }
+        return prev;
+      });
     },
-    [orgId, taskId, imageId, fetchAnnotations]
+    [orgId, taskId, imageId]
   );
 
   // Update lastSavedRef when annotations are fetched
   useEffect(() => {
     lastSavedRef.current = JSON.stringify(annotations);
   }, [annotations]);
+
+  useEffect(() => {
+    hasLoadedRef.current = false;
+  }, [taskId, imageId]);
 
   useEffect(() => {
     fetchAnnotations();

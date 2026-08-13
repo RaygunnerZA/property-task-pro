@@ -69,6 +69,7 @@ import { useTaskTimeline, type TaskTimelineEvent } from "@/hooks/useTaskTimeline
 import { useTaskMessages } from "@/hooks/useTaskMessages";
 import { TaskTimeline } from "./TaskTimeline";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
+import { formatTaskTrashDeleteCopy } from "@/lib/taskTrash";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 import {
   IntakeChipRow,
@@ -1502,6 +1503,9 @@ export function TaskDetailPanel({
               event.preventDefault();
             }
           }}
+          onOpenAutoFocus={(event) => {
+            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+          }}
           onEscapeKeyDown={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
           }}
@@ -1873,7 +1877,7 @@ export function TaskDetailPanel({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete task?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete "{(task as any)?.title ?? "this task"}" and cannot be undone.
+            {formatTaskTrashDeleteCopy((task as any)?.title ?? "this task")}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -1889,11 +1893,18 @@ export function TaskDetailPanel({
                 { taskId, orgId, propertyId: propId },
                 {
                   onSuccess: () => {
-                    toast({ title: "Task deleted" });
+                    toast({
+                      title: "Moved to Trash",
+                      description: "Recover it within 30 days from Settings → Trash.",
+                    });
                     onClose();
                   },
                   onError: (err) => {
-                    toast({ title: "Couldn't delete task", description: (err as Error).message, variant: "destructive" });
+                    toast({
+                      title: "Couldn't move task to Trash",
+                      description: (err as Error).message,
+                      variant: "destructive",
+                    });
                   },
                   onSettled: () => {
                     setIsUpdating(false);
@@ -1903,7 +1914,7 @@ export function TaskDetailPanel({
               );
             }}
           >
-            Delete
+            {deleteTaskMutation.isPending || isUpdating ? "Moving…" : "Move to Trash"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -2120,14 +2131,14 @@ export function TaskDetailPanel({
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {/* detectionOverlays={[]}: ai-image-analyse does not return bounding boxes (x,y,width,height).
         Overlays disabled until true bounding box support is implemented. */}
-    {showAnnotationEditor && editingImageId && task && createPortal(
+    {showAnnotationEditor && editingImageId && createPortal(
       <ImageAnnotationEditorWrapper
             taskId={taskId}
             imageId={editingImageId}
             imageUrl={
-              task.images?.find((img: any) => img.id === editingImageId)?.file_url ||
-              task.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
-              task.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
+              task?.images?.find((img: any) => img.id === editingImageId)?.file_url ||
+              task?.images?.find((img: any) => img.id === editingImageId)?.optimized_url ||
+              task?.images?.find((img: any) => img.id === editingImageId)?.thumbnail_url ||
               ""
             }
             detectionOverlays={[]}
@@ -2288,6 +2299,10 @@ function ImageAnnotationEditorWrapper({
 }) {
   const { annotations, annotationVersions, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
   const { members } = useOrgMembers();
+  const originalLayerCreatedAtRef = useRef(new Date().toISOString());
+  const hasShownEditorRef = useRef(false);
+  const frozenImageUrlRef = useRef(imageUrl);
+  if (imageUrl) frozenImageUrlRef.current = frozenImageUrlRef.current || imageUrl;
 
   // Original = no annotations when we have version history; otherwise attachment baseline
   const originalAnnotations =
@@ -2295,7 +2310,7 @@ function ImageAnnotationEditorWrapper({
   const originalCreatedAt =
     annotationVersions.length > 0
       ? annotationVersions[annotationVersions.length - 1].created_at
-      : new Date().toISOString();
+      : originalLayerCreatedAtRef.current;
 
   const originalLayer = {
     id: "original",
@@ -2328,8 +2343,9 @@ function ImageAnnotationEditorWrapper({
   });
 
   const editSessions = [originalLayer, ...versionSessions];
+  if (!loading) hasShownEditorRef.current = true;
 
-  if (loading) {
+  if (loading && !hasShownEditorRef.current) {
     return (
       <div className="fixed inset-0 z-[10000] flex flex-col bg-black/90 pointer-events-auto">
         <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
@@ -2352,7 +2368,8 @@ function ImageAnnotationEditorWrapper({
 
   return (
     <ImageAnnotationEditor
-      imageUrl={imageUrl}
+      key={imageId}
+      imageUrl={frozenImageUrlRef.current || imageUrl}
       imageId={imageId}
       taskId={taskId}
       initialAnnotations={annotations}

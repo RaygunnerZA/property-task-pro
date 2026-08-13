@@ -48,7 +48,7 @@ export function CentreWorkbenchTabStrip({
             className={cn(
               "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-xl px-2 py-2 transition-all duration-200",
               "hover:scale-[1.01] active:scale-[0.99]",
-              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-0 md:rounded-t-xl md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
+              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-2 md:rounded-t-xl md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
               isActive && "bg-white/50"
             )}
           >
@@ -70,18 +70,18 @@ export function CentreWorkbenchTabStrip({
               src={meta.illustrationSrc}
               alt=""
               className={cn(
-                "shrink-0 object-contain drop-shadow-sm transition-opacity",
+                "mx-auto shrink-0 object-contain drop-shadow-sm transition-opacity",
                 "h-8 w-8",
-                "md:h-[80px] md:w-[100px] md:pt-0 md:pl-3",
+                "md:h-[80px] md:w-[100px]",
                 isActive ? "opacity-100" : "opacity-70"
               )}
               decoding="async"
             />
             <span
               className={cn(
-                "min-w-0 truncate font-semibold tracking-tight",
+                "min-w-0 truncate text-center font-semibold tracking-tight",
                 "text-sm leading-tight",
-                "md:w-[100px] md:overflow-visible md:whitespace-normal md:text-center md:text-xl md:leading-none",
+                "md:w-full md:overflow-visible md:whitespace-normal md:text-xl md:leading-none",
                 isActive ? "text-foreground" : "text-primary"
               )}
             >

@@ -127,6 +127,7 @@ const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
 const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
 const SettingsProfile = lazy(() => import("./pages/settings/SettingsProfile"));
 const SettingsIntegrations = lazy(() => import("./pages/settings/SettingsIntegrations"));
+const SettingsTrash = lazy(() => import("./pages/settings/SettingsTrash"));
 const DebugData = lazy(() => import("./pages/DebugData"));
 
 // Admin panel (lazy, guarded by AdminLayout)
@@ -386,6 +387,7 @@ const App = () => {
                                   <Route path="integrations" element={<RouteBoundary title="Settings — Integrations"><SettingsIntegrations /></RouteBoundary>} />
                                   <Route path="team" element={<RouteBoundary title="Settings — Team"><SettingsTeam /></RouteBoundary>} />
                                   <Route path="billing" element={<RouteBoundary title="Settings — Billing"><SettingsBilling /></RouteBoundary>} />
+                                  <Route path="trash" element={<RouteBoundary title="Settings — Trash"><SettingsTrash /></RouteBoundary>} />
                                 </Route>
                                 
                                 {/* RECORD pillar */}

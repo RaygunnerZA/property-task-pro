@@ -1,5 +1,5 @@
 import { Outlet, useLocation, NavLink, Navigate, useNavigate } from "react-router-dom";
-import { Settings, Users, CreditCard, Zap, UserCircle, Plug, LogOut } from "lucide-react";
+import { Settings, Users, CreditCard, Zap, UserCircle, Plug, LogOut, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { StandardPage } from "@/components/design-system/StandardPage";
@@ -26,6 +26,7 @@ const navItems: SettingsNavItem[] = [
   { label: "Integrations", path: "/settings/integrations", icon: Plug },
   { label: "Team", path: "/settings/team", icon: Users },
   { label: "Billing", path: "/settings/billing", icon: CreditCard, requiresPrimaryOwner: true },
+  { label: "Trash", path: "/settings/trash", icon: Trash2 },
 ];
 
 function SettingsRightColumnPlaceholder() {

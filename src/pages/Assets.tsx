@@ -317,14 +317,23 @@ const Assets = () => {
       if (insertError) throw insertError;
       if (!newAsset?.id) throw new Error("Asset created but no ID returned");
 
-      for (const f of pendingFiles) {
-        const { error: fileErr } = await supabase.from("asset_files").insert({
-          asset_id: newAsset.id,
-          file_url: f.file_url,
-          thumbnail_url: f.thumbnail_url || null,
-          file_type: f.file_type,
-        });
-        if (fileErr) console.warn("Failed to link file:", fileErr);
+      if (pendingFiles.length > 0) {
+        const linkErrors: string[] = [];
+        for (const f of pendingFiles) {
+          const { error: fileErr } = await supabase.from("asset_files").insert({
+            asset_id: newAsset.id,
+            file_url: f.file_url,
+            thumbnail_url: f.thumbnail_url || null,
+            file_type: f.file_type,
+          });
+          if (fileErr) {
+            console.error("Failed to link asset file:", fileErr);
+            linkErrors.push(fileErr.message);
+          }
+        }
+        if (linkErrors.length > 0) {
+          throw new Error(`Asset created but photo link failed: ${linkErrors[0]}`);
+        }
       }
 
       const celebrated = markQuickWinComplete("asset", propertyId);

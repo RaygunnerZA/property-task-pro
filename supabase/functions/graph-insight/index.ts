@@ -4,11 +4,7 @@
  * Uses property_graph_edges only. No DB writes.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
 
 interface GraphInsightInput {
   org_id: string;
@@ -28,7 +24,7 @@ function nodeKey(type: string, id: string) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return corsPreflightResponse();
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "POST only" }, 405);
 
   let body: GraphInsightInput;

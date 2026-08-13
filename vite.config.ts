@@ -6,7 +6,8 @@ import { componentTagger } from "lovable-tagger";
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "0.0.0.0",
+    /** Dual-stack so browsers that resolve `localhost` → `::1` do not get ERR_CONNECTION_REFUSED. */
+    host: "::",
     port: 8080,
     /** Fail fast if 8080 is taken — avoids silent fallback to 8081 while the browser still pings 8080. */
     strictPort: true,

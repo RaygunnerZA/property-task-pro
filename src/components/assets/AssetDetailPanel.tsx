@@ -1,18 +1,12 @@
 /**
- * AssetDetailPanel - Asset health dashboard with Overview, Activity, Compliance.
- * Paper texture modal, neumorphic tabs, 3-tab structure.
+ * AssetDetailPanel — image-led identity, tight details + compliance, action bar.
+ * Activity is a discrete footer link (same pattern as Task Detail).
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { X, Package, Activity, Shield, Plus, Copy, Trash2, Archive, ChevronDown, ChevronUp, ListTodo, ClipboardCheck, FileText, Network } from "lucide-react";
+import { createPortal } from "react-dom";
+import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { dialogContent960Class, dialogContentXWideClass } from "@/lib/layoutClasses";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { dialogContentClass } from "@/lib/layoutClasses";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -53,10 +47,11 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
-import { GraphTabContent } from "@/components/graph/GraphTabContent";
-import { GraphInsightPanel } from "@/components/graph/GraphInsightPanel";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 import { useAssistantContext } from "@/contexts/AssistantContext";
-import { FillaIcon } from "@/components/filla/FillaIcon";
+import { AssetDetailHero } from "@/components/assets/AssetDetailHero";
+import { AssetDetailActionBar } from "@/components/assets/AssetDetailActionBar";
+import type { AssetFileRow } from "@/hooks/useAssetFiles";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 const STATUS_OPTIONS = [
@@ -64,6 +59,13 @@ const STATUS_OPTIONS = [
   { value: "inactive", label: "Inactive" },
   { value: "retired", label: "Retired" },
 ];
+
+function isAssetImageFile(file: Pick<AssetFileRow, "file_url" | "file_type">): boolean {
+  const t = (file.file_type || "").toLowerCase();
+  if (t.startsWith("image/") || t === "photo" || t === "image") return true;
+  const ext = file.file_url.split(".").pop()?.toLowerCase() || "";
+  return ["jpg", "jpeg", "png", "gif", "webp"].includes(ext);
+}
 
 interface AssetDetailPanelProps {
   assetId: string | null;
@@ -155,15 +157,17 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   const brainPred = brainData?.predictions?.assets?.[0];
   const { openAssistant } = useAssistantContext();
 
-  const [activeTab, setActiveTab] = useState("overview");
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isDuplicating, setIsDuplicating] = useState(false);
-  const [detailsExpanded, setDetailsExpanded] = useState(false);
+  const [activityExpanded, setActivityExpanded] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [activityFilter, setActivityFilter] = useState<"all" | "tasks" | "inspections" | "files">("all");
   const [showCreateTask, setShowCreateTask] = useState(false);
+  const [showAddRecord, setShowAddRecord] = useState(false);
   const [showLogInspection, setShowLogInspection] = useState(false);
   const [showAddFile, setShowAddFile] = useState(false);
   const [showLinkCompliance, setShowLinkCompliance] = useState(false);
@@ -197,6 +201,13 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
       setComplianceRequired(asset.compliance_required ?? false);
     }
   }, [asset]);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setActivityExpanded(false);
+  }, [assetId]);
+
+  const imageFiles = useMemo(() => files.filter(isAssetImageFile), [files]);
 
   const saveAsset = useCallback(
     async (updates: Record<string, unknown>): Promise<boolean> => {
@@ -408,12 +419,30 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     }
   }, [assetId, asset, name, notes, conditionScore, status, assetType, serialNumber, manufacturer, model, complianceRequired, saveAsset, toast]);
 
+  const imageCount = imageFiles.length;
+
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setLightboxOpen(false);
+      } else if (e.key === "ArrowLeft" && imageCount > 1) {
+        setSelectedImageIndex((i) => (i - 1 + imageCount) % imageCount);
+      } else if (e.key === "ArrowRight" && imageCount > 1) {
+        setSelectedImageIndex((i) => (i + 1) % imageCount);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxOpen, imageCount]);
+
   if (!assetId) return null;
 
   if (loading) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className={cn(dialogContentXWideClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
+        <DialogContent className={cn(dialogContentClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
           <DialogHeader className="sr-only">
             <DialogTitle>Loading Asset</DialogTitle>
           </DialogHeader>
@@ -428,7 +457,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   if (error || !asset) {
     return (
       <Dialog open={true} onOpenChange={onClose}>
-        <DialogContent className={cn(dialogContentXWideClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
+        <DialogContent className={cn(dialogContentClass, "max-h-[90vh] overflow-hidden flex flex-col p-0")}>
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Error</DialogTitle>
           </DialogHeader>
@@ -443,476 +472,310 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     );
   }
 
-  const recommendedAction = brainPred?.recommended_action ?? "Schedule routine inspection within 90 days.";
+  const recommendedAction = brainPred?.recommended_action ?? null;
+  const detailsDirty =
+    name !== (asset.name || "") ||
+    notes !== (asset.notes || "") ||
+    status !== (asset.status || "active") ||
+    assetType !== (asset.asset_type || "") ||
+    serialNumber !== (asset.serial_number || "") ||
+    manufacturer !== (asset.manufacturer || "") ||
+    model !== (asset.model || "") ||
+    complianceRequired !== (asset.compliance_required ?? false) ||
+    (parseInt(conditionScore, 10) || 0) !== (asset.condition_score ?? 100);
+
+  const heroImages = imageFiles.map((f) => ({
+    id: f.id,
+    src: f.thumbnail_url || f.file_url,
+    heroSrc: f.file_url,
+    alt: asset.name || "Asset photo",
+  }));
+  const safeImageIndex = selectedImageIndex < heroImages.length ? selectedImageIndex : 0;
+  const statusTone =
+    status === "active" ? "active" : status === "retired" ? "retired" : status === "inactive" ? "inactive" : "other";
+  const nextDueDate = linkedCompliance
+    .map((c) => (c as { next_due_date?: string }).next_due_date)
+    .filter((d): d is string => Boolean(d))
+    .sort()[0];
+  const complianceStatus = linkedCompliance.some((c) => c.expiry_state === "expired")
+    ? "Needs attention"
+    : linkedCompliance.some((c) => c.expiry_state === "expiring")
+      ? "Expiring soon"
+      : linkedCompliance.length > 0
+        ? "On track"
+        : null;
+  const isBusy = isDeleting || isArchiving || isDuplicating || isSavingDetails;
 
   return (
     <>
-      <Dialog open={true} onOpenChange={onClose}>
+      <Dialog
+        open={true}
+        modal={!lightboxOpen && !showAddRecord}
+        onOpenChange={(open) => {
+          if (!open && lightboxOpen) {
+            setLightboxOpen(false);
+            return;
+          }
+          if (!open) onClose();
+        }}
+      >
         <DialogContent
           hideCloseButton
-          className={cn(dialogContent960Class, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}
+          className={cn(dialogContentClass, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}
+          onPointerDownOutside={(event) => {
+            if (lightboxOpen || showAddRecord) event.preventDefault();
+          }}
+          onInteractOutside={(event) => {
+            if (lightboxOpen || showAddRecord) event.preventDefault();
+          }}
+          onEscapeKeyDown={(event) => {
+            if (lightboxOpen) {
+              event.preventDefault();
+              setLightboxOpen(false);
+            }
+          }}
         >
           <DialogHeader className="sr-only">
             <DialogTitle>Asset Details</DialogTitle>
             <DialogDescription>View and edit asset details</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-1 overflow-hidden flex-col bg-background bg-paper-texture">
-            {/* Hidden file inputs */}
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background bg-paper-texture">
             <input ref={imageUploadInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileUpload} />
             <input ref={fileUploadInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
-            {/* Header */}
-            <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border/20 px-5 py-4">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <button onClick={onClose} className="p-2 rounded-lg hover:bg-muted/50 transition-colors shrink-0" aria-label="Close">
-                    <X className="h-5 w-5 text-muted-foreground" />
-                  </button>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Package className="h-5 w-5 text-primary shrink-0" />
-                      <h1 className="text-xl font-semibold text-foreground truncate">{asset.name || "Unnamed Asset"}</h1>
-                      <Badge variant={asset.status === "active" ? "success" : asset.status === "retired" ? "neutral" : "warning"}>
-                        {asset.status?.toUpperCase() ?? "ACTIVE"}
-                      </Badge>
-                    </div>
-                    {(asset.property_name || asset.space_name) && (
-                      <p className="text-sm text-muted-foreground mt-0.5 truncate">
-                        {[asset.property_name, asset.space_name].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <AssetDetailHero
+                title={asset.name || "Unnamed Asset"}
+                images={heroImages}
+                selectedIndex={safeImageIndex}
+                onSelectImage={setSelectedImageIndex}
+                onOpenImage={(index) => {
+                  setSelectedImageIndex(index);
+                  setLightboxOpen(true);
+                }}
+                onAddPhoto={() => imageUploadInputRef.current?.click()}
+                onClose={onClose}
+                statusLabel={(asset.status || "active").replace("_", " ")}
+                statusTone={statusTone}
+                conditionLabel={`Condition ${asset.condition_score ?? 100}`}
+                typeLabel={asset.asset_type || null}
+                contextLine={[asset.property_name, asset.space_name].filter(Boolean).join(" · ") || null}
+                isUploading={isUploadingFile}
+              />
+
+              <div className="space-y-4 px-5 pb-4 pt-4">
+                {recommendedAction ? (
+                  <p className="text-caption leading-snug text-muted-foreground">
+                    {recommendedAction}{" "}
+                    <button
+                      type="button"
+                      onClick={() => setShowLogInspection(true)}
+                      className="font-medium text-foreground underline-offset-2 hover:underline"
+                    >
+                      Log inspection
+                    </button>
+                  </p>
+                ) : null}
+
+                <section className="space-y-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Details</h3>
+                    {detailsDirty ? (
+                      <Button
+                        size="sm"
+                        className="h-7 px-3 font-mono text-caption uppercase tracking-wide shadow-primary-btn"
+                        onClick={handleSaveDetails}
+                        disabled={isSavingDetails}
+                      >
+                        {isSavingDetails ? "Saving…" : "Save"}
+                      </Button>
+                    ) : null}
                   </div>
-                </div>
-                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Name</Label>
+                      <NeomorphicInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Asset name" className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Type</Label>
+                      <Select value={assetType || "none"} onValueChange={(v) => setAssetType(v === "none" ? "" : v)}>
+                        <SelectTrigger className="input-neomorphic h-8"><SelectValue placeholder="Select" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None</SelectItem>
+                          {ASSET_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Status</Label>
+                      <Select value={status} onValueChange={setStatus}>
+                        <SelectTrigger className="input-neomorphic h-8"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Condition</Label>
+                      <NeomorphicInput type="number" min="0" max="100" value={conditionScore} onChange={(e) => setConditionScore(e.target.value)} className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Serial</Label>
+                      <NeomorphicInput value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="e.g. ABC123" className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Manufacturer</Label>
+                      <NeomorphicInput value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} placeholder="Manufacturer" className="h-8" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Model</Label>
+                      <NeomorphicInput value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" className="h-8" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Notes</Label>
+                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="input-neomorphic min-h-[52px] text-sm" rows={2} />
+                  </div>
+                </section>
+
+                <section className="space-y-2 border-t border-border/20 pt-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Compliance</h3>
+                    <span className="text-caption text-muted-foreground">
+                      {complianceStatus ?? (complianceRequired ? "No items" : "Not required")}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <label className="flex items-center gap-2 text-caption text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        id="compliance"
+                        checked={complianceRequired}
+                        onChange={(e) => setComplianceRequired(e.target.checked)}
+                        className="rounded"
+                      />
+                      Required
+                    </label>
+                    {nextDueDate ? (
+                      <span className="text-caption text-muted-foreground">
+                        Next due {new Date(nextDueDate).toLocaleDateString()}
+                      </span>
+                    ) : null}
+                  </div>
+                  {complianceLoading ? (
+                    <Skeleton className="h-8 w-full" />
+                  ) : linkedCompliance.length === 0 ? (
+                    <p className="text-caption text-muted-foreground">No linked items.</p>
+                  ) : (
+                    <ul className="divide-y divide-border/20">
+                      {linkedCompliance.map((c) => (
+                        <li key={c.id} className="flex items-center justify-between gap-2 py-1.5">
+                          <span className="min-w-0 truncate text-sm">{c.title || "Untitled"}</span>
+                          <Badge
+                            variant={
+                              c.expiry_state === "expired" ? "destructive" : c.expiry_state === "expiring" ? "warning" : "success"
+                            }
+                          >
+                            {c.expiry_state || "valid"}
+                          </Badge>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <button
-                    onClick={() => assetId && openAssistant({ type: "asset", id: assetId, name: asset?.name })}
-                    className="p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                    aria-label="Open Assistant"
+                    type="button"
+                    onClick={() => setShowLinkCompliance(true)}
+                    className="inline-flex items-center gap-1 text-caption font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                   >
-                    <FillaIcon size={16} />
+                    <Plus className="h-3 w-3" aria-hidden />
+                    {linkedCompliance.length === 0 ? "Link compliance item" : "Link another"}
                   </button>
-                  <button onClick={handleDuplicate} disabled={isDuplicating} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
-                    Duplicate
-                  </button>
-                  <span className="text-muted-foreground/50">·</span>
-                  <button onClick={() => setShowArchiveDialog(true)} disabled={asset.status === "retired"} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded transition-colors">
-                    Archive
-                  </button>
-                  <span className="text-muted-foreground/50">·</span>
-                  <button onClick={() => setShowDeleteDialog(true)} className="text-xs text-destructive hover:text-destructive/90 px-2 py-1 rounded transition-colors">
-                    Delete
-                  </button>
-                </div>
+                </section>
               </div>
             </div>
 
-            {/* Tabs - Neumorphic like TaskPanel */}
-            <div className="flex-1 overflow-y-auto">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-                <div className="sticky top-0 z-10 bg-background/95 px-5 py-3">
-                  <TabsList
-                    className={cn(
-                      "w-full grid grid-cols-4 h-12 py-1 gap-1.5 rounded-[15px] bg-transparent",
-                      "shadow-[inset_2px_6.6px_9.5px_0px_rgba(0,0,0,0.24),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0.62)]"
-                    )}
-                  >
-                    <TabsTrigger
-                      value="overview"
-                      className={cn(
-                        "rounded-card transition-all text-sm font-medium",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=active]:bg-card",
-                        "data-[state=inactive]:bg-transparent",
-                        "data-[state=inactive]:hover:bg-muted/20"
-                      )}
-                    >
-                      <Package className="h-4 w-4 mr-2" />
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="activity"
-                      className={cn(
-                        "rounded-card transition-all text-sm font-medium",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=active]:bg-card",
-                        "data-[state=inactive]:bg-transparent",
-                        "data-[state=inactive]:hover:bg-muted/20"
-                      )}
-                    >
-                      <Activity className="h-4 w-4 mr-2" />
-                      Activity
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="compliance"
-                      className={cn(
-                        "rounded-card transition-all text-sm font-medium",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=active]:bg-card",
-                        "data-[state=inactive]:bg-transparent",
-                        "data-[state=inactive]:hover:bg-muted/20"
-                      )}
-                    >
-                      <Shield className="h-4 w-4 mr-2" />
-                      Compliance
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="graph"
-                      className={cn(
-                        "rounded-card transition-all text-sm font-medium",
-                        "data-[state=active]:shadow-[3px_3px_8px_rgba(0,0,0,0.12),-2px_-2px_6px_rgba(255,255,255,0.8)]",
-                        "data-[state=active]:bg-card",
-                        "data-[state=inactive]:bg-transparent",
-                        "data-[state=inactive]:hover:bg-muted/20"
-                      )}
-                    >
-                      <Network className="h-4 w-4 mr-2" />
-                      Graph
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
-
-                <div className="flex-1 overflow-hidden flex flex-col p-5">
-                  <TabsContent value="overview" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                        {assetId && (
-                          <GraphInsightPanel
-                            start={{ type: "asset", id: assetId }}
-                            depth={3}
-                            variant="full"
-                          />
-                        )}
-
-                        {/* Recommended Action Card */}
-                        <div className="rounded-lg p-4 shadow-e1 bg-card">
-                          <p className="text-xs font-medium text-muted-foreground mb-1">Recommended next step</p>
-                          <p className="text-sm mb-3">{recommendedAction}</p>
-                          <Button size="sm" className="btn-accent-vibrant" onClick={() => setShowLogInspection(true)}>
-                            Log Inspection
-                          </Button>
-                        </div>
-
-                        {/* Collapsed Details */}
-                        <div className="rounded-lg shadow-e1 bg-card overflow-hidden">
-                          <button
-                            type="button"
-                            onClick={() => setDetailsExpanded(!detailsExpanded)}
-                            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
-                          >
-                            <span className="font-medium">Details</span>
-                            {detailsExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                          </button>
-                          {detailsExpanded && (
-                            <div className="px-4 pb-4 space-y-3 border-t border-border/20 pt-3">
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Name</Label>
-                                  <NeomorphicInput value={name} onChange={(e) => setName(e.target.value)} placeholder="Asset name" className="h-8" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Type</Label>
-                                  <Select value={assetType || "none"} onValueChange={(v) => setAssetType(v === "none" ? "" : v)}>
-                                    <SelectTrigger className="input-neomorphic h-8"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="none">None</SelectItem>
-                                      {ASSET_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Status</Label>
-                                  <Select value={status} onValueChange={setStatus}>
-                                    <SelectTrigger className="input-neomorphic h-8"><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                      {STATUS_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Condition (0-100)</Label>
-                                  <NeomorphicInput type="number" min="0" max="100" value={conditionScore} onChange={(e) => setConditionScore(e.target.value)} className="h-8" />
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Serial</Label>
-                                  <NeomorphicInput value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="e.g. ABC123" className="h-8" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Manufacturer</Label>
-                                  <NeomorphicInput value={manufacturer} onChange={(e) => setManufacturer(e.target.value)} placeholder="Manufacturer" className="h-8" />
-                                </div>
-                                <div className="space-y-1">
-                                  <Label className="text-xs">Model</Label>
-                                  <NeomorphicInput value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" className="h-8" />
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input type="checkbox" id="compliance" checked={complianceRequired} onChange={(e) => setComplianceRequired(e.target.checked)} className="rounded" />
-                                <Label htmlFor="compliance" className="text-xs">Compliance required</Label>
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Notes</Label>
-                                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes" className="input-neomorphic min-h-[60px] text-sm" rows={2} />
-                              </div>
-                              <div className="pt-2">
-                                <Button
-                                  size="sm"
-                                  onClick={handleSaveDetails}
-                                  disabled={isSavingDetails}
-                                  className="btn-accent-vibrant"
-                                >
-                                  {isSavingDetails ? "Saving…" : "Save"}
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="activity" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between gap-2 flex-wrap">
-                        <div className="flex gap-1.5 p-1 rounded-lg bg-muted/30 shadow-e1">
+            <div className="flex shrink-0 flex-col gap-1.5 px-4 pb-4 pt-2">
+              <AssetDetailActionBar
+                isBusy={isBusy}
+                isRetired={asset.status === "retired"}
+                onCreateTask={() => {
+                  setShowCreateTask(true);
+                  onCreateTaskClick?.();
+                }}
+                onAddRecord={() => setShowAddRecord(true)}
+                onLogInspection={() => setShowLogInspection(true)}
+                onDuplicate={() => void handleDuplicate()}
+                onArchive={() => setShowArchiveDialog(true)}
+                onDelete={() => setShowDeleteDialog(true)}
+                onAskFilla={() => assetId && openAssistant({ type: "asset", id: assetId, name: asset?.name })}
+              />
+              <div className="flex items-start justify-end gap-3 px-0.5">
+                <button
+                  type="button"
+                  onClick={() => setActivityExpanded((open) => !open)}
+                  className="shrink-0 pt-px text-caption font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+                  aria-expanded={activityExpanded}
+                  aria-controls="asset-detail-activity-panel"
+                >
+                  Activity
+                </button>
+              </div>
+              <div
+                id="asset-detail-activity-panel"
+                className={cn(
+                  "grid transition-[grid-template-rows] duration-200 ease-out",
+                  activityExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                )}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  {activityExpanded ? (
+                    <div className="max-h-[28vh] space-y-3 overflow-y-auto border-t border-border/20 pt-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex gap-1">
                           {(["all", "tasks", "inspections", "files"] as const).map((f) => (
                             <button
                               key={f}
                               type="button"
                               onClick={() => setActivityFilter(f)}
                               className={cn(
-                                "px-3 py-1.5 rounded-md text-xs font-medium transition-all",
-                                activityFilter === f ? "bg-card shadow-e1" : "text-muted-foreground hover:text-foreground"
+                                "rounded-md px-2 py-1 text-caption font-medium capitalize transition-colors",
+                                activityFilter === f
+                                  ? "bg-card text-foreground shadow-e1"
+                                  : "text-muted-foreground hover:text-foreground"
                               )}
                             >
-                              {f === "all" ? "All" : f === "tasks" ? "Tasks" : f === "inspections" ? "Inspections" : "Files"}
+                              {f}
                             </button>
                           ))}
                         </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button size="sm" className="btn-accent-vibrant">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Add Activity
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setShowLogInspection(true)}>
-                              <ClipboardCheck className="h-4 w-4 mr-2" />
-                              Log Inspection
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setShowCreateTask(true);
-                                onCreateTaskClick?.();
-                              }}
-                            >
-                              <ListTodo className="h-4 w-4 mr-2" />
-                              Create Task
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => fileUploadInputRef.current?.click()}>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Upload File
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setShowAddFile(true)}>
-                              <FileText className="h-4 w-4 mr-2" />
-                              Add URL
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-
-                      {/* Unified Timeline */}
-                      {(() => {
-                        type TimelineItem = { type: "inspection" | "task" | "file"; date: string; id: string; data: unknown };
-                        const items: TimelineItem[] = [];
-                        inspections.forEach((i) => {
-                          items.push({
-                            type: "inspection",
-                            date: i.inspection_date || "",
-                            id: i.id,
-                            data: i,
-                          });
-                        });
-                        tasks.forEach((t) => {
-                          items.push({
-                            type: "task",
-                            date: t.due_date || "",
-                            id: t.id,
-                            data: t,
-                          });
-                        });
-                        files.forEach((f) => {
-                          items.push({ type: "file", date: "", id: f.id, data: f });
-                        });
-                        items.sort((a, b) => {
-                          const da = a.date ? new Date(a.date).getTime() : 0;
-                          const db = b.date ? new Date(b.date).getTime() : 0;
-                          return db - da;
-                        });
-
-                        const filtered = items.filter((i) => {
-                          if (activityFilter === "all") return true;
-                          if (activityFilter === "tasks") return i.type === "task";
-                          if (activityFilter === "inspections") return i.type === "inspection";
-                          if (activityFilter === "files") return i.type === "file";
-                          return true;
-                        });
-
-                        if (inspectionsLoading || tasksLoading || filesLoading) {
-                          return <Skeleton className="h-32 w-full" />;
-                        }
-                        if (filtered.length === 0) {
-                          return <p className="text-sm text-muted-foreground py-4">No activity yet.</p>;
-                        }
-                        return (
-                          <ul className="space-y-2">
-                            {filtered.map((item) => (
-                              <li key={`${item.type}-${item.id}`} className="p-3 rounded-lg bg-card shadow-e1">
-                                {item.type === "inspection" && (
-                                  <div className="space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <div>
-                                        <span className="text-sm font-medium">Inspection logged</span>
-                                        <span className="text-xs text-muted-foreground ml-2">
-                                          {(item.data as { inspection_date?: string }).inspection_date
-                                            ? new Date((item.data as { inspection_date: string }).inspection_date).toLocaleDateString()
-                                            : "—"}
-                                        </span>
-                                      </div>
-                                      {(item.data as { condition_score?: number }).condition_score != null && (
-                                        <Badge
-                                          variant={
-                                            (item.data as { condition_score: number }).condition_score >= 80
-                                              ? "success"
-                                              : (item.data as { condition_score: number }).condition_score >= 60
-                                              ? "warning"
-                                              : "danger"
-                                          }
-                                        >
-                                          {(item.data as { condition_score: number }).condition_score}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                    {(item.data as { notes?: string | null }).notes && (
-                                      <p className="text-xs text-muted-foreground">
-                                        {(item.data as { notes: string }).notes}
-                                      </p>
-                                    )}
-                                  </div>
-                                )}
-                                {item.type === "task" && (
-                                  <div className="flex items-center justify-between">
-                                    <span className="font-medium">{(item.data as { title?: string }).title || "Untitled"}</span>
-                                    <Badge variant={(item.data as { status?: string }).status === "completed" ? "success" : "neutral"}>
-                                      {(item.data as { status?: string }).status}
-                                    </Badge>
-                                  </div>
-                                )}
-                                {item.type === "file" && (
-                                  <a
-                                    href={(item.data as { file_url?: string }).file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-sm text-primary hover:underline"
-                                  >
-                                    Document uploaded ({(item.data as { file_type?: string }).file_type || "File"})
-                                  </a>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        );
-                      })()}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="compliance" className="mt-0 flex-1 overflow-y-auto">
-                    <div className="space-y-4">
-                      {/* Compliance Status Card */}
-                      <div className="rounded-lg p-4 shadow-e1 bg-card overflow-hidden">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="font-medium">Compliance Required: {complianceRequired ? "YES" : "NO"}</span>
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => fileUploadInputRef.current?.click()}
+                            className="text-caption text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                          >
+                            Upload
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddFile(true)}
+                            className="text-caption text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                          >
+                            Add URL
+                          </button>
                         </div>
-                        {linkedCompliance.length > 0 ? (
-                          <>
-                            {(() => {
-                              const withDue = linkedCompliance
-                                .map((c) => (c as { next_due_date?: string }).next_due_date)
-                                .filter(Boolean) as string[];
-                              const soonest = withDue.sort()[0];
-                              return soonest ? (
-                                <p className="text-sm text-muted-foreground">
-                                  Next Due: {new Date(soonest).toLocaleDateString()}
-                                </p>
-                              ) : null;
-                            })()}
-                            <div
-                              className={cn(
-                                "h-1.5 rounded-full mt-2",
-                                linkedCompliance.some((c) => c.expiry_state === "expired")
-                                  ? "bg-destructive"
-                                  : linkedCompliance.some((c) => c.expiry_state === "expiring")
-                                  ? "bg-warning-vivid"
-                                  : "bg-success-vivid"
-                              )}
-                            />
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Status:{" "}
-                              {linkedCompliance.some((c) => c.expiry_state === "expired")
-                                ? "Needs attention"
-                                : linkedCompliance.some((c) => c.expiry_state === "expiring")
-                                ? "Expiring soon"
-                                : "On Track"}
-                            </p>
-                          </>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">No compliance schedule set.</p>
-                        )}
                       </div>
-
-                      {/* Recurring Checks */}
-                      <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Recurring Checks</h3>
-                        {complianceLoading ? (
-                          <Skeleton className="h-24 w-full" />
-                        ) : linkedCompliance.length === 0 ? (
-                          <div className="rounded-lg p-4 shadow-e1 bg-card text-center">
-                            <p className="text-sm text-muted-foreground mb-3">No compliance schedule set.</p>
-                            <Button size="sm" variant="outline" onClick={() => setShowLinkCompliance(true)}>
-                              Set up recurring check
-                            </Button>
-                          </div>
-                        ) : (
-                          <ul className="space-y-2">
-                            {linkedCompliance.map((c) => (
-                              <li key={c.id} className="p-3 rounded-lg bg-card shadow-e1 flex items-center justify-between">
-                                <span className="font-medium">{c.title || "Untitled"}</span>
-                                <Badge
-                                  variant={
-                                    c.expiry_state === "expired" ? "destructive" : c.expiry_state === "expiring" ? "warning" : "success"
-                                  }
-                                >
-                                  {c.expiry_state || "valid"}
-                                </Badge>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                        {linkedCompliance.length > 0 && (
-                          <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowLinkCompliance(true)}>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Link compliance item
-                          </Button>
-                        )}
-                      </div>
+                      <AssetActivityTimeline
+                        inspections={inspections}
+                        tasks={tasks}
+                        files={files}
+                        filter={activityFilter}
+                        loading={inspectionsLoading || tasksLoading || filesLoading}
+                      />
                     </div>
-                  </TabsContent>
-                  <TabsContent value="graph" className="mt-0 flex-1 overflow-y-auto">
-                    {assetId && (
-                      <GraphTabContent start={{ type: "asset", id: assetId }} depth={3} />
-                    )}
-                  </TabsContent>
+                  ) : null}
                 </div>
-              </Tabs>
+              </div>
             </div>
           </div>
         </DialogContent>
@@ -930,6 +793,96 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
           refresh();
         }}
       />
+
+      <IntakeModal
+        open={showAddRecord}
+        onOpenChange={(open) => {
+          setShowAddRecord(open);
+          if (!open) {
+            void refreshCompliance();
+            refresh();
+          }
+        }}
+        initialIntakeMode="add_record"
+        defaultPropertyId={asset.property_id ?? undefined}
+        defaultSpaceIds={asset.space_id ? [asset.space_id] : undefined}
+        defaultAssetIds={[assetId]}
+      />
+
+      {lightboxOpen && heroImages.length > 0
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Asset photo preview"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) setLightboxOpen(false);
+              }}
+            >
+              <header className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md">
+                <button
+                  type="button"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+                  onClick={() => setLightboxOpen(false)}
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-white">{asset.name || "Asset photo"}</p>
+                  <p className="truncate text-xs text-white/55">
+                    {safeImageIndex + 1} / {heroImages.length} · Esc to close
+                  </p>
+                </div>
+              </header>
+              <div
+                className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setLightboxOpen(false);
+                }}
+              >
+                {heroImages.length > 1 ? (
+                  <>
+                    <button
+                      type="button"
+                      className="absolute left-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:left-4"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex(
+                          (safeImageIndex - 1 + heroImages.length) % heroImages.length
+                        );
+                      }}
+                      aria-label="Previous image"
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </button>
+                    <button
+                      type="button"
+                      className="absolute right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:right-4"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedImageIndex((safeImageIndex + 1) % heroImages.length);
+                      }}
+                      aria-label="Next image"
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </button>
+                  </>
+                ) : null}
+                <img
+                  src={
+                    heroImages[safeImageIndex]?.heroSrc ||
+                    heroImages[safeImageIndex]?.src
+                  }
+                  alt={heroImages[safeImageIndex]?.alt || asset.name || "Asset photo"}
+                  className="max-h-full max-w-full rounded-md object-contain shadow-lg"
+                />
+              </div>
+            </div>,
+            document.body
+          )
+        : null}
 
       {/* Delete Confirmation */}
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
@@ -1009,6 +962,102 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
         />
       )}
     </>
+  );
+}
+
+function AssetActivityTimeline({
+  inspections,
+  tasks,
+  files,
+  filter,
+  loading,
+}: {
+  inspections: Array<{ id: string; inspection_date?: string | null; condition_score?: number | null; notes?: string | null }>;
+  tasks: Array<{ id: string; title?: string | null; status?: string | null; due_date?: string | null }>;
+  files: AssetFileRow[];
+  filter: "all" | "tasks" | "inspections" | "files";
+  loading: boolean;
+}) {
+  type TimelineItem = { type: "inspection" | "task" | "file"; date: string; id: string; data: unknown };
+  const items: TimelineItem[] = [];
+  inspections.forEach((i) => {
+    items.push({ type: "inspection", date: i.inspection_date || "", id: i.id, data: i });
+  });
+  tasks.forEach((t) => {
+    items.push({ type: "task", date: t.due_date || "", id: t.id, data: t });
+  });
+  files.forEach((f) => {
+    items.push({ type: "file", date: f.uploaded_at || "", id: f.id, data: f });
+  });
+  items.sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : 0;
+    const db = b.date ? new Date(b.date).getTime() : 0;
+    return db - da;
+  });
+
+  const filtered = items.filter((i) => {
+    if (filter === "all") return true;
+    if (filter === "tasks") return i.type === "task";
+    if (filter === "inspections") return i.type === "inspection";
+    if (filter === "files") return i.type === "file";
+    return true;
+  });
+
+  if (loading) return <Skeleton className="h-20 w-full" />;
+  if (filtered.length === 0) {
+    return <p className="py-2 text-caption text-muted-foreground">No activity yet.</p>;
+  }
+
+  return (
+    <ul className="space-y-1.5">
+      {filtered.map((item) => (
+        <li key={`${item.type}-${item.id}`} className="flex items-baseline justify-between gap-2 py-1">
+          {item.type === "inspection" && (
+            <>
+              <span className="min-w-0 truncate text-sm">
+                Inspection
+                {(item.data as { inspection_date?: string }).inspection_date ? (
+                  <span className="ml-1.5 text-caption text-muted-foreground">
+                    {new Date((item.data as { inspection_date: string }).inspection_date).toLocaleDateString()}
+                  </span>
+                ) : null}
+              </span>
+              {(item.data as { condition_score?: number }).condition_score != null ? (
+                <Badge
+                  variant={
+                    (item.data as { condition_score: number }).condition_score >= 80
+                      ? "success"
+                      : (item.data as { condition_score: number }).condition_score >= 60
+                        ? "warning"
+                        : "danger"
+                  }
+                >
+                  {(item.data as { condition_score: number }).condition_score}
+                </Badge>
+              ) : null}
+            </>
+          )}
+          {item.type === "task" && (
+            <>
+              <span className="min-w-0 truncate text-sm">{(item.data as { title?: string }).title || "Untitled"}</span>
+              <Badge variant={(item.data as { status?: string }).status === "completed" ? "success" : "neutral"}>
+                {(item.data as { status?: string }).status}
+              </Badge>
+            </>
+          )}
+          {item.type === "file" && (
+            <a
+              href={(item.data as { file_url?: string }).file_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="min-w-0 truncate text-sm text-primary hover:underline"
+            >
+              {(item.data as { file_type?: string }).file_type || "File"} uploaded
+            </a>
+          )}
+        </li>
+      ))}
+    </ul>
   );
 }
 

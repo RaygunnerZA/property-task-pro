@@ -119,7 +119,13 @@ const INTAKE_COMPLIANCE_TYPES = [
   "EICR",
   "PAT Test",
   "Other",
-];
+] as const;
+
+const INTAKE_COMPLIANCE_PRESETS: string[] = INTAKE_COMPLIANCE_TYPES.filter((t) => t !== "Other");
+
+function isIntakeCompliancePreset(type: string): boolean {
+  return INTAKE_COMPLIANCE_PRESETS.includes(type);
+}
 
 const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; label: string }> = [
   { value: "compliance", label: "Compliance" },
@@ -274,6 +280,8 @@ export interface IntakeModalProps {
   defaultPropertyId?: string;
   /** Prefill linked spaces (e.g. Space detail Add Task). */
   defaultSpaceIds?: string[];
+  /** Prefill linked assets (e.g. Asset detail Add Record). */
+  defaultAssetIds?: string[];
   variant?: "modal" | "column";
   headless?: boolean;
   /** When the modal opens (uncontrolled), start in this mode. Ignored when `intakeMode` is controlled. */
@@ -316,6 +324,7 @@ export function IntakeModal({
   onTaskCreated,
   defaultPropertyId,
   defaultSpaceIds,
+  defaultAssetIds,
   variant = "modal",
   headless = false,
   initialIntakeMode = "report_issue",
@@ -370,8 +379,11 @@ export function IntakeModal({
   const prevOpenRef = useRef(open);
   const sourceArtifactRef = useRef<IntakeSourceArtifact | null>(null);
   const [intakeComplianceType, setIntakeComplianceType] = useState("");
+  /** User chose Document type → Other; show free-text field for a custom type. */
+  const [intakeComplianceTypeOther, setIntakeComplianceTypeOther] = useState(false);
   const [intakeComplianceExpiry, setIntakeComplianceExpiry] = useState("");
   const [createReminderFromCompliance, setCreateReminderFromCompliance] = useState(false);
+  const complianceTypeOtherInputRef = useRef<HTMLInputElement>(null);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userEditedTitle, setUserEditedTitle] = useState(false);
@@ -468,6 +480,8 @@ export function IntakeModal({
   const [selectedAssetIds, setSelectedAssetIds] = useState<string[]>([]);
   const [priority, setPriority] = useState<"low" | "medium" | "high" | "urgent">("medium");
   const [priorityDefined, setPriorityDefined] = useState(false);
+  const [isCompliance, setIsCompliance] = useState(false);
+  const [complianceLevel, setComplianceLevel] = useState<string>("medium");
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   /** Prevents resolved person chips from bouncing back after the user clears WHO. */
   const userClearedAssigneeRef = useRef(false);
@@ -647,6 +661,13 @@ export function IntakeModal({
     const spacesKey = (defaultSpaceIds ?? []).join(",");
     setSelectedSpaceIds(spacesKey ? spacesKey.split(",") : []);
   }, [defaultPropertyId, defaultSpaceIds?.join(",")]);
+
+  useEffect(() => {
+    if (!open) return;
+    const assetKey = (defaultAssetIds ?? []).join(",");
+    if (!assetKey) return;
+    setSelectedAssetIds(assetKey.split(",").filter(Boolean));
+  }, [open, defaultAssetIds?.join(",")]);
 
   useEffect(() => {
     if (!openChipSlot) {
@@ -1302,7 +1323,10 @@ export function IntakeModal({
             (extracted.document_type_hint as string | undefined) ||
             initialSourceArtifact.aiClassification ||
             "";
-          if (docType) setIntakeComplianceType(docType);
+          if (docType) {
+            setIntakeComplianceType(docType);
+            setIntakeComplianceTypeOther(!isIntakeCompliancePreset(docType));
+          }
           const expiry =
             (extracted.expiry_date as string | undefined) ||
             (extracted.expiry_date_hint as string | undefined);
@@ -1324,9 +1348,19 @@ export function IntakeModal({
   }, [open, initialDescription, initialImages, initialSourceArtifact, toast]);
 
   useEffect(() => {
-    if (primaryIsCompliance && analysis.document_type_hint && !intakeComplianceType) setIntakeComplianceType(analysis.document_type_hint);
+    if (primaryIsCompliance && analysis.document_type_hint && !intakeComplianceType) {
+      const hint = analysis.document_type_hint;
+      setIntakeComplianceType(hint);
+      setIntakeComplianceTypeOther(!isIntakeCompliancePreset(hint));
+    }
     if (primaryIsCompliance && analysis.expiry_date_hint && !intakeComplianceExpiry) setIntakeComplianceExpiry(analysis.expiry_date_hint);
   }, [primaryIsCompliance, analysis.document_type_hint, analysis.expiry_date_hint, intakeComplianceType, intakeComplianceExpiry]);
+
+  useEffect(() => {
+    if (!intakeComplianceTypeOther) return;
+    const t = window.setTimeout(() => complianceTypeOtherInputRef.current?.focus(), 50);
+    return () => window.clearTimeout(t);
+  }, [intakeComplianceTypeOther]);
 
   const selectedProperty = useMemo(
     () => properties.find((property: any) => property.id === propertyId) ?? null,
@@ -1558,6 +1592,24 @@ export function IntakeModal({
       });
     }
 
+    if (isCompliance) {
+      chips.push({
+        id: `compliance-${complianceLevel}`,
+        slot: "compliance",
+        label:
+          complianceLevel === "medium"
+            ? "COMPLIANCE"
+            : `COMPLIANCE ${complianceLevel.toUpperCase()}`,
+        epistemic: "fact",
+        removable: true,
+        onRemove: () => {
+          setIsCompliance(false);
+          setComplianceLevel("medium");
+        },
+        onPress: () => setOpenChipSlot("compliance"),
+      });
+    }
+
     selectedThemeIds.forEach((themeId) => {
       if (themeId.startsWith("ghost-")) return;
       const theme = categories.find((c) => c.id === themeId);
@@ -1603,6 +1655,8 @@ export function IntakeModal({
     members,
     priority,
     priorityDefined,
+    isCompliance,
+    complianceLevel,
     properties?.length,
     repeatInterval,
     repeatPreset,
@@ -3095,13 +3149,44 @@ export function IntakeModal({
       }
 
       if (slot === "compliance") {
+        const levels = ["low", "medium", "high", "critical"] as const;
         return {
           row2: (
+            <>
+              <SemanticChip
+                epistemic={isCompliance ? "fact" : "proposal"}
+                label={isCompliance ? "ON" : "MARK AS COMPLIANCE"}
+                truncate={false}
+                pressOnPointerDown
+                onPress={() => {
+                  setIsCompliance((prev) => !prev);
+                  if (!isCompliance) setComplianceLevel((prev) => prev || "medium");
+                }}
+                className="shrink-0"
+              />
+              {isCompliance
+                ? levels.map((level) => (
+                    <SemanticChip
+                      key={level}
+                      epistemic={complianceLevel === level ? "fact" : "proposal"}
+                      label={level === "medium" ? "NORMAL" : level.toUpperCase()}
+                      truncate={false}
+                      pressOnPointerDown
+                      onPress={() => {
+                        setIsCompliance(true);
+                        setComplianceLevel(level);
+                      }}
+                      className="shrink-0"
+                    />
+                  ))
+                : null}
+            </>
+          ),
+          row3: (
             <span className="shrink-0 text-caption text-muted-foreground whitespace-nowrap">
-              Use compliance fields above
+              Marks this task as a regulatory requirement
             </span>
           ),
-          row3: <span className="sr-only">Compliance</span>,
         };
       }
 
@@ -3145,6 +3230,8 @@ export function IntakeModal({
       milestoneNameDraft,
       milestones,
       priority,
+      isCompliance,
+      complianceLevel,
       properties,
       repeatInterval,
       repeatPreset,
@@ -3353,7 +3440,11 @@ export function IntakeModal({
             org_id: orgId,
             property_id: propertyId || null,
             title: complianceTitle,
-            compliance_type: intakeComplianceType.trim() || null,
+            compliance_type: (() => {
+              const t = intakeComplianceType.trim();
+              if (!t || t === "Other") return null;
+              return t;
+            })(),
             expiry_date: intakeComplianceExpiry.trim() || null,
             attachment_id: null,
           },
@@ -3460,6 +3551,8 @@ export function IntakeModal({
           priority,
           assigned_user_id: assignedUserId || null,
           status: "open" as const,
+          is_compliance: isCompliance,
+          compliance_level: isCompliance ? complianceLevel : null,
         };
       const newTask = await createTaskMutation.mutateAsync({
         source: taskCreatedSource ?? "manual",
@@ -3584,6 +3677,7 @@ export function IntakeModal({
     setTaskFiles([]);
     setUserChoseWorkflow(null);
     setIntakeComplianceType("");
+    setIntakeComplianceTypeOther(false);
     setIntakeComplianceExpiry("");
     setCreateReminderFromCompliance(false);
     setOpenChipSlot(null);
@@ -3606,6 +3700,8 @@ export function IntakeModal({
     }
     setPriority("medium");
     setPriorityDefined(false);
+    setIsCompliance(false);
+    setComplianceLevel("medium");
     userClearedAssigneeRef.current = false;
     userClearedDueDateRef.current = false;
     userClearedRepeatRef.current = false;
@@ -4188,11 +4284,28 @@ export function IntakeModal({
             <div className="rounded-lg bg-muted/40 p-3 space-y-2 border border-border/50 shadow-e1">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Compliance</p>
               <div className="grid gap-2">
-                <div>
+                <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">Document type</Label>
                   <select
-                    value={intakeComplianceType}
-                    onChange={(e) => setIntakeComplianceType(e.target.value)}
+                    value={
+                      isIntakeCompliancePreset(intakeComplianceType)
+                        ? intakeComplianceType
+                        : intakeComplianceTypeOther || intakeComplianceType
+                          ? "Other"
+                          : ""
+                    }
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      if (next === "Other") {
+                        setIntakeComplianceTypeOther(true);
+                        if (isIntakeCompliancePreset(intakeComplianceType)) {
+                          setIntakeComplianceType("");
+                        }
+                        return;
+                      }
+                      setIntakeComplianceTypeOther(false);
+                      setIntakeComplianceType(next);
+                    }}
                     className="mt-1 w-full h-9 rounded-lg border border-input bg-input px-2 text-sm"
                   >
                     <option value="">Select</option>
@@ -4200,6 +4313,22 @@ export function IntakeModal({
                       <option key={t} value={t}>{t}</option>
                     ))}
                   </select>
+                  {intakeComplianceTypeOther ||
+                  (Boolean(intakeComplianceType) && !isIntakeCompliancePreset(intakeComplianceType)) ? (
+                    <Input
+                      ref={complianceTypeOtherInputRef}
+                      value={
+                        isIntakeCompliancePreset(intakeComplianceType) ? "" : intakeComplianceType
+                      }
+                      onChange={(e) => {
+                        setIntakeComplianceTypeOther(true);
+                        setIntakeComplianceType(e.target.value);
+                      }}
+                      placeholder="Enter document type"
+                      className="h-9"
+                      aria-label="Custom document type"
+                    />
+                  ) : null}
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Expiry / renewal</Label>
@@ -4264,6 +4393,15 @@ export function IntakeModal({
                 }))}
               priorityFacts={intakeRowChips
                 .filter((c) => c.slot === "priority")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              assetFacts={intakeRowChips
+                .filter((c) => c.slot === "asset")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              categoryFacts={intakeRowChips
+                .filter((c) => c.slot === "category")
+                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              complianceFacts={intakeRowChips
+                .filter((c) => c.slot === "compliance")
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
               whoHover={[
                 {
@@ -4407,14 +4545,50 @@ export function IntakeModal({
                   },
                 },
               ]}
-              optionalChips={[
-                { id: "asset-add", label: "+ ASSET", onPress: () => setOpenChipSlot("asset") },
-                { id: "tag-add", label: "+ TAG", onPress: () => setOpenChipSlot("category") },
-                { id: "rule-add", label: "+ RULE", onPress: () => setOpenChipSlot("compliance") },
+              assetHover={[
+                {
+                  id: "asset-add",
+                  label: "+ ASSET",
+                  onPress: () => {
+                    if (!propertyId) {
+                      setOpenChipSlot("where");
+                      toast({
+                        title: "Choose a property first",
+                        description: "Pick a property before adding assets.",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+                    setOpenChipSlot("asset");
+                    setIntakeAssetSearchOpen(true);
+                    setIntakeAssetQuery("");
+                  },
+                },
+              ]}
+              categoryHover={[
+                {
+                  id: "tag-add",
+                  label: "+ TAG",
+                  onPress: () => {
+                    setOpenChipSlot("category");
+                    setIntakeTagEditing(true);
+                    setIntakeTagQuery("");
+                  },
+                },
+              ]}
+              complianceHover={[
+                {
+                  id: "compliance-on",
+                  label: "MARK AS COMPLIANCE",
+                  onPress: () => {
+                    setIsCompliance(true);
+                    setComplianceLevel((prev) => prev || "medium");
+                    setOpenChipSlot("compliance");
+                  },
+                },
               ]}
               openSlot={openChipSlot}
               onOpenSlot={setOpenChipSlot}
-              whereSatisfiedWithoutChip={(properties?.length ?? 0) <= 1 && Boolean(propertyId)}
               whenInlineActions={
                 openChipSlot === "when"
                   ? renderSlotContent("when", () => setOpenChipSlot(null)).inlineActions

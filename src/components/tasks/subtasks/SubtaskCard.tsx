@@ -211,13 +211,14 @@ export function SubtaskCard({
     if (subtask.title.length > 0) setBackspaceCount(0);
   }, [subtask.title]);
 
-  // Auto-resize textarea
+  // Auto-resize title so full text stays readable on narrow layouts (not clipped to one line).
   useEffect(() => {
     if (inputRef.current) {
+      const maxH = isCreator ? 120 : 320;
       inputRef.current.style.height = "auto";
-      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 64)}px`;
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, maxH)}px`;
     }
-  }, [subtask.title]);
+  }, [subtask.title, isCreator, currentType]);
 
   // Measure text width to position required asterisk right after the last character
   useLayoutEffect(() => {
@@ -414,14 +415,18 @@ export function SubtaskCard({
         )}
         style={{ boxShadow: "none", border: "none" }}
       >
-        {/* Main Row */}
+        {/* Main Row — min-height grows with wrapped title on narrow/mobile */}
         <div
-          className="group/row flex items-center gap-2 pl-1.5 pr-1.5 py-0 rounded"
-          style={{ backgroundColor: "rgba(255, 255, 255, 0)", height: "42px" }}
+          className="group/row flex items-start gap-2 pl-1.5 pr-1.5 py-1 rounded"
+          style={{ backgroundColor: "rgba(255, 255, 255, 0)", minHeight: "42px" }}
         >
           {/* Drag Handle — authoring only */}
           {isCreator ? (
-            <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none">
+            <div
+              {...attributes}
+              {...listeners}
+              className="mt-2.5 cursor-grab active:cursor-grabbing touch-none"
+            >
               <GripVertical className="h-4 w-4 text-muted-foreground/40" />
             </div>
           ) : (
@@ -451,7 +456,7 @@ export function SubtaskCard({
                 onUpdate(subtask.id, { is_completed: !subtask.is_completed });
               }}
               className={cn(
-                "shrink-0 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
+                "shrink-0 mt-3 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
                 !isCreator && currentType === "check" && "cursor-pointer",
                 (isCreator || currentType !== "check") && "cursor-default"
               )}
@@ -475,19 +480,19 @@ export function SubtaskCard({
           )}
           {/* Spacer so title/note align with other rows */}
           {(currentType === "title" || currentType === "note") && (
-            <div className="h-[14px] w-[14px] shrink-0" aria-hidden />
+            <div className="mt-3 h-[14px] w-[14px] shrink-0" aria-hidden />
           )}
 
           {/* Divider step — render a horizontal rule instead of input */}
           {currentType === "divider" && (
-            <div className="flex-1 flex items-center px-1">
+            <div className="flex-1 flex items-center px-1 self-center">
               <div className="flex-1 border-t border-dashed border-muted-foreground/25" />
             </div>
           )}
 
           {/* Step Title Input + required asterisk measured after text */}
           {currentType !== "divider" && (
-            <div className="relative flex-1 min-w-0" style={{ boxSizing: "content-box" }}>
+            <div className="relative min-w-0 flex-1 overflow-hidden">
               {/* Hidden mirror span — measures rendered text width for asterisk placement */}
               {subtask.is_required && (
                 <span
@@ -522,7 +527,9 @@ export function SubtaskCard({
                 }}
                 readOnly={!isCreator}
                 className={cn(
-                  "w-full min-h-[32px] max-h-[64px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none overflow-y-auto",
+                  "w-full min-h-[32px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none",
+                  "whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
+                  isCreator ? "max-h-[120px] overflow-y-auto" : "max-h-[320px] overflow-y-auto",
                   currentType === "title" ? "text-lg md:text-lg font-semibold" : "text-sm md:text-sm",
                   currentType === "note" && "italic",
                   !isCreator && "cursor-default",
@@ -556,13 +563,13 @@ export function SubtaskCard({
 
           {/* Follow-up if failed indicator */}
           {subtask.has_followup_if_failed && (
-            <GitBranch className="h-3 w-3 shrink-0 text-destructive" />
+            <GitBranch className="mt-3 h-3 w-3 shrink-0 text-destructive" />
           )}
 
           {/* Assigned user badge */}
           {subtask.assigned_user_id && (
             <div
-              className="shrink-0 h-5 w-5 rounded-full bg-accent/20 flex items-center justify-center cursor-pointer"
+              className="mt-2 shrink-0 h-5 w-5 rounded-full bg-accent/20 flex items-center justify-center cursor-pointer"
               title={subtask.assigned_user_name ?? "Assigned user"}
               onClick={handleUnassignUser}
             >
@@ -571,34 +578,36 @@ export function SubtaskCard({
           )}
 
           {/* Options Menu */}
-          <SubtaskOptionsMenu
-            isCreator={isCreator}
-            isRequired={subtask.is_required}
-            hasNote={!!subtask.note}
-            hasFollowupIfFailed={subtask.has_followup_if_failed}
-            assignedUserName={subtask.assigned_user_name}
-            canClearResponse={Boolean(
-              !isCreator &&
-                (subtask.is_completed || subtask.response_value || subtask.signed_at)
-            )}
-            canEditStructure={!isCreator && canEditStructure}
-            onToggleRequired={handleToggleRequired}
-            onAddNote={handleAddNote}
-            onToggleFollowupIfFailed={handleToggleFollowup}
-            onOpenAssignPicker={() => setAssignPickerOpen(true)}
-            onDuplicate={() => onDuplicate(subtask.id)}
-            onDelete={handleDelete}
-            onClearResponse={
-              onClearResponse ? () => void onClearResponse(subtask.id) : undefined
-            }
-            onRequestAuthoring={onRequestAuthoring}
-          />
+          <div className="mt-1.5 shrink-0">
+            <SubtaskOptionsMenu
+              isCreator={isCreator}
+              isRequired={subtask.is_required}
+              hasNote={!!subtask.note}
+              hasFollowupIfFailed={subtask.has_followup_if_failed}
+              assignedUserName={subtask.assigned_user_name}
+              canClearResponse={Boolean(
+                !isCreator &&
+                  (subtask.is_completed || subtask.response_value || subtask.signed_at)
+              )}
+              canEditStructure={!isCreator && canEditStructure}
+              onToggleRequired={handleToggleRequired}
+              onAddNote={handleAddNote}
+              onToggleFollowupIfFailed={handleToggleFollowup}
+              onOpenAssignPicker={() => setAssignPickerOpen(true)}
+              onDuplicate={() => onDuplicate(subtask.id)}
+              onDelete={handleDelete}
+              onClearResponse={
+                onClearResponse ? () => void onClearResponse(subtask.id) : undefined
+              }
+              onRequestAuthoring={onRequestAuthoring}
+            />
+          </div>
 
           {/* ── Right-side step-type affordances (authoring preview) ── */}
           {isCreator && !isStructureOnly && (
-            <>
+            <div className="mt-1.5 flex shrink-0 items-start gap-1">
               {currentType === "yes_no" && (
-                <div className="shrink-0 flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5 w-[72px] border-none">
+                <div className="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5 w-[72px] border-none">
                   <span className="h-6 flex-1 rounded-md flex items-center justify-center text-2xs font-medium text-muted-foreground/60 bg-card shadow-sm">
                     No
                   </span>
@@ -609,13 +618,13 @@ export function SubtaskCard({
               )}
 
               {currentType === "number" && (
-                <div className="shrink-0 w-10 h-6 rounded-lg bg-card flex items-center justify-center shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-caption text-muted-foreground font-medium">
+                <div className="w-10 h-6 rounded-lg bg-card flex items-center justify-center shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-caption text-muted-foreground font-medium">
                   0
                 </div>
               )}
 
               {currentType === "pass_fail" && (
-                <div className="shrink-0 flex items-center gap-1">
+                <div className="flex items-center gap-1">
                   <div className="h-6 px-2 rounded-lg bg-card flex items-center text-2xs font-medium uppercase tracking-wider text-emerald-500 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Pass</div>
                   <div className="h-6 px-2 rounded-lg bg-card flex items-center text-2xs font-medium uppercase tracking-wider text-destructive/50 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">Fail</div>
                 </div>
@@ -638,7 +647,7 @@ export function SubtaskCard({
                     type="button"
                     onClick={() => photoInputRef.current?.click()}
                     className={cn(
-                      "shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
+                      "h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
                       uploadedPhotoName
                         ? "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
                         : "shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
@@ -669,7 +678,7 @@ export function SubtaskCard({
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
                     className={cn(
-                      "shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
+                      "h-6 px-2 rounded-card bg-card flex items-center gap-[5px] transition-all cursor-pointer",
                       uploadedFileName
                         ? "shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
                         : "shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]"
@@ -685,19 +694,19 @@ export function SubtaskCard({
               )}
 
               {currentType === "signature" && (
-                <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-1 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
+                <div className="h-6 px-2 rounded-card bg-card flex items-center gap-1 shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <PenLine className="h-3.5 w-3.5 text-muted-foreground/60" />
                   <span className="text-2xs font-mono font-medium text-muted-foreground/50 uppercase tracking-wider">Sign</span>
                 </div>
               )}
 
               {currentType === "scan" && (
-                <div className="shrink-0 h-6 px-2 rounded-card bg-card flex items-center gap-[6px] shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
+                <div className="h-6 px-2 rounded-card bg-card flex items-center gap-[6px] shadow-[1px_1px_2px_rgba(0,0,0,0.1),-1px_-1px_2px_rgba(255,255,255,0.7)]">
                   <ScanLine className="h-3.5 w-3.5 text-muted-foreground/60" />
                   <span className="text-2xs font-medium text-muted-foreground/50 uppercase tracking-wider">Scan</span>
                 </div>
               )}
-            </>
+            </div>
           )}
         </div>
 
