@@ -50,7 +50,7 @@ export const dialogContent960Class =
   "w-full min-w-0 max-w-[min(960px,calc(100vw-2rem))]";
 
 /** Dimmed backdrop behind centered detail sheets. */
-export const slideOverBackdropClass = "fixed inset-0 z-40 bg-black/50";
+export const slideOverBackdropClass = "modal-scrim fixed inset-0 z-40";
 
 /**
  * Full-viewport flex host that truly centers the sheet.

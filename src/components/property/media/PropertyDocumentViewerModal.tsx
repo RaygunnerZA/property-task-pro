@@ -12,7 +12,7 @@ export default function PropertyDocumentViewerModal({
   onClose,
 }: PropertyDocumentViewerModalProps) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-lg w-full min-w-0 max-w-[calc(100vw-2rem)] sm:max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-neutral-200">

@@ -43,7 +43,7 @@ const sectionRevealStyle = (index: number): CSSProperties => ({
   animationFillMode: "both",
 });
 
-/** Home left-rail metrics: auto-collapse after idle so the strip settles. */
+/** Home left-rail metrics: auto-collapse after idle so the strip settles. On desktop the three stat blocks collapse with the snapshot. */
 const METRICS_AUTO_COLLAPSE_MS = 2 * 60 * 1000;
 const metricsCollapseMotionClass =
   "grid transition-[grid-template-rows] duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
@@ -567,28 +567,29 @@ export function PropertySummaryPanel({
           </div>
         ) : null}
 
-        {/* Desktop: metric filters with chevron affordance */}
-        <div
-          className={cn(
-            "grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]",
-            showPhoneWorkEntries ? "hidden md:grid" : "grid",
-            sectionRevealClass
-          )}
-          style={sectionRevealStyle(0)}
-        >
-          {desktopStats.map((stat) => (
-            <StatColumn
-              key={stat.centreTab}
-              value={stat.value}
-              line1={stat.line1}
-              line2={stat.line2}
-              secondaryCount={stat.secondary.count}
-              secondaryLabel={stat.secondary.label}
-              secondaryTone={stat.secondary.tone}
-              onActivate={stat.onActivate}
-            />
-          ))}
-        </div>
+        {/* Phone (no work-entry nav): keep the three metric blocks visible while desktop collapses. */}
+        {!showPhoneWorkEntries ? (
+          <div
+            className={cn(
+              "grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden",
+              sectionRevealClass
+            )}
+            style={sectionRevealStyle(0)}
+          >
+            {desktopStats.map((stat) => (
+              <StatColumn
+                key={stat.centreTab}
+                value={stat.value}
+                line1={stat.line1}
+                line2={stat.line2}
+                secondaryCount={stat.secondary.count}
+                secondaryLabel={stat.secondary.label}
+                secondaryTone={stat.secondary.tone}
+                onActivate={stat.onActivate}
+              />
+            ))}
+          </div>
+        ) : null}
 
         {variant === "full" ? (
           <div className={cn(sectionRevealClass)} style={sectionRevealStyle(1)}>
@@ -599,6 +600,21 @@ export function PropertySummaryPanel({
               )}
             >
               <div className="min-h-0 overflow-hidden">
+                {/* Desktop: three metric blocks collapse with the snapshot below. */}
+                <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid">
+                  {desktopStats.map((stat) => (
+                    <StatColumn
+                      key={stat.centreTab}
+                      value={stat.value}
+                      line1={stat.line1}
+                      line2={stat.line2}
+                      secondaryCount={stat.secondary.count}
+                      secondaryLabel={stat.secondary.label}
+                      secondaryTone={stat.secondary.tone}
+                      onActivate={stat.onActivate}
+                    />
+                  ))}
+                </div>
                 <div className="flex items-start gap-1 border-b border-dashed border-border/40 px-1 pb-2 pt-[7px]">
                   <div className="flex w-[52%] min-w-[118px] shrink-0 flex-col items-center justify-center">
                     <RadialProgress
@@ -646,7 +662,28 @@ export function PropertySummaryPanel({
               </button>
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div
+            className={cn(
+              "hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid",
+              sectionRevealClass
+            )}
+            style={sectionRevealStyle(0)}
+          >
+            {desktopStats.map((stat) => (
+              <StatColumn
+                key={stat.centreTab}
+                value={stat.value}
+                line1={stat.line1}
+                line2={stat.line2}
+                secondaryCount={stat.secondary.count}
+                secondaryLabel={stat.secondary.label}
+                secondaryTone={stat.secondary.tone}
+                onActivate={stat.onActivate}
+              />
+            ))}
+          </div>
+        )}
 
           <div
             className={cn(

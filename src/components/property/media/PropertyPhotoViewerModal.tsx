@@ -16,7 +16,7 @@ export default function PropertyPhotoViewerModal({
   onPrevious,
 }: PropertyPhotoViewerModalProps) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center">
       {/* Close button */}
       <button
         onClick={onClose}

@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect } from "react";
 import { cn } from "@/lib/utils";
+import { touchAllTasksIllustrationUsage } from "@/lib/allTasksIllustration";
 
 interface DualPaneLayoutProps {
   leftColumn: ReactNode;
@@ -66,6 +67,11 @@ export function DualPaneLayout({
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
+
+  useEffect(() => {
+    // Distinct workbench days drive All-tasks header art rotation.
+    touchAllTasksIllustrationUsage();
+  }, []);
 
   /** Defer dual-column grid to `md` whenever phone uses a special column policy. */
   const dualGridFromPhone =

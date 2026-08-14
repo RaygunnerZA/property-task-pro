@@ -161,6 +161,7 @@ export default function WorkSchedule() {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </StandardPage>

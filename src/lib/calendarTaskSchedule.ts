@@ -1,7 +1,12 @@
 import { format, parseISO, isValid } from "date-fns";
+import {
+  defaultRepeatCalendarRange,
+  expandRepeatOccurrenceDateKeys,
+  getTaskRepeatRule,
+} from "@/lib/taskWhenNormalize";
 
 export type DayPeriod = "morning" | "afternoon" | "untimed";
-export type PlacementSource = "due" | "milestone";
+export type PlacementSource = "due" | "milestone" | "repeat";
 
 export type CalendarTaskPlacement = {
   /** Unique id for dnd-kit */
@@ -73,11 +78,15 @@ export function parsePlacementDragId(id: string): {
   taskId: string;
   source: PlacementSource;
   milestoneId?: string;
+  dateKey?: string;
 } | null {
   const parts = id.split(":");
   if (parts.length < 2) return null;
   const [taskId, source] = parts;
   if (source === "due") return { taskId, source: "due" };
+  if (source === "repeat" && parts[2]) {
+    return { taskId, source: "repeat", dateKey: parts[2] };
+  }
   if (source === "milestone" && parts[2]) {
     return { taskId, source: "milestone", milestoneId: parts[2] };
   }
@@ -87,11 +96,15 @@ export function parsePlacementDragId(id: string): {
 export function makePlacementDragId(
   taskId: string,
   source: PlacementSource,
-  milestoneId?: string
+  milestoneIdOrDateKey?: string
 ): string {
-  return source === "milestone" && milestoneId
-    ? `${taskId}:milestone:${milestoneId}`
-    : `${taskId}:due`;
+  if (source === "milestone" && milestoneIdOrDateKey) {
+    return `${taskId}:milestone:${milestoneIdOrDateKey}`;
+  }
+  if (source === "repeat" && milestoneIdOrDateKey) {
+    return `${taskId}:repeat:${milestoneIdOrDateKey}`;
+  }
+  return `${taskId}:due`;
 }
 
 function parseMilestones(task: Record<string, unknown>): Array<{ id: string; dateTime: string; label?: string }> {
@@ -236,16 +249,17 @@ export function filterTasksForScheduleAgenda(
 export function buildCalendarPlacements(tasks: unknown[]): CalendarTaskPlacement[] {
   const placements: CalendarTaskPlacement[] = [];
   const seen = new Set<string>();
+  const { start: rangeStart, end: rangeEnd } = defaultRepeatCalendarRange();
 
   for (const raw of tasks) {
     const task = raw as Record<string, unknown>;
     const taskId = String(task.id ?? "");
     if (!taskId) continue;
 
-    const add = (value: string, source: PlacementSource, milestoneId?: string) => {
+    const add = (value: string, source: PlacementSource, milestoneIdOrDateKey?: string) => {
       const dt = parseScheduleDateTime(value);
       if (!dt) return;
-      const dragId = makePlacementDragId(taskId, source, milestoneId);
+      const dragId = makePlacementDragId(taskId, source, milestoneIdOrDateKey);
       if (seen.has(dragId)) return;
       seen.add(dragId);
       placements.push({
@@ -254,12 +268,22 @@ export function buildCalendarPlacements(tasks: unknown[]): CalendarTaskPlacement
         dateKey: format(dt, "yyyy-MM-dd"),
         period: getPeriodFromScheduleValue(value),
         source,
-        milestoneId,
+        milestoneId: source === "milestone" ? milestoneIdOrDateKey : undefined,
       });
     };
 
     const due = (task.due_date || task.due_at) as string | undefined;
-    if (due) add(due, "due");
+    const rule = getTaskRepeatRule(task);
+    if (rule && due) {
+      const keys = expandRepeatOccurrenceDateKeys(due, rule, rangeStart, rangeEnd);
+      const anchorKey = format(parseScheduleDateTime(due) ?? new Date(0), "yyyy-MM-dd");
+      keys.forEach((key) => {
+        if (key === anchorKey) add(due, "due");
+        else add(key, "repeat", key);
+      });
+    } else if (due) {
+      add(due, "due");
+    }
 
     parseMilestones(task).forEach((m) => {
       if (m?.dateTime) add(m.dateTime, "milestone", m.id);

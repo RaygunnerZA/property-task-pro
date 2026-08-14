@@ -5,6 +5,7 @@ import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilt
 import { TasksMessagesCardGrid } from "@/components/workbench/TasksMessagesCardGrid";
 import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
+import { useAllTasksIllustrationSrc } from "@/hooks/useAllTasksIllustration";
 import {
   workbenchSectionTitleClassName,
 } from "@/lib/workbenchSectionTitle";
@@ -144,6 +145,7 @@ export function TasksWorkbenchPanel({
   const [listTab, setListTab] = useState<TasksListTab>("all");
   const [authorFilterKey, setAuthorFilterKey] = useState<string | null>(null);
   const { latestByTask, recentAuthors } = useTaskMessageActivity();
+  const allTasksIllustrationSrc = useAllTasksIllustrationSrc();
 
   // List tabs replace Due / Urgent / My Tasks chips — clear them so they don't double-filter.
   useEffect(() => {
@@ -309,6 +311,8 @@ export function TasksWorkbenchPanel({
     listTab === "messages"
       ? MESSAGES_TAB_META
       : TASKS_LIST_TABS.find((tab) => tab.id === listTab) ?? TASKS_LIST_TABS[0];
+  const activeIllustrationSrc =
+    listTab === "all" ? allTasksIllustrationSrc : activeTabMeta.illustrationSrc;
 
   const MessagesIcon = unreadMessageCount > 1 ? MessageSquareMore : MessageSquare;
 
@@ -446,8 +450,8 @@ export function TasksWorkbenchPanel({
             aria-hidden
           >
             <img
-              key={activeTabMeta.illustrationSrc}
-              src={activeTabMeta.illustrationSrc}
+              key={activeIllustrationSrc}
+              src={activeIllustrationSrc}
               alt=""
               className="mt-[-2px] h-full w-full overflow-hidden object-contain object-top drop-shadow-sm"
               decoding="async"

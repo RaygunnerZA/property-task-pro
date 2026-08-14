@@ -50,6 +50,7 @@ export function useSubtasks(taskId?: string) {
   }, [taskId, orgId, orgLoading]);
 
   async function createSubtask(title: string, options?: {
+    id?: string;
     is_yes_no?: boolean;
     requires_signature?: boolean;
     order_index?: number;
@@ -62,6 +63,7 @@ export function useSubtasks(taskId?: string) {
     const { data, error: err } = await supabase
       .from("subtasks")
       .insert({
+        ...(options?.id ? { id: options.id } : {}),
         task_id: taskId,
         org_id: orgId,
         title,

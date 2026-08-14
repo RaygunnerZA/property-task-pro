@@ -32,7 +32,7 @@ export const Button: React.FC<ButtonProps> = ({
   
   const variants = {
     primary:
-      'bg-primary text-primary-foreground border-0 shadow-primary-btn hover:brightness-105 active:shadow-btn-pressed',
+      'bg-primary text-primary-foreground border-0 shadow-primary-btn overflow-visible hover:brightness-105 active:shadow-btn-pressed',
     secondary: 'bg-card text-ink shadow-e1 hover:translate-y-[-1px] hover:shadow-e2 active:translate-y-0',
     ghost: 'bg-transparent text-ink/60 hover:text-ink hover:bg-concrete/30',
     danger: 'bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 shadow-e1',

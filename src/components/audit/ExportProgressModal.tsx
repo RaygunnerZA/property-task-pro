@@ -20,7 +20,7 @@ export default function ExportProgressModal({
   onDownload
 }: ExportProgressModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4">
       <Surface variant="floating" className="w-full max-w-md p-6 space-y-4">
         <div className="flex items-start justify-between">
           <div>

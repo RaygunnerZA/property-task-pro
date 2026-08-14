@@ -267,6 +267,8 @@ export function TaskDetailChecklistTab({
   const editorItemsRef = useRef(editorItems);
   editorItemsRef.current = editorItems;
   const titlePersistTimersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  /** Local Enter-draft UUIDs currently inserting — skip duplicate creates per keystroke. */
+  const creatingIdsRef = useRef(new Set<string>());
 
   useEffect(() => {
     setEditorItems((prev) => {
@@ -401,7 +403,12 @@ export function TaskDetailChecklistTab({
       const legacy = stepTypeToLegacy(stepType);
       const isSubStep = resolveIsSubStep(item);
       if (!serverIds.has(item.id)) {
-        const created = await createSubtask(item.title.trim() || "Checklist item", {
+        // Enter adds a local UUID. Persist that same id once — otherwise each
+        // keystroke inserts another row (and the draft stays local-only).
+        if (creatingIdsRef.current.has(item.id)) continue;
+        creatingIdsRef.current.add(item.id);
+        const created = await createSubtask(item.title.trim(), {
+          id: item.id,
           is_yes_no: legacy.is_yes_no,
           requires_signature: legacy.requires_signature,
           step_type: stepType,
@@ -409,12 +416,30 @@ export function TaskDetailChecklistTab({
           is_required: Boolean(item.is_required),
           order_index: index,
         });
+        creatingIdsRef.current.delete(item.id);
         if (!created) {
           toast({ title: "Couldn't add item", variant: "destructive" });
           await refresh();
           return;
         }
+        serverIds.add(item.id);
         createdAny = true;
+        const latest = editorItemsRef.current.find((s) => s.id === item.id);
+        if (latest && latest.title !== item.title) {
+          await updateSubtask(
+            item.id,
+            {
+              title: latest.title,
+              is_yes_no: legacy.is_yes_no,
+              requires_signature: legacy.requires_signature,
+              step_type: stepType,
+              is_sub_step: isSubStep,
+              is_required: Boolean(item.is_required),
+              order_index: index,
+            },
+            { refresh: false }
+          );
+        }
         continue;
       }
 

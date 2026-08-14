@@ -12,6 +12,8 @@ export const PROPERTY_HERO_SETTLED_OPACITY = 0.4;
 export const PROPERTY_HERO_HEIGHT_REDUCTION_PX = 49;
 /** Filla turquoise underlay — visible as the photo settles. */
 export const PROPERTY_HERO_UNDERLAY = "#8EC9CE";
+/** Darker turquoise under task-detail photos (primary-deep). */
+export const TASK_DETAIL_HERO_UNDERLAY = "#71AEB3";
 
 const STORAGE_KEY = "filla:property-hero-settle-day";
 

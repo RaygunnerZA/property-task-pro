@@ -1381,7 +1381,7 @@ export function ImageAnnotationEditor({
       role="dialog"
       aria-modal="true"
       aria-label="Annotate image"
-      className="fixed inset-0 z-[10000] flex flex-col bg-black/90 pointer-events-auto"
+      className="modal-scrim fixed inset-0 z-[10000] flex flex-col pointer-events-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleCancel();
       }}

@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useActiveOrg } from "./useActiveOrg";
 import { supabase } from "@/integrations/supabase/client";
 import { toErrorMessage } from "@/lib/error";
+import type { Json } from "@/integrations/supabase/types";
 
 export interface TaskMessage {
   id: string;
@@ -13,6 +14,7 @@ export interface TaskMessage {
   author_user_id: string | null;
   body: string;
   created_at: string;
+  raw_payload?: Json | null;
 }
 
 /**

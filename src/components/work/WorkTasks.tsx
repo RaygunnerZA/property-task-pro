@@ -62,6 +62,7 @@ const WorkTasks = () => {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </div>

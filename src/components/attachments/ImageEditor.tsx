@@ -53,7 +53,7 @@ export function ImageEditor({ imageUrl, onSave, onClose }: ImageEditorProps) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center">
         <div className="text-white p-8">Loading image editor…</div>
       </div>
     );
@@ -61,7 +61,7 @@ export function ImageEditor({ imageUrl, onSave, onClose }: ImageEditorProps) {
 
   if (!filerobotModule) {
     return (
-      <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+      <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center">
         <div className="text-white p-8">Failed to load image editor. Please refresh the page.</div>
       </div>
     );
@@ -70,7 +70,7 @@ export function ImageEditor({ imageUrl, onSave, onClose }: ImageEditorProps) {
   const { FilerobotImageEditor, TABS, TOOLS } = filerobotModule;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center">
       <div className="w-full h-full">
         <FilerobotImageEditor
           source={imageUrl}

@@ -84,8 +84,12 @@ import {
 } from "@/components/tasks/detail/TaskDetailChecklistTab";
 import { TaskDetailActionBar } from "@/components/tasks/detail/TaskDetailActionBar";
 import { TaskProgressUpdateSheet } from "@/components/tasks/detail/TaskProgressUpdateSheet";
+import { TaskModalNavChevrons } from "@/components/tasks/detail/TaskModalNavChevrons";
 import { findNextOpenTaskId } from "@/lib/findNextOpenTask";
+import { findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
+import { useMobileTaskSwipeNav } from "@/hooks/useMobileTaskSwipeNav";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
   clearTaskCompletionMotion,
@@ -159,6 +163,11 @@ export function TaskDetailPanel({
 
   const { toast } = useToast();
   const { data: orgProperties = [] } = usePropertiesQuery();
+  const { data: siblingTasks = [] } = useTasksQuery(propertyId);
+  const { prevId: prevTaskId, nextId: nextTaskId } = useMemo(
+    () => findAdjacentTaskIds(siblingTasks, taskId),
+    [siblingTasks, taskId]
+  );
   const { role: orgRole, orgId } = useActiveOrg();
   const canManageTemplates = orgRole === "owner" || orgRole === "manager";
   const queryClient = useQueryClient();
@@ -176,6 +185,23 @@ export function TaskDetailPanel({
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const openAdjacentTask = useCallback(
+    (id: string) => {
+      setShowAnnotationEditor(false);
+      setLightboxOpen(false);
+      onOpenTask?.(id);
+    },
+    [onOpenTask]
+  );
+  const swipeNav = useMobileTaskSwipeNav({
+    enabled:
+      variant === "modal" &&
+      Boolean(onOpenTask) &&
+      !showAnnotationEditor &&
+      !lightboxOpen,
+    onSwipeLeft: nextTaskId ? () => openAdjacentTask(nextTaskId) : undefined,
+    onSwipeRight: prevTaskId ? () => openAdjacentTask(prevTaskId) : undefined,
+  });
   const [taskEditOpen, setTaskEditOpen] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [progressUpdateOpen, setProgressUpdateOpen] = useState(false);
@@ -1439,6 +1465,23 @@ export function TaskDetailPanel({
         </div>
       );
     }
+
+    const handleModalKeyDown = (event: React.KeyboardEvent) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      if (showAnnotationEditor || lightboxOpen) return;
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT" || target?.isContentEditable) return;
+      if (event.key === "ArrowLeft" && prevTaskId && onOpenTask) {
+        event.preventDefault();
+        openAdjacentTask(prevTaskId);
+      }
+      if (event.key === "ArrowRight" && nextTaskId && onOpenTask) {
+        event.preventDefault();
+        openAdjacentTask(nextTaskId);
+      }
+    };
+
     return (
       <Dialog
         open={true}
@@ -1455,10 +1498,11 @@ export function TaskDetailPanel({
         }}
       >
         <DialogContent
-          className="max-h-[90vh] overflow-hidden flex flex-col p-0 min-w-0"
+          className="max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0 min-w-0"
           aria-describedby="task-detail-panel-desc"
           // When true, Close is rendered in the hero toolbar beside edit-image.
           hideCloseButton={options?.hideCloseButton}
+          onKeyDown={handleModalKeyDown}
           onPointerDownOutside={(event) => {
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
             // Portaled menus (checklist •••, overflow) render outside DialogContent;
@@ -1466,7 +1510,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest('[data-radix-popper-content-wrapper]') ||
+              (t.closest("[data-task-nav]") ||
+                t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
                 t.closest('[data-radix-select-content]') ||
@@ -1480,7 +1525,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest('[data-radix-popper-content-wrapper]') ||
+              (t.closest("[data-task-nav]") ||
+                t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
                 t.closest('[data-radix-select-content]') ||
@@ -1494,7 +1540,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest('[data-radix-popper-content-wrapper]') ||
+              (t.closest("[data-task-nav]") ||
+                t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
                 t.closest('[data-radix-select-content]') ||
@@ -1510,13 +1557,25 @@ export function TaskDetailPanel({
             if (showAnnotationEditor || lightboxOpen) event.preventDefault();
           }}
         >
-          <DialogHeader className="sr-only">
+          <DialogHeader className="sr-only absolute">
             <DialogTitle>{title ?? "Task details"}</DialogTitle>
             <DialogDescription id="task-detail-panel-desc">
             Task detail: description, checklist, evidence, and timeline.
             </DialogDescription>
           </DialogHeader>
-          {content}
+          {onOpenTask && !showAnnotationEditor && !lightboxOpen ? (
+            <TaskModalNavChevrons
+              prevId={prevTaskId}
+              nextId={nextTaskId}
+              onOpenTask={openAdjacentTask}
+            />
+          ) : null}
+          <div
+            className="flex max-h-[90vh] min-h-0 w-full flex-col overflow-hidden rounded-xl lg:rounded-lg"
+            {...swipeNav}
+          >
+            {content}
+          </div>
         </DialogContent>
       </Dialog>
     );
@@ -1737,7 +1796,7 @@ export function TaskDetailPanel({
         ]}
       />
 
-      <div className="flex flex-col gap-1.5 px-4 pb-4 pt-2 text-foreground">
+      <div className="flex flex-col gap-1.5 px-4 pb-px pt-2 text-foreground">
         <TaskMessaging
           taskId={taskId}
           variant="chat"
@@ -2034,7 +2093,7 @@ export function TaskDetailPanel({
     {/* Image lightbox modal */}
     {lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null && createPortal(
       <div
-        className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
+        className="modal-scrim fixed inset-0 z-[9999] flex flex-col"
         role="dialog"
         aria-modal="true"
         aria-label="Image preview"
@@ -2347,7 +2406,7 @@ function ImageAnnotationEditorWrapper({
 
   if (loading && !hasShownEditorRef.current) {
     return (
-      <div className="fixed inset-0 z-[10000] flex flex-col bg-black/90 pointer-events-auto">
+      <div className="modal-scrim fixed inset-0 z-[10000] flex flex-col pointer-events-auto">
         <header className="flex items-center gap-2 border-b border-white/10 px-3 py-2.5">
           <button
             type="button"

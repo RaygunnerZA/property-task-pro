@@ -1,5 +1,6 @@
 import React from "react";
 import { RegionErrorFallback } from "@/components/errors/RegionErrorFallback";
+import { isLazyChunkFetchError } from "@/lib/lazyWithRetry";
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -34,6 +35,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   private handleRetry = () => {
+    // React.lazy caches a rejected import promise, so remounting never recovers
+    // after a Vite restart. Reload the page to fetch fresh chunks.
+    if (isLazyChunkFetchError(this.state.error)) {
+      window.location.reload();
+      return;
+    }
     this.props.onRetryReset?.();
     this.setState({ hasError: false, error: null });
   };

@@ -148,6 +148,7 @@ export default function ComplianceTasks() {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </div>

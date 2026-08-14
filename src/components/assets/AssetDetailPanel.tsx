@@ -812,7 +812,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
       {lightboxOpen && heroImages.length > 0
         ? createPortal(
             <div
-              className="fixed inset-0 z-[9999] flex flex-col bg-black/90"
+              className="modal-scrim fixed inset-0 z-[9999] flex flex-col"
               role="dialog"
               aria-modal="true"
               aria-label="Asset photo preview"

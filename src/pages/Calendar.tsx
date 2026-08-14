@@ -143,6 +143,7 @@ const Calendar = () => {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </StandardPage>

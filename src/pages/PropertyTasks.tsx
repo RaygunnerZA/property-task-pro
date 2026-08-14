@@ -131,6 +131,7 @@ export default function PropertyTasks() {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </StandardPageWithBack>

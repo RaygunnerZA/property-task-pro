@@ -27,7 +27,7 @@ export const DriftToTaskModal: React.FC<DriftToTaskModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="modal-scrim fixed inset-0 z-50 flex items-center justify-center p-4">
       <Surface variant="floating" className="w-full max-w-lg p-6">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-3">

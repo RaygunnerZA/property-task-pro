@@ -207,6 +207,7 @@ function CalendarPageContent() {
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           variant="column"
+          onOpenTask={setSelectedTaskId}
         />
       </div>
     ) : undefined;
@@ -282,6 +283,7 @@ function CalendarPageContent() {
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </>

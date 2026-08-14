@@ -1,3 +1,4 @@
+import type { DragEvent } from "react";
 import type { TempImage } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 
@@ -47,6 +48,52 @@ function nameClipboardImage(file: File, mimeType: string): File {
     type: file.type || mimeType || "image/png",
     lastModified: Date.now(),
   });
+}
+
+/** True when a drag payload includes files (needed to allow drop). */
+export function dataTransferHasFiles(data: DataTransfer | null | undefined): boolean {
+  if (!data) return false;
+  if (data.files && data.files.length > 0) return true;
+  return Array.from(data.types ?? []).some((t) => t === "Files" || t === "application/x-moz-file");
+}
+
+/** Files from a drop (images and other attachments). */
+export function dataTransferFiles(data: DataTransfer | null | undefined): File[] {
+  if (!data?.files?.length) return [];
+  return Array.from(data.files);
+}
+
+type FileDropBind = {
+  onDragEnter: (event: DragEvent) => void;
+  onDragOver: (event: DragEvent) => void;
+  onDrop: (event: DragEvent) => void;
+};
+
+/**
+ * Silent drop target — no visual chrome. Callers must not change layout/styling.
+ */
+export function fileDropBind(onFiles: (files: File[]) => void): FileDropBind {
+  const allow = (event: DragEvent) => {
+    if (!dataTransferHasFiles(event.dataTransfer)) return false;
+    event.preventDefault();
+    event.stopPropagation();
+    return true;
+  };
+
+  return {
+    onDragEnter: (event) => {
+      allow(event);
+    },
+    onDragOver: (event) => {
+      if (!allow(event)) return;
+      event.dataTransfer.dropEffect = "copy";
+    },
+    onDrop: (event) => {
+      if (!allow(event)) return;
+      const files = dataTransferFiles(event.dataTransfer);
+      if (files.length) onFiles(files);
+    },
+  };
 }
 
 type IngestArgs = {

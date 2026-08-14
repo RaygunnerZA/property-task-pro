@@ -19,7 +19,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
-import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
+import {
+  clipboardImageFiles,
+  fileDropBind,
+} from "@/utils/ingestIntakeMediaFiles";
 
 // Re-export for backwards compatibility
 export type SubtaskInput = SubtaskData;
@@ -39,7 +42,7 @@ interface SubtasksSectionProps {
   embedded?: boolean;
   description?: string;
   onDescriptionChange?: (description: string) => void;
-  /** When pasting an image into the description, parent adds it like Add Photo. */
+  /** When pasting or dropping a file into the description, parent adds it like Add Photo. */
   onPasteImages?: (files: File[]) => void;
   className?: string;
   templates?: ChecklistTemplate[];
@@ -240,7 +243,11 @@ export function SubtasksSection({
     >
       {/* Description Area */}
       {showDescription && (
-        <div className="pt-3 pb-3 bg-black/0 min-h-[80px]" style={{ paddingLeft: '15px', paddingRight: '15px' }}>
+        <div
+          className="pt-3 pb-3 bg-black/0 min-h-[80px]"
+          style={{ paddingLeft: '15px', paddingRight: '15px' }}
+          {...(onPasteImages ? fileDropBind(onPasteImages) : {})}
+        >
           <Textarea
             placeholder="What Needs Doing?"
             value={description}

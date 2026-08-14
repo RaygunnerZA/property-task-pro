@@ -211,6 +211,7 @@ const ManagerDashboard = () => {
           taskId={selectedTaskId}
           onClose={handleCloseTaskDetail}
           variant="modal"
+          onOpenTask={setSelectedTaskId}
         />
       )}
     </StandardPage>

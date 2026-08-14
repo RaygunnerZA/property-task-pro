@@ -235,6 +235,7 @@ export default function SpaceDetailPage() {
                       taskId={selectedTaskId}
                       onClose={() => setSelectedTaskId(null)}
                       variant="column"
+                      onOpenTask={setSelectedTaskId}
                     />
                   ),
                 },
@@ -517,7 +518,12 @@ export default function SpaceDetailPage() {
       )}
 
       {selectedTaskId && !isLargeScreen && (
-        <TaskDetailPanel taskId={selectedTaskId} onClose={() => setSelectedTaskId(null)} variant="modal" />
+        <TaskDetailPanel
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          variant="modal"
+          onOpenTask={setSelectedTaskId}
+        />
       )}
 
       <Dialog

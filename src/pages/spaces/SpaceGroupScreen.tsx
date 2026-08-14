@@ -161,6 +161,7 @@ export default function SpaceGroupScreen() {
                       taskId={selectedTaskId}
                       onClose={() => setSelectedTaskId(null)}
                       variant="column"
+                      onOpenTask={setSelectedTaskId}
                     />
                   ),
                 },

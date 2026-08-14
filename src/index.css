@@ -88,6 +88,8 @@
     /* Special Tokens */
     --concrete: 40 12% 88%;          /* Border gray */
     --ink: 248 15% 18%;              /* Text color */
+    /* Modal/sheet wash — Filla ink (purple), both themes. Not --ink in dark (that flips to cream). */
+    --modal-scrim: 248 32% 11%;
 
     /* Surface Gradient Tokens */
     --surface-gradient-from: 40 15% 95%;
@@ -409,8 +411,10 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
   }
   
-  /* Primary button shadow (border on default Button variant — allows border-0 overrides) */
+  /* Primary button shadow (border on default Button variant — allows border-0 overrides).
+     overflow:visible so outer neo shadows are not clipped by the button box. */
   .shadow-primary-btn {
+    overflow: visible;
     box-shadow:
       1.5px 2px 2px 0px rgba(0, 0, 0, 0.15),
       -2px -3px 5px 0px rgba(255, 255, 255, 0.48),
@@ -692,11 +696,62 @@
       inset 2px 2px 3px 0px rgba(255, 255, 255, 0.8),
       0 0 0 2px hsl(var(--primary) / 0.6);
   }
+
+  /* Task-detail prev/next — do not set position (callers use absolute). */
+  .task-modal-nav-chevron {
+    color: #fff;
+    background: transparent;
+    box-shadow:
+      -2px -2px 4px 0px rgba(0, 0, 0, 0.5),
+      2px 2px 4px 0px hsl(var(--primary) / 0.9),
+      inset -1px -1px 2px 0px hsl(var(--primary) / 0.75),
+      inset 1px 1px 2px 0px hsl(var(--primary) / 0.35);
+    transition: box-shadow 150ms ease-in;
+  }
+
+  .task-modal-nav-chevron:hover {
+    box-shadow:
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.5),
+      3px 3px 6px 0px hsl(var(--primary) / 1),
+      inset -2px -2px 3px 0px hsl(var(--primary) / 0.85),
+      inset 2px 2px 3px 0px hsl(var(--primary) / 0.45);
+  }
+
+  .task-modal-nav-chevron:focus-visible {
+    outline: none;
+    box-shadow:
+      -3px -3px 6px 0px rgba(0, 0, 0, 0.5),
+      3px 3px 6px 0px hsl(var(--primary) / 1),
+      inset -2px -2px 3px 0px hsl(var(--primary) / 0.85),
+      inset 2px 2px 3px 0px hsl(var(--primary) / 0.45),
+      0 0 0 2px hsl(var(--primary) / 0.7);
+  }
   
   /* Paper texture utility class - can be applied to any element */
   .bg-paper-texture {
     background-image: var(--paper-texture);
     background-size: 100%;
+  }
+
+  /* Translucent Filla-purple modal wash + film grain (replaces black/80).
+     Do not set position here — overlays use Tailwind `fixed`; `relative` in this
+     layer would override it and collapse the scrim to 0×0 (no colour). */
+  .modal-scrim {
+    isolation: isolate;
+    background-color: hsl(var(--modal-scrim) / 0.56);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .modal-scrim::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: var(--paper-texture);
+    background-size: 140px 140px;
+    opacity: 0.95;
+    mix-blend-mode: overlay;
   }
 
   /* Card backgrounds with texture - updated to use inline SVG */

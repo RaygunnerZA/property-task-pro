@@ -74,6 +74,7 @@ import { SemanticChip } from "@/components/chips/semantic";
 import { ImageUploadSection, type PendingTaskFile } from "@/components/tasks/create/ImageUploadSection";
 import {
   clipboardImageFiles,
+  fileDropBind,
   ingestIntakeMediaFiles,
 } from "@/utils/ingestIntakeMediaFiles";
 import {
@@ -546,14 +547,12 @@ export function IntakeModal({
     setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
   }, []);
 
-  /** Paste image from clipboard into the Add Photo panel (same path as file picker). */
-  const handleDescriptionPaste = useCallback(
-    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const pastedImages = clipboardImageFiles(event.clipboardData);
-      if (pastedImages.length === 0) return;
-      event.preventDefault();
+  /** Paste / drop into the description block (same path as Add Photo). */
+  const handleDescriptionMediaFiles = useCallback(
+    (incomingFiles: File[]) => {
+      if (incomingFiles.length === 0) return;
       void ingestIntakeMediaFiles({
-        incomingFiles: pastedImages,
+        incomingFiles,
         images: imagesRef.current,
         files: taskFilesRef.current,
         onImagesChange: setImages,
@@ -568,6 +567,22 @@ export function IntakeModal({
       });
     },
     [toast]
+  );
+
+  const descriptionDropBind = useMemo(
+    () => fileDropBind(handleDescriptionMediaFiles),
+    [handleDescriptionMediaFiles]
+  );
+
+  /** Paste image from clipboard into the Add Photo panel (same path as file picker). */
+  const handleDescriptionPaste = useCallback(
+    (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+      const pastedImages = clipboardImageFiles(event.clipboardData);
+      if (pastedImages.length === 0) return;
+      event.preventDefault();
+      handleDescriptionMediaFiles(pastedImages);
+    },
+    [handleDescriptionMediaFiles]
   );
 
   const handleAnalysisComplete = useCallback((localId: string, result: import("@/types/temp-image").ImageAnalysisResult) => {
@@ -4218,7 +4233,7 @@ export function IntakeModal({
                 )}
               </div>
             )}
-            <div className="rounded-lg bg-input shadow-engraved overflow-hidden">
+            <div className="rounded-lg bg-input shadow-engraved overflow-hidden" {...descriptionDropBind}>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}

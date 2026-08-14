@@ -2,6 +2,11 @@ import { format } from "date-fns";
 import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { inferCalendarType } from "@/lib/calendarTypes";
 import { parseScheduleDateTime } from "@/lib/calendarTaskSchedule";
+import {
+  defaultRepeatCalendarRange,
+  expandRepeatOccurrenceDateKeys,
+  getTaskRepeatRule,
+} from "@/lib/taskWhenNormalize";
 
 /** Calendar toolbar / workbench assignee scope for tasks, repeats, and milestones. */
 export type CalendarTaskScope = "all" | "mine" | "due";
@@ -45,18 +50,30 @@ function mergeUrgency(a: DayUrgency, b: DayUrgency): DayUrgency {
   return URGENCY_RANK[b] > URGENCY_RANK[a] ? b : a;
 }
 
+type CalendarTaskInput = {
+  due_date?: string | null;
+  due_at?: string | null;
+  status?: string | null;
+  priority?: string | null;
+  milestones?: Array<{ dateTime?: string }> | string | null;
+  repeat_rule?: unknown;
+  repeatRule?: unknown;
+  metadata?: unknown;
+};
+
 export function buildTasksByDate(
-  tasks: Array<{
-    due_date?: string | null;
-    due_at?: string | null;
-    status?: string | null;
-    priority?: string | null;
-    milestones?: Array<{ dateTime?: string }> | null;
-  }>
+  tasks: CalendarTaskInput[],
+  options?: {
+    rangeStart?: Date;
+    rangeEnd?: Date;
+  }
 ): Map<string, TaskDateData> {
   const map = new Map<string, TaskDateData>();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const defaultRange = defaultRepeatCalendarRange(today);
+  const rangeStart = options?.rangeStart ?? defaultRange.start;
+  const rangeEnd = options?.rangeEnd ?? defaultRange.end;
 
   const add = (dateValue: string, priority: string | null | undefined) => {
     try {
@@ -89,7 +106,14 @@ export function buildTasksByDate(
   tasks.forEach((task) => {
     if (task.status === "completed" || task.status === "archived") return;
     const due = task.due_date || task.due_at;
-    if (due) add(due, task.priority);
+    const rule = getTaskRepeatRule(task);
+
+    if (rule && due) {
+      const occurrenceKeys = expandRepeatOccurrenceDateKeys(due, rule, rangeStart, rangeEnd);
+      occurrenceKeys.forEach((key) => add(key, task.priority));
+    } else if (due) {
+      add(due, task.priority);
+    }
 
     let milestones = task.milestones as
       | Array<{ dateTime?: string }>
@@ -175,10 +199,19 @@ export function taskCalendarScheduleValues(task: {
   due_date?: string | null;
   due_at?: string | null;
   milestones?: unknown;
+  repeat_rule?: unknown;
+  repeatRule?: unknown;
+  metadata?: unknown;
 }): string[] {
   const values: string[] = [];
   const due = task.due_date || task.due_at;
-  if (due) values.push(String(due));
+  const rule = getTaskRepeatRule(task);
+  if (rule && due) {
+    const { start, end } = defaultRepeatCalendarRange();
+    values.push(...expandRepeatOccurrenceDateKeys(due, rule, start, end));
+  } else if (due) {
+    values.push(String(due));
+  }
 
   let milestones = task.milestones as
     | Array<{ dateTime?: string }>

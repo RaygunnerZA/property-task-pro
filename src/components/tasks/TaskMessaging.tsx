@@ -8,18 +8,30 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Send, Loader2, Upload, Image as ImageIcon, X, FileText, Download } from "lucide-react";
+import { Send, Loader2, Upload, Image as ImageIcon, X, FileText, Download, MoreHorizontal, Reply, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toErrorMessage } from "@/lib/error";
 import { format } from "date-fns";
-import { UserAvatar, TASK_CARD_META_CHIP_SIZE } from "@/components/tasks/UserAvatar";
+import { UserAvatar, APP_USER_AVATAR_SIZE } from "@/components/tasks/UserAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   memberAccentColor,
   userAvatarUrl,
   userDisplayName,
 } from "@/lib/userDisplayHelpers";
 import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
-import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
+import { clipboardImageFiles, fileDropBind } from "@/utils/ingestIntakeMediaFiles";
+import {
+  buildReplyPayload,
+  firstThreeLines,
+  parseMessageReplyTo,
+  type MessageReplyTo,
+} from "@/lib/taskMessageReply";
 
 const ENTER_SEND_HINT_KEY = "filla_task_message_enter_send_known";
 
@@ -103,6 +115,7 @@ export function TaskMessaging({
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
   const [showEnterHint, setShowEnterHint] = useState(true);
+  const [replyTo, setReplyTo] = useState<MessageReplyTo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -290,6 +303,7 @@ export function TaskMessaging({
               : ""),
           source: "web",
           direction: "outbound",
+          raw_payload: replyTo ? buildReplyPayload(replyTo) : null,
         } as any)
         .select("id")
         .single();
@@ -366,6 +380,7 @@ export function TaskMessaging({
 
       setMessageText("");
       setAttachments([]);
+      setReplyTo(null);
       await refresh();
       markTaskCommentSeen(taskId);
       void queryClient.invalidateQueries({ queryKey: ["task-comment-signals", orgId] });
@@ -383,6 +398,43 @@ export function TaskMessaging({
     }
   };
 
+  const beginReply = (target: MessageReplyTo) => {
+    setReplyTo(target);
+    requestAnimationFrame(() => {
+      const el = composeRef.current;
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+      el.focus({ preventScroll: true });
+    });
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    if (!userId) return;
+    try {
+      await supabase.from("attachments").delete().eq("parent_type", "message").eq("parent_id", messageId);
+      const { error: delError } = await supabase
+        .from("messages")
+        .delete()
+        .eq("id", messageId)
+        .eq("author_user_id", userId);
+
+      if (delError) throw delError;
+
+      if (replyTo?.id === messageId) setReplyTo(null);
+      toast({ title: "Message deleted" });
+      await refresh();
+      void queryClient.invalidateQueries({ queryKey: ["task-comment-signals", orgId] });
+      void queryClient.invalidateQueries({ queryKey: ["task-comment-count", taskId] });
+      void queryClient.invalidateQueries({ queryKey: ["task-audit-log", orgId, taskId] });
+    } catch (err: unknown) {
+      toast({
+        title: "Couldn't delete",
+        description: toErrorMessage(err, "You can only delete your own messages."),
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -394,8 +446,9 @@ export function TaskMessaging({
     if (attachments.length > 0) {
       return "Add a caption (optional)";
     }
+    if (replyTo) return "Write a reply…";
     return "Write a message…";
-  }, [attachments.length]);
+  }, [attachments.length, replyTo]);
 
   if (error) {
     return (
@@ -441,7 +494,11 @@ export function TaskMessaging({
   }
 
   return (
-    <div id="task-detail-comment" className="flex flex-col gap-2.5">
+    <div
+      id="task-detail-comment"
+      className="flex flex-col gap-2.5"
+      {...(hideComposer ? {} : fileDropBind((files) => handleFileSelect(files, false)))}
+    >
       <div
         data-messages-scroller
         className={cn(
@@ -465,28 +522,48 @@ export function TaskMessaging({
               userId
             );
             const sentAt = format(new Date(message.created_at), "d MMM · HH:mm");
+            const quoted = parseMessageReplyTo(message.raw_payload);
+            const moreMenu = (
+              <MessageMoreMenu
+                canDelete={isOwnMessage}
+                onReply={() =>
+                  beginReply({
+                    id: message.id,
+                    author_name: author.name,
+                    excerpt: firstThreeLines(message.body || ""),
+                  })
+                }
+                onDelete={() => void handleDeleteMessage(message.id)}
+              />
+            );
 
             return (
               <div
                 key={message.id}
                 className={cn(
-                  "flex min-w-0 gap-2",
-                  isOwnMessage
-                    ? "ml-auto max-w-[min(92%,calc(100%-1.75rem))] flex-row-reverse"
-                    : "mr-auto max-w-[92%]"
+                  "group flex w-full min-w-0 items-start gap-2",
+                  isOwnMessage && "flex-row-reverse"
                 )}
               >
-                <UserAvatar
-                  imageUrl={author.imageUrl}
-                  name={author.name}
-                  propertyColor={author.accentColor}
-                  size={TASK_CARD_META_CHIP_SIZE}
-                  shape="card"
-                  className="mt-0.5 shrink-0"
-                />
                 <div
                   className={cn(
-                    "min-w-0 space-y-1",
+                    "flex w-8 shrink-0 flex-col items-center",
+                    isOwnMessage && "gap-1"
+                  )}
+                >
+                  <UserAvatar
+                    imageUrl={author.imageUrl}
+                    name={author.name}
+                    propertyColor={author.accentColor}
+                    size={APP_USER_AVATAR_SIZE}
+                    shape="card"
+                    className="mt-0.5 shrink-0"
+                  />
+                  {isOwnMessage ? moreMenu : null}
+                </div>
+                <div
+                  className={cn(
+                    "min-w-0 max-w-[min(92%,calc(100%-5.5rem))] space-y-1",
                     isOwnMessage ? "items-end text-right" : "items-start text-left"
                   )}
                 >
@@ -502,17 +579,37 @@ export function TaskMessaging({
                   </p>
                   <div
                     className={cn(
-                      "rounded-[10px] px-3 py-2 text-left shadow-e1",
+                      "flex items-start gap-2",
+                      isOwnMessage && "justify-end"
+                    )}
+                  >
+                  <div
+                    className={cn(
+                      "min-w-0 rounded-[10px] px-3 py-2 text-left shadow-e1",
                       isOwnMessage
                         ? "bg-primary text-primary-foreground"
                         : "bg-input text-foreground"
                     )}
                   >
+                    {quoted ? (
+                      <MessageQuote
+                        authorName={quoted.author_name}
+                        excerpt={quoted.excerpt}
+                        tone={isOwnMessage ? "own" : "other"}
+                      />
+                    ) : null}
                     {message.body ? (
-                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.body}</p>
+                      <p
+                        className={cn(
+                          "text-sm whitespace-pre-wrap leading-relaxed",
+                          quoted && "mt-1.5"
+                        )}
+                      >
+                        {message.body}
+                      </p>
                     ) : null}
                     {messageAtts.length > 0 ? (
-                      <div className={cn("space-y-2", message.body && "mt-2")}>
+                      <div className={cn("space-y-2", (message.body || quoted) && "mt-2")}>
                         {messageAtts.map((attachment) => {
                           const isImage = attachment.file_type?.startsWith("image/");
                           return (
@@ -555,6 +652,10 @@ export function TaskMessaging({
                         })}
                       </div>
                     ) : null}
+                  </div>
+                  {!isOwnMessage ? (
+                    <div className="shrink-0">{moreMenu}</div>
+                  ) : null}
                   </div>
                 </div>
               </div>
@@ -611,6 +712,24 @@ export function TaskMessaging({
             </div>
 
             <div className="min-w-0 flex-1 space-y-1.5">
+              {replyTo ? (
+                <div className="relative pr-6">
+                  <MessageQuote
+                    authorName={replyTo.author_name}
+                    excerpt={replyTo.excerpt}
+                    tone="composer"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setReplyTo(null)}
+                    className="absolute right-0 top-1 rounded p-0.5 text-muted-foreground hover:bg-background/80 hover:text-foreground"
+                    aria-label="Cancel reply"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ) : null}
+
               {attachments.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {attachments.map((attachment) => (
@@ -696,5 +815,83 @@ export function TaskMessaging({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function MessageQuote({
+  authorName,
+  excerpt,
+  tone,
+}: {
+  authorName: string;
+  excerpt: string;
+  tone: "own" | "other" | "composer";
+}) {
+  return (
+    <div
+      className={cn(
+        "rounded-md border-l-2 px-2 py-1.5",
+        tone === "own" && "border-primary-foreground/45 bg-black/10 text-primary-foreground/90",
+        tone === "other" && "border-primary/70 bg-background/60 text-muted-foreground",
+        tone === "composer" && "border-primary/70 bg-muted/50 text-muted-foreground shadow-engraved"
+      )}
+    >
+      <p className="text-2xs font-medium opacity-80">{authorName}</p>
+      <p className="mt-0.5 line-clamp-3 whitespace-pre-wrap text-xs leading-snug opacity-90">
+        {excerpt || "Attachment"}
+      </p>
+    </div>
+  );
+}
+
+function MessageMoreMenu({
+  canDelete,
+  onReply,
+  onDelete,
+}: {
+  canDelete: boolean;
+  onReply: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label="Message actions"
+          className={cn(
+            "inline-flex h-8 w-8 items-center justify-center rounded-card text-muted-foreground",
+            "opacity-0 transition-opacity duration-150",
+            "hover:bg-muted/60 hover:shadow-e1",
+            "group-hover:opacity-100 group-focus-within:opacity-100",
+            "data-[state=open]:opacity-100 data-[state=open]:bg-muted/60",
+            "focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            "[@media(hover:none)]:opacity-100"
+          )}
+        >
+          <MoreHorizontal className="h-4 w-4" aria-hidden />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        side="bottom"
+        className="z-[130] min-w-[10.5rem] border-0 bg-card shadow-e2 data-[state=closed]:animate-none"
+        onCloseAutoFocus={(e) => e.preventDefault()}
+      >
+        <DropdownMenuItem className="gap-2 text-sm" onSelect={onReply}>
+          <Reply className="h-4 w-4" />
+          Reply
+        </DropdownMenuItem>
+        {canDelete ? (
+          <DropdownMenuItem
+            className="gap-2 text-sm text-destructive focus:text-destructive"
+            onSelect={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

@@ -20,6 +20,7 @@ import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
+import { lazyWithRetry } from "@/lib/lazyWithRetry";
 // Onboarding wizard — eager imports so step-to-step navigation never hits a lazy chunk fetch failure.
 import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
@@ -120,14 +121,14 @@ const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"
 const ContractorTask = lazy(() => import("./pages/contractor/ContractorTask"));
 
 // Settings pages
-const SettingsLayout = lazy(() => import("./pages/settings/SettingsLayout").then(module => ({ default: module.SettingsLayout })));
-const SettingsGeneral = lazy(() => import("./pages/settings/SettingsGeneral"));
-const SettingsAutomationPanel = lazy(() => import("./pages/settings/SettingsAutomationPanel"));
-const SettingsTeam = lazy(() => import("./pages/settings/SettingsTeam"));
-const SettingsBilling = lazy(() => import("./pages/settings/SettingsBilling"));
-const SettingsProfile = lazy(() => import("./pages/settings/SettingsProfile"));
-const SettingsIntegrations = lazy(() => import("./pages/settings/SettingsIntegrations"));
-const SettingsTrash = lazy(() => import("./pages/settings/SettingsTrash"));
+const SettingsLayout = lazyWithRetry(() => import("./pages/settings/SettingsLayout").then(module => ({ default: module.SettingsLayout })));
+const SettingsGeneral = lazyWithRetry(() => import("./pages/settings/SettingsGeneral"));
+const SettingsAutomationPanel = lazyWithRetry(() => import("./pages/settings/SettingsAutomationPanel"));
+const SettingsTeam = lazyWithRetry(() => import("./pages/settings/SettingsTeam"));
+const SettingsBilling = lazyWithRetry(() => import("./pages/settings/SettingsBilling"));
+const SettingsProfile = lazyWithRetry(() => import("./pages/settings/SettingsProfile"));
+const SettingsIntegrations = lazyWithRetry(() => import("./pages/settings/SettingsIntegrations"));
+const SettingsTrash = lazyWithRetry(() => import("./pages/settings/SettingsTrash"));
 const DebugData = lazy(() => import("./pages/DebugData"));
 
 // Admin panel (lazy, guarded by AdminLayout)
