@@ -85,7 +85,7 @@ export function SortBar({
         aria-label={expanded ? "Sort — collapse options" : "Sort — open options"}
         title="Sort"
         className={cn(
-          "inline-flex items-center justify-start gap-1.5 py-1 pl-2 pr-2.5 rounded-[8px] flex-shrink-0 overflow-hidden h-6",
+          "inline-flex items-center justify-start gap-1.5 py-1 pl-2 pr-2.5 rounded-[8px] flex-shrink-0 overflow-hidden h-[28px]",
           "font-mono text-2xs uppercase tracking-wide",
           "select-none cursor-pointer",
           "bg-background",
@@ -107,7 +107,7 @@ export function SortBar({
               label={option.label}
               selected={sortBy === option.id}
               onSelect={() => handleSelect(option.id)}
-              className="h-[24px] !duration-300 ease-out"
+              className="!duration-300 ease-out"
             />
           ))}
         </div>

@@ -17,6 +17,7 @@ import { useIdentityMode } from "@/hooks/useIdentityMode";
 import { useAuth } from "@/hooks/useAuth";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
+import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
 import {
   isOnboardingDemoTask,
   propertyHasOnboardingDemoContent,
@@ -57,7 +58,7 @@ function AttentionPanelHeader() {
   return (
     <header className="flex items-start justify-between gap-3 px-0.5">
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">Attention</h1>
+        <h1 className={workbenchSectionTitleClassName}>Attention</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Everything that needs your attention, in one place.
         </p>

@@ -413,7 +413,6 @@ export function InviteUserForm({
       <Button
         onClick={handleSubmit}
         disabled={!canSubmit || isSubmitting}
-        className="shadow-e1 bg-primary hover:bg-primary/90"
       >
         {isSubmitting ? (
           <>

@@ -11,14 +11,19 @@ type CentreWorkbenchTabStripProps = {
   className?: string;
 };
 
-const ACTIVE_PHONE_SHADOW = "inset 0 2px 6px rgba(255, 255, 255, 0.35)";
-const ACTIVE_DESKTOP_SHADOW = "inset 0 4px 12px rgba(255, 255, 255, 0.27)";
+/** Pressed tab: bright inner highlight (bottom/right) + thin outer lip (top/left). */
+const ACTIVE_TAB_SHADOW = [
+  "-1px -1px 1px rgba(0, 0, 0, 0.05)",
+  "inset -1px -1px 2px 0px rgba(255, 255, 255, 0.90)",
+  "inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)",
+].join(", ");
 
 /**
  * Three-tab strip for the centre work column — Inflow · Tasks · Calendar.
  *
  * Phone (&lt; md): compact horizontal bar — icon left of title, equal-width tabs.
- * Desktop (md+): tall illustrated tabs — icon above title.
+ * Desktop (md+): illustrated tabs — icon above title.
+ * The perforation lives in CentreWorkbench so it can align to the property-image column.
  */
 export function CentreWorkbenchTabStrip({
   activeTab,
@@ -28,8 +33,8 @@ export function CentreWorkbenchTabStrip({
   return (
     <div
       className={cn(
-        "flex w-full min-w-0 max-w-full items-stretch justify-stretch gap-1 rounded-none border-b-2 border-white/50 bg-white/35 px-1.5 py-1.5",
-        "md:h-[160px] md:items-start md:justify-start md:px-2 md:pb-0 md:pt-0",
+        "relative flex w-full min-w-0 max-w-full items-stretch justify-stretch gap-1 rounded-none px-1.5 py-1.5",
+        "md:-ml-[10px] md:h-[142px] md:items-start md:justify-start md:px-2 md:py-0",
         className
       )}
       role="tablist"
@@ -47,25 +52,13 @@ export function CentreWorkbenchTabStrip({
             onClick={() => onTabChange(tabId)}
             className={cn(
               "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-xl px-2 py-2 transition-all duration-200",
-              "hover:scale-[1.01] active:scale-[0.99]",
-              "md:h-[160px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-2 md:rounded-t-xl md:rounded-b-none md:px-2 md:pb-2 md:pt-[25px]",
-              isActive && "bg-white/50"
+              "md:h-[142px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-2 md:px-2 md:pb-[22px] md:pt-3",
+              isActive
+                ? "bg-black/[0.04]"
+                : "hover:scale-[1.01] active:scale-[0.99]"
             )}
+            style={isActive ? { boxShadow: ACTIVE_TAB_SHADOW } : undefined}
           >
-            {isActive ? (
-              <>
-                <span
-                  className="pointer-events-none absolute inset-0 rounded-[inherit] md:hidden"
-                  style={{ boxShadow: ACTIVE_PHONE_SHADOW }}
-                  aria-hidden
-                />
-                <span
-                  className="pointer-events-none absolute inset-0 hidden rounded-[inherit] md:block"
-                  style={{ boxShadow: ACTIVE_DESKTOP_SHADOW }}
-                  aria-hidden
-                />
-              </>
-            ) : null}
             <img
               src={meta.illustrationSrc}
               alt=""

@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -14,9 +14,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Camera, Upload, X } from "lucide-react";
+import { Camera, ChevronDown, Pencil, Upload, X } from "lucide-react";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
+import { getAssetIcon } from "@/lib/icon-resolver";
+import {
+  defaultColorForAssetType,
+  defaultIconsForAssetType,
+} from "@/lib/assetIconDefaults";
+import { cn } from "@/lib/utils";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
 
@@ -58,11 +64,15 @@ export interface AddAssetWorkspaceFormProps {
   onConditionScoreChange: (v: string) => void;
   iconName: string;
   onIconChange: (icon: string) => void;
+  iconColor: string;
+  onIconColorChange: (color: string) => void;
   isSaving: boolean;
   onSave: () => void;
   onCancel?: () => void;
   /** Wide rail only — reset fields without closing */
   onRailReset?: () => void;
+  /** Property is already chosen by page scope — hide the property field. */
+  lockProperty?: boolean;
 }
 
 function idFor(base: string, variant: AddAssetFormVariant) {
@@ -96,14 +106,32 @@ export function AddAssetWorkspaceForm({
   onConditionScoreChange,
   iconName,
   onIconChange,
+  iconColor,
+  onIconColorChange,
   isSaving,
   onSave,
   onCancel,
   onRailReset,
+  lockProperty = false,
 }: AddAssetWorkspaceFormProps) {
   const I = (b: string) => idFor(b, variant);
+  const [detailsOpen, setDetailsOpen] = useState(!lockProperty && !propertyId);
+  const [iconEditOpen, setIconEditOpen] = useState(false);
+  const Icon = getAssetIcon(iconName || "package");
+  const defaultIcons = defaultIconsForAssetType(type);
 
-  /** Match Report Issue / `ImageUploadSection` icon-only capture + upload controls */
+  useEffect(() => {
+    if (lockProperty) return;
+    if (!propertyId) setDetailsOpen(true);
+  }, [lockProperty, propertyId]);
+
+  const handleTypeChange = (next: string) => {
+    onTypeChange(next);
+    onIconColorChange(defaultColorForAssetType(next));
+    const first = defaultIconsForAssetType(next)[0];
+    if (first && !name.trim()) onIconChange(first);
+  };
+
   const uploadButtons = (
     <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
       <button
@@ -163,96 +191,48 @@ export function AddAssetWorkspaceForm({
       </div>
     ) : null;
 
-  const fields = (
-    <div className="space-y-4 py-1">
-      <div className="space-y-2">
-        <Label htmlFor={I("asset-name")}>Name *</Label>
-        <NeomorphicInput
-          id={I("asset-name")}
-          placeholder="e.g., Main Boiler"
-          value={name}
-          onChange={(e) => onNameChange(e.target.value)}
-          required
-        />
+  const actionBar = (
+    variant === "dialog" ? (
+      <DialogFooter>
+        <Button
+          variant="outline"
+          type="button"
+          onClick={onCancel}
+          disabled={isSaving}
+          className="shadow-e1"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          onClick={onSave}
+          disabled={isSaving || !propertyId || !name.trim()}
+        >
+          {isSaving ? "Saving…" : "Save Asset"}
+        </Button>
+      </DialogFooter>
+    ) : (
+      <div className="sticky bottom-0 z-10 mt-3 flex flex-wrap justify-end gap-2 border-t border-border/30 bg-card/90 pt-2 backdrop-blur-[2px]">
+        {onRailReset ? (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRailReset}
+            disabled={isSaving}
+            className="shadow-e1"
+          >
+            Clear
+          </Button>
+        ) : null}
+        <Button
+          type="button"
+          onClick={onSave}
+          disabled={isSaving || !propertyId || !name.trim()}
+        >
+          {isSaving ? "Saving…" : "Save Asset"}
+        </Button>
       </div>
-      <div className="space-y-2">
-        <Label htmlFor={I("asset-type")}>Type</Label>
-        <Select value={type} onValueChange={onTypeChange}>
-          <SelectTrigger id={I("asset-type")} className="input-neomorphic">
-            <SelectValue placeholder="Select asset type" />
-          </SelectTrigger>
-          <SelectContent>
-            {ASSET_TYPES.map((assetType) => (
-              <SelectItem key={assetType} value={assetType}>
-                {assetType}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={I("asset-serial")}>Serial Number</Label>
-        <NeomorphicInput
-          id={I("asset-serial")}
-          placeholder="e.g., ABC123456"
-          value={serial}
-          onChange={(e) => onSerialChange(e.target.value)}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor={I("asset-property")}>Property *</Label>
-        <Select value={propertyId} onValueChange={onPropertyChange}>
-          <SelectTrigger id={I("asset-property")} className="input-neomorphic">
-            <SelectValue placeholder="Select a property" />
-          </SelectTrigger>
-          <SelectContent>
-            {properties.map((property) => (
-              <SelectItem key={property.id} value={property.id}>
-                {property.address}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      {propertyId && (
-        <div className="space-y-2">
-          <Label htmlFor={I("asset-space")}>Space (Optional)</Label>
-          <Select value={spaceId || "none"} onValueChange={onSpaceChange}>
-            <SelectTrigger id={I("asset-space")} className="input-neomorphic">
-              <SelectValue placeholder="Select a space (optional)" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {formSpaces.map((space) => (
-                <SelectItem key={space.id} value={space.id}>
-                  {space.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      )}
-      <div className="space-y-2">
-        <Label htmlFor={I("asset-condition")}>Condition Score (0-100)</Label>
-        <NeomorphicInput
-          id={I("asset-condition")}
-          type="number"
-          min={0}
-          max={100}
-          placeholder="100"
-          value={conditionScore}
-          onChange={(e) => onConditionScoreChange(e.target.value)}
-        />
-      </div>
-      <AIIconColorPicker
-        searchText={[name, type].filter(Boolean).join(" ").trim()}
-        value={{ iconName, color: "#8EC9CE" }}
-        onChange={(iname) => onIconChange(iname)}
-        defaultIcons={["package", "box", "wrench", "plug", "cpu"]}
-        fallbackSearch="asset"
-        disabled={isSaving}
-      />
-    </div>
+    )
   );
 
   return (
@@ -287,8 +267,8 @@ export function AddAssetWorkspaceForm({
         <>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h3 className="text-base font-semibold text-foreground tracking-tight">Add Asset</h3>
-              <p className="text-xs text-muted-foreground mt-1">
+              <h3 className="text-base font-semibold tracking-tight text-foreground">Add Asset</h3>
+              <p className="mt-1 text-xs text-muted-foreground">
                 Register a new asset in your property registry
               </p>
             </div>
@@ -298,49 +278,143 @@ export function AddAssetWorkspaceForm({
         </>
       )}
 
-      {fields}
-
-      {variant === "dialog" ? (
-        <DialogFooter>
-          <Button
-            variant="outline"
-            type="button"
-            onClick={onCancel}
-            disabled={isSaving}
-            className="shadow-e1"
-          >
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving || !propertyId || !name.trim()}
-          >
-            {isSaving ? "Saving…" : "Save Asset"}
-          </Button>
-        </DialogFooter>
-      ) : (
-        <div className="flex flex-wrap justify-end gap-2 pt-2 border-t border-border/30 mt-4">
-          {onRailReset ? (
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onRailReset}
-              disabled={isSaving}
-              className="shadow-e1"
-            >
-              Clear form
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={onSave}
-            disabled={isSaving || !propertyId || !name.trim()}
-          >
-            {isSaving ? "Saving…" : "Save Asset"}
-          </Button>
+      <div className="space-y-3 py-1">
+        <div className="space-y-2">
+          <Label htmlFor={I("asset-name")}>Name *</Label>
+          <NeomorphicInput
+            id={I("asset-name")}
+            placeholder="e.g., Main Boiler"
+            value={name}
+            onChange={(e) => onNameChange(e.target.value)}
+            required
+          />
         </div>
-      )}
+
+        <div className="flex items-center gap-2">
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card shadow-e1"
+            style={{ backgroundColor: iconColor || "#96CEB4" }}
+            aria-hidden
+          >
+            <Icon className="h-4 w-4 text-white" />
+          </span>
+          <button
+            type="button"
+            onClick={() => setIconEditOpen((open) => !open)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-2xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            aria-expanded={iconEditOpen}
+          >
+            <Pencil className="h-3 w-3" aria-hidden />
+            Edit
+          </button>
+        </div>
+
+        <div className={cn(!iconEditOpen && "hidden")}>
+          <AIIconColorPicker
+            searchText={[name, type].filter(Boolean).join(" ").trim()}
+            value={{ iconName, color: iconColor }}
+            onChange={(iname, color) => {
+              onIconChange(iname);
+              onIconColorChange(color);
+            }}
+            defaultIcons={defaultIcons}
+            fallbackSearch={type || "asset"}
+            disabled={isSaving}
+            showLabels={false}
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setDetailsOpen((open) => !open)}
+          className="inline-flex items-center gap-1 rounded-md py-0.5 text-xs font-medium text-muted-foreground hover:text-foreground"
+          aria-expanded={detailsOpen}
+        >
+          <ChevronDown
+            className={cn("h-3.5 w-3.5 transition-transform", detailsOpen && "rotate-180")}
+            aria-hidden
+          />
+          More
+        </button>
+
+        {detailsOpen ? (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor={I("asset-type")}>Type</Label>
+              <Select value={type} onValueChange={handleTypeChange}>
+                <SelectTrigger id={I("asset-type")} className="input-neomorphic">
+                  <SelectValue placeholder="Select asset type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ASSET_TYPES.map((assetType) => (
+                    <SelectItem key={assetType} value={assetType}>
+                      {assetType}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor={I("asset-serial")}>Serial Number</Label>
+              <NeomorphicInput
+                id={I("asset-serial")}
+                placeholder="e.g., ABC123456"
+                value={serial}
+                onChange={(e) => onSerialChange(e.target.value)}
+              />
+            </div>
+            {!lockProperty ? (
+              <div className="space-y-2">
+                <Label htmlFor={I("asset-property")}>Property *</Label>
+                <Select value={propertyId} onValueChange={onPropertyChange}>
+                  <SelectTrigger id={I("asset-property")} className="input-neomorphic">
+                    <SelectValue placeholder="Select a property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((property) => (
+                      <SelectItem key={property.id} value={property.id}>
+                        {property.address}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            {propertyId ? (
+              <div className="space-y-2">
+                <Label htmlFor={I("asset-space")}>Space (Optional)</Label>
+                <Select value={spaceId || "none"} onValueChange={onSpaceChange}>
+                  <SelectTrigger id={I("asset-space")} className="input-neomorphic">
+                    <SelectValue placeholder="Select a space (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {formSpaces.map((space) => (
+                      <SelectItem key={space.id} value={space.id}>
+                        {space.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <div className="space-y-2">
+              <Label htmlFor={I("asset-condition")}>Condition Score (0-100)</Label>
+              <NeomorphicInput
+                id={I("asset-condition")}
+                type="number"
+                min={0}
+                max={100}
+                placeholder="100"
+                value={conditionScore}
+                onChange={(e) => onConditionScoreChange(e.target.value)}
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {actionBar}
     </>
   );
 }

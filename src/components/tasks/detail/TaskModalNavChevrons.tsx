@@ -7,7 +7,11 @@ import { dialogContentClass } from "@/lib/layoutClasses";
 type TaskModalNavChevronsProps = {
   prevId: string | null;
   nextId: string | null;
-  onOpenTask: (taskId: string) => void;
+  onOpen: (id: string) => void;
+  /** @deprecated Use onOpen */
+  onOpenTask?: (taskId: string) => void;
+  prevLabel?: string;
+  nextLabel?: string;
 };
 
 const chevronClass =
@@ -21,12 +25,15 @@ const chevronClass =
 export function TaskModalNavChevrons({
   prevId,
   nextId,
+  onOpen,
   onOpenTask,
+  prevLabel = "Previous",
+  nextLabel = "Next",
 }: TaskModalNavChevronsProps) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
-
-  if (!mounted || (!prevId && !nextId)) return null;
+  const open = onOpen ?? onOpenTask;
+  if (!mounted || !open || (!prevId && !nextId)) return null;
 
   return createPortal(
     <div
@@ -37,10 +44,11 @@ export function TaskModalNavChevrons({
         {prevId ? (
           <button
             type="button"
+            data-modal-nav
             data-task-nav
-            aria-label="Previous task"
+            aria-label={prevLabel}
             className={cn(chevronClass, "absolute right-full top-1/2 mr-[22px] -translate-y-1/2")}
-            onClick={() => onOpenTask(prevId)}
+            onClick={() => open(prevId)}
           >
             <ChevronLeft className="h-6 w-6 text-white" strokeWidth={2.25} aria-hidden />
           </button>
@@ -48,10 +56,11 @@ export function TaskModalNavChevrons({
         {nextId ? (
           <button
             type="button"
+            data-modal-nav
             data-task-nav
-            aria-label="Next task"
+            aria-label={nextLabel}
             className={cn(chevronClass, "absolute left-full top-1/2 ml-[22px] -translate-y-1/2")}
-            onClick={() => onOpenTask(nextId)}
+            onClick={() => open(nextId)}
           >
             <ChevronRight className="h-6 w-6 text-white" strokeWidth={2.25} aria-hidden />
           </button>

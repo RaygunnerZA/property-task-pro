@@ -8,7 +8,7 @@
  * Rules: fact+entry invalid, compact+entry invalid.
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronDown, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -78,6 +78,24 @@ export function SemanticChip({
 }: SemanticChipProps) {
   const TRANSFER_COLLAPSE_MS = 260;
   const [isPressed, setIsPressed] = useState(false);
+  const chipRef = useRef<HTMLElement | null>(null);
+  const [useLightText, setUseLightText] = useState(false);
+
+  // Custom-coloured chips (often CSS vars we can't parse statically): read the
+  // resolved background and flip to white text when it's dark enough.
+  useLayoutEffect(() => {
+    if (!color) {
+      setUseLightText(false);
+      return;
+    }
+    const el = chipRef.current;
+    if (!el) return;
+    const bg = getComputedStyle(el).backgroundColor;
+    const m = bg.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+    if (!m) return;
+    const yiq = (Number(m[1]) * 299 + Number(m[2]) * 587 + Number(m[3]) * 114) / 1000;
+    setUseLightText(yiq < 186);
+  }, [color]);
   const [isTransferCollapsing, setIsTransferCollapsing] = useState(false);
   const firedOnPointerDown = useRef(false);
   const transferTimeoutRef = useRef<number | null>(null);
@@ -187,6 +205,7 @@ export function SemanticChip({
     animateIn && "origin-left animate-[fade-slide-in_280ms_ease-out]",
     isTransferCollapsing &&
       "absolute z-10 origin-left pointer-events-none animate-[chip-collapse-x_260ms_cubic-bezier(0.22,1,0.36,1)_forwards]",
+    useLightText && "text-white",
     className
   );
 
@@ -260,7 +279,12 @@ export function SemanticChip({
       )}
       {dropdown && (
         <span className="flex w-[12px] items-center justify-end flex-shrink-0">
-          <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground group-data-[state=open]:rotate-180 transition-transform duration-150" />
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 flex-shrink-0 group-data-[state=open]:rotate-180 transition-transform duration-150",
+              useLightText ? "text-white/80" : "text-muted-foreground"
+            )}
+          />
         </span>
       )}
     </>
@@ -268,7 +292,11 @@ export function SemanticChip({
 
   if (interaction === "entry") {
     return (
-      <span className={baseStyles} style={color ? { backgroundColor: color } : undefined}>
+      <span
+        ref={chipRef as React.Ref<HTMLSpanElement>}
+        className={baseStyles}
+        style={color ? { backgroundColor: color } : undefined}
+      >
         {content}
       </span>
     );
@@ -279,6 +307,7 @@ export function SemanticChip({
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
         <DropdownMenuTrigger asChild>
           <button
+            ref={chipRef as React.Ref<HTMLButtonElement>}
             type="button"
             className={baseStyles}
             style={color ? { backgroundColor: color } : undefined}
@@ -306,6 +335,7 @@ export function SemanticChip({
   const Wrapper = onPress ? "button" : "span";
   return (
     <Wrapper
+      ref={chipRef as React.Ref<never>}
       type={onPress ? "button" : undefined}
       onClick={onPress ? handleClick : undefined}
       onPointerDown={onPress ? handlePointerDown : undefined}

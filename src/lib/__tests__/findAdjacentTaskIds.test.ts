@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
+import { findAdjacentIdsInOrder, findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
 
 const rows = [
   { id: "newest", created_at: "2026-08-14T09:00:00.000Z" },
@@ -33,6 +33,22 @@ describe("findAdjacentTaskIds", () => {
     expect(findAdjacentTaskIds(rows, "missing")).toEqual({
       prevId: null,
       nextId: null,
+    });
+  });
+});
+
+describe("findAdjacentIdsInOrder", () => {
+  it("follows list order without re-sorting", () => {
+    expect(findAdjacentIdsInOrder(["a", "b", "c"], "b")).toEqual({
+      prevId: "a",
+      nextId: "c",
+    });
+  });
+
+  it("hides prev on the first item", () => {
+    expect(findAdjacentIdsInOrder(["a", "b"], "a")).toEqual({
+      prevId: null,
+      nextId: "b",
     });
   });
 });

@@ -224,14 +224,14 @@ export default function SpaceGroupScreen() {
         }
         rightColumn={
           <div className="min-h-screen bg-background overflow-y-auto">
-            <div className="px-[15px] pt-[15px]">
+            <div className="px-gutter-page pt-gutter-page">
               <PageContentTitle
                 title={group.label}
                 subtitle={property?.nickname || property?.address || "Add spaces"}
               />
             </div>
             {propertyId && groupSlug && group?.color && (
-              <div className="px-[15px]">
+              <div className="px-gutter-page">
                 <SpaceGroupMiniCardsStrip
                   propertyId={propertyId}
                   groupSlug={groupSlug}
@@ -243,7 +243,7 @@ export default function SpaceGroupScreen() {
               </div>
             )}
 
-            <div className="p-[15px] space-y-6">
+            <div className="p-gutter-page space-y-6">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">Add spaces</h2>
                 {!isLargeScreen && (

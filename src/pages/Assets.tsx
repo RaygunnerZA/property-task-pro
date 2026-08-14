@@ -8,7 +8,9 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { AssetCard } from "@/components/assets/AssetCard";
 import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
-import { AssetsSummaryRow } from "@/components/assets/AssetsSummaryRow";
+import { AssetsSummaryRow, type AssetMetricKey } from "@/components/assets/AssetsSummaryRow";
+import { AssetsContextIntro } from "@/components/assets/AssetsContextIntro";
+import { AssetLinkedTasksList } from "@/components/assets/AssetLinkedTasksList";
 import {
   Select,
   SelectContent,
@@ -17,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Package, Plus, Search, Sparkles } from "lucide-react";
+import { Package, Plus, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
@@ -41,7 +43,8 @@ import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm
 import { cn } from "@/lib/utils";
 import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
-import type { Tables } from "@/integrations/supabase/types";
+import { defaultColorForAssetType } from "@/lib/assetIconDefaults";
+import type { Json, Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
 
@@ -197,6 +200,7 @@ const Assets = () => {
   const [spaceId, setSpaceId] = useState("none");
   const [conditionScore, setConditionScore] = useState<string>("100");
   const [iconName, setIconName] = useState("");
+  const [iconColor, setIconColor] = useState(() => defaultColorForAssetType(null));
   const [pendingFiles, setPendingFiles] = useState<{ id: string; file_url: string; thumbnail_url?: string; file_type: string; displayName: string; isImage: boolean }[]>([]);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -310,6 +314,7 @@ const Assets = () => {
           condition_score: conditionScore ? parseInt(conditionScore, 10) : 100,
           status: "active",
           icon_name: iconName || "box",
+          metadata: { icon_color_hex: iconColor } as Json,
         })
         .select("id")
         .single();
@@ -346,6 +351,7 @@ const Assets = () => {
       setSpaceId("none");
       setConditionScore("100");
       setIconName("");
+      setIconColor(defaultColorForAssetType(null));
       setPendingFiles([]);
       await invalidateAssetQueries(queryClient);
       setSelectedAssetId(newAsset.id);
@@ -474,6 +480,7 @@ const Assets = () => {
     setSpaceId("none");
     setConditionScore("100");
     setIconName("");
+    setIconColor(defaultColorForAssetType(null));
     setPendingFiles([]);
     setPropertyId(filterPropertyId || "");
   }, [filterPropertyId]);
@@ -501,9 +508,37 @@ const Assets = () => {
     onConditionScoreChange: setConditionScore,
     iconName,
     onIconChange: setIconName,
+    iconColor,
+    onIconColorChange: setIconColor,
     isSaving,
     onSave: handleSave,
+    lockProperty: isPropertyScoped,
   };
+
+  const applyAssetMetricFilter = useCallback((filter: AssetMetricKey) => {
+    if (filter === "active") {
+      setStatusFilters([]);
+      setComplianceOnly(false);
+      setNeedsInspectionOnly(false);
+      setAssetsWorkTab("groups");
+    }
+    if (filter === "retired") {
+      setStatusFilters(["retired"]);
+      setComplianceOnly(false);
+      setNeedsInspectionOnly(false);
+    }
+    if (filter === "needsInspection") {
+      setStatusFilters(["active"]);
+      setComplianceOnly(false);
+      setNeedsInspectionOnly(true);
+      setAssetsWorkTab("issues");
+    }
+    if (filter === "nonCompliant") {
+      setStatusFilters(["active"]);
+      setComplianceOnly(true);
+      setNeedsInspectionOnly(false);
+    }
+  }, []);
 
   const scopedSubtitleLine =
     (scopedPropertyForChrome as { nickname?: string | null; address?: string } | undefined)?.nickname ||
@@ -633,52 +668,18 @@ const Assets = () => {
                     {propertyScopeBar}
                   </div>
                 ) : null}
-                <WorkspaceSurfaceCard title="Context" description="How this property is equipped">
-                  <ul className="text-xs text-muted-foreground space-y-2">
-                    <li>
-                      <span className="font-semibold text-foreground">{contextAssets.length}</span> assets
-                    </li>
-                    <li>
-                      <span className="font-semibold text-foreground">{assetsWithIssuesCount}</span> need attention
-                    </li>
-                    <li className="text-2xs pt-1">
-                      Groups: HVAC, Plumbing, Electrical — use the work column to browse each.
-                    </li>
-                  </ul>
-                </WorkspaceSurfaceCard>
+                <AssetsContextIntro scoped />
+                <AssetsSummaryRow
+                  assets={contextAssets}
+                  highlightedFilter={assetsSummaryHighlightedFilter}
+                  onFilterClick={applyAssetMetricFilter}
+                />
                 <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
                   <PropertyRecentAssetsList
                     propertyId={effectiveScopeId}
                     onAssetClick={setSelectedAssetId}
                   />
                 </div>
-                <AssetsSummaryRow
-                  assets={contextAssets}
-                  highlightedFilter={assetsSummaryHighlightedFilter}
-                  onFilterClick={(filter) => {
-                    if (filter === "active") {
-                      setStatusFilters([]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(false);
-                    }
-                    if (filter === "retired") {
-                      setStatusFilters(["retired"]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(false);
-                    }
-                    if (filter === "needsInspection") {
-                      setStatusFilters(["active"]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(true);
-                      setAssetsWorkTab("issues");
-                    }
-                    if (filter === "nonCompliant") {
-                      setStatusFilters(["active"]);
-                      setComplianceOnly(true);
-                      setNeedsInspectionOnly(false);
-                    }
-                  }}
-                />
               </div>
             ) : (
               <>
@@ -687,31 +688,11 @@ const Assets = () => {
                     {propertyScopeBar}
                   </div>
                 ) : null}
+                <AssetsContextIntro scoped={false} />
                 <AssetsSummaryRow
                   assets={contextAssets}
                   highlightedFilter={assetsSummaryHighlightedFilter}
-                  onFilterClick={(filter) => {
-                    if (filter === "active") {
-                      setStatusFilters([]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(false);
-                    }
-                    if (filter === "retired") {
-                      setStatusFilters(["retired"]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(false);
-                    }
-                    if (filter === "needsInspection") {
-                      setStatusFilters(["active"]);
-                      setComplianceOnly(false);
-                      setNeedsInspectionOnly(true);
-                    }
-                    if (filter === "nonCompliant") {
-                      setStatusFilters(["active"]);
-                      setComplianceOnly(true);
-                      setNeedsInspectionOnly(false);
-                    }
-                  }}
+                  onFilterClick={applyAssetMetricFilter}
                 />
               </>
             )
@@ -900,26 +881,26 @@ const Assets = () => {
           }
           actionColumn={
             <div ref={railFormRef} className="space-y-4 scroll-mt-6">
-              <WorkspaceSurfaceCard
-                title={isPropertyScoped ? "Create asset" : undefined}
-                description={
-                  isPropertyScoped
-                    ? "Add an asset when you already know the name and type."
-                    : undefined
-                }
-              >
+              <WorkspaceSurfaceCard>
                 <AddAssetWorkspaceForm
                   variant="rail"
                   {...addAssetFormProps}
                   onRailReset={clearRailForm}
                 />
               </WorkspaceSurfaceCard>
-              <WorkspaceSurfaceCard title="AI assist" description="Upload a photo to suggest type and icon when you add an asset.">
-                <p className="text-xs text-muted-foreground flex items-start gap-2">
-                  <Sparkles className="h-3.5 w-3.5 shrink-0 text-primary mt-0.5" />
-                  Use images in the add flow — Filla can infer likely asset types from your org library.
+              <div className="px-0.5">
+                <p className="mb-1.5 text-2xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                  Tasks on assets
                 </p>
-              </WorkspaceSurfaceCard>
+                <AssetLinkedTasksList
+                  assetIds={
+                    isPropertyScoped
+                      ? contextAssets.filter((a) => a.id).map((a) => a.id!)
+                      : filteredAssetIds
+                  }
+                  onOpenAsset={setSelectedAssetId}
+                />
+              </div>
             </div>
           }
         />
@@ -934,28 +915,7 @@ const Assets = () => {
       <AssetsSummaryRow
         assets={(isPropertyScoped ? contextAssets : assets) as AssetViewRow[]}
         highlightedFilter={assetsSummaryHighlightedFilter}
-        onFilterClick={(filter) => {
-          if (filter === "active") {
-            setStatusFilters([]);
-            setComplianceOnly(false);
-            setNeedsInspectionOnly(false);
-          }
-          if (filter === "retired") {
-            setStatusFilters(["retired"]);
-            setComplianceOnly(false);
-            setNeedsInspectionOnly(false);
-          }
-          if (filter === "needsInspection") {
-            setStatusFilters(["active"]);
-            setComplianceOnly(false);
-            setNeedsInspectionOnly(true);
-          }
-          if (filter === "nonCompliant") {
-            setStatusFilters(["active"]);
-            setComplianceOnly(true);
-            setNeedsInspectionOnly(false);
-          }
-        }}
+        onFilterClick={applyAssetMetricFilter}
       />
 
       {isPropertyScoped ? (
@@ -1055,6 +1015,12 @@ const Assets = () => {
         <AssetDetailPanel
           assetId={selectedAssetId}
           onClose={() => setSelectedAssetId(null)}
+          onOpenAsset={setSelectedAssetId}
+          siblingAssetIds={
+            isPropertyScoped && assetsWorkTab === "issues"
+              ? assetsForIssuesList.filter((a) => a.id).map((a) => a.id!)
+              : filteredAssetIds
+          }
         />
       )}
     </>

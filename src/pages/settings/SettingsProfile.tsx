@@ -611,7 +611,6 @@ export default function SettingsProfile() {
           <Button
             onClick={handleSave}
             disabled={saving || !hasProfileChanges}
-            className="shadow-e1 bg-primary hover:bg-primary/90"
           >
             {saving ? (
               <>

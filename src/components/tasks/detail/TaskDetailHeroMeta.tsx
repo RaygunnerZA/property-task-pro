@@ -5,6 +5,12 @@ import {
   META_CHIP_FILLED_CLASS,
 } from "@/lib/metaChips";
 import { TASK_DETAIL_HERO_UNDERLAY } from "@/hooks/usePropertyHeroSettle";
+import {
+  HeroThumbnailStack,
+  HERO_THUMB_INSET_PX,
+  HERO_THUMB_PX,
+  HERO_THUMB_STACK_STEP_PX,
+} from "@/components/detail/HeroThumbnailStack";
 import { cn } from "@/lib/utils";
 import type { TaskSignalChip } from "@/lib/taskSignalChip";
 
@@ -49,12 +55,6 @@ type TaskDetailHeroMetaProps = {
   /** Kept for callers; hero opacity no longer lifts on hover or while the editor is open. */
   imageOpen?: boolean;
 };
-
-const THUMB_PX = 50;
-const THUMB_RADIUS_PX = 8;
-const THUMB_STACK_STEP_PX = 25;
-const THUMB_FAN_STEP_PX = 58;
-const THUMB_INSET_PX = 12;
 
 function statusFilledClass(tone: TaskDetailHeroMetaProps["statusTone"]): string {
   switch (tone) {
@@ -123,85 +123,6 @@ function HeroMetaLine({
       ) : null}
       <PhotoCountBadge count={photoCount} tone={tone} />
     </p>
-  );
-}
-
-function TaskHeroThumbnailStack({
-  images,
-  activeIndex,
-  onSelectImage,
-  onOpenImage,
-  onHoverChange,
-}: {
-  images: TaskDetailImageThumb[];
-  activeIndex: number;
-  onSelectImage: (index: number) => void;
-  onOpenImage?: (index: number) => void;
-  onHoverChange?: (hovered: boolean) => void;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const count = images.length;
-  if (count === 0) return null;
-
-  const setHover = (next: boolean) => {
-    setExpanded(next);
-    onHoverChange?.(next);
-  };
-
-  const step = expanded && count > 1 ? THUMB_FAN_STEP_PX : THUMB_STACK_STEP_PX;
-  const stackWidth = THUMB_PX + Math.max(0, count - 1) * step;
-
-  return (
-    <div
-      className="absolute z-20"
-      style={{ right: THUMB_INSET_PX, bottom: THUMB_INSET_PX, width: stackWidth, height: THUMB_PX }}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      onFocusCapture={() => setHover(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-          setHover(false);
-        }
-      }}
-    >
-      {images.map((image, index) => {
-        const selected = activeIndex === index;
-        const isBottom = index === count - 1;
-        return (
-          <button
-            key={image.id || `${image.src}-${index}`}
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onSelectImage(index);
-              onOpenImage?.(index);
-            }}
-            className={cn(
-              "absolute top-0 overflow-hidden bg-muted/40 ring-1 ring-black/15 transition-[right] duration-200 ease-out motion-reduce:transition-none",
-              selected ? "ring-2 ring-white/90" : "hover:ring-white/50",
-              !isBottom && "shadow-[4px_0_6px_rgba(0,0,0,0.28)]"
-            )}
-            style={{
-              width: THUMB_PX,
-              height: THUMB_PX,
-              borderRadius: THUMB_RADIUS_PX,
-              right: (count - 1 - index) * step,
-              zIndex: count - index,
-            }}
-            aria-label={image.alt || `Open evidence ${index + 1}`}
-          >
-            <img
-              src={image.src}
-              alt=""
-              className="h-full w-full object-cover"
-              width={THUMB_PX}
-              height={THUMB_PX}
-              loading="lazy"
-            />
-          </button>
-        );
-      })}
-    </div>
   );
 }
 
@@ -276,10 +197,10 @@ export function TaskDetailHeroMeta({
   const photoCount = counts?.photos ?? images.length;
   const collapsedStackWidth =
     images.length > 0
-      ? THUMB_PX + Math.max(0, images.length - 1) * THUMB_STACK_STEP_PX
+      ? HERO_THUMB_PX + Math.max(0, images.length - 1) * HERO_THUMB_STACK_STEP_PX
       : 0;
   const overlayPadRight =
-    images.length > 0 ? THUMB_INSET_PX + collapsedStackWidth + 8 : 48;
+    images.length > 0 ? HERO_THUMB_INSET_PX + collapsedStackWidth + 8 : 48;
   const [thumbsHovered, setThumbsHovered] = useState(false);
 
   const chipRow = (
@@ -343,7 +264,7 @@ export function TaskDetailHeroMeta({
             />
           </div>
 
-          <TaskHeroThumbnailStack
+          <HeroThumbnailStack
             images={images}
             activeIndex={activeIndex}
             onSelectImage={onSelectImage}
@@ -407,7 +328,7 @@ export function TaskDetailHeroMeta({
       {metaRow ? (
         <div className="space-y-3 px-5">
           {metaRow}
-          <div className="border-t border-white/60" aria-hidden />
+          <div className="perforation-section" aria-hidden />
         </div>
       ) : null}
     </div>

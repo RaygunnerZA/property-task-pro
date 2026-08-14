@@ -405,7 +405,7 @@ function RoleBadge({ role, isPrimaryOwner }: { role: string; isPrimaryOwner?: bo
       variant={isOwner ? "default" : isManager ? "secondary" : "outline"}
       size="sm"
       className={cn(
-        "w-fit shrink-0 capitalize",
+        "w-fit shrink-0",
         isOwner && "bg-primary text-primary-foreground",
         isManager && "bg-secondary text-secondary-foreground",
         isExternal && "border-accent/40 text-accent"

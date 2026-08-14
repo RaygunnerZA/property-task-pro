@@ -131,18 +131,7 @@ function RecentAssetCard({ asset, imageUrl, property, onAssetClick }: RecentAsse
         </div>
 
         {/* Perforation line */}
-        <div
-          className="-ml-2.5 -mr-2.5 pt-0 pb-0 px-1"
-          style={{
-            height: "1px",
-            backgroundImage:
-              "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
-            backgroundSize: "7px 1px",
-            backgroundRepeat: "repeat-x",
-            boxShadow:
-              "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
-          }}
-        />
+        <div className="perforation-list -ml-2.5 -mr-2.5 px-1" aria-hidden />
 
         {/* Property icon (left) + Task count + Condition */}
         <div className="flex items-center gap-2 flex-wrap pb-[3px]" style={{ marginTop: '6px' }}>

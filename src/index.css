@@ -727,6 +727,47 @@
       0 0 0 2px hsl(var(--primary) / 0.7);
   }
   
+  /* Perforated dividers — the two universal weights.
+     `.perforation-section`: bolder cut line dividing sections.
+     `.perforation-list`: minimal break between list items.
+     Apply to an empty div (aria-hidden); replaces solid white hairlines. */
+  /* The neumorphic edge must be dashed too — a box-shadow would render as a
+     solid line under the dashes, which reads as a plain hairline on tinted
+     cards. So each class stacks three dashed layers: dark shadow (top-left),
+     the cut line, and a white highlight (bottom-right). */
+  .perforation-section {
+    height: 4px;
+    background-image:
+      repeating-linear-gradient(to right, rgba(0, 0, 0, 0.12) 0px 4px, transparent 4px 6px),
+      repeating-linear-gradient(to right, #e2dbcb 0px 4px, transparent 4px 6px),
+      repeating-linear-gradient(to right, rgba(255, 255, 255, 1) 0px 4px, transparent 4px 6px);
+    background-size:
+      6px 1px,
+      6px 2px,
+      6px 1px;
+    background-position:
+      -1px 0,
+      0 1px,
+      1px 3px;
+    background-repeat: repeat-x;
+  }
+  .perforation-list {
+    height: 3px;
+    background-image:
+      repeating-linear-gradient(to right, rgba(0, 0, 0, 0.1) 0px 4px, transparent 4px 7px),
+      repeating-linear-gradient(to right, #e2dbcb 0px 4px, transparent 4px 7px),
+      repeating-linear-gradient(to right, rgba(255, 255, 255, 0.95) 0px 4px, transparent 4px 7px);
+    background-size:
+      7px 1px,
+      7px 1px,
+      7px 1px;
+    background-position:
+      -1px 0,
+      0 1px,
+      1px 2px;
+    background-repeat: repeat-x;
+  }
+
   /* Paper texture utility class - can be applied to any element */
   .bg-paper-texture {
     background-image: var(--paper-texture);

@@ -642,7 +642,7 @@ export function PropertySummaryPanel({
               </div>
             </div>
 
-            <div className="flex flex-col items-center pb-[10px] pt-0.5">
+            <div className="flex flex-col items-center py-[6px]">
               <button
                 type="button"
                 onClick={() => setMetricsExpanded((open) => !open)}
@@ -686,10 +686,14 @@ export function PropertySummaryPanel({
         )}
 
           <div
+            className={variant === "compact" ? "perforation-list" : "perforation-section"}
+            aria-hidden
+          />
+          <div
             className={cn(
-              "grid grid-cols-[auto_1fr] items-start gap-2.5 border-t-2 border-t-white px-3 py-3",
+              "grid grid-cols-[auto_1fr] items-start gap-2.5 px-3 py-3",
               variant === "compact" &&
-                "gap-x-2.5 gap-y-[5px] border-t border-t-border/30 pl-0 pr-1.5 pt-[2px] pb-3",
+                "gap-x-2.5 gap-y-[5px] pl-0 pr-1.5 pt-[2px] pb-3",
               sectionRevealClass
             )}
             style={sectionRevealStyle(2)}

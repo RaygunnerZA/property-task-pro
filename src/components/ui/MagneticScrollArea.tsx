@@ -144,12 +144,12 @@ export const MagneticScrollArea = forwardRef<HTMLDivElement, MagneticScrollAreaP
         <div
           ref={topShadowRef}
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[10px] bg-gradient-to-b from-black/[0.14] via-black/[0.05] to-transparent opacity-0 transition-opacity duration-200"
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[10px] rounded-t-2xl bg-gradient-to-b from-black/[0.14] via-black/[0.05] to-transparent opacity-0 transition-opacity duration-200"
         />
         <div
           ref={bottomShadowRef}
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[10px] bg-gradient-to-t from-black/[0.1] via-black/[0.04] to-transparent opacity-0 transition-opacity duration-200"
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[10px] rounded-b-2xl bg-gradient-to-t from-black/[0.1] via-black/[0.04] to-transparent opacity-0 transition-opacity duration-200"
         />
       </div>
     );

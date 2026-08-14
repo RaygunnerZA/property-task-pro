@@ -1,94 +1,113 @@
 /**
- * AssetsSummaryRow — Property Assets context column metrics.
- * Visual grammar aligned with FilterChip / attention tabs: 8px radius, raised shadow,
- * pressed/inset when this metric matches the active list filter.
+ * Assets left-rail metrics — same three-block grammar as the home property snapshot
+ * (large number, two-line label, chevron, optional status chip).
  */
 import { useMemo } from "react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useCountUp } from "@/hooks/useCountUp";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
 
-type MetricKey = "active" | "needsInspection" | "nonCompliant" | "retired";
+export type AssetMetricKey = "active" | "needsInspection" | "nonCompliant" | "retired";
 
-type Accent = "teal" | "amber" | "red" | "slate";
+type StatSecondaryTone = "urgent" | "warning" | "neutral";
 
-const TOP_BAR: Record<Accent, string> = {
-  teal: "bg-primary/50",
-  amber: "bg-warning/55",
-  red: "bg-destructive/40",
-  slate: "bg-muted-foreground/40",
+const statNumberClass =
+  "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-primary-deep transition-colors group-hover:text-white sm:pb-[3px] sm:text-2xl";
+
+const statWordClass =
+  "font-mono text-caption font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
+
+const statCellClass =
+  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-ink hover:shadow-none active:scale-[0.98] sm:px-1.5 sm:pb-3";
+
+const secondaryCountBoxClass: Record<StatSecondaryTone, string> = {
+  urgent:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-destructive",
+  warning:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-warning-foreground",
+  neutral:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-muted-foreground",
 };
 
-/** Same raised / inset shadows as `FilterChip` (chips/filter/Chip.tsx) */
-const RAISED =
-  "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)]";
-const INSET =
-  "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]";
+const secondaryLabelClass: Record<StatSecondaryTone, string> = {
+  urgent:
+    "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-destructive transition-colors group-hover:text-accent",
+  warning:
+    "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-warning-foreground transition-colors group-hover:text-amber-300",
+  neutral:
+    "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-muted-foreground transition-colors group-hover:text-white/90",
+};
 
-function AssetMetricTile({
-  title,
-  count,
-  accent,
-  metricKey,
-  highlightedFilter,
+function MetricBlock({
+  value,
+  line1,
+  line2,
+  secondaryCount,
+  secondaryLabel,
+  secondaryTone,
+  selected,
   onClick,
 }: {
-  title: string;
-  count: number;
-  accent: Accent;
-  metricKey: MetricKey;
-  highlightedFilter?: MetricKey;
+  value: number;
+  line1: string;
+  line2: string;
+  secondaryCount: number;
+  secondaryLabel: string;
+  secondaryTone: StatSecondaryTone;
+  selected?: boolean;
   onClick?: () => void;
 }) {
-  const selected = highlightedFilter === metricKey;
+  const displayValue = Math.round(useCountUp(value));
+
+  const inner = (
+    <>
+      <span className={statNumberClass}>{displayValue}</span>
+      <div className="flex w-full min-w-0 items-stretch gap-0.5">
+        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left text-foreground">
+          <span className={statWordClass}>{line1}</span>
+          <span className={statWordClass}>{line2}</span>
+        </div>
+        {onClick ? (
+          <ChevronRight
+            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-[color,transform] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-white"
+            aria-hidden
+          />
+        ) : null}
+      </div>
+      <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 tracking-[0.3px]">
+        <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
+        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+      </div>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className={statCellClass}>{inner}</div>;
+  }
 
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={!onClick}
+      aria-pressed={selected}
       className={cn(
-        "w-full min-w-0 text-left rounded-card overflow-hidden border-0 p-0 m-0",
-        "font-sans antialiased transition-all duration-150 select-none",
-        RAISED,
-        "bg-background text-foreground",
-        selected ? cn("bg-card", INSET) : "hover:bg-card/80",
-        !selected && "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.1),inset_-1px_-1px_2px_rgba(255,255,255,0.25)]",
-        onClick && "cursor-pointer active:scale-[0.99]",
-        !onClick && "cursor-default opacity-90",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35 focus-visible:ring-offset-2"
+        statCellClass,
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
+        selected && "bg-white/70 ring-1 ring-primary/20"
       )}
     >
-      <div className={cn("h-[14px] w-full shrink-0", TOP_BAR[accent])} aria-hidden />
-      <div className="flex flex-col items-center justify-start gap-1.5 px-3 pt-2.5 pb-2.5">
-        <span
-          className={cn(
-            "inline-flex w-[78px] shrink-0 items-center justify-center",
-            "rounded-card bg-muted/50 px-2 py-1",
-            "tabular-nums text-[34px] font-bold leading-none text-primary shadow-none"
-          )}
-        >
-          {count}
-        </span>
-        <span className="min-w-0 text-center text-sm font-medium leading-tight text-foreground">{title}</span>
-      </div>
-      {onClick && (
-        <div className="flex h-[26px] items-center justify-center border-t-2 border-t-white px-3 pb-2.5 pt-2.5">
-          <span className="text-caption font-mono uppercase tracking-wider text-foreground font-medium">
-            View
-          </span>
-        </div>
-      )}
+      {inner}
     </button>
   );
 }
 
 interface AssetsSummaryRowProps {
   assets: AssetViewRow[];
-  onFilterClick?: (filter: MetricKey) => void;
-  /** When set, tile uses inset “selected” styling like attention tabs */
-  highlightedFilter?: MetricKey;
+  onFilterClick?: (filter: AssetMetricKey) => void;
+  highlightedFilter?: AssetMetricKey;
 }
 
 export function AssetsSummaryRow({
@@ -104,43 +123,45 @@ export function AssetsSummaryRow({
     const nonCompliant = assets.filter(
       (a) => a.compliance_required && (a.condition_score ?? 100) < 60
     ).length;
-    const retired = assets.filter((a) => a.status === "retired").length;
-    return { active, needsInspection, nonCompliant, retired };
+    const attention = assets.filter((a) => {
+      const isActive = (a.status || "active") === "active";
+      if (!isActive) return false;
+      return (a.condition_score ?? 100) < 60 || (a.open_tasks_count ?? 0) > 0;
+    }).length;
+    return { active, needsInspection, nonCompliant, attention };
   }, [assets]);
 
   return (
-    <div className="grid w-full max-w-full min-w-0 grid-cols-2 gap-2.5 px-0">
-      <AssetMetricTile
-        title="Active Assets"
-        count={counts.active}
-        accent="teal"
-        metricKey="active"
-        highlightedFilter={highlightedFilter}
+    <div className="grid w-full min-w-0 grid-cols-3 items-stretch gap-y-[5px] divide-x divide-border/30">
+      <MetricBlock
+        value={counts.active}
+        line1="active"
+        line2="assets"
+        secondaryCount={counts.attention}
+        secondaryLabel={counts.attention > 0 ? "ATTENTION" : "CLEAR"}
+        secondaryTone={counts.attention > 0 ? "warning" : "neutral"}
+        selected={highlightedFilter === "active"}
         onClick={onFilterClick ? () => onFilterClick("active") : undefined}
       />
-      <AssetMetricTile
-        title="Needs Inspection"
-        count={counts.needsInspection}
-        accent="amber"
-        metricKey="needsInspection"
-        highlightedFilter={highlightedFilter}
+      <MetricBlock
+        value={counts.needsInspection}
+        line1="need"
+        line2="inspection"
+        secondaryCount={counts.needsInspection}
+        secondaryLabel={counts.needsInspection > 0 ? "POOR" : "OK"}
+        secondaryTone={counts.needsInspection > 0 ? "warning" : "neutral"}
+        selected={highlightedFilter === "needsInspection"}
         onClick={onFilterClick ? () => onFilterClick("needsInspection") : undefined}
       />
-      <AssetMetricTile
-        title="Non-Compliant"
-        count={counts.nonCompliant}
-        accent="red"
-        metricKey="nonCompliant"
-        highlightedFilter={highlightedFilter}
+      <MetricBlock
+        value={counts.nonCompliant}
+        line1="non"
+        line2="compliant"
+        secondaryCount={counts.nonCompliant}
+        secondaryLabel={counts.nonCompliant > 0 ? "ACTION" : "OK"}
+        secondaryTone={counts.nonCompliant > 0 ? "urgent" : "neutral"}
+        selected={highlightedFilter === "nonCompliant"}
         onClick={onFilterClick ? () => onFilterClick("nonCompliant") : undefined}
-      />
-      <AssetMetricTile
-        title="Retired"
-        count={counts.retired}
-        accent="slate"
-        metricKey="retired"
-        highlightedFilter={highlightedFilter}
-        onClick={onFilterClick ? () => onFilterClick("retired") : undefined}
       />
     </div>
   );

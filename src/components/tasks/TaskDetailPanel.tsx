@@ -1510,7 +1510,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest("[data-task-nav]") ||
+              (t.closest("[data-modal-nav]") ||
+                t.closest("[data-task-nav]") ||
                 t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
@@ -1525,7 +1526,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest("[data-task-nav]") ||
+              (t.closest("[data-modal-nav]") ||
+                t.closest("[data-task-nav]") ||
                 t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
@@ -1540,7 +1542,8 @@ export function TaskDetailPanel({
             const t = event.target;
             if (
               t instanceof Element &&
-              (t.closest("[data-task-nav]") ||
+              (t.closest("[data-modal-nav]") ||
+                t.closest("[data-task-nav]") ||
                 t.closest('[data-radix-popper-content-wrapper]') ||
                 t.closest('[role="menu"]') ||
                 t.closest('[role="listbox"]') ||
@@ -1567,7 +1570,9 @@ export function TaskDetailPanel({
             <TaskModalNavChevrons
               prevId={prevTaskId}
               nextId={nextTaskId}
-              onOpenTask={openAdjacentTask}
+              onOpen={openAdjacentTask}
+              prevLabel="Previous task"
+              nextLabel="Next task"
             />
           ) : null}
           <div

@@ -29,7 +29,7 @@ export function WorkspaceScopeStrip({
           "mx-auto min-w-0 px-gutter-page py-2",
           containerMaxWidthClass,
           "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-center",
-          "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(260px,300px)]",
+          "workspace:grid-cols-[265px_minmax(0,700px)_minmax(260px,300px)]",
           "workspace:gap-[44px]"
         )}
       >

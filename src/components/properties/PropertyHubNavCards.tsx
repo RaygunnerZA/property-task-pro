@@ -386,21 +386,24 @@ export function PropertyHubNavCards({
           </div>
 
           {hasRecent ? (
-            <div className="flex h-[31px] items-center gap-[11px] border-t-2 border-white/50 pt-2">
-              <p className={recentLabelClass}>Recent</p>
-              {activeTab === "people" ? (
-                <div className={cn(recentChipsScrollClass, "min-h-[24px] gap-1.5")}>
-                  {(recentItems as PersonPreview[]).map((person) => (
-                    <RecentPersonAvatar key={person.id} person={person} />
-                  ))}
-                </div>
-              ) : (
-                <div className="box-content flex min-h-[22px] min-w-0 flex-1 flex-nowrap gap-[3px] overflow-hidden">
-                  {(recentItems as string[]).map((label, index) => (
-                    <RecentChip key={`${activeTab}-${index}`} label={label} />
-                  ))}
-                </div>
-              )}
+            <div className="shrink-0">
+              <div className="perforation-list" aria-hidden />
+              <div className="flex h-[31px] items-center gap-[11px] pt-2">
+                <p className={recentLabelClass}>Recent</p>
+                {activeTab === "people" ? (
+                  <div className={cn(recentChipsScrollClass, "min-h-[24px] gap-1.5")}>
+                    {(recentItems as PersonPreview[]).map((person) => (
+                      <RecentPersonAvatar key={person.id} person={person} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="box-content flex min-h-[22px] min-w-0 flex-1 flex-nowrap gap-[3px] overflow-hidden">
+                    {(recentItems as string[]).map((label, index) => (
+                      <RecentChip key={`${activeTab}-${index}`} label={label} />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : null}
         </div>

@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { Camera, X } from "lucide-react";
 import {
   META_CHIP_CLASS,
   META_CHIP_FILLED_CLASS,
 } from "@/lib/metaChips";
-import { PROPERTY_HERO_UNDERLAY } from "@/hooks/usePropertyHeroSettle";
+import { TASK_DETAIL_HERO_UNDERLAY } from "@/hooks/usePropertyHeroSettle";
+import {
+  HeroThumbnailStack,
+  HERO_THUMB_INSET_PX,
+  HERO_THUMB_PX,
+  HERO_THUMB_STACK_STEP_PX,
+} from "@/components/detail/HeroThumbnailStack";
 import { cn } from "@/lib/utils";
 
 export type AssetDetailImageThumb = {
@@ -86,13 +93,18 @@ export function AssetDetailHero({
   contextLine,
   isUploading = false,
 }: AssetDetailHeroProps) {
+  const [thumbsHovered, setThumbsHovered] = useState(false);
   const hero = images[selectedIndex] ?? images[0];
   const heroSrc = hero?.heroSrc || hero?.src;
   const hasHero = Boolean(heroSrc);
-  const openAt = (index: number) => {
-    onSelectImage(index);
-    onOpenImage?.(index);
-  };
+  const photoCount = images.length;
+  const collapsedStackWidth =
+    images.length > 0
+      ? HERO_THUMB_PX + Math.max(0, images.length - 1) * HERO_THUMB_STACK_STEP_PX
+      : 0;
+  const overlayPadRight =
+    images.length > 0 ? HERO_THUMB_INSET_PX + collapsedStackWidth + 8 : 48;
+
   const chipRow = (
     <ChipRow
       statusLabel={statusLabel}
@@ -147,7 +159,7 @@ export function AssetDetailHero({
           onClick={onAddPhoto}
           disabled={isUploading}
           className="group relative block w-full overflow-hidden text-left disabled:pointer-events-none"
-          style={{ backgroundColor: PROPERTY_HERO_UNDERLAY }}
+          style={{ backgroundColor: TASK_DETAIL_HERO_UNDERLAY }}
           aria-label="Add asset photo"
         >
           <div className="flex h-[min(22vh,168px)] w-full flex-col items-center justify-center gap-2">
@@ -172,69 +184,76 @@ export function AssetDetailHero({
   }
 
   return (
-    <div className="space-y-2.5">
-      <div
-        className="group relative w-full overflow-hidden"
-        style={{ backgroundColor: PROPERTY_HERO_UNDERLAY }}
+    <div className="group relative w-full overflow-hidden" style={{ backgroundColor: TASK_DETAIL_HERO_UNDERLAY }}>
+      <button
+        type="button"
+        onClick={() => {
+          onSelectImage(selectedIndex);
+          onOpenImage?.(selectedIndex);
+        }}
+        className="block w-full cursor-zoom-in text-left"
+        aria-label="Open photo"
       >
-        <button
-          type="button"
-          onClick={() => openAt(selectedIndex)}
-          className="block w-full cursor-zoom-in text-left"
-          aria-label="Open photo"
-        >
-          <img
-            src={heroSrc}
-            alt={hero?.alt || title}
-            className="h-[min(22vh,168px)] w-full object-cover opacity-60 transition-opacity duration-200 ease-out group-hover:opacity-100 group-focus-within:opacity-100"
-          />
-        </button>
-        <div
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(10.2deg, rgba(26, 44, 55, 0.74) 2%, rgba(0, 0, 0, 0) 41%)",
-          }}
+        <img
+          src={heroSrc}
+          alt={hero?.alt || title}
+          className="h-[min(22vh,168px)] w-full object-cover opacity-60"
         />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 space-y-1.5 p-3 pr-12 sm:p-3.5">
-          <div className="pointer-events-auto min-w-0">{chipRow}</div>
-          <h2 className="pointer-events-none text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-sm sm:text-xl">
-            {title}
-          </h2>
-          {contextLine ? (
-            <p className="pointer-events-none min-w-0 truncate text-[11px] text-white/70">{contextLine}</p>
-          ) : null}
-        </div>
-        <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
-          {addPhotoButton}
-          {closeButton}
-        </div>
+      </button>
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background:
+            "linear-gradient(10.2deg, rgba(26, 44, 55, 0.74) 2%, rgba(0, 0, 0, 0) 41%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 space-y-1.5 p-3 sm:p-3.5"
+        style={{ paddingRight: overlayPadRight }}
+      >
+        <div className="pointer-events-auto min-w-0">{chipRow}</div>
+        <h2
+          className={cn(
+            "text-lg font-semibold leading-snug tracking-tight text-white drop-shadow-sm sm:text-xl",
+            "transition-opacity duration-200 ease-out",
+            thumbsHovered && "opacity-50"
+          )}
+        >
+          {title}
+        </h2>
+        {contextLine || photoCount > 0 ? (
+          <p
+            className={cn(
+              "flex min-w-0 items-center gap-x-1.5 text-[11px] text-white/70 transition-opacity duration-200 ease-out",
+              thumbsHovered && "opacity-50"
+            )}
+          >
+            {contextLine ? <span className="min-w-0 truncate">{contextLine}</span> : null}
+            {contextLine && photoCount > 0 ? (
+              <span className="shrink-0 opacity-80" aria-hidden>
+                •
+              </span>
+            ) : null}
+            {photoCount > 0 ? (
+              <span className="inline-flex shrink-0 items-center gap-1 tabular-nums" title="Photos">
+                <Camera className="h-3 w-3" aria-hidden />
+                <span>{photoCount}</span>
+              </span>
+            ) : null}
+          </p>
+        ) : null}
       </div>
-
-      {images.length > 1 ? (
-        <div className="flex gap-1.5 overflow-x-auto px-5 pb-0.5 scrollbar-hz-teal">
-          {images.map((image, index) => {
-            const selected = selectedIndex === index;
-            return (
-              <button
-                key={image.id || `${image.src}-${index}`}
-                type="button"
-                onClick={() => openAt(index)}
-                className={cn(
-                  "relative h-9 w-9 shrink-0 overflow-hidden rounded-md bg-muted/30 transition-shadow cursor-zoom-in",
-                  selected
-                    ? "ring-2 ring-primary/80 shadow-sm"
-                    : "opacity-80 hover:opacity-100 hover:ring-1 hover:ring-primary/25"
-                )}
-                aria-label={`Open ${image.alt || `photo ${index + 1}`}`}
-                aria-pressed={selected}
-              >
-                <img src={image.src} alt="" className="h-full w-full object-cover" loading="lazy" />
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      <HeroThumbnailStack
+        images={images}
+        activeIndex={selectedIndex}
+        onSelectImage={onSelectImage}
+        onOpenImage={onOpenImage}
+        onHoverChange={setThumbsHovered}
+      />
+      <div className="absolute right-2 top-2 z-20 flex items-center gap-1.5">
+        {addPhotoButton}
+        {closeButton}
+      </div>
     </div>
   );
 }

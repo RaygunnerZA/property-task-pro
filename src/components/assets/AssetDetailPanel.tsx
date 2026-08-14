@@ -2,7 +2,7 @@
  * AssetDetailPanel — image-led identity, tight details + compliance, action bar.
  * Activity is a discrete footer link (same pattern as Task Detail).
  */
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -51,6 +51,9 @@ import { IntakeModal } from "@/components/intake/IntakeModal";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { AssetDetailHero } from "@/components/assets/AssetDetailHero";
 import { AssetDetailActionBar } from "@/components/assets/AssetDetailActionBar";
+import { TaskModalNavChevrons } from "@/components/tasks/detail/TaskModalNavChevrons";
+import { findAdjacentIdsInOrder } from "@/lib/findAdjacentTaskIds";
+import { useMobileTaskSwipeNav } from "@/hooks/useMobileTaskSwipeNav";
 import type { AssetFileRow } from "@/hooks/useAssetFiles";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
@@ -71,6 +74,10 @@ interface AssetDetailPanelProps {
   assetId: string | null;
   onClose: () => void;
   onCreateTaskClick?: () => void;
+  /** Open a sibling asset without closing the modal. */
+  onOpenAsset?: (assetId: string) => void;
+  /** Visible list order — prev/next follow this, not created_at. */
+  siblingAssetIds?: string[];
 }
 
 function deriveInspectionIssueSignals(notes: string | null | undefined): {
@@ -124,7 +131,13 @@ function deriveTrendDeltaBucket(scoresDesc: number[]): "improving_strong" | "imp
   return "stable";
 }
 
-export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetDetailPanelProps) {
+export function AssetDetailPanel({
+  assetId,
+  onClose,
+  onCreateTaskClick,
+  onOpenAsset,
+  siblingAssetIds = [],
+}: AssetDetailPanelProps) {
   const { asset, loading, error, refresh } = useAssetDetail(assetId ?? undefined);
   const { inspections, loading: inspectionsLoading, refresh: refreshInspections } = useAssetInspections(assetId ?? undefined);
   const { files, loading: filesLoading, refresh: refreshFiles } = useAssetFiles(assetId ?? undefined);
@@ -205,6 +218,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
   useEffect(() => {
     setSelectedImageIndex(0);
     setActivityExpanded(false);
+    setLightboxOpen(false);
   }, [assetId]);
 
   const imageFiles = useMemo(() => files.filter(isAssetImageFile), [files]);
@@ -437,6 +451,39 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
     return () => window.removeEventListener("keydown", onKey);
   }, [lightboxOpen, imageCount]);
 
+  const { prevId: prevAssetId, nextId: nextAssetId } = useMemo(
+    () => findAdjacentIdsInOrder(siblingAssetIds, assetId ?? ""),
+    [siblingAssetIds, assetId]
+  );
+  const openAdjacentAsset = useCallback(
+    (id: string) => {
+      setLightboxOpen(false);
+      onOpenAsset?.(id);
+    },
+    [onOpenAsset]
+  );
+  const swipeNav = useMobileTaskSwipeNav({
+    enabled: Boolean(onOpenAsset) && !lightboxOpen,
+    onSwipeLeft: nextAssetId ? () => openAdjacentAsset(nextAssetId) : undefined,
+    onSwipeRight: prevAssetId ? () => openAdjacentAsset(prevAssetId) : undefined,
+  });
+
+  const handleModalKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (lightboxOpen) return;
+    const target = event.target as HTMLElement | null;
+    const tag = target?.tagName;
+    if (tag === "TEXTAREA" || tag === "INPUT" || target?.isContentEditable) return;
+    if (event.key === "ArrowLeft" && prevAssetId && onOpenAsset) {
+      event.preventDefault();
+      openAdjacentAsset(prevAssetId);
+    }
+    if (event.key === "ArrowRight" && nextAssetId && onOpenAsset) {
+      event.preventDefault();
+      openAdjacentAsset(nextAssetId);
+    }
+  };
+
   if (!assetId) return null;
 
   if (loading) {
@@ -521,12 +568,21 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
       >
         <DialogContent
           hideCloseButton
-          className={cn(dialogContentClass, "max-h-[90vh] overflow-hidden flex flex-col p-0 bg-background bg-paper-texture")}
+          className={cn(dialogContentClass, "max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0 bg-background bg-paper-texture")}
+          onKeyDown={handleModalKeyDown}
           onPointerDownOutside={(event) => {
             if (lightboxOpen || showAddRecord) event.preventDefault();
+            const t = event.target;
+            if (t instanceof Element && t.closest("[data-modal-nav]")) {
+              event.preventDefault();
+            }
           }}
           onInteractOutside={(event) => {
             if (lightboxOpen || showAddRecord) event.preventDefault();
+            const t = event.target;
+            if (t instanceof Element && t.closest("[data-modal-nav]")) {
+              event.preventDefault();
+            }
           }}
           onEscapeKeyDown={(event) => {
             if (lightboxOpen) {
@@ -535,11 +591,23 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
             }
           }}
         >
-          <DialogHeader className="sr-only">
+          <DialogHeader className="sr-only absolute">
             <DialogTitle>Asset Details</DialogTitle>
             <DialogDescription>View and edit asset details</DialogDescription>
           </DialogHeader>
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background bg-paper-texture">
+          {onOpenAsset && !lightboxOpen ? (
+            <TaskModalNavChevrons
+              prevId={prevAssetId}
+              nextId={nextAssetId}
+              onOpen={openAdjacentAsset}
+              prevLabel="Previous asset"
+              nextLabel="Next asset"
+            />
+          ) : null}
+          <div
+            className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background bg-paper-texture"
+            {...swipeNav}
+          >
             <input ref={imageUploadInputRef} type="file" multiple accept="image/*" className="hidden" onChange={handleFileUpload} />
             <input ref={fileUploadInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx" className="hidden" onChange={handleFileUpload} />
 
@@ -583,7 +651,7 @@ export function AssetDetailPanel({ assetId, onClose, onCreateTaskClick }: AssetD
                     {detailsDirty ? (
                       <Button
                         size="sm"
-                        className="h-7 px-3 font-mono text-caption uppercase tracking-wide shadow-primary-btn"
+                        className="h-9 px-4 font-mono text-caption uppercase tracking-wide shadow-primary-btn"
                         onClick={handleSaveDetails}
                         disabled={isSavingDetails}
                       >

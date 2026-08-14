@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { UserAvatar } from "@/components/tasks/UserAvatar";
 import { formatMessageDayLabel } from "@/lib/formatMessageDayLabel";
 import { cn } from "@/lib/utils";
@@ -9,15 +9,6 @@ type TasksMessagesPeopleListProps = {
   taskTitlesById: Record<string, string>;
   onSelectTask: (taskId: string) => void;
   className?: string;
-};
-
-const perforationStyle: CSSProperties = {
-  height: "2px",
-  backgroundImage:
-    "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 6px)",
-  backgroundSize: "6px 2px",
-  backgroundRepeat: "repeat-x",
-  boxShadow: "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
 };
 
 /**
@@ -47,7 +38,7 @@ export function TasksMessagesPeopleList({
         return (
           <div key={thread.authorKey} role="listitem">
             {index > 0 ? (
-              <div className="mx-1 my-1" style={perforationStyle} aria-hidden />
+              <div className="perforation-list mx-1 my-1" aria-hidden />
             ) : null}
 
             <button

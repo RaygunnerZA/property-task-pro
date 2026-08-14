@@ -26,7 +26,9 @@ export function PropertyWorkspaceLayout({
     <div
       className={cn(
         "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-start",
-        "workspace:grid-cols-[265px_minmax(0,1fr)_minmax(0,280px)]",
+        /* Cap the work track at 700px (like DualPane) so the action rail sits
+           beside the content instead of being pushed to the container edge. */
+        "workspace:grid-cols-[265px_minmax(0,700px)_minmax(0,280px)]",
         /* 24px base + 20px breathing room once three columns are active */
         "workspace:gap-[44px]",
         className

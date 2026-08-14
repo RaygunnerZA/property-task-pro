@@ -94,14 +94,14 @@ export function CentreWorkbench({
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-transparent pb-1">
-      <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
-        <div
-          className={cn(
-            "shrink-0 items-stretch gap-2",
-            // Avoid `flex` + `hidden` on the same node — last utility in the stylesheet wins.
-            hideTabStrip ? "hidden md:flex" : "flex"
-          )}
-        >
+      <div
+        className={cn(
+          "shrink-0",
+          // Avoid `flex` + `hidden` on the same node — last utility in the stylesheet wins.
+          hideTabStrip ? "hidden md:block" : "block"
+        )}
+      >
+        <div className="flex items-stretch gap-2 px-2 max-pane:px-2">
           <CentreWorkbenchTabStrip
             activeTab={activeTab}
             onTabChange={onCentreTabChange}
@@ -126,7 +126,13 @@ export function CentreWorkbench({
             </div>
           ) : null}
         </div>
+        <div
+          className="perforation-section pointer-events-none mt-2 md:-ml-4 md:w-[calc(100%+1rem)]"
+          aria-hidden
+        />
+      </div>
 
+      <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
         {/* Phone only — does not affect the 55px desktop gap below the tab border. */}
         {showMobileCalendar ? (
           <div className="mt-3 md:hidden">

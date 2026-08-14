@@ -61,8 +61,10 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
     <div
       className={cn(
         "flex w-full min-w-0 flex-col gap-4 sm:gap-6",
-        "lg:grid lg:grid-cols-[minmax(200px,240px)_minmax(0,1fr)_minmax(260px,320px)] lg:items-start lg:gap-6",
-        "xl:grid-cols-[240px_minmax(0,1fr)_minmax(280px,360px)]"
+        /* Middle track capped at 700px (like the workbench) so the contextual
+           rail sits beside the content instead of the far page edge. */
+        "lg:grid lg:grid-cols-[minmax(200px,240px)_minmax(0,700px)_minmax(260px,320px)] lg:items-start lg:gap-6",
+        "xl:grid-cols-[240px_minmax(0,700px)_minmax(280px,360px)]"
       )}
     >
       {/* Left — settings menu (horizontal pills on narrow screens, sidebar on lg+) */}

@@ -361,7 +361,7 @@ export default function SpaceDetailPage() {
           </div>
         }
         rightColumn={
-          <div className="min-h-screen space-y-6 overflow-y-auto bg-background p-[15px]">
+          <div className="min-h-screen space-y-6 overflow-y-auto bg-background p-gutter-page">
             <Tabs
               value={centreTab}
               onValueChange={(v) => setCentreTab(v as SpaceCentreTab)}

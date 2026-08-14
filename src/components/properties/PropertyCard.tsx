@@ -131,15 +131,8 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
 
       {/* Neumorphic Perforation Line - Row of cut circles */}
       <div
-        className={cn("flex-shrink-0 -mr-2.5 pt-0 pb-0 px-1", isHorizontal ? "-ml-3 mt-3 mb-2" : "-ml-2.5 mb-[11px]")}
-        style={{
-          height: '1px',
-          minHeight: '1px',
-          backgroundImage: 'repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)',
-          backgroundSize: '7px 1px',
-          backgroundRepeat: 'repeat-x',
-          boxShadow: '1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)',
-        }}
+        className={cn("perforation-list flex-shrink-0 -mr-2.5 px-1", isHorizontal ? "-ml-3 mt-3 mb-2" : "-ml-2.5 mb-[11px]")}
+        aria-hidden
       />
 
       {/* Meta Zone */}
