@@ -90,11 +90,11 @@ export function DualPaneLayout({
   // Explicit viewport height (not h-full — auto grid rows make h-full circular),
   // sticky beside the side rail so page scroll from a taller rail doesn't move it.
   const boundCentreMd = hasHeader
-    ? "md:sticky md:top-[var(--header-height,0px)] md:self-start md:h-[calc(100dvh-var(--header-height,0px)-14px)]"
-    : "md:sticky md:top-0 md:self-start md:h-[calc(100dvh-14px)]";
+    ? "md:sticky md:top-[var(--header-height,0px)] md:self-start md:h-[calc(100dvh-var(--header-height,0px)-20px)]"
+    : "md:sticky md:top-0 md:self-start md:h-[calc(100dvh-20px)]";
   const boundCentreSm = hasHeader
-    ? "sm:sticky sm:top-[var(--header-height,0px)] sm:self-start sm:h-[calc(100dvh-var(--header-height,0px)-14px)]"
-    : "sm:sticky sm:top-0 sm:self-start sm:h-[calc(100dvh-14px)]";
+    ? "sm:sticky sm:top-[var(--header-height,0px)] sm:self-start sm:h-[calc(100dvh-var(--header-height,0px)-20px)]"
+    : "sm:sticky sm:top-0 sm:self-start sm:h-[calc(100dvh-20px)]";
 
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
@@ -133,7 +133,7 @@ export function DualPaneLayout({
 
       <div
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-1 flex-col pt-[14px]",
+          "flex min-h-0 w-full min-w-0 flex-1 flex-col pt-[20px]",
           dualGridFromPhone
             ? [
                 "md:grid md:min-h-0 md:grid-cols-workbench-dual",
@@ -147,7 +147,7 @@ export function DualPaneLayout({
                   ? "layout:grid layout:grid-cols-workbench-triple"
                   : "layout:grid layout:grid-cols-workbench-center-max",
               ],
-          collapseLeftOnPhone && "pt-2 md:pt-[14px]",
+          collapseLeftOnPhone && "pt-2 md:pt-[20px]",
           // gap-y only: the `gap` shorthand would reset layout column-gap to 0.
           stackOnPhone && "gap-y-4 md:gap-y-0",
           hasThirdColumn && "layout:gap-x-gutter-rail"

@@ -127,7 +127,7 @@ export function CentreWorkbench({
           ) : null}
         </div>
         <div
-          className="perforation-section pointer-events-none mt-2 md:-ml-4 md:w-[calc(100%+1rem)]"
+          className="perforation-section pointer-events-none mt-4 md:-ml-4 md:w-[calc(100%+1rem)]"
           aria-hidden
         />
       </div>

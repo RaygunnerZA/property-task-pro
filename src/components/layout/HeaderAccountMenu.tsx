@@ -41,17 +41,17 @@ export function HeaderAccountMenu({
         <button
           type="button"
           className={cn(
-            "relative flex h-9 w-9 shrink-0 items-center justify-center outline-none transition-shadow",
+            "relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden outline-none transition-shadow",
             onGradient
-              ? gradientHeaderControlClassName("overflow-hidden p-0.5")
+              ? gradientHeaderControlClassName("bg-transparent p-0")
               : "rounded-xl bg-card shadow-e1 hover:shadow-e2 focus-visible:ring-2 focus-visible:ring-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           )}
           aria-label="Open account menu"
         >
-          <Avatar className="h-full w-full rounded-[10px]">
-            <AvatarImage src={userAvatarUrl(user)} alt="" className="object-cover" />
+          <Avatar className="h-full w-full rounded-xl">
+            <AvatarImage src={userAvatarUrl(user)} alt="" className="h-full w-full object-cover" />
             <AvatarFallback
-              className="rounded-[10px] text-xs font-semibold"
+              className="rounded-xl text-xs font-semibold"
               style={{
                 backgroundColor: onGradient ? `${accentColor}40` : "hsl(var(--primary) / 0.35)",
                 color: onGradient ? accentColor : "hsl(var(--foreground))",
