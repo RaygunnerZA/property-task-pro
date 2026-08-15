@@ -7,6 +7,8 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
+    // Origin-scoped (app.filla.app). Never set cookie Domain=.filla.app — marketing
+    // (www.filla.app) must not be able to read product sessions.
     storage: localStorage,
     persistSession: true,
     autoRefreshToken: true,

@@ -45,4 +45,5 @@
 28_Billing_Implementation_Plan.md : Phased build plan for billing, roles, entitlements (defers to Ch 2 + Ch 20).
 29_Knowledge.md             : Knowledge capability guide (defers to Ch 3 + Appendix A + Ch 7).
 30_Phase2_Knowledge_First.md : Phase 2 roadmap — finish Knowledge loop before editorial/distribution (defers to Ch 3, 7, 29, Appendix A).
+31_Public_Site.md           : Public marketing origin vs app origin, DNS, and session isolation.
 Appendix_A.md               : Entity -> Context Map.

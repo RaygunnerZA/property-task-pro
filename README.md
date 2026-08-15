@@ -14,7 +14,15 @@ cp .env.example .env   # fill in Supabase values from your project dashboard
 npm run dev
 ```
 
-Open the URL printed by Vite (typically `http://localhost:5173`).
+Open the URL printed by Vite (typically `http://localhost:8080`).
+
+Public marketing site (separate origin, no Supabase):
+
+```sh
+npm run dev:marketing
+```
+
+Opens on `http://localhost:4321`. Sign-in links target the app on port 8080.
 
 ### Environment variables
 
@@ -75,21 +83,35 @@ Legacy pre-init SQL is archived under `supabase/migrations/archive/legacy_pre_v2
 
 ## Deploy (Vercel + Supabase)
 
-### Vercel
+Public site and product are **separate origins**. See [`@Docs/31_Public_Site.md`](./@Docs/31_Public_Site.md).
 
-1. Connect the repo and set build command `npm run build`, output `dist`.
-2. **Environment variables** (Production / Preview as needed):
+| Origin | Vercel project | Directory |
+|---|---|---|
+| `www.filla.app` | Marketing | `marketing/` (`npm run build`, output `dist`) |
+| `app.filla.app` | Product | repo root (`npm run build`, output `dist`) |
+
+### Product project
+
+1. Connect the repo at the repository root. Build `npm run build`, output `dist`.
+2. Domain: `app.filla.app`.
+3. **Environment variables** (Production / Preview as needed):
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
-   - `VITE_APP_URL` — e.g. `https://your-app.vercel.app` (no trailing slash)
+   - `VITE_APP_URL=https://app.filla.app` (no trailing slash)
+   - `VITE_MARKETING_URL=https://www.filla.app`
    - `VITE_POSTHOG_KEY` (optional)
-3. Redeploy after env changes (Vite bakes `VITE_*` at build time).
+4. Redeploy after env changes (Vite bakes `VITE_*` at build time).
+
+### Marketing project
+
+See [`marketing/README.md`](./marketing/README.md). Root directory `marketing`. Env: `VITE_APP_ORIGIN=https://app.filla.app`. No Supabase keys.
 
 ### Supabase Auth URLs
 
 Dashboard → **Authentication** → **URL Configuration**:
 
-- **Site URL:** same as `VITE_APP_URL`
-- **Redirect URLs:** include `/verify`, `/login`, `/accept-invitation` on that host
+- **Site URL:** `https://app.filla.app` (same as `VITE_APP_URL`)
+- **Redirect URLs:** app-origin paths only — `/verify`, `/login`, `/signup`, `/auth/callback`, `/reset-password`, `/accept-invitation`
+- Do **not** allowlist `www.filla.app`
 
 ### Edge function secrets
 

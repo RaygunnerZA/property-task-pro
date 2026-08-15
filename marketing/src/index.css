@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --paper: 40 20% 94%;
+    --ink: 248 15% 18%;
+    --muted: 40 6% 38%;
+    --primary: 185 40% 68%;
+    --primary-deep: 182 23% 56%;
+    --coral: 16 83% 56%;
+    --card: 40 20% 98%;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, hsl(185 40% 68% / 0.12), transparent 55%),
+      linear-gradient(180deg, hsl(40 20% 96%) 0%, hsl(40 18% 93%) 100%);
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary-deep));
+    outline-offset: 3px;
+  }
+}

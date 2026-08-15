@@ -12,6 +12,8 @@ export default tseslint.config(
       "coverage/**",
       /** Deno edge functions — different runtime; lint separately if needed (`deno lint`). */
       "supabase/functions/**",
+      /** Separate Vite app — has its own package.json. */
+      "marketing/**",
     ],
   },
   {

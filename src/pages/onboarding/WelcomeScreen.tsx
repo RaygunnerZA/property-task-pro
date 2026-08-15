@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { getMarketingBaseUrl } from "@/lib/utils";
 import welcomeRadar from "@/assets/onboarding/welcome-radar.gif";
 
 export default function WelcomeScreen() {
@@ -36,6 +37,13 @@ export default function WelcomeScreen() {
           <NeomorphicButton variant="ghost" onClick={() => navigate("/login")}>
             Sign In
           </NeomorphicButton>
+
+          <a
+            href={getMarketingBaseUrl()}
+            className="inline-block pt-2 text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          >
+            What Filla is
+          </a>
         </div>
       </div>
     </OnboardingContainer>

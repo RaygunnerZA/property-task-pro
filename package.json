@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:marketing": "npm run dev --prefix marketing",
     "dev:keepalive": "node scripts/dev-keepalive.mjs",
     "dev:restart": "node scripts/dev-restart.mjs",
     "dev:stop": "node scripts/dev-stop.mjs",
