@@ -1,0 +1,21 @@
+---
+alwaysApply: true
+---
+# Filla security baseline
+Security and tenant isolation are architectural requirements, not optional refinements.
+When changing Filla:
+- Never weaken authentication, authorisation, RLS, input validation, storage permissions or secret handling merely to make a feature work.
+- Never expose Supabase service-role/secret credentials to frontend code.
+- Never trust client-supplied user IDs, organisation IDs, roles or ownership claims as authorisation.
+- Derive identity from authenticated context and independently verify permission for privileged operations.
+- Treat cross-organisation data access as a critical security failure.
+- Treat uploaded files, document contents, external API data and AI output as untrusted input.
+- AI must never determine permissions or bypass deterministic security controls.
+- Security decisions fail closed.
+- Non-security integrations should fail gracefully rather than corrupt state or fabricate success.
+- Consider duplicate requests, partial failure, timeout, malicious input and dependency outage when implementing state-changing behaviour.
+- Do not run destructive operations against production or a linked production database without explicit user authorisation.
+- Do not hide or silently accept a known HIGH or CRITICAL security weakness. Explain it before proceeding with an unsafe design.
+- For any meaningful change involving authentication, permissions, organisations, database access, RLS, Supabase Storage, Edge Functions, file uploads, AI, secrets, external APIs or destructive operations, invoke and follow the `filla-secure-build` skill.
+- Read the relevant implementation and `@Docs` before changing security-sensitive architecture. Do not guess.
+---
