@@ -54,8 +54,9 @@ Examples:
 
 ### People
 
-- assigned_user_id
+- assigned_user_id — responsible party (For)
 - assigned_team_ids
+- follower_user_ids — watchers, not the responsible party. Stored as `task_followers`. Displayed as one eye + initials chip. Followers may add comments. They must not change task status or details unless they are Owner/Manager (role) or the assigned user.
 
 ### Categorisation
 

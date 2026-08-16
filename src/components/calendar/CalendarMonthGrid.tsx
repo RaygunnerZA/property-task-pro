@@ -1,5 +1,6 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
+import { Repeat } from "lucide-react";
 import {
   addDays,
   endOfMonth,
@@ -47,7 +48,7 @@ const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 /**
  * Week row: compact unless any day in that week has 2+ events.
- * Compact fits date numeral + two-line chip; expands to full for multi-event weeks.
+ * Compact fits date numeral + one chip; expands so stacked chips can scroll.
  */
 const CALENDAR_ROW_COMPACT_PX = 70;
 const CALENDAR_ROW_EXPANDED_PX = 118;
@@ -79,6 +80,8 @@ type CalendarMonthGridProps = {
   tasks: unknown[];
   selectedDate?: Date;
   onDateSelect?: (date: Date) => void;
+  /** Empty-day double-click, or date-numeral click when the day already has tasks. */
+  onCreateForDate?: (date: Date) => void;
   onTaskClick?: (taskId: string) => void;
   onTaskReschedule?: (
     taskId: string,
@@ -149,6 +152,8 @@ function CalendarTaskChip({
     propertyMap.size > 1 ? taskPropertyLabel(task, propertyMap) : "";
   const calType = inferCalendarType(placement.task) as CalendarTypeId;
   const color = getCalendarTypeColor(calType);
+  const isRepeat = placement.source === "repeat";
+  const compact = singleLine || isRepeat;
 
   // When a DragOverlay is active, leave the source chip in place (dimmed) —
   // applying `transform` here AND rendering an overlay causes a cursor offset.
@@ -158,7 +163,7 @@ function CalendarTaskChip({
     disabled: isDragOverlay,
   });
 
-  const chipBackground = calendarTypeColorWithAlpha(color, 0.35);
+  const chipBackground = calendarTypeColorWithAlpha(color, isRepeat ? 0.16 : 0.35);
   const title = task.title || "Task";
 
   return (
@@ -167,7 +172,10 @@ function CalendarTaskChip({
       type="button"
       style={{ backgroundColor: chipBackground }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
-      onPointerDown={() => onHoldStart?.()}
+      onPointerDown={(e) => {
+        listeners?.onPointerDown?.(e);
+        onHoldStart?.();
+      }}
       onPointerUp={() => onHoldEnd?.()}
       onPointerCancel={() => onHoldEnd?.()}
       onClick={(e) => {
@@ -175,25 +183,37 @@ function CalendarTaskChip({
         onTaskClick?.(task.id);
       }}
       className={cn(
-        singleLine ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
-        "transition-[height,min-height] duration-150 ease-out",
+        compact ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
+        "transition-[height,min-height,opacity] duration-150 ease-out",
+        isRepeat && "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
     >
-      {priorityDotClass ? (
+      {priorityDotClass && !isRepeat ? (
         <span
           className={cn(
             "pointer-events-none absolute left-1 rounded-full",
-            singleLine ? "top-1/2 h-[4px] w-[4px] -translate-y-1/2" : "top-1.5 h-[5px] w-[5px]",
+            compact ? "top-1/2 h-[4px] w-[4px] -translate-y-1/2" : "top-1.5 h-[5px] w-[5px]",
             priorityDotClass
           )}
           aria-hidden
         />
       ) : null}
-      {singleLine ? (
-        <span className="min-w-0 flex-1 truncate font-medium text-ink" title={title}>
-          {title}
+      {compact ? (
+        <span className="flex min-w-0 flex-1 items-center gap-0.5">
+          {isRepeat ? (
+            <Repeat className="h-2.5 w-2.5 shrink-0 text-ink/35" aria-hidden />
+          ) : null}
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate",
+              isRepeat ? "font-normal text-ink/50" : "font-medium text-ink"
+            )}
+            title={isRepeat ? `${title} (repeats)` : title}
+          >
+            {title}
+          </span>
         </span>
       ) : (
         <>
@@ -247,6 +267,7 @@ type CalendarDayCellProps = {
   placements: CalendarTaskPlacement[];
   selectedDate?: Date;
   onDateSelect?: (date: Date) => void;
+  onCreateForDate?: (date: Date) => void;
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string | null;
   propertyMap: Map<string, { nickname?: string; name?: string; address?: string }>;
@@ -262,6 +283,7 @@ function CalendarDayCell({
   placements,
   selectedDate,
   onDateSelect,
+  onCreateForDate,
   onTaskClick,
   selectedTaskId,
   propertyMap,
@@ -276,11 +298,11 @@ function CalendarDayCell({
   const [holding, setHolding] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
 
-  const maxVisible = compact ? 1 : 3;
-  const visiblePlacements = placements.slice(0, maxVisible);
-  const overflow = placements.length - visiblePlacements.length;
   const rowMinHeight = compact ? CALENDAR_ROW_COMPACT_PX : CALENDAR_ROW_EXPANDED_PX;
   const singleEvent = placements.length === 1;
+  const occupied = placements.length > 0;
+  const stacked = placements.length > 1;
+  const dateLabel = format(date, "MMMM d");
 
   /**
    * Single-event days show the two-line chip at rest (compact weeks).
@@ -317,20 +339,45 @@ function CalendarDayCell({
 
   useEffect(() => () => clearHoldTimer(), [clearHoldTimer]);
 
+  const handleCreate = useCallback(() => {
+    onCreateForDate?.(date);
+  }, [date, onCreateForDate]);
+
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left",
+        "relative flex h-full flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left select-none",
         compact ? "pb-0.5" : "pb-1.5",
         !inMonth && "bg-muted/10 text-muted-foreground/50",
         isDragging && "hover:bg-muted/20",
         isWeekendColumn && "opacity-50"
       )}
       style={{ minHeight: rowMinHeight }}
+      onDoubleClick={() => {
+        if (!occupied) handleCreate();
+      }}
     >
       <button
         type="button"
-        onClick={() => onDateSelect?.(date)}
+        onClick={(e) => {
+          e.stopPropagation();
+          if (occupied && onCreateForDate) {
+            handleCreate();
+            return;
+          }
+          onDateSelect?.(date);
+        }}
+        onDoubleClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          if (!occupied) handleCreate();
+        }}
+        aria-label={
+          occupied && onCreateForDate
+            ? `Create task on ${dateLabel}`
+            : `Select ${dateLabel}`
+        }
+        title={occupied && onCreateForDate ? "Create task" : undefined}
         className={cn(
           "relative z-[2] -mx-px inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
           compact ? "h-5 w-5" : "h-6 w-6"
@@ -348,18 +395,27 @@ function CalendarDayCell({
         </span>
       </button>
 
-      <div className="relative min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1 flex-col">
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
         <div
           className={cn(
             "relative z-[1] flex min-h-0 flex-1 flex-col gap-0.5",
+            // Scroll stacked days with the wheel; never while dragging so drop zones stay hittable.
+            stacked && !isDragging
+              ? "overflow-y-auto overscroll-contain scrollbar-vt-teal"
+              : "overflow-hidden",
             collapseForPeriodMove && "h-full",
             // Source chips must not steal the drop target under the pointer.
             isDragging && "pointer-events-none"
           )}
+          onWheel={(e) => {
+            if (!stacked || isDragging) return;
+            const el = e.currentTarget;
+            if (el.scrollHeight > el.clientHeight) e.stopPropagation();
+          }}
         >
-          {visiblePlacements.map((placement) => {
+          {placements.map((placement) => {
             const period = placement.period;
             const pinToHalf =
               collapseForPeriodMove && (period === "morning" || period === "afternoon");
@@ -385,11 +441,6 @@ function CalendarDayCell({
             );
           })}
         </div>
-        {overflow > 0 ? (
-          <span className="absolute bottom-0 right-0 z-[2] text-2xs text-muted-foreground">
-            +{overflow} more
-          </span>
-        ) : null}
       </div>
     </div>
   );
@@ -410,6 +461,7 @@ export function CalendarMonthGrid({
   tasks,
   selectedDate,
   onDateSelect,
+  onCreateForDate,
   onTaskClick,
   onTaskReschedule,
   selectedTaskId,
@@ -514,6 +566,7 @@ export function CalendarMonthGrid({
     <DndContext
       sensors={sensors}
       collisionDetection={calendarDropCollision}
+      autoScroll={false}
       measuring={{
         droppable: { strategy: MeasuringStrategy.Always },
       }}
@@ -552,6 +605,7 @@ export function CalendarMonthGrid({
                 placements={placementsByDate.get(key) ?? []}
                 selectedDate={selectedDate}
                 onDateSelect={onDateSelect}
+                onCreateForDate={onCreateForDate}
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedTaskId}
                 propertyMap={propertyMap}

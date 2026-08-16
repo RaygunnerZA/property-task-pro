@@ -103,7 +103,6 @@ import { rankLikelySpaces } from "@/lib/rankLikelySpaces";
 import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage, createTempImage } from "@/utils/image-optimization";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
-import type { TempImage } from "@/types/temp-image";
 import { confirmIntakeItem, downloadInboxFile } from "@/services/intake/intakeUpload";
 import { INTAKE_ITEMS_QUERY_KEY } from "@/hooks/useIntakeItems";
 import { format, addDays, startOfDay } from "date-fns";
@@ -307,6 +306,9 @@ export interface IntakeModalProps {
   collapseComposer?: boolean;
   /** Called when a collapsed action button is pressed (expands composer in that mode). */
   onExpandComposer?: (mode: IntakeMode) => void;
+  /** Prefill due date (`yyyy-MM-dd`). Re-applied when `dueDatePrefillNonce` changes. */
+  defaultDueDate?: string;
+  dueDatePrefillNonce?: number;
 }
 
 interface UploadedAttachment {
@@ -338,6 +340,8 @@ export function IntakeModal({
   fromIntakeReview = false,
   collapseComposer = false,
   onExpandComposer,
+  defaultDueDate,
+  dueDatePrefillNonce,
 }: IntakeModalProps) {
   const { toast } = useToast();
   const { orgId } = useActiveOrg();
@@ -490,6 +494,13 @@ export function IntakeModal({
   const userClearedDueDateRef = useRef(false);
   /** Prevents extracted recurrence from re-applying after the user clears REPEAT. */
   const userClearedRepeatRef = useRef(false);
+
+  useEffect(() => {
+    if (!dueDatePrefillNonce || !defaultDueDate) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(defaultDueDate)) return;
+    userClearedDueDateRef.current = false;
+    setDueDate(defaultDueDate);
+  }, [dueDatePrefillNonce, defaultDueDate]);
   const prevOpenChipSlotRef = useRef<typeof openChipSlot>(null);
   /** When REPEAT opens the WHEN slot, keep that tab — the enter-slot effect would otherwise reset to due. */
   const pendingWhenTabRef = useRef<IntakeWhenTab | null>(null);

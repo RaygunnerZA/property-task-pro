@@ -106,6 +106,8 @@ export function CreateTaskRow({
     const facts: ChipData[] = factChips.map((c) =>
       suggestedChipToChipData(c)
     );
+    // Task detail already shows the active value on the rail above.
+    const visibleFacts = embedded ? [] : facts;
     const factLabels = new Set(
       facts.map((f) => f.label.trim().toUpperCase()).filter(Boolean)
     );
@@ -127,7 +129,7 @@ export function CreateTaskRow({
     const suggested: ChipData[] = suggestedChips
       .filter((c) => !isCoveredByFact(c.id, c.label))
       .map((c) => suggestedChipToChipData(c));
-    if (!isHovered && !isActive) return [...facts, ...verbs, ...suggested];
+    if (!isHovered && !isActive) return [...visibleFacts, ...verbs, ...suggested];
     // Hover: show hoverChips (e.g. PRIORITY) or single instruction chip
     if (hoverChips && hoverChips.length > 0) {
       const hoverAsChips: ChipData[] = hoverChips
@@ -138,7 +140,7 @@ export function CreateTaskRow({
           variant: "interactive" as const,
           kind: "instruction" as const,
         }));
-      return [...facts, ...verbs, ...suggested, ...hoverAsChips];
+      return [...visibleFacts, ...verbs, ...suggested, ...hoverAsChips];
     }
     const instructionChip: ChipData = {
       id: `instruction-${sectionId}`,
@@ -146,8 +148,8 @@ export function CreateTaskRow({
       variant: "interactive",
       kind: "instruction",
     };
-    return [...facts, ...verbs, ...suggested, instructionChip];
-  }, [factChips, verbChips, suggestedChips, sectionId, instruction, isHovered, isActive, hoverChips, valueLabel]);
+    return [...visibleFacts, ...verbs, ...suggested, instructionChip];
+  }, [embedded, factChips, verbChips, suggestedChips, sectionId, instruction, isHovered, isActive, hoverChips, valueLabel]);
 
   const handleChipPress = (chip: ChipData) => {
     if (chip.variant === "fact") {

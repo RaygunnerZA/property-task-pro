@@ -28,6 +28,7 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
    * On work-surface phone this stays false so Inflow | Tasks | Calendar remain visible.
    */
   hideTabStrip?: boolean;
+  onCreateForDate?: (date: Date) => void;
 };
 
 /**
@@ -53,6 +54,7 @@ export function CentreWorkbench({
   initialCalendarView,
   hideViewAllLinks = false,
   hideTabStrip = false,
+  onCreateForDate,
 }: CentreWorkbenchProps) {
   /** Driven by Tasks All / My tabs so the phone calendar matches the list scope. */
   const [tasksCalendarScope, setTasksCalendarScope] = useState<CalendarTaskScope>("all");
@@ -171,6 +173,7 @@ export function CentreWorkbench({
               {...sharedPanelProps}
               selectedDate={selectedDate}
               initialCalendarView={initialCalendarView}
+              onCreateForDate={onCreateForDate}
             />
           )}
         </div>

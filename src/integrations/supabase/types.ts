@@ -2995,6 +2995,52 @@ export type Database = {
           },
         ]
       }
+      task_followers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          org_id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          org_id: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          org_id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_followers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_teams: {
         Row: {
           task_id: string
@@ -3548,10 +3594,12 @@ export type Database = {
           created_at: string | null
           description: string | null
           due_date: string | null
+          follower_user_ids: string[] | null
           id: string | null
           images: Json | null
           milestones: Json | null
           org_id: string | null
+          owner_user_id: string | null
           priority: string | null
           property_address: string | null
           property_id: string | null
@@ -3848,6 +3896,10 @@ export type Database = {
       }
       revoke_invitation: { Args: { p_invitation_id: string }; Returns: undefined }
       member_can_create_tasks: { Args: { p_org_id: string }; Returns: boolean }
+      member_can_mutate_task: {
+        Args: { p_assigned_user_id: string; p_org_id: string }
+        Returns: boolean
+      }
       member_can_access_property: {
         Args: { p_org_id: string; p_property_id: string }
         Returns: boolean

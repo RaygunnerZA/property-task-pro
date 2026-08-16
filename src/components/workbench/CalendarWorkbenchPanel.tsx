@@ -48,6 +48,7 @@ const VIEW_TABS: {
 export type CalendarWorkbenchPanelProps = MyWorkPanelProps & {
   selectedDate?: Date;
   initialCalendarView?: CentreCalendarView;
+  onCreateForDate?: (date: Date) => void;
 };
 
 /**
@@ -62,6 +63,7 @@ export function CalendarWorkbenchPanel({
   selectedPropertyIds,
   selectedDate: selectedDateProp,
   initialCalendarView = "calendar",
+  onCreateForDate,
 }: CalendarWorkbenchPanelProps) {
   const { userId } = useDataContext();
   const { orgId } = useActiveOrg();
@@ -175,6 +177,14 @@ export function CalendarWorkbenchPanel({
     setInternalSelectedDate(date);
     setCurrentMonth(startOfMonth(date));
   }, []);
+
+  const handleCreateForDate = useCallback(
+    (date: Date) => {
+      handleDateSelect(date);
+      onCreateForDate?.(date);
+    },
+    [handleDateSelect, onCreateForDate]
+  );
 
   const handleToday = useCallback(() => {
     const today = new Date();
@@ -324,6 +334,7 @@ export function CalendarWorkbenchPanel({
                 tasks={displayTasks}
                 selectedDate={selectedDate}
                 onDateSelect={handleDateSelect}
+                onCreateForDate={onCreateForDate ? handleCreateForDate : undefined}
                 onTaskClick={onTaskClick}
                 onTaskReschedule={handleTaskReschedule}
                 selectedTaskId={selectedTaskId}

@@ -256,7 +256,8 @@ export function CategorySection({
         >
           <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px] pt-[3px] pb-[3px]">
           {/* Fact chips */}
-          {selectedCategories.map((c) => (
+          {!embedded
+            ? selectedCategories.map((c) => (
             <SemanticChip
               key={c.id}
               epistemic="fact"
@@ -266,8 +267,10 @@ export function CategorySection({
               truncate
               className="shrink-0"
             />
-          ))}
-          {selectedGhostCategories.map((g) => {
+          ))
+            : null}
+          {!embedded
+            ? selectedGhostCategories.map((g) => {
             const id = `ghost-theme-${g.name}-category`;
             return (
               <SemanticChip
@@ -280,7 +283,8 @@ export function CategorySection({
                 className="shrink-0"
               />
             );
-          })}
+          })
+            : null}
 
           {isEditing ? (
             <>

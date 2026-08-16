@@ -32,6 +32,23 @@ describe("calendarTaskSchedule", () => {
     expect(placements.map((p) => p.id)).toContain("t1:milestone:m1");
   });
 
+  it("marks non-anchor repeat occurrences as source repeat", () => {
+    const placements = buildCalendarPlacements([
+      {
+        id: "weekly",
+        title: "Bin day",
+        due_date: "2026-08-03",
+        repeat_rule: { type: "weekly", interval: 1 },
+      },
+    ]);
+    const sources = placements.map((p) => p.source);
+    expect(sources).toContain("due");
+    expect(sources).toContain("repeat");
+    expect(placements.filter((p) => p.source === "repeat").every((p) => p.id.startsWith("weekly:repeat:"))).toBe(
+      true
+    );
+  });
+
   it("parses drag and drop ids", () => {
     expect(parsePlacementDragId("abc:due")).toEqual({ taskId: "abc", source: "due" });
     expect(parsePlacementDragId("abc:milestone:m1")).toEqual({

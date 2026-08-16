@@ -36,6 +36,7 @@ interface RightColumnProps {
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   calendarInitialView?: CentreCalendarView;
   hideCentreTabStrip?: boolean;
+  onCreateForDate?: (date: Date) => void;
 }
 
 const panelShellClass = cn(columnShellClass, "rounded-xl");
@@ -71,6 +72,7 @@ export function RightColumn({
   onCentreWorkbenchTabChange,
   calendarInitialView,
   hideCentreTabStrip = false,
+  onCreateForDate,
 }: RightColumnProps) {
   const dedicatedTitle =
     workbenchPanel === "records"
@@ -107,6 +109,7 @@ export function RightColumn({
           onDateSelect={onDateSelect}
           initialCalendarView={calendarInitialView}
           hideTabStrip={hideCentreTabStrip}
+          onCreateForDate={onCreateForDate}
         />
       );
     }
@@ -128,6 +131,7 @@ export function RightColumn({
           initialCalendarView={calendarInitialView}
           hideViewAllLinks
           hideTabStrip={hideCentreTabStrip}
+          onCreateForDate={onCreateForDate}
         />
       );
     }

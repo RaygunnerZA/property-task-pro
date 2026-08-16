@@ -11,6 +11,7 @@ import {
   type CalendarViewMode,
 } from "@/components/calendar/CalendarToolbar";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -28,7 +29,7 @@ import {
 import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { CALENDAR_TYPES } from "@/lib/calendarTypes";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
-import { startOfMonth } from "date-fns";
+import { startOfMonth, format, startOfDay } from "date-fns";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
@@ -55,6 +56,8 @@ function CalendarPageContent() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [taskScope, setTaskScope] = useState<CalendarTaskScope>("all");
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createDueDate, setCreateDueDate] = useState<string | undefined>();
 
   useEffect(() => {
     const check = () => setIsLargeScreen(window.innerWidth >= LG_BREAKPOINT);
@@ -165,7 +168,16 @@ function CalendarPageContent() {
   }, []);
 
   const handleTaskClick = useCallback((taskId: string) => {
+    setCreateOpen(false);
     setSelectedTaskId(taskId);
+  }, []);
+
+  const handleCreateForDate = useCallback((date: Date) => {
+    setSelectedTaskId(null);
+    setCreateDueDate(format(startOfDay(date), "yyyy-MM-dd"));
+    setCreateOpen(true);
+    setSelectedDate(date);
+    setCurrentMonth(startOfMonth(date));
   }, []);
 
   const handleTaskReschedule = useCallback(
@@ -201,7 +213,24 @@ function CalendarPageContent() {
   );
 
   const thirdColumn =
-    isLargeScreen && selectedTaskId ? (
+    isLargeScreen && createOpen ? (
+      <div className="flex h-full min-h-0 flex-col pt-4 pr-2 pl-2">
+        <CreateTaskModal
+          key={createDueDate ?? "create"}
+          open={createOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open);
+            if (!open) setCreateDueDate(undefined);
+          }}
+          onTaskCreated={() => {
+            setCreateOpen(false);
+            setCreateDueDate(undefined);
+          }}
+          defaultDueDate={createDueDate}
+          variant="column"
+        />
+      </div>
+    ) : isLargeScreen && selectedTaskId ? (
       <div className="flex h-full min-h-0 flex-col pt-4 pr-2 pl-2">
         <TaskDetailPanel
           taskId={selectedTaskId}
@@ -261,6 +290,7 @@ function CalendarPageContent() {
                   tasks={displayTasks}
                   selectedDate={selectedDate}
                   onDateSelect={(d) => handleDateSelect(d)}
+                  onCreateForDate={handleCreateForDate}
                   onTaskClick={handleTaskClick}
                   onTaskReschedule={handleTaskReschedule}
                   selectedTaskId={selectedTaskId}
@@ -277,6 +307,22 @@ function CalendarPageContent() {
         }
         thirdColumn={thirdColumn}
       />
+
+      {createOpen && !isLargeScreen && (
+        <CreateTaskModal
+          key={createDueDate ?? "create"}
+          open={createOpen}
+          onOpenChange={(open) => {
+            setCreateOpen(open);
+            if (!open) setCreateDueDate(undefined);
+          }}
+          onTaskCreated={() => {
+            setCreateOpen(false);
+            setCreateDueDate(undefined);
+          }}
+          defaultDueDate={createDueDate}
+        />
+      )}
 
       {selectedTaskId && !isLargeScreen && (
         <TaskDetailPanel

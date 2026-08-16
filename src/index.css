@@ -891,6 +891,22 @@
     border-radius: 9999px;
   }
 
+  /* Vertical overflow: thin track — same teal as scrollbar-hz-teal */
+  .scrollbar-vt-teal {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(185 40% 68% / 0.5) transparent;
+  }
+  .scrollbar-vt-teal::-webkit-scrollbar {
+    width: 3px;
+  }
+  .scrollbar-vt-teal::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-vt-teal::-webkit-scrollbar-thumb {
+    background-color: hsl(185 40% 68% / 0.5);
+    border-radius: 9999px;
+  }
+
   @keyframes chip-chevron-glow {
     0%,
     100% {

@@ -144,6 +144,9 @@ export default function Dashboard({
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
   const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
+  const [intakeDuePrefill, setIntakeDuePrefill] = useState<{ date: string; nonce: number } | null>(
+    null
+  );
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
@@ -633,6 +636,18 @@ export default function Dashboard({
     setShowCreateTask(true);
   }, [activeTab, isLargeScreen]);
 
+  const handleCreateForDate = useCallback(
+    (date: Date) => {
+      setIntakeDuePrefill({
+        date: format(startOfDay(date), "yyyy-MM-dd"),
+        nonce: Date.now(),
+      });
+      handleOpenIntake("report_issue");
+      if (isLargeScreen) pinThirdColumnTop();
+    },
+    [handleOpenIntake, isLargeScreen, pinThirdColumnTop]
+  );
+
   /** Sidebar Create New and legacy `?add=true` deep links open Report Issue. */
   useEffect(() => {
     if (searchParams.get("add") !== "true") return;
@@ -940,6 +955,8 @@ export default function Dashboard({
             onIntakeModeChange={setWorkbenchIntakeMode}
             collapseComposer={intakeMinimized}
             onExpandComposer={handleOpenIntake}
+            defaultDueDate={intakeDuePrefill?.date}
+            dueDatePrefillNonce={intakeDuePrefill?.nonce}
           />
         </div>
       )}
@@ -1189,6 +1206,7 @@ export default function Dashboard({
             onDateSelect={handleDateSelect}
             calendarInitialView={calendarInitialView}
             hideCentreTabStrip={workbenchLayout.hideCentreTabStripOnPhone}
+            onCreateForDate={handleCreateForDate}
           />
           </ErrorBoundary>
         }
@@ -1222,6 +1240,8 @@ export default function Dashboard({
           onTaskCreated={handleTaskCreated}
           defaultPropertyId={intakeScopedPropertyId}
           initialIntakeMode={modalInitialIntakeMode}
+          defaultDueDate={intakeDuePrefill?.date}
+          dueDatePrefillNonce={intakeDuePrefill?.nonce}
         />
       )}
 

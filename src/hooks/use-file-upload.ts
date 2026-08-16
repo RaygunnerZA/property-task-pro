@@ -5,6 +5,7 @@ import { useActiveOrg } from "./useActiveOrg";
 import { useOrgEntitlements } from "./useOrgEntitlements";
 import { captureGeoForAction } from "@/services/location/geoCapture";
 import { assertEvidenceUpload } from "@/lib/evidence/assertUpload";
+import { track } from "@/lib/analytics";
 
 interface UseFileUploadOptions {
   taskId?: string;
@@ -191,17 +192,6 @@ export function useFileUpload({ taskId, propertyId, onUploadComplete, onError }:
 
     if (!taskId) {
       const error = new Error("Task ID is required");
-      onError?.(error);
-      throw error;
-    }
-
-    try {
-      validateImageFile(file);
-    } catch (validationError: unknown) {
-      const error =
-        validationError instanceof Error
-          ? validationError
-          : new Error(`File "${file.name}" could not be uploaded.`);
       onError?.(error);
       throw error;
     }

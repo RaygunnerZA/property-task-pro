@@ -82,6 +82,7 @@ export function useCreateTaskForm({
   const [milestones, setMilestones] = useState<MilestoneItem[]>([]);
   const [assignedUserId, setAssignedUserId] = useState<string | undefined>();
   const [assignedTeamIds, setAssignedTeamIds] = useState<string[]>([]);
+  const [followerUserIds, setFollowerUserIds] = useState<string[]>([]);
   const [pendingInvitations, setPendingInvitations] = useState<PendingInvitation[]>([]);
   const [isCompliance, setIsCompliance] = useState(false);
   const [complianceLevel, setComplianceLevel] = useState("");
@@ -352,6 +353,7 @@ export function useCreateTaskForm({
     setMilestones([]);
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
+    setFollowerUserIds([]);
     setPendingInvitations([]);
     setIsCompliance(false);
     setComplianceLevel("");
@@ -405,6 +407,7 @@ export function useCreateTaskForm({
     milestones, setMilestones,
     assignedUserId, setAssignedUserId,
     assignedTeamIds, setAssignedTeamIds,
+    followerUserIds, setFollowerUserIds,
     pendingInvitations, setPendingInvitations,
     isCompliance, setIsCompliance,
     complianceLevel, setComplianceLevel,

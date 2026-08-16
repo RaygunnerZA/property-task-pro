@@ -233,7 +233,9 @@ UI visibility and API/RLS enforcement must use the same rules. Never check plan 
 | Action | Owner | Manager | Staff | External |
 |---|:---:|:---:|:---:|:---:|
 | View assigned work | Yes | Yes | Yes | Shared only |
-| Complete assigned work | Yes | Yes | Yes | If link permits |
+| Complete assigned work | Yes | Yes | Yes (assignee) | If link permits |
+| Follow a task (watch / comment) | Yes | Yes | Yes | Shared only |
+| Change task status or details as follower only | Yes | Yes | **No** | No |
 | Complete checklists | Yes | Yes | Yes | If link permits |
 | Add evidence | Yes | Yes | Yes | Shared only |
 | Add comments | Yes | Yes | Yes | Shared only |

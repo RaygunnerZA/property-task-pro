@@ -49,6 +49,7 @@ export interface SemanticChipProps {
   entryValue?: string;
   onEntryChange?: (value: string) => void;
   className?: string;
+  ariaLabel?: string;
 }
 
 export function SemanticChip({
@@ -75,6 +76,7 @@ export function SemanticChip({
   entryValue = "",
   onEntryChange,
   className,
+  ariaLabel,
 }: SemanticChipProps) {
   const TRANSFER_COLLAPSE_MS = 260;
   const [isPressed, setIsPressed] = useState(false);
@@ -311,6 +313,7 @@ export function SemanticChip({
             type="button"
             className={baseStyles}
             style={color ? { backgroundColor: color } : undefined}
+            aria-label={ariaLabel}
             aria-expanded={undefined}
             aria-haspopup="true"
             onPointerDown={handlePointerDown}
@@ -343,6 +346,7 @@ export function SemanticChip({
       onPointerLeave={onPress ? () => setIsPressed(false) : undefined}
       className={baseStyles}
       style={color ? { backgroundColor: color } : undefined}
+      aria-label={ariaLabel}
     >
       {content}
     </Wrapper>

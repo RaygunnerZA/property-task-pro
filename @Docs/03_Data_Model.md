@@ -39,7 +39,8 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 **Signal RPCs:** `emit_signal`, `resolve_signal`, `snooze_signal`, `convert_signal_to_task`, `update_property_geo`.
 
 **Tasks & Schedule:**
-*   `tasks` — `status` enum: `open` | `in_progress` | `waiting_review` (vendor work submitted; manager sign-off pending) | `completed` | `archived`; plus `priority`, `due_date`, assignments, property/spaces/assets links.
+*   `tasks` — `status` enum: `open` | `in_progress` | `waiting_review` (vendor work submitted; manager sign-off pending) | `completed` | `archived`; plus `priority`, `due_date`, assignments, property/spaces/assets links. UPDATE: `member_can_mutate_task` — Owner/Manager or `assigned_user_id = auth.uid()`. Followers do not gain UPDATE.
+*   `task_followers` — `(task_id, user_id)` PK; `org_id`, `created_at`, `created_by`. Watchers of a task. Must be active org members; must not be the assignee. INSERT/DELETE: same mutate helper as task UPDATE. SELECT inherits `tasks` RLS (invoker subquery). Exposed on `tasks_view.follower_user_ids`.
 *   `schedule_items` (frequency, next_occurrence)
 *   `task_instances` (generated from schedule)
 *   `issues` (captured anomalies)

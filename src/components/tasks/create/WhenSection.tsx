@@ -350,7 +350,7 @@ export function WhenSection({
           )}
 
           {/* Fact chips: date, recurrence */}
-          {dateFactLabel && (
+          {!embedded && dateFactLabel && (
             <span data-when-action="true" className="shrink-0">
               <SemanticChip
                 epistemic="fact"
@@ -370,7 +370,7 @@ export function WhenSection({
               />
             </span>
           )}
-          {repeatRule && (
+          {!embedded && repeatRule && (
             <SemanticChip
               epistemic="fact"
               label={formatRepeatFactLabel(repeatRule)}
@@ -387,7 +387,8 @@ export function WhenSection({
               className="shrink-0 max-w-none"
             />
           )}
-          {milestones.map((m) => (
+          {!embedded &&
+            milestones.map((m) => (
             <span key={m.id} data-when-action="true" className="shrink-0">
               <SemanticChip
                 epistemic="fact"

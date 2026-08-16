@@ -189,7 +189,8 @@ export function WhereSection({
 
   const spaceInputWidth = Math.min(240, Math.max(100, (spaceQuery.length + 2) * 8));
   const showFacts =
-    isHovered || showFactsByDefault || hasExplicitSelection || selectedSpaceIds.length > 0 || isActive;
+    !embedded &&
+    (isHovered || showFactsByDefault || hasExplicitSelection || selectedSpaceIds.length > 0 || isActive);
   const showControls =
     isHovered || propertyPickerOpen || isSpaceEditing || showFactsByDefault || isActive;
 

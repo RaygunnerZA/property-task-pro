@@ -60,6 +60,8 @@ import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
 import { TaskStatusDropdown } from "@/components/tasks/TaskStatusDropdown";
 import { useTaskCommentSignal } from "@/hooks/useTaskCommentSignals";
+import { FollowerChip } from "@/components/tasks/FollowerChip";
+import { membershipCanEditTaskDetails, parseFollowerUserIds } from "@/lib/taskFollowers";
 import {
   issuesSignalOverflowButtonClassName,
   issuesSignalReviewButtonClassName,
@@ -230,7 +232,7 @@ function TaskCardComponent({
   /** Tasks → Messages tab amended card content. */
   messagePreview?: TaskMessagePreview | null;
 }) {
-  const { orgId } = useActiveOrg();
+  const { orgId, role: orgRole } = useActiveOrg();
   const { members } = useOrgMembers();
   const { user: currentUser } = useAuth();
   const { data: orgProperties = [] } = usePropertiesQuery();
@@ -339,6 +341,23 @@ function TaskCardComponent({
   );
 
   const assigneeUser = assignedUsers[0] ?? null;
+  const followerPeople = useMemo(() => {
+    const ids = parseFollowerUserIds(task?.follower_user_ids).filter(
+      (id) => id !== task?.assigned_user_id
+    );
+    return ids.map((id) => {
+      const m = members.find((x) => x.user_id === id);
+      return {
+        userId: id,
+        displayName: m?.display_name || m?.nickname || m?.email || id.slice(0, 8),
+      };
+    });
+  }, [task?.follower_user_ids, task?.assigned_user_id, members]);
+  const canEditTaskDetails = membershipCanEditTaskDetails({
+    role: orgRole,
+    userId: currentUser?.id,
+    assignedUserId: task?.assigned_user_id,
+  });
   
   // Memoize handleDone to prevent recreation on every render
   const handleDone = useCallback(async () => {
@@ -637,7 +656,12 @@ function TaskCardComponent({
             : task?.status
         }
         variant="mark"
-        disabled={isChangingStatus || isCompleting || updateTaskMutation.isPending}
+        disabled={
+          isChangingStatus ||
+          isCompleting ||
+          updateTaskMutation.isPending ||
+          !canEditTaskDetails
+        }
         onStatusChange={(next) => {
           void handleStatusChange(next);
         }}
@@ -984,8 +1008,13 @@ function TaskCardComponent({
             ) : (
               <span className="min-w-0 flex-1" />
             )}
-            {assignerUser || assigneeUser ? (
-              <TaskCardPeopleMeta assigner={assignerUser} assignee={assigneeUser} />
+            {assignerUser || assigneeUser || followerPeople.length > 0 ? (
+              <div className="flex shrink-0 items-center gap-1.5">
+                {assignerUser || assigneeUser ? (
+                  <TaskCardPeopleMeta assigner={assignerUser} assignee={assigneeUser} />
+                ) : null}
+                {followerPeople.length > 0 ? <FollowerChip people={followerPeople} /> : null}
+              </div>
             ) : null}
           </div>
 

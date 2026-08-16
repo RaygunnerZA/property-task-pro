@@ -34,8 +34,10 @@ export interface CreateTaskSectionsProps {
   // Who
   assignedUserId: string | undefined;
   assignedTeamIds: string[];
+  followerUserIds: string[];
   setAssignedUserId: (id: string | undefined) => void;
   setAssignedTeamIds: (ids: string[]) => void;
+  setFollowerUserIds: (ids: string[]) => void;
   pendingInvitations: PendingInvitation[];
   setPendingInvitations: React.Dispatch<React.SetStateAction<PendingInvitation[]>>;
   onInviteToOrg: (prefill?: { firstName?: string; lastName?: string; email?: string } | null) => void;
@@ -91,8 +93,10 @@ export function CreateTaskSections({
   setActiveSection,
   assignedUserId,
   assignedTeamIds,
+  followerUserIds,
   setAssignedUserId,
   setAssignedTeamIds,
+  setFollowerUserIds,
   pendingInvitations,
   setPendingInvitations,
   onInviteToOrg,
@@ -145,8 +149,10 @@ export function CreateTaskSections({
             onActivate={() => setActiveSection(id)}
             assignedUserId={assignedUserId}
             assignedTeamIds={assignedTeamIds}
+            followerUserIds={followerUserIds}
             onUserChange={setAssignedUserId}
             onTeamsChange={setAssignedTeamIds}
+            onFollowersChange={setFollowerUserIds}
             pendingInvitations={pendingInvitations}
             onPendingInvitationsChange={setPendingInvitations}
             onInviteToOrg={(prefill) => onInviteToOrg(prefill ?? null)}

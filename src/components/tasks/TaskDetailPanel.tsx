@@ -41,6 +41,11 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useCategories } from "@/hooks/useCategories";
 import { InviteUserModal } from "@/components/invite/InviteUserModal";
 import { WhoSection } from "./create/WhoSection";
+import { FollowerChip } from "@/components/tasks/FollowerChip";
+import {
+  membershipCanEditTaskDetails,
+  parseFollowerUserIds,
+} from "@/lib/taskFollowers";
 import type { PendingInvitation } from "./create/tabs/WhoTab";
 import { WhenSection, type MilestoneItem } from "./create/WhenSection";
 import {
@@ -169,6 +174,7 @@ export function TaskDetailPanel({
     [siblingTasks, taskId]
   );
   const { role: orgRole, orgId } = useActiveOrg();
+  const { userId, user } = useDataContext();
   const canManageTemplates = orgRole === "owner" || orgRole === "manager";
   const queryClient = useQueryClient();
   const deleteTaskMutation = useDeleteTaskMutation();
@@ -180,6 +186,7 @@ export function TaskDetailPanel({
   const [priority, setPriority] = useState<string>("medium");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
+  const [selectedFollowerIds, setSelectedFollowerIds] = useState<string[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
@@ -272,6 +279,9 @@ export function TaskDetailPanel({
       setSelectedUserId(task.assigned_user_id || undefined);
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
       setSelectedTeamIds(teamsArray.map((t: any) => t.id) || []);
+      setSelectedFollowerIds(
+        parseFollowerUserIds((task as { follower_user_ids?: unknown }).follower_user_ids)
+      );
       setDueDate((task as any)?.due_date || (task as any)?.due_at || "");
       setLocalPropertyId((task as any)?.property_id || "");
       setSelectedPropertyIds((task as any)?.property_id ? [(task as any).property_id] : []);
@@ -381,6 +391,15 @@ export function TaskDetailPanel({
 
       if (updateError) throw updateError;
 
+      if (userId) {
+        await supabase
+          .from("task_followers")
+          .delete()
+          .eq("task_id", taskId)
+          .eq("user_id", userId);
+        setSelectedFollowerIds((prev) => prev.filter((id) => id !== userId));
+      }
+
       setSelectedUserId(userId);
       await refreshTask();
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -393,6 +412,63 @@ export function TaskDetailPanel({
       toast({
         title: "Couldn't update assignee",
         description: err.message || "Something didn't work. Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleFollowersChange = async (userIds: string[]) => {
+    if (isUpdating) return;
+    const unique = [...new Set(userIds.filter((id) => id && id !== selectedUserId))];
+    setIsUpdating(true);
+    try {
+      const { data: currentRows, error: fetchError } = await supabase
+        .from("task_followers")
+        .select("user_id")
+        .eq("task_id", taskId);
+
+      if (fetchError) throw fetchError;
+
+      const currentIds = (currentRows || []).map((row) => row.user_id);
+      const toAdd = unique.filter((id) => !currentIds.includes(id));
+      const toRemove = currentIds.filter((id) => !unique.includes(id));
+
+      if (toRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("task_followers")
+          .delete()
+          .eq("task_id", taskId)
+          .in("user_id", toRemove);
+        if (deleteError) throw deleteError;
+      }
+
+      if (toAdd.length > 0) {
+        const {
+          data: { user: actor },
+        } = await supabase.auth.getUser();
+        if (!orgId || !actor?.id) throw new Error("Not signed in");
+        const { error: insertError } = await supabase.from("task_followers").insert(
+          toAdd.map((user_id) => ({
+            task_id: taskId,
+            user_id,
+            org_id: orgId,
+            created_by: actor.id,
+          }))
+        );
+        if (insertError) throw insertError;
+      }
+
+      setSelectedFollowerIds(unique);
+      await refreshTask();
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Something didn't work. Try again.";
+      console.error("Error updating followers:", err);
+      toast({
+        title: "Couldn't update followers",
+        description: message,
         variant: "destructive",
       });
     } finally {
@@ -884,6 +960,43 @@ export function TaskDetailPanel({
       });
     });
 
+    const followerPeople = selectedFollowerIds
+      .filter((id) => id !== selectedUserId)
+      .map((id) => {
+        const m = members.find((x) => x.user_id === id);
+        return {
+          userId: id,
+          displayName: m?.display_name || m?.nickname || m?.email || id.slice(0, 8),
+        };
+      });
+    if (followerPeople.length > 0) {
+      chips.push({
+        id: "who-followers",
+        slot: "who",
+        label: followerPeople.map((p) => p.displayName).join(" | "),
+        epistemic: "fact",
+        custom: (
+          <FollowerChip
+            people={followerPeople}
+            onPress={() => openSlot("who")}
+            onRemoveOne={
+              membershipCanEditTaskDetails({
+                role: orgRole,
+                userId,
+                assignedUserId: selectedUserId,
+              })
+                ? (followerId) => {
+                    void handleFollowersChange(
+                      selectedFollowerIds.filter((id) => id !== followerId)
+                    );
+                  }
+                : undefined
+            }
+          />
+        ),
+      });
+    }
+
     const propName =
       (task as any)?.property?.nickname || (task as any)?.property_name || "";
     selectedSpaceIds.forEach((spaceId) => {
@@ -1011,6 +1124,7 @@ export function TaskDetailPanel({
     members,
     selectedUserId,
     selectedTeamIds,
+    selectedFollowerIds,
     taskTeams,
     task,
     selectedSpaceIds,
@@ -1025,6 +1139,7 @@ export function TaskDetailPanel({
     formatRepeatChipLabel,
     handleUserChange,
     handleTeamsChange,
+    handleFollowersChange,
     handleSpacesChange,
     handleDueDateChange,
     handleMilestonesChange,
@@ -1034,6 +1149,8 @@ export function TaskDetailPanel({
     handleThemesChange,
     resolveSpaceLabel,
     orgCategories,
+    orgRole,
+    userId,
   ]);
 
   const renderTaskDetailSlotContent = useCallback(
@@ -1049,12 +1166,16 @@ export function TaskDetailPanel({
                 onActivate={() => setOpenChipSlot("who")}
                 assignedUserId={selectedUserId}
                 assignedTeamIds={selectedTeamIds}
-                onUserChange={(userId) => {
-                  void handleUserChange(userId);
+                followerUserIds={selectedFollowerIds}
+                onUserChange={(nextUserId) => {
+                  void handleUserChange(nextUserId);
                   onClose();
                 }}
                 onTeamsChange={(teamIds) => {
                   void handleTeamsChange(teamIds);
+                }}
+                onFollowersChange={(ids) => {
+                  void handleFollowersChange(ids);
                 }}
                 pendingInvitations={pendingInvitations}
                 onPendingInvitationsChange={setPendingInvitations}
@@ -1081,7 +1202,6 @@ export function TaskDetailPanel({
                 selectedSpaceIds={selectedSpaceIds}
                 onPropertyChange={handlePropertyChangeSection}
                 onSpacesChange={handleSpacesChange}
-                showFactsByDefault
               />
             ),
             row3,
@@ -1218,6 +1338,7 @@ export function TaskDetailPanel({
     [
       selectedUserId,
       selectedTeamIds,
+      selectedFollowerIds,
       pendingInvitations,
       localPropertyId,
       selectedPropertyIds,
@@ -1233,6 +1354,7 @@ export function TaskDetailPanel({
       complianceLevel,
       handleUserChange,
       handleTeamsChange,
+      handleFollowersChange,
       handlePropertyChangeSection,
       handleSpacesChange,
       handleDueDateChange,
@@ -1244,8 +1366,6 @@ export function TaskDetailPanel({
     ]
   );
 
-  /** Secondary row chips: show real values instead of generic PLACE / DATE / … */
-  const { userId, user } = useDataContext();
   const allAttachments = (task as any)?.images ?? [];
   const imageAttachments = useMemo(
     () =>
@@ -1406,12 +1526,12 @@ export function TaskDetailPanel({
     }
   }, [evidenceItems, evidenceSlideIndex]);
 
-  const createdBy = (task as any)?.created_by ?? null;
   const assignedUserId = task?.assigned_user_id ?? null;
-  const isAssigner = !!userId && createdBy === userId;
-  const isAssignee = !!userId && assignedUserId === userId;
-  // Show CTA to any authenticated user who can view the task (fallback when created_by not in view)
-  const canManageTask = !!userId && (isAssigner || isAssignee || !createdBy);
+  const canManageTask = membershipCanEditTaskDetails({
+    role: orgRole,
+    userId,
+    assignedUserId: selectedUserId ?? assignedUserId,
+  });
 
   const hasEdits = useMemo(() => {
     const origMs = normalizeTaskMilestones((task as any)?.milestones);

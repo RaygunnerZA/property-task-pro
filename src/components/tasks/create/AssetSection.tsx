@@ -224,7 +224,8 @@ export function AssetSection({
         >
           <div className="flex items-center gap-2 flex-nowrap whitespace-nowrap pr-[6px] pt-[3px] pb-[3px]">
           {/* Fact chips */}
-          {selectedAssets.map((a) => (
+          {!embedded &&
+            selectedAssets.map((a) => (
             <SemanticChip
               key={a.id}
               epistemic="fact"

@@ -112,6 +112,8 @@ export interface IntakeChipRowChip {
   onPress?: () => void;
   removable?: boolean;
   onRemove?: () => void;
+  /** When set, rendered instead of SemanticChip (e.g. follower eye-initials chip). */
+  custom?: ReactNode;
 }
 
 export type IntakeChipRowLayout = "stacked" | "interleaved";
@@ -209,7 +211,12 @@ export function IntakeChipRow({
 
   const summaryChipElements =
     chips.length > 0
-      ? chips.map((chip) => (
+      ? chips.map((chip) =>
+          chip.custom ? (
+            <span key={chip.id} className="shrink-0">
+              {chip.custom}
+            </span>
+          ) : (
           <SemanticChip
             key={chip.id}
             epistemic={chip.epistemic}
@@ -223,7 +230,8 @@ export function IntakeChipRow({
             onRemove={readOnly ? undefined : chip.onRemove}
             className="shrink-0"
           />
-        ))
+          )
+        )
       : null;
 
   const panel = !readOnly && openSlot ? renderSlotContent(openSlot, onCloseSlot) : null;
@@ -288,7 +296,12 @@ export function IntakeChipRow({
             className="group/slot inline-flex shrink-0 items-center gap-0.5"
           >
             {slotIconButton(id, Icon, title, { hoverExpandAdd: hoverAddEnabled })}
-            {slotChips.map((chip) => (
+            {slotChips.map((chip) =>
+              chip.custom ? (
+                <span key={chip.id} className="shrink-0">
+                  {chip.custom}
+                </span>
+              ) : (
               <SemanticChip
                 key={chip.id}
                 epistemic={chip.epistemic}
@@ -302,7 +315,8 @@ export function IntakeChipRow({
                 onRemove={readOnly ? undefined : chip.onRemove}
                 className="shrink-0"
               />
-            ))}
+              )
+            )}
           </span>
         );
       })}

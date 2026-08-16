@@ -90,6 +90,7 @@ export function CreateTaskModal({
     milestones, setMilestones,
     assignedUserId, setAssignedUserId,
     assignedTeamIds, setAssignedTeamIds,
+    followerUserIds, setFollowerUserIds,
     pendingInvitations, setPendingInvitations,
     isCompliance, setIsCompliance,
     complianceLevel, setComplianceLevel,
@@ -224,6 +225,7 @@ export function CreateTaskModal({
     repeatRule,
     assignedUserId,
     assignedTeamIds,
+    followerUserIds,
     pendingInvitations,
     images,
     taskFiles,
@@ -338,8 +340,10 @@ export function CreateTaskModal({
             setActiveSection={setActiveSection}
             assignedUserId={assignedUserId}
             assignedTeamIds={assignedTeamIds}
+            followerUserIds={followerUserIds}
             setAssignedUserId={setAssignedUserId}
             setAssignedTeamIds={setAssignedTeamIds}
+            setFollowerUserIds={setFollowerUserIds}
             pendingInvitations={pendingInvitations}
             setPendingInvitations={setPendingInvitations}
             onInviteToOrg={(p) => { setInvitePrefill(p ?? null); setInviteModalOpen(true); }}

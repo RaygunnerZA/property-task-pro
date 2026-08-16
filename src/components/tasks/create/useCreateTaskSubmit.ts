@@ -52,6 +52,7 @@ export interface UseCreateTaskSubmitProps {
   repeatRule?: RepeatRule;
   assignedUserId: string | undefined;
   assignedTeamIds: string[];
+  followerUserIds?: string[];
   pendingInvitations: PendingInvitation[];
   images: TempImage[];
   taskFiles: PendingTaskFile[];
@@ -86,6 +87,7 @@ export function useCreateTaskSubmit({
   repeatRule,
   assignedUserId,
   assignedTeamIds,
+  followerUserIds = [],
   pendingInvitations,
   images,
   taskFiles,
@@ -392,6 +394,21 @@ export function useCreateTaskSubmit({
         if (error) console.error("[useCreateTaskSubmit] Error linking teams to task:", error);
       }
 
+      const followerIds = followerUserIds.filter(
+        (id) => id && id !== finalAssignedUserId && !id.startsWith("pending-")
+      );
+      if (followerIds.length > 0 && creatingUser?.id) {
+        const { error } = await supabase.from("task_followers").insert(
+          followerIds.map((user_id) => ({
+            task_id: taskId,
+            user_id,
+            org_id: orgId,
+            created_by: creatingUser.id,
+          }))
+        );
+        if (error) console.error("[useCreateTaskSubmit] Error linking followers to task:", error);
+      }
+
       const realAssetIds = selectedAssetIds.filter((id) => !id.startsWith("ghost-"));
       if (realAssetIds.length > 0) {
         const { error } = await supabase.from("task_assets").insert(realAssetIds.map((asset_id) => ({ task_id: taskId, asset_id })));
@@ -459,7 +476,7 @@ export function useCreateTaskSubmit({
   }, [
     orgId, orgLoading, title, description, propertyId, selectedPropertyIds,
     selectedSpaceIds, selectedThemeIds, selectedAssetIds, priority, dueDate,
-    milestones, repeatRule, assignedUserId, assignedTeamIds, pendingInvitations,
+    milestones, repeatRule, assignedUserId, assignedTeamIds, followerUserIds, pendingInvitations,
     images, taskFiles, subtasks, appliedChips, aiTitleGenerated, chipSuggestedIcon,
     generateVerbLabel, prefill, taskCreatedSource, resetForm, onOpenChange, onTaskCreated,
   ]);

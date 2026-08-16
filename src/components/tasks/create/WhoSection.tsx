@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { SemanticChip } from "@/components/chips/semantic";
+import { FollowerChip } from "@/components/tasks/FollowerChip";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useTeams } from "@/hooks/useTeams";
 import { useWhoSuggestions, computeWhoProposals, type WhoProposal } from "@/hooks/useWhoSuggestions";
@@ -26,8 +27,10 @@ interface WhoSectionProps {
   onActivate: () => void;
   assignedUserId?: string;
   assignedTeamIds: string[];
+  followerUserIds?: string[];
   onUserChange: (userId: string | undefined) => void;
   onTeamsChange: (teamIds: string[]) => void;
+  onFollowersChange?: (userIds: string[]) => void;
   pendingInvitations?: PendingInvitation[];
   onPendingInvitationsChange?: (invitations: PendingInvitation[]) => void;
   /** Called to open Invite User modal. Optional prefill from "Invite [Name]" proposal. */
@@ -44,6 +47,7 @@ interface WhoSectionProps {
 }
 
 const PERSON_LABEL = "+ Person";
+const FOLLOWER_LABEL = "+ Follower";
 const TEAM_LABEL = "+ Team";
 const ADD_PERSON_LABEL = "Add person";
 const INPUT_MIN_WIDTH = 100;
@@ -55,8 +59,10 @@ export function WhoSection({
   onActivate,
   assignedUserId,
   assignedTeamIds,
+  followerUserIds = [],
   onUserChange,
   onTeamsChange,
+  onFollowersChange,
   pendingInvitations = [],
   onPendingInvitationsChange,
   onInviteToOrg,
@@ -74,7 +80,7 @@ export function WhoSection({
   const [isHovered, setIsHovered] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [inputValue, setInputValue] = useState("");
-  const [entryMode, setEntryMode] = useState<"person" | "team">("person");
+  const [entryMode, setEntryMode] = useState<"person" | "team" | "follower">("person");
   const inputRef = useRef<HTMLInputElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -96,11 +102,21 @@ export function WhoSection({
   const proposals = useWhoSuggestions(inputValue, isEditing);
   const visibleProposals = useMemo(() => {
     if (!isEditing) return [];
-    if (entryMode === "person") {
-      return proposals.filter((p) => p.type === "person" || p.type === "invite");
+    if (entryMode === "team") {
+      return proposals.filter((p) => p.type === "team" || p.type === "create_team");
     }
-    return proposals.filter((p) => p.type === "team" || p.type === "create_team");
-  }, [proposals, isEditing, entryMode]);
+    const personish = proposals.filter((p) => p.type === "person" || p.type === "invite");
+    if (entryMode === "follower") {
+      return personish.filter(
+        (p) =>
+          p.type !== "person" ||
+          (p.entityId &&
+            p.entityId !== assignedUserId &&
+            !followerUserIds.includes(p.entityId))
+      );
+    }
+    return personish;
+  }, [proposals, isEditing, entryMode, assignedUserId, followerUserIds]);
 
   /** Filter members by search for add-members input (person-only) */
   const memberProposals = useMemo(() => {
@@ -115,6 +131,14 @@ export function WhoSection({
     ? members.find((m) => m.user_id === assignedUserId)
     : null;
   const assignedTeams = teams.filter((t) => assignedTeamIds.includes(t.id));
+  const followerPeople = followerUserIds
+    .filter((id) => id !== assignedUserId)
+    .map((id) => {
+      const m = members.find((x) => x.user_id === id);
+      return m
+        ? { userId: m.user_id, displayName: m.display_name }
+        : { userId: id, displayName: id.slice(0, 8) };
+    });
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -174,6 +198,13 @@ export function WhoSection({
     setInputValue("");
   };
 
+  const handleAddFollowerClick = () => {
+    if (!isActive) onActivate();
+    setEntryMode("follower");
+    setIsEditing(true);
+    setInputValue("");
+  };
+
   const handleAddTeamClick = () => {
     if (!isActive) onActivate();
     setEntryMode("team");
@@ -189,7 +220,17 @@ export function WhoSection({
 
   const handleProposalClick = (proposal: WhoProposal) => {
     if (proposal.type === "person" && proposal.entityId) {
-      onUserChange(proposal.entityId);
+      if (entryMode === "follower") {
+        if (proposal.entityId === assignedUserId) return;
+        if (!followerUserIds.includes(proposal.entityId)) {
+          onFollowersChange?.([...followerUserIds, proposal.entityId]);
+        }
+      } else {
+        onUserChange(proposal.entityId);
+        if (followerUserIds.includes(proposal.entityId)) {
+          onFollowersChange?.(followerUserIds.filter((id) => id !== proposal.entityId));
+        }
+      }
       setInputValue("");
       setIsEditing(false);
     } else if (proposal.type === "team" && proposal.entityId) {
@@ -392,7 +433,8 @@ export function WhoSection({
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           <div className="flex h-[33px] items-center gap-2 flex-nowrap whitespace-nowrap pl-[3px] pr-[6px] pt-[3px] pb-[3px]">
-          {factChips.map((chip) => {
+          {!embedded
+            ? factChips.map((chip) => {
             const isTeamChip = chip.id.startsWith("team-");
             const teamId = isTeamChip ? chip.id.replace("team-", "") : null;
             const team = teamId ? teams.find((t) => t.id === teamId) : null;
@@ -424,7 +466,20 @@ export function WhoSection({
                 className="shrink-0"
               />
             );
-          })}
+          })
+            : null}
+
+          {!embedded ? (
+            <FollowerChip
+              people={followerPeople}
+              onRemoveOne={
+                onFollowersChange
+                  ? (userId) =>
+                      onFollowersChange(followerUserIds.filter((id) => id !== userId))
+                  : undefined
+              }
+            />
+          ) : null}
 
           {pendingTeam && (
             <SemanticChip
@@ -482,7 +537,13 @@ export function WhoSection({
                   commitWhoFromInput();
                 }
               }}
-              placeholder={entryMode === "team" ? TEAM_LABEL : PERSON_LABEL}
+              placeholder={
+                entryMode === "team"
+                  ? TEAM_LABEL
+                  : entryMode === "follower"
+                    ? FOLLOWER_LABEL
+                    : PERSON_LABEL
+              }
               className={cn(
                 "h-[28px] rounded-card px-2 py-1 shrink-0 flex-shrink-0",
                 "font-mono text-2xs uppercase tracking-wide",
@@ -501,6 +562,15 @@ export function WhoSection({
                 onPress={handleAddPersonClick}
                 className="shrink-0 h-[24px] px-2.5 py-1.5 bg-background shadow-e1"
               />
+              {onFollowersChange ? (
+                <SemanticChip
+                  epistemic="proposal"
+                  label={FOLLOWER_LABEL}
+                  truncate={false}
+                  onPress={handleAddFollowerClick}
+                  className="shrink-0 h-[24px] px-2.5 py-1.5 bg-background shadow-e1"
+                />
+              ) : null}
               <SemanticChip
                 epistemic="proposal"
                 label={TEAM_LABEL}
