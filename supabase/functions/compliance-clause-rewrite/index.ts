@@ -3,12 +3,13 @@
  * POST { org_id, clause_text, critic_notes? } → { ok, suggestion, reasoning }
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
 import {
-  estimateCost,
-  logAiRequest,
-  type AiRequestStatus,
-} from "../_shared/aiObservability.ts";
-import { assertAiOpsAllowed } from "../_shared/aiEntitlements.ts";
+  runCapability,
+  type ExecutorOutput,
+  type StrategyExecutor,
+} from "../_shared/aiCall.ts";
+import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,7 +20,6 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const AI_PROVIDER = (Deno.env.get("AI_PROVIDER") || "LOVABLE").toUpperCase();
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
@@ -48,77 +48,82 @@ Clause:
 ${clauseText.trim()}${critic}`;
 }
 
-function parseRewriteJson(raw: string): { suggestion: string; reasoning: string } {
-  let s = raw.trim();
-  const fence = s.match(/^```(?:json)?\s*([\s\S]*?)```$/im);
-  if (fence) s = fence[1].trim();
-  const obj = JSON.parse(s) as { suggestion?: unknown; reasoning?: unknown };
+interface Rewrite {
+  suggestion: string;
+  reasoning: string;
+}
+
+function validateRewrite(raw: unknown): Rewrite {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError("Clause rewrite response was not a JSON object");
+  }
+  const obj = raw as { suggestion?: unknown; reasoning?: unknown };
+  const suggestion = String(obj.suggestion ?? "").trim();
+  if (!suggestion) throw new SchemaError("Clause rewrite response had no suggestion");
+  return { suggestion, reasoning: String(obj.reasoning ?? "") };
+}
+
+function executors(prompt: string): Record<string, StrategyExecutor> {
   return {
-    suggestion: String(obj.suggestion ?? ""),
-    reasoning: String(obj.reasoning ?? ""),
+    "model:google/gemini-2.0-flash": () => callLovable(prompt),
+    "model:gpt-4o-mini": () => callOpenAI(prompt),
+    "model:gemini-2.0-flash": () => callGemini(prompt),
   };
 }
 
-async function callModel(prompt: string): Promise<{ suggestion: string; reasoning: string }> {
-  switch (AI_PROVIDER) {
-    case "LOVABLE": {
-      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not set");
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.0-flash",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(`Lovable: ${res.status} ${JSON.stringify(json)}`);
-      const content = json.choices?.[0]?.message?.content;
-      if (typeof content !== "string") throw new Error("Invalid Lovable response");
-      return parseRewriteJson(content);
-    }
-    case "OPENAI": {
-      if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set");
-      const res = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(`OpenAI: ${res.status} ${JSON.stringify(json)}`);
-      const content = json.choices?.[0]?.message?.content;
-      if (typeof content !== "string") throw new Error("Invalid OpenAI response");
-      return parseRewriteJson(content);
-    }
-    case "GEMINI": {
-      if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
-      const url =
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(`Gemini: ${res.status} ${JSON.stringify(json)}`);
-      const content = json.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (typeof content !== "string") throw new Error("Invalid Gemini response");
-      return parseRewriteJson(content);
-    }
-    default:
-      throw new Error(`Unknown AI_PROVIDER: ${AI_PROVIDER}`);
-  }
+async function callLovable(prompt: string): Promise<ExecutorOutput> {
+  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not set");
+  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.0-flash",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Lovable: ${res.status} ${JSON.stringify(json)}`);
+  return { raw: parseJsonLoose(json.choices?.[0]?.message?.content), usage: openAiUsage(json) };
+}
+
+async function callOpenAI(prompt: string): Promise<ExecutorOutput> {
+  if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY not set");
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`OpenAI: ${res.status} ${JSON.stringify(json)}`);
+  return { raw: parseJsonLoose(json.choices?.[0]?.message?.content), usage: openAiUsage(json) };
+}
+
+async function callGemini(prompt: string): Promise<ExecutorOutput> {
+  if (!GEMINI_API_KEY) throw new Error("GEMINI_API_KEY not set");
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+    }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(`Gemini: ${res.status} ${JSON.stringify(json)}`);
+  return {
+    raw: parseJsonLoose(json.candidates?.[0]?.content?.parts?.[0]?.text),
+    usage: geminiUsage(json),
+  };
 }
 
 Deno.serve(async (req) => {
@@ -168,64 +173,39 @@ Deno.serve(async (req) => {
 
   if (!member) return jsonErr("Forbidden", 403);
 
-  const aiGate = await assertAiOpsAllowed(service, orgId, "compliance-clause-rewrite");
-  if (!aiGate.allowed) {
+  const run = await runCapability<Rewrite>(service, {
+    capability: "compliance_clause_rewrite",
+    orgId,
+    userId: user.id,
+    entity: { type: "compliance_clause", id: null },
+    // One provider only: a rewrite is advisory, so a failure is better than
+    // silently sending clause text to a second vendor.
+    allowFallback: false,
+    executors: executors(buildPrompt(clauseText, body.critic_notes)),
+    validate: validateRewrite,
+  });
+
+  if (run.blocked) {
     return jsonOk({
       ok: false,
       error: "ai_allowance_exhausted",
-      message: aiGate.message,
+      message: run.gate?.message,
       suggestion: null,
       reasoning:
         "AI rewrite skipped — allowance reached. Edit the clause manually or add an AI pack.",
     });
   }
 
-  const prompt = buildPrompt(clauseText, body.critic_notes);
-  const modelUsed =
-    AI_PROVIDER === "OPENAI"
-      ? "gpt-4o-mini"
-      : AI_PROVIDER === "GEMINI"
-        ? "gemini-2.0-flash"
-        : "google/gemini-2.0-flash";
-  const started = Date.now();
-  let status: AiRequestStatus = "success";
-  let errorMessage: string | null = null;
-  let suggestion = "";
-  let reasoning = "";
-
-  try {
-    const out = await callModel(prompt);
-    suggestion = out.suggestion;
-    reasoning = out.reasoning;
-  } catch (e) {
-    status = "error";
-    errorMessage = e instanceof Error ? e.message : String(e);
-  } finally {
-    logAiRequest(service, {
-      org_id: orgId,
-      user_id: user.id,
-      function_name: "compliance-clause-rewrite",
-      model_used: modelUsed,
-      provider: AI_PROVIDER,
-      latency_ms: Date.now() - started,
-      status,
-      error_message: errorMessage,
-      entity_type: "compliance_clause",
-      entity_id: null,
-      cost_usd: estimateCost(modelUsed, null, null),
-    });
-  }
-
-  if (status !== "success") {
+  if (!run.ok || !run.value) {
     return jsonOk({
       ok: false,
-      error: errorMessage || "Rewrite failed",
+      error: run.error || "Rewrite failed",
     });
   }
 
   return jsonOk({
     ok: true,
-    suggestion,
-    reasoning,
+    suggestion: run.value.suggestion,
+    reasoning: run.value.reasoning,
   });
 });

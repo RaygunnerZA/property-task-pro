@@ -59,8 +59,24 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 *   `evidence` (task_id, attachment_id)
 
 **AI Observability (Phase 1):**
-*   `ai_requests` — append-only infrastructure log: every AI provider call made by an edge function. Columns: `id`, `org_id`, `user_id`, `function_name`, `model_used`, `provider`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_usd`, `latency_ms`, `status` (success/error/timeout/fallback), `error_message`, `entity_type`, `entity_id`, `metadata`, `created_at`. Service-role INSERT only; org members can SELECT.
-*   `ai_resolution_audit` — UX-level log: what AI suggested vs what the user chose. RLS now correctly references `organisation_members` (fixed in Phase 1).
+*   `ai_requests` — append-only infrastructure log: every AI provider call made by an edge function. Columns: `id`, `org_id`, `user_id`, `function_name`, `model_used`, `provider`, `prompt_version`, `input_tokens`, `output_tokens`, `cost_usd`, `cost_units`, `latency_ms`, `status` (success/error/timeout/fallback), `error_message`, `entity_type`, `entity_id`, `metadata`, `created_at`. Service-role INSERT only; org members can SELECT.
+*   `input_tokens`, `output_tokens` and `cost_usd` are **populated**. Provider token counts are read from `usageMetadata` (Gemini) and `usage` (OpenAI-compatible) and priced by `estimateCost`. `cost_usd` is NULL only when a provider returned no usage or the model is not in the price table — never because the call site passed nulls.
+*   `prompt_version` is populated for **all** AI functions via the call boundary, not `knowledge-critic` alone. A model score is only meaningful for a specific `(model, prompt_version)` pair.
+*   `metadata` carries `capability`, `strategy_id` and `attempt` for every boundary call, plus `escalation: true` on escalated runs. This is what makes retries and fallbacks separable after the fact.
+*   `ai_resolution_audit` — UX-level log: what AI suggested vs what the user chose. RLS now correctly references `organisation_members` (fixed in Phase 1). It carries **no link to `ai_requests`**, so its correction rate is not attributable to a model (see `admin_ai_resolution_metrics`).
+
+**AI routing and evaluation (AI call boundary):**
+*   Capability definitions and approved strategies live in **code** (`supabase/functions/_shared/aiRouting.ts`), not in the database. Normal model changes therefore stay in git history where they are reviewable and revertible. There is no `ai_models` registry table; with two live models an eleven-column registry would be speculative schema.
+*   `ai_route_overrides` — emergency pin only: `capability` (UNIQUE), `strategy`, `reason` (NOT NULL, non-blank), `set_by`, `expires_at`, timestamps. **Platform scope, not org data.** RLS grants SELECT to `is_platform_admin()` only; there is deliberately **no org policy**, in explicit contrast to `ai_requests`, which org members may SELECT for their own usage. A route override affects every org, so no org may read or change it.
+    *   Writes go through `set_ai_route_override` / `clear_ai_route_override` (platform admin only, each emits an `audit_logs` row).
+    *   `active_ai_route_overrides()` is the service-role read used by the boundary; it never returns an expired pin.
+    *   **A missing, empty or unreadable row means use the compiled default.** A broken override table must never take down every AI feature.
+    *   A pin cannot escape a capability's requirements (vision/PDF), credential availability, or the critic provider-distinctness rule. It reorders approved strategies; it does not authorise unapproved ones.
+*   `ai_capability_evals` — golden-set eval runs: `capability`, `model`, `prompt_version`, `provider`, `fixture_set`, `fixture_count`, `recall`, `false_positive_rate`, `schema_valid_rate`, `latency_ms_p50`, `cost_usd`, `detail`, `notes`, `created_by`. Platform-admin SELECT; inserts via `record_ai_capability_eval` (service role only, used by `scripts/run-ai-eval.mjs`). Scores are comparable only **within** one `fixture_set`.
+*   Production-derived metrics are functions, not tables, because the ground truth already exists in review outcomes:
+    *   `admin_ai_plan_extraction_metrics(since)` — correction / rejection / acceptance rate per `(model, prompt_version)`, from `extracted_spaces` (`edited_name`, `is_accepted`, `imported_space_id`) joined to `ai_requests` via `metadata->>'extraction_run_id'`.
+    *   `admin_ai_resolution_metrics(since)` — suggestion correction rate per day from `ai_resolution_audit`, **without** model attribution.
+*   There is no `minimum_quality_score` in any route configuration. There is no runtime quality signal, so quality gates promotion decisions offline; a number in the route table would only invite a fake one.
 
 **Knowledge (first-class entity — two axes):**
 *   **Axes (independent):** `scope` (`platform` | `organisation`); `status` (`candidate` | `verified` | `published` | `stale` | `archived`).

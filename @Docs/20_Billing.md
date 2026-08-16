@@ -127,6 +127,10 @@ Exclude from coordinating seat count: unaccepted invitations, suspended/deleted 
 * **External contributors** — prefer secure task links, expiring invitations, evidence/issue forms; attributable and auditable; not coordinating seats.
 * **Evidence / files** — organisation-pooled bytes (images, video, PDFs, derivatives). Optimize uploads; stronger video limits; cold storage for old originals; warn before limits; never block access to **existing** files solely for overage; block or pack **new** uploads.
 * **AI operations** — plan allowances; core manual workflows continue when exhausted; existing AI results remain; add-on or explicit overage agreement.
+  * **AI allowance is derived, not incremented.** `org_ai_ops_used` sums `ai_requests.cost_units` for rows with `status IN ('success','fallback')`. There is no separate counter to keep in step.
+  * **Consequence: an AI provider call that does not write an `ai_requests` row is unmetered and therefore free.** Logging is a **billing requirement**, not an observability nicety. Any new code path that calls a model must go through the AI call boundary (`_shared/aiCall.ts`), which logs one row per provider call. This closed a real leak: `building-plan-process` charged 5 units in the catalogue but never inserted a row, so plan extraction — the most expensive operation — was free.
+  * **Every provider call is charged, including retries and fallbacks**, because each one costs real money. A page that fails its primary model and succeeds on the fallback consumes both. Multi-page plan extraction consumes per page.
+  * **Escalation is a separate meter.** A user-initiated deeper second pass is metered under its own key (`<function>:escalation`) at its own cost units, is always gated even when the first pass was already gated, and is flagged `escalation: true` in `ai_requests.metadata`. Escalation must never be triggered automatically: automatic per-item escalation is an unbounded multiplier against `ai_ops_allowance`.
 * **Premium messaging** — SMS, WhatsApp, voice, high-volume transactional email: allowance, pack or direct usage. Push/normal email within reasonable use.
 
 ---
@@ -181,7 +185,15 @@ When over limit or in payment failure (after grace), Filla may prevent:
 
 Preserve: existing assigned work, completion, required evidence submission, existing data access, export, billing remediation.
 
----
+### Gate failure behaviour (recorded decision)
+
+`assert_ai_ops_allowed` **fails open**: when the RPC itself errors or throws, `assertAiOpsAllowed` returns `allowed: true` and logs a warning. This is deliberate and follows from this section — a database fault must not stop work that is already in progress.
+
+The boundary of that decision:
+
+* Fail-open covers **infrastructure failure only** (the check could not be evaluated). A successful check that returns `allowed: false` is always honoured.
+* Fail-open must **never silently grant unlimited paid AI**. Because usage is derived from `ai_requests`, calls admitted this way are still logged and still consume allowance, so the org's usage stays truthful and the next successful check accounts for them.
+* Fail-open is therefore a short window, not a bypass. A persistent gate failure is an operational incident, not a pricing tier.
 
 ## 20.5 — SUPPORT MODEL
 

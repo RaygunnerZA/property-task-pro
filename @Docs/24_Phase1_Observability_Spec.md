@@ -136,7 +136,7 @@ CREATE POLICY "ai_requests_select" ON ai_requests
 | `function_name` | Supabase edge function name: `'ai-extract'`, `'ai-doc-analyse'`, `'ai-image-analyse'`, etc. |
 | `model_used` | Exact model identifier: `'gemini-2.0-flash'`, `'gpt-4o-mini'` |
 | `provider` | Provider key: `'GEMINI'`, `'OPENAI'`, `'LOVABLE'` |
-| `prompt_version` | Version string for the prompt template used. `null` until prompt versioning is in place. Use `'v1'` as default once versioning is added. |
+| `prompt_version` | Version string for the prompt template used. **Now populated for every capability** by the AI call boundary, from `CAPABILITIES[...].promptVersion` (e.g. `'task-extraction-v1'`). Changing a prompt means bumping this value, because model scores are only meaningful per `(model, prompt_version)` pair. |
 | `input_tokens` | Tokens in the prompt. Derived from the provider response where available. |
 | `output_tokens` | Tokens in the completion. Derived from provider response. |
 | `cost_usd` | Calculated at log time using the token counts and the cost table in §24.3. |
@@ -524,10 +524,12 @@ This is a secondary log. The primary observability record lives in `ai_requests`
 
 ## 24.8 — What This Phase Does Not Include
 
+> **Superseded in part.** The two items below were delivered by the AI call boundary. Model routing, fallback and prompt versioning now live in `_shared/aiRouting.ts` and `_shared/aiCall.ts`; see Ch 7 §7.2.1 and Ch 3. The rest of this list still stands.
+
 To be explicit about scope boundaries:
 
-- No model routing or fallback logic (Phase 3)
-- No prompt versioning system (Phase 3)
+- ~~No model routing or fallback logic (Phase 3)~~ — delivered: capability routing with retry and opt-in fallback.
+- ~~No prompt versioning system (Phase 3)~~ — delivered: `promptVersion` per capability, logged on every row.
 - No AI request viewer in the UI (Phase 2 — admin panel)
 - No cost dashboard (Phase 4)
 - No changes to `ai_resolution_audit` schema (its RLS is fixed, not its columns)

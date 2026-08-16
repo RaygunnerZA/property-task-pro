@@ -32,10 +32,43 @@ export function estimateCost(
   inputTokens: number | null,
   outputTokens: number | null
 ): number | null {
-  if (!inputTokens || !outputTokens) return null;
+  // A legitimate 0 must still cost; only missing counts are unpriceable.
+  if (inputTokens == null || outputTokens == null) return null;
   const rates = COST_PER_1K_TOKENS[model];
   if (!rates) return null;
   return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
+}
+
+/** Provider-reported token counts for a single call. */
+export interface TokenUsage {
+  input_tokens: number | null;
+  output_tokens: number | null;
+}
+
+export const EMPTY_USAGE: TokenUsage = { input_tokens: null, output_tokens: null };
+
+function asCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/** Gemini `generateContent` — `usageMetadata.promptTokenCount` / `candidatesTokenCount`. */
+export function geminiUsage(json: unknown): TokenUsage {
+  const meta = (json as { usageMetadata?: Record<string, unknown> } | null)?.usageMetadata;
+  if (!meta) return EMPTY_USAGE;
+  return {
+    input_tokens: asCount(meta.promptTokenCount),
+    output_tokens: asCount(meta.candidatesTokenCount),
+  };
+}
+
+/** OpenAI-compatible chat completions (OpenAI direct and the Lovable gateway). */
+export function openAiUsage(json: unknown): TokenUsage {
+  const usage = (json as { usage?: Record<string, unknown> } | null)?.usage;
+  if (!usage) return EMPTY_USAGE;
+  return {
+    input_tokens: asCount(usage.prompt_tokens),
+    output_tokens: asCount(usage.completion_tokens),
+  };
 }
 
 export type AiRequestStatus = "success" | "error" | "timeout" | "fallback";

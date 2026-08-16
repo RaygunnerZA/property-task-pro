@@ -1,10 +1,12 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
+import { runCapability, type ExecutorOutput } from "../_shared/aiCall.ts";
+import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
+import { assertAiOpsAllowed } from "../_shared/aiEntitlements.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const GEMINI_MODEL = "gemini-2.0-flash";
+const OPENAI_MODEL = "gpt-4o-mini";
 
 interface RequestBody {
   plan_file_id: string;
@@ -123,11 +125,11 @@ async function callGemini(
   prompt: string,
   base64: string,
   mimeType: string
-): Promise<Record<string, unknown>> {
+): Promise<ExecutorOutput> {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("GEMINI_API_KEY not configured");
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -146,16 +148,14 @@ async function callGemini(
   );
   if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
   const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Gemini response empty");
-  return JSON.parse(text);
+  return { raw: parseJsonLoose(json?.candidates?.[0]?.content?.parts?.[0]?.text), usage: geminiUsage(json) };
 }
 
 async function callOpenAI(
   prompt: string,
   base64: string,
   mimeType: string
-): Promise<Record<string, unknown>> {
+): Promise<ExecutorOutput> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY not configured");
   const dataUrl = `data:${mimeType};base64,${base64}`;
@@ -166,7 +166,7 @@ async function callOpenAI(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "gpt-4o-mini",
+      model: OPENAI_MODEL,
       response_format: { type: "json_object" },
       messages: [
         {
@@ -181,36 +181,40 @@ async function callOpenAI(
   });
   if (!res.ok) throw new Error(`OpenAI API error: ${res.status}`);
   const json = await res.json();
-  const text = json?.choices?.[0]?.message?.content;
-  if (!text) throw new Error("OpenAI response empty");
-  return JSON.parse(text);
+  return { raw: parseJsonLoose(json?.choices?.[0]?.message?.content), usage: openAiUsage(json) };
+}
+
+/** Guard the model payload before normalisation trusts its shape. */
+function validatePlanExtraction(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError("Plan extraction response was not a JSON object");
+  }
+  return raw as Record<string, unknown>;
 }
 
 async function extractPlanPage(
+  admin: SupabaseClient,
+  orgId: string,
+  planFileId: string,
   prompt: string,
-  pageImageUrl: string
-): Promise<Record<string, unknown>> {
+  pageImageUrl: string,
+  metadata: Record<string, unknown>
+) {
   const { base64, mimeType } = await fetchAsBase64(pageImageUrl);
-  const provider = (Deno.env.get("AI_PROVIDER") || "gemini").toLowerCase();
-  if (provider === "openai") {
-    try {
-      return await callOpenAI(prompt, base64, mimeType);
-    } catch {
-      return await callGemini(prompt, base64, mimeType);
-    }
-  }
-  if (provider === "gemini") {
-    try {
-      return await callGemini(prompt, base64, mimeType);
-    } catch {
-      return await callOpenAI(prompt, base64, mimeType);
-    }
-  }
-  try {
-    return await callGemini(prompt, base64, mimeType);
-  } catch {
-    return await callOpenAI(prompt, base64, mimeType);
-  }
+
+  return runCapability<Record<string, unknown>>(admin, {
+    capability: "plan_label_extraction",
+    orgId,
+    entity: { type: "property_plan_file", id: planFileId },
+    metadata,
+    // Gated once per run before conversion; each page is still logged and metered.
+    skipGate: true,
+    executors: {
+      "model:gemini-2.0-flash": () => callGemini(prompt, base64, mimeType),
+      "model:gpt-4o-mini": () => callOpenAI(prompt, base64, mimeType),
+    },
+    validate: validatePlanExtraction,
+  });
 }
 
 function stubExtraction(): Record<string, unknown> {
@@ -280,7 +284,7 @@ async function convertPdfPages(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return corsPreflightResponse();
   }
 
   let trackedPlanFileId: string | null = null;
@@ -337,6 +341,32 @@ Deno.serve(async (req) => {
       .single();
     if (fileError || !fileRow) {
       throw new Error("Plan file not found or access denied");
+    }
+
+    // Gate before any conversion or provider work. Plan extraction is the most
+    // expensive AI operation, so it must never run outside the org's allowance.
+    const aiGate = await assertAiOpsAllowed(admin, fileRow.org_id, "building-plan-process");
+    if (!aiGate.allowed) {
+      await admin
+        .from("property_plan_files")
+        .update({
+          status: "uploaded",
+          error_message:
+            aiGate.message ??
+            "AI allowance reached for this period. Add spaces manually or add an AI pack.",
+        })
+        .eq("id", fileRow.id);
+
+      return new Response(
+        JSON.stringify({
+          ok: false,
+          error: "ai_allowance_exhausted",
+          message: aiGate.message,
+          ai_ops_used: aiGate.ai_ops_used,
+          ai_ops_allowance: aiGate.ai_ops_allowance,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const resolvedBuilding = buildingLabel ?? fileRow.building_label ?? null;
@@ -463,9 +493,33 @@ Deno.serve(async (req) => {
         throw new Error(`Failed to sign page ${page.page_number}`);
       }
 
+      // The boundary logs one ai_requests row per page, which is how the run is metered.
       let rawResponse: Record<string, unknown>;
       try {
-        rawResponse = await extractPlanPage(extractionPrompt, signed.signedUrl);
+        const run = await extractPlanPage(
+          admin,
+          fileRow.org_id,
+          fileRow.id,
+          extractionPrompt,
+          signed.signedUrl,
+          {
+            page_number: page.page_number,
+            extraction_run_id: runRow.id,
+            extract_mode: extractMode,
+          }
+        );
+
+        if (run.ok && run.value) {
+          rawResponse = run.value;
+          rawByPage[String(page.page_number)] = rawResponse;
+        } else {
+          rawResponse = stubExtraction();
+          rawByPage[String(page.page_number)] = {
+            fallback: true,
+            error: run.error,
+            raw: rawResponse,
+          };
+        }
       } catch (err) {
         rawResponse = stubExtraction();
         rawByPage[String(page.page_number)] = {
@@ -475,7 +529,6 @@ Deno.serve(async (req) => {
         };
       }
 
-      rawByPage[String(page.page_number)] = rawResponse;
       const pageNormalized = normaliseExtraction(rawResponse);
 
       for (const item of pageNormalized.spaces) {

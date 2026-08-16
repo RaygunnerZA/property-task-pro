@@ -3,7 +3,9 @@
 // Does NOT auto-link — stores suggestions in metadata only
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
+import { runCapability, type ExecutorOutput } from "../_shared/aiCall.ts";
+import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 import {
   assertAiOpsAllowed,
   aiAllowanceExhaustedResponse,
@@ -111,9 +113,8 @@ function getMimeForFile(fileName: string): string {
 
 async function callGeminiDoc(
   fileBase64: string,
-  mimeType: string,
-  fileName: string
-): Promise<ResponseBody> {
+  mimeType: string
+): Promise<ExecutorOutput> {
   const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
@@ -145,16 +146,15 @@ async function callGeminiDoc(
 
   const json = await res.json();
   const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Empty Gemini response");
+  if (!text) throw new SchemaError("Empty Gemini response");
 
-  return normalizeDocResponse(JSON.parse(text), fileName);
+  return { raw: parseJsonLoose(text), usage: geminiUsage(json) };
 }
 
 async function callOpenAIDoc(
   fileBase64: string,
-  mimeType: string,
-  fileName: string
-): Promise<ResponseBody> {
+  mimeType: string
+): Promise<ExecutorOutput> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
@@ -191,12 +191,16 @@ async function callOpenAIDoc(
 
   const json = await res.json();
   const text = json.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty OpenAI response");
+  if (!text) throw new SchemaError("Empty OpenAI response");
 
-  return normalizeDocResponse(JSON.parse(text), fileName);
+  return { raw: parseJsonLoose(text), usage: openAiUsage(json) };
 }
 
-function normalizeDocResponse(parsed: Record<string, unknown>, fileName: string): ResponseBody {
+function normalizeDocResponse(raw: unknown, fileName: string): ResponseBody {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError("Document analysis response was not a JSON object");
+  }
+  const parsed = raw as Record<string, unknown>;
   const title = (parsed.title as string) || fileName.replace(/\.[^/.]+$/, "") || "Untitled";
   const document_type = (parsed.document_type as string) || null;
   const category = (parsed.category as string) || null;
@@ -416,103 +420,58 @@ Deno.serve(async (req) => {
     }
 
     const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-    if (serviceRoleKeyForLog) {
-      const gateClient = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        serviceRoleKeyForLog,
-        { auth: { autoRefreshToken: false, persistSession: false } }
+    if (!serviceRoleKeyForLog) {
+      return new Response(
+        JSON.stringify({ ok: false, error: "Server misconfigured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
-      const gate = await assertAiOpsAllowed(gateClient, org_id, "ai-doc-analyse");
-      if (!gate.allowed) {
-        return aiAllowanceExhaustedResponse(gate, corsHeaders, {
-          // Upload already succeeded on client — analysis skipped only.
-          skipped: true,
-        });
-      }
+    }
+
+    const serviceClient = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      serviceRoleKeyForLog,
+      { auth: { autoRefreshToken: false, persistSession: false } }
+    );
+
+    // Gate before downloading the file, so an exhausted org does not pay to fetch it.
+    const gate = await assertAiOpsAllowed(serviceClient, org_id, "ai-doc-analyse");
+    if (!gate.allowed) {
+      // Upload already succeeded on the client — only the analysis is skipped.
+      return aiAllowanceExhaustedResponse(gate, corsHeaders, { skipped: true });
     }
 
     let result: ResponseBody;
-
-    const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
-    const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
-
-    let aiModelUsed = "gemini-2.0-flash";
-    let aiProviderUsed = "GEMINI";
-    let aiStatus: AiRequestStatus = "success";
-    let aiErrorMessage: string | null = null;
-    const aiStart = Date.now();
 
     try {
       const { base64, mimeType } = await fetchFileAsBase64(file_url);
       const effectiveMime = mimeType !== "application/octet-stream" ? mimeType : getMimeForFile(file_name);
 
-      const preferGemini = aiProvider === "gemini" || (!aiProvider && getGeminiKey());
-      const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
+      const run = await runCapability<ResponseBody>(serviceClient, {
+        capability: "document_analysis",
+        orgId: org_id,
+        input: { pdf: effectiveMime === "application/pdf" },
+        entity: {
+          type: compliance_document_id
+            ? "compliance_document"
+            : attachment_id
+              ? "attachment"
+              : null,
+          id: (compliance_document_id ?? attachment_id ?? null) as string | null,
+        },
+        allowFallback: Deno.env.get("AI_FALLBACK_ENABLED") === "true",
+        skipGate: true,
+        executors: {
+          "model:gemini-2.0-flash": () => callGeminiDoc(base64, effectiveMime),
+          "model:gpt-4o-mini": () => callOpenAIDoc(base64, effectiveMime),
+        },
+        validate: (raw) => normalizeDocResponse(raw, file_name),
+      });
 
-      if (preferGemini && getGeminiKey()) {
-        aiModelUsed = "gemini-2.0-flash";
-        aiProviderUsed = "GEMINI";
-        try {
-          result = await callGeminiDoc(base64, effectiveMime, file_name);
-        } catch (err) {
-          if (fallbackEnabled && getOpenAIApiKey() && effectiveMime !== "application/pdf") {
-            aiModelUsed = "gpt-4o-mini";
-            aiProviderUsed = "OPENAI";
-            aiStatus = "fallback";
-            result = await callOpenAIDoc(base64, effectiveMime, file_name);
-          } else {
-            throw err;
-          }
-        }
-      } else if (preferOpenAI && getOpenAIApiKey()) {
-        aiModelUsed = "gpt-4o-mini";
-        aiProviderUsed = "OPENAI";
-        if (effectiveMime === "application/pdf") {
-          result = stubResponse(file_name);
-          aiStatus = "error";
-          aiErrorMessage = "OpenAI does not support PDF; stub response used";
-        } else {
-          try {
-            result = await callOpenAIDoc(base64, effectiveMime, file_name);
-          } catch (err) {
-            if (fallbackEnabled && getGeminiKey()) {
-              aiModelUsed = "gemini-2.0-flash";
-              aiProviderUsed = "GEMINI";
-              aiStatus = "fallback";
-              result = await callGeminiDoc(base64, effectiveMime, file_name);
-            } else {
-              throw err;
-            }
-          }
-        }
-      } else {
-        result = stubResponse(file_name);
-        aiStatus = "error";
-        aiErrorMessage = "No AI provider configured; stub response used";
-      }
+      if (!run.ok) console.error("ai-doc-analyse extraction failed:", run.error);
+      result = run.value ?? stubResponse(file_name);
     } catch (err) {
       console.error("ai-doc-analyse error:", err);
-      aiStatus = "error";
-      aiErrorMessage = String(err);
       result = stubResponse(file_name);
-    } finally {
-      if (serviceRoleKeyForLog) {
-        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKeyForLog, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        });
-        logAiRequest(serviceClient, {
-          org_id,
-          function_name: "ai-doc-analyse",
-          model_used: aiModelUsed,
-          provider: aiProviderUsed,
-          latency_ms: Date.now() - aiStart,
-          status: aiStatus,
-          error_message: aiErrorMessage,
-          entity_type: compliance_document_id ? "compliance_document" : attachment_id ? "attachment" : null,
-          entity_id: (compliance_document_id ?? attachment_id ?? null) as string | null,
-          cost_usd: estimateCost(aiModelUsed, null, null),
-        });
-      }
     }
 
     const status = computeExpiryStatus(result.expiry_date);

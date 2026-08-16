@@ -4,7 +4,9 @@
 // Phase 3: Idempotency guard — if analysis exists for attachment_id and overwrite=false, skip
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
+import { runCapability, type ExecutorOutput } from "../_shared/aiCall.ts";
+import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 import {
   assertAiOpsAllowed,
   aiAllowanceExhaustedResponse,
@@ -34,6 +36,14 @@ interface DetectedObject {
   serial_number?: string;
   expiry_date?: string;
   model?: string;
+}
+
+/** Guard a model payload before it is trusted as a shape. */
+function expectJsonObject(raw: unknown, label: string): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError(`${label} response was not a JSON object`);
+  }
+  return raw as Record<string, unknown>;
 }
 
 interface DocumentClassification {
@@ -125,7 +135,7 @@ function getOpenAIApiKey(): string | undefined {
   return Deno.env.get("OPENAI_API_KEY");
 }
 
-async function callGeminiVision(imageBase64: string): Promise<ResponseBody> {
+async function callGeminiVision(imageBase64: string): Promise<ExecutorOutput> {
   const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
@@ -160,13 +170,12 @@ async function callGeminiVision(imageBase64: string): Promise<ResponseBody> {
 
   const json = await res.json();
   const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Empty Gemini response");
+  if (!text) throw new SchemaError("Empty Gemini response");
 
-  const parsed = JSON.parse(text) as ResponseBody;
-  return normalizeResponse(parsed);
+  return { raw: parseJsonLoose(text), usage: geminiUsage(json) };
 }
 
-async function callGeminiVisionRouter(imageBase64: string): Promise<ResponseBody> {
+async function callGeminiVisionRouter(imageBase64: string): Promise<ExecutorOutput> {
   const apiKey = getGeminiKey();
   if (!apiKey) throw new Error("GEMINI_API_KEY not set");
 
@@ -203,13 +212,12 @@ async function callGeminiVisionRouter(imageBase64: string): Promise<ResponseBody
 
   const json = await res.json();
   const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error("Empty Gemini router response");
+  if (!text) throw new SchemaError("Empty Gemini router response");
 
-  const parsed = JSON.parse(text) as Record<string, unknown>;
-  return normalizeRouterResponse(parsed);
+  return { raw: parseJsonLoose(text), usage: geminiUsage(json) };
 }
 
-async function callOpenAIVision(imageBase64: string): Promise<ResponseBody> {
+async function callOpenAIVision(imageBase64: string): Promise<ExecutorOutput> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
@@ -244,13 +252,12 @@ async function callOpenAIVision(imageBase64: string): Promise<ResponseBody> {
 
   const json = await res.json();
   const text = json.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty OpenAI response");
+  if (!text) throw new SchemaError("Empty OpenAI response");
 
-  const parsed = JSON.parse(text) as ResponseBody;
-  return normalizeResponse(parsed);
+  return { raw: parseJsonLoose(text), usage: openAiUsage(json) };
 }
 
-async function callOpenAIVisionRouter(imageBase64: string): Promise<ResponseBody> {
+async function callOpenAIVisionRouter(imageBase64: string): Promise<ExecutorOutput> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) throw new Error("OPENAI_API_KEY not set");
 
@@ -287,10 +294,9 @@ async function callOpenAIVisionRouter(imageBase64: string): Promise<ResponseBody
 
   const json = await res.json();
   const text = json.choices?.[0]?.message?.content;
-  if (!text) throw new Error("Empty OpenAI router response");
+  if (!text) throw new SchemaError("Empty OpenAI router response");
 
-  const parsed = JSON.parse(text) as Record<string, unknown>;
-  return normalizeRouterResponse(parsed);
+  return { raw: parseJsonLoose(text), usage: openAiUsage(json) };
 }
 
 // Phase 4: Map freeform document types to normalized values
@@ -339,7 +345,8 @@ const HAZARD_OBJECT_TO_ICON: Record<string, string> = {
   obstruction: "alert-triangle",
 };
 
-function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
+function normalizeResponse(raw: unknown): ResponseBody {
+  const parsed = expectJsonObject(raw, "Image analysis") as Partial<ResponseBody>;
   const docClass = parsed.document_classification;
   const docTypeRaw = docClass?.type?.toLowerCase().replace(/\s+/g, "_") ?? "";
   const mappedType = DOC_TYPE_MAP[docTypeRaw] ?? docClass?.type ?? null;
@@ -398,7 +405,8 @@ function normalizeResponse(parsed: Partial<ResponseBody>): ResponseBody {
   };
 }
 
-function normalizeRouterResponse(parsed: Record<string, unknown>): ResponseBody {
+function normalizeRouterResponse(raw: unknown): ResponseBody {
+  const parsed = expectJsonObject(raw, "Image router");
   const workflowHintRaw = String(parsed.workflow_hint ?? "uncertain").toLowerCase();
   const workflowHint =
     workflowHintRaw === "task" ||
@@ -607,90 +615,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    const aiProvider = (Deno.env.get("AI_PROVIDER") || "").toLowerCase();
-    const fallbackEnabled = Deno.env.get("AI_FALLBACK_ENABLED") === "true";
     const serviceRoleKeyForLog = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    let aiModelUsed = "gemini-2.0-flash";
-    let aiProviderUsed = "GEMINI";
-    let aiStatus: AiRequestStatus = "success";
-    let aiErrorMessage: string | null = null;
-    const aiStart = Date.now();
+    const routerMode = mode === "router";
 
     let result: ResponseBody;
     try {
-      const preferGemini = aiProvider === "gemini" || (!aiProvider && getGeminiKey());
-      const preferOpenAI = aiProvider === "openai" || (!aiProvider && getOpenAIApiKey());
+      if (!serviceRoleKeyForLog) throw new Error("SUPABASE_SERVICE_ROLE_KEY is required");
 
-      const routerMode = mode === "router";
+      const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKeyForLog, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
 
-      if (preferGemini && getGeminiKey()) {
-        aiModelUsed = "gemini-2.0-flash";
-        aiProviderUsed = "GEMINI";
-        try {
-          result = routerMode
-            ? await callGeminiVisionRouter(imageBase64)
-            : await callGeminiVision(imageBase64);
-        } catch (err) {
-          if (fallbackEnabled && getOpenAIApiKey()) {
-            aiModelUsed = "gpt-4o-mini";
-            aiProviderUsed = "OPENAI";
-            aiStatus = "fallback";
-            result = routerMode
-              ? await callOpenAIVisionRouter(imageBase64)
-              : await callOpenAIVision(imageBase64);
-          } else {
-            throw err;
-          }
-        }
-      } else if (preferOpenAI && getOpenAIApiKey()) {
-        aiModelUsed = "gpt-4o-mini";
-        aiProviderUsed = "OPENAI";
-        try {
-          result = routerMode
-            ? await callOpenAIVisionRouter(imageBase64)
-            : await callOpenAIVision(imageBase64);
-        } catch (err) {
-          if (fallbackEnabled && getGeminiKey()) {
-            aiModelUsed = "gemini-2.0-flash";
-            aiProviderUsed = "GEMINI";
-            aiStatus = "fallback";
-            result = routerMode
-              ? await callGeminiVisionRouter(imageBase64)
-              : await callGeminiVision(imageBase64);
-          } else {
-            throw err;
-          }
-        }
-      } else {
-        result = stubResponse();
-        aiStatus = "error";
-        aiErrorMessage = "No AI provider configured; stub response used";
-      }
+      const run = await runCapability<ResponseBody>(serviceClient, {
+        capability: "photo_asset_identification",
+        orgId: org_id,
+        entity: { type: attachment_id ? "attachment" : null, id: attachment_id ?? null },
+        metadata: { mode },
+        allowFallback: Deno.env.get("AI_FALLBACK_ENABLED") === "true",
+        // Already gated above, before the image was fetched.
+        skipGate: true,
+        executors: {
+          "model:gemini-2.0-flash": () =>
+            routerMode ? callGeminiVisionRouter(imageBase64) : callGeminiVision(imageBase64),
+          "model:gpt-4o-mini": () =>
+            routerMode ? callOpenAIVisionRouter(imageBase64) : callOpenAIVision(imageBase64),
+        },
+        validate: (raw) => (routerMode ? normalizeRouterResponse(raw) : normalizeResponse(raw)),
+      });
+
+      if (!run.ok) console.error("ai-image-analyse extraction failed:", run.error);
+      result = run.value ?? stubResponse();
     } catch (err) {
       console.error("ai-image-analyse error:", err);
-      aiStatus = "error";
-      aiErrorMessage = String(err);
       result = stubResponse();
-    } finally {
-      if (serviceRoleKeyForLog) {
-        const serviceClient = createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKeyForLog, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        });
-        logAiRequest(serviceClient, {
-          org_id,
-          function_name: "ai-image-analyse",
-          model_used: aiModelUsed,
-          provider: aiProviderUsed,
-          latency_ms: Date.now() - aiStart,
-          status: aiStatus,
-          error_message: aiErrorMessage,
-          entity_type: attachment_id ? "attachment" : null,
-          entity_id: attachment_id ?? null,
-          cost_usd: estimateCost(aiModelUsed, null, null),
-          metadata: { mode },
-        });
-      }
     }
 
     // Phase 2: DB writes when attachment_id provided

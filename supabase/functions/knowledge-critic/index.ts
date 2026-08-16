@@ -4,14 +4,35 @@
  * Never auto-publishes. Logs to ai_requests.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { estimateCost, logAiRequest } from "../_shared/aiObservability.ts";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
+import { runCapability, type ExecutorOutput } from "../_shared/aiCall.ts";
+import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
+
+interface CriticVerdict {
+  trust_score: number;
+  notes: string;
+  verified: boolean;
+}
+
+function validateVerdict(raw: unknown): CriticVerdict {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError("Critic response was not a JSON object");
+  }
+  const parsed = raw as Record<string, unknown>;
+  const score = Number(parsed.trust_score ?? 0.4);
+  return {
+    trust_score: Number.isFinite(score) ? Math.max(0, Math.min(1, score)) : 0.4,
+    notes: String(parsed.notes ?? ""),
+    verified: Boolean(parsed.verified),
+  };
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const CRITIC_PROMPT_VERSION = "knowledge-critic-v1";
+/** Prompt version is pinned with the strategy in `CAPABILITIES.knowledge_critique`. */
 const VERIFIED_TRUST_FLOOR = 0.7;
 
 interface CriticInput {
@@ -28,26 +49,13 @@ function jsonResponse(data: unknown, status = 200) {
   });
 }
 
-function pickCriticProvider(extractorProvider?: string | null): {
-  provider: string;
-  model: string;
-  useOpenAI: boolean;
-} {
-  const ext = (extractorProvider || "").toUpperCase();
-  // Prefer OpenAI when extractor was Gemini (or unknown); Gemini when extractor was OpenAI.
-  if (ext.includes("OPENAI") || ext.includes("GPT")) {
-    return { provider: "GEMINI", model: "gemini-2.0-flash", useOpenAI: false };
-  }
-  return { provider: "OPENAI", model: "gpt-4o-mini", useOpenAI: true };
-}
-
 async function callOpenAICritic(
   apiKey: string,
   title: string,
   summary: string | null,
   body: string | null,
   provenance: Record<string, unknown>
-): Promise<{ trust_score: number; notes: string; verified: boolean }> {
+): Promise<ExecutorOutput> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -76,13 +84,7 @@ async function callOpenAICritic(
   });
   if (!res.ok) throw new Error(`OpenAI critic ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content ?? "{}";
-  const parsed = JSON.parse(text);
-  return {
-    trust_score: Number(parsed.trust_score ?? 0.4),
-    notes: String(parsed.notes ?? ""),
-    verified: Boolean(parsed.verified),
-  };
+  return { raw: parseJsonLoose(data?.choices?.[0]?.message?.content), usage: openAiUsage(data) };
 }
 
 async function callGeminiCritic(
@@ -91,7 +93,7 @@ async function callGeminiCritic(
   summary: string | null,
   body: string | null,
   provenance: Record<string, unknown>
-): Promise<{ trust_score: number; notes: string; verified: boolean }> {
+): Promise<ExecutorOutput> {
   const url =
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
@@ -116,13 +118,9 @@ async function callGeminiCritic(
   });
   if (!res.ok) throw new Error(`Gemini critic ${res.status}: ${await res.text()}`);
   const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
-  const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-  const parsed = JSON.parse(cleaned);
   return {
-    trust_score: Number(parsed.trust_score ?? 0.4),
-    notes: String(parsed.notes ?? ""),
-    verified: Boolean(parsed.verified),
+    raw: parseJsonLoose(data?.candidates?.[0]?.content?.parts?.[0]?.text),
+    usage: geminiUsage(data),
   };
 }
 
@@ -158,81 +156,50 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: loadErr?.message ?? "knowledge_not_found" }, 404);
   }
 
-  const pick = pickCriticProvider(
+  const extractorProvider =
     extractor_provider ??
-      (row.provenance as Record<string, unknown> | null)?.extractor_provider as string | undefined
-  );
+    ((row.provenance as Record<string, unknown> | null)?.extractor_provider as
+      | string
+      | undefined) ??
+    null;
 
+  const logOrg = org_id ?? row.org_id ?? "00000000-0000-0000-0000-000000000000";
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  const provenance = (row.provenance as Record<string, unknown>) ?? {};
 
-  let useOpenAI = pick.useOpenAI;
-  if (useOpenAI && !openaiKey && geminiKey) useOpenAI = false;
-  if (!useOpenAI && !geminiKey && openaiKey) useOpenAI = true;
-
-  const provider = useOpenAI ? "OPENAI" : "GEMINI";
-  const model = useOpenAI ? "gpt-4o-mini" : "gemini-2.0-flash";
-
-  const start = Date.now();
-  let status: "success" | "error" | "fallback" = "success";
-  let errorMessage: string | null = null;
-  let trust = 0.4;
-  let notes = "Critic unavailable; default trust retained.";
-  let markVerified = false;
-
-  try {
-    if (useOpenAI && openaiKey) {
-      const result = await callOpenAICritic(
-        openaiKey,
-        row.title,
-        row.summary,
-        row.body,
-        (row.provenance as Record<string, unknown>) ?? {}
-      );
-      trust = result.trust_score;
-      notes = result.notes;
-      markVerified = result.verified && trust >= VERIFIED_TRUST_FLOOR;
-    } else if (geminiKey) {
-      const result = await callGeminiCritic(
-        geminiKey,
-        row.title,
-        row.summary,
-        row.body,
-        (row.provenance as Record<string, unknown>) ?? {}
-      );
-      trust = result.trust_score;
-      notes = result.notes;
-      markVerified = result.verified && trust >= VERIFIED_TRUST_FLOOR;
-      if (pick.useOpenAI) status = "fallback";
-    } else {
-      status = "error";
-      errorMessage = "No critic provider configured";
-    }
-  } catch (err) {
-    status = "error";
-    errorMessage = String(err);
-  }
-
-  const logOrg =
-    org_id ??
-    row.org_id ??
-    "00000000-0000-0000-0000-000000000000";
-
-  logAiRequest(admin, {
-    org_id: logOrg,
-    function_name: "knowledge-critic",
-    model_used: model,
-    provider,
-    prompt_version: CRITIC_PROMPT_VERSION,
-    latency_ms: Date.now() - start,
-    status,
-    error_message: errorMessage,
-    entity_type: "knowledge",
-    entity_id: knowledge_id,
-    cost_usd: estimateCost(model, null, null),
-    cost_units: 2,
-    metadata: { extractor_provider: extractor_provider ?? null },
+  // Ch 7: the critic must not reuse the extractor's provider. The boundary enforces
+  // that constraint, and resolves to nothing rather than faking a second opinion.
+  const run = await runCapability<CriticVerdict>(admin, {
+    capability: "knowledge_critique",
+    orgId: logOrg,
+    mustDifferFrom: extractorProvider,
+    entity: { type: "knowledge", id: knowledge_id },
+    metadata: { extractor_provider: extractorProvider },
+    allowFallback: false,
+    executors: {
+      "model:gpt-4o-mini": () => {
+        if (!openaiKey) throw new Error("OPENAI_API_KEY not set");
+        return callOpenAICritic(openaiKey, row.title, row.summary, row.body, provenance);
+      },
+      "model:gemini-2.0-flash": () => {
+        if (!geminiKey) throw new Error("GEMINI_API_KEY not set");
+        return callGeminiCritic(geminiKey, row.title, row.summary, row.body, provenance);
+      },
+    },
+    validate: validateVerdict,
   });
+
+  const verdict = run.value;
+  const trust = verdict?.trust_score ?? 0.4;
+  const notes = verdict?.notes || "Critic unavailable; default trust retained.";
+  const markVerified = Boolean(verdict?.verified) && trust >= VERIFIED_TRUST_FLOOR;
+  const provider = run.strategy?.provider ?? null;
+  const model = run.strategy?.model ?? null;
+
+  if (!run.ok) {
+    console.warn("[knowledge-critic] no verdict:", run.error);
+  }
 
   const { data: updated, error: applyErr } = await admin.rpc("apply_knowledge_critic_result", {
     p_knowledge_id: knowledge_id,

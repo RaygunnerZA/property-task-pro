@@ -21,8 +21,19 @@ const COST_UNITS: Record<string, number> = {
   "ai-doc-analyse": 3,
   "ai-doc-reanalyse": 3,
   "compliance-clause-rewrite": 2,
+  "knowledge-critic": 2,
   "building-plan-process": 5,
+  // Escalation is a user-initiated second pass on a frontier model. It is metered
+  // separately from the normal run because it is a different, dearer product.
+  // Never trigger it automatically: per-item escalation is an unbounded multiplier.
+  "building-plan-process:escalation": 15,
+  "ai-doc-analyse:escalation": 9,
 };
+
+/** Metering key for a run. Escalation is its own line, not a discount on the first. */
+export function aiOpsMeteringKey(functionName: string, escalation = false): string {
+  return escalation ? `${functionName}:escalation` : functionName;
+}
 
 export function aiOpsCostUnits(functionName: string): number {
   return COST_UNITS[functionName] ?? 1;

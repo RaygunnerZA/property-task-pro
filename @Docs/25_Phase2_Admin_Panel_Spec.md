@@ -29,6 +29,23 @@
 
 Phase 2 is intentionally read-only. The value of an admin panel comes from visibility. The risk comes from write access. Separate them by at least one phase.
 
+### Recorded exception — platform configuration writes
+
+The AI route override layer introduces the first platform-admin **write** (`set_ai_route_override` / `clear_ai_route_override`, Ch 3). This does not reopen the rule above, and the distinction is the point:
+
+- **Customer-data writes stay out of scope.** No admin surface may edit an org's tasks, compliance records, evidence, or Knowledge. That remains Phase 4 at the earliest.
+- **Platform-configuration writes are a different category.** A route override changes which approved model Filla uses. It touches no org row, and it is deliberately not org-scoped: it applies platform-wide, which is why `ai_route_overrides` has no org read or write policy at all.
+
+Any future platform-configuration write must meet the same bar before it is added:
+
+1. Platform-admin check inside the function, raising rather than silently succeeding.
+2. An `audit_logs` entry on every write, including the reason.
+3. A mandatory human-readable `reason` — an unexplained change cannot be safely reverted by the next person.
+4. Expiry, or an equivalent forcing function. An "emergency" lever with no expiry becomes a permanent undocumented fork of the deployed configuration.
+5. No ability to escape a constraint that lives in code. An override reorders approved options; it never authorises an unapproved one.
+
+If a proposed write cannot satisfy all five, it belongs in a migration, not an admin panel.
+
 ---
 
 ## 25.1 — Security Model

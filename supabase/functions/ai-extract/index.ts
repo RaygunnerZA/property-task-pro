@@ -1,8 +1,21 @@
 // ai-extract — Semantic Task Extraction Engine with Provider Switch & Ghost-Chip Resolution
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { logAiRequest, estimateCost, type AiRequestStatus } from "../_shared/aiObservability.ts";
-import { assertAiOpsAllowed } from "../_shared/aiEntitlements.ts";
+import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
+import {
+  runCapability,
+  type ExecutorOutput,
+  type StrategyExecutor,
+} from "../_shared/aiCall.ts";
+import {
+  SchemaError,
+  TimeoutError,
+  normaliseProvider,
+  parseJsonLoose,
+} from "../_shared/aiRouting.ts";
+import { buildTaskExtractionPrompt } from "../_shared/prompts/taskExtraction.ts";
+
+const AI_TIMEOUT_MS = 9000;
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -55,57 +68,48 @@ Deno.serve(async (req) => {
 
     console.log('Processing AI extraction:', { descriptionLength: description.length, orgId, aiProvider: AI_PROVIDER });
 
-    // Phase 5: if AI allowance exhausted, skip provider and use rule-based (manual path).
-    let aiAllowanceBlocked = false;
-    if (SUPABASE_SERVICE_ROLE_KEY) {
+    // 1. Semantic AI Extraction
+    let ai: Record<string, unknown>;
+
+    if (!SUPABASE_SERVICE_ROLE_KEY) {
+      // Without the service role we cannot gate or meter, so stay on the manual path.
+      console.log("[ai-extract] service role missing — rule-based only");
+      ai = ruleBased(description);
+    } else {
       const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
         auth: { autoRefreshToken: false, persistSession: false },
       });
-      const gate = await assertAiOpsAllowed(serviceClient, orgId, "ai-extract");
-      if (!gate.allowed) {
-        aiAllowanceBlocked = true;
-        console.log("[ai-extract] allowance exhausted — rule-based fallback");
-      }
-    }
 
-    // 1. Semantic AI Extraction
-    let ai;
-    const aiModelUsed = AI_PROVIDER === "OPENAI" ? "gpt-4o-mini" : AI_PROVIDER === "GEMINI" ? "gemini-2.0-flash" : "google/gemini-2.0-flash";
-    const aiStart = Date.now();
-    let aiStatus: AiRequestStatus = "success";
-    let aiErrorMessage: string | null = null;
-    try {
-      if (aiAllowanceBlocked) {
-        aiStatus = "fallback";
+      const prompt = buildTaskExtractionPrompt(description);
+      const run = await runCapability<Record<string, unknown>>(serviceClient, {
+        capability: "task_extraction",
+        orgId,
+        entity: { type: "task", id: null },
+        executors: {
+          // Only the configured provider is offered: task text should not be
+          // handed to a second vendor just because the first one failed.
+          ...providerExecutors(prompt),
+          "deterministic:rule-based-task": () =>
+            Promise.resolve({ raw: ruleBased(description) }),
+        },
+        validate: (raw) => {
+          if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+            throw new SchemaError("Task extraction response was not a JSON object");
+          }
+          return raw as Record<string, unknown>;
+        },
+      });
+
+      if (run.blocked) {
+        // Phase 5: allowance exhausted — manual path stays open.
+        console.log("[ai-extract] allowance exhausted — rule-based fallback");
         ai = ruleBased(description);
+      } else if (run.ok && run.value) {
+        ai = run.value;
+        console.log("AI extraction successful:", JSON.stringify(ai));
       } else {
-        ai = await withTimeout(callAI(description), 9000); // 9s timeout
-        console.log('AI extraction successful:', JSON.stringify(ai));
-      }
-    } catch (error) {
-      const isTimeout = (error as Error)?.message === "Timeout";
-      aiStatus = isTimeout ? "timeout" : "error";
-      aiErrorMessage = String(error);
-      console.log('AI extraction error, falling back to rule-based:', error);
-      ai = ruleBased(description);
-    } finally {
-      if (SUPABASE_SERVICE_ROLE_KEY && !aiAllowanceBlocked) {
-        const serviceClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-          auth: { autoRefreshToken: false, persistSession: false },
-        });
-        const latency = Date.now() - aiStart;
-        logAiRequest(serviceClient, {
-          org_id: orgId,
-          function_name: "ai-extract",
-          model_used: aiModelUsed,
-          provider: AI_PROVIDER,
-          latency_ms: latency,
-          status: aiStatus,
-          error_message: aiErrorMessage,
-          entity_type: "task",
-          entity_id: null,
-          cost_usd: estimateCost(aiModelUsed, null, null),
-        });
+        console.log("AI extraction error, falling back to rule-based:", run.error);
+        ai = ruleBased(description);
       }
     }
 
@@ -197,22 +201,25 @@ Deno.serve(async (req) => {
 // AI Provider Switch
 // ----------------------------------------------------
 
-async function callAI(description: string) {
-  const prompt = buildPrompt(description);
-
-  switch (AI_PROVIDER) {
-    case "LOVABLE":
-      return callLovable(prompt);
+/**
+ * Executor for the configured provider only. A second vendor is deliberately not
+ * offered: on failure this capability falls back to the deterministic extractor,
+ * which keeps task text with one provider.
+ */
+function providerExecutors(prompt: string): Record<string, StrategyExecutor> {
+  switch (normaliseProvider(AI_PROVIDER) ?? "LOVABLE") {
     case "OPENAI":
-      return callOpenAI(prompt);
+      return { "model:gpt-4o-mini": () => withTimeout(callOpenAI(prompt), AI_TIMEOUT_MS) };
     case "GEMINI":
-      return callGemini(prompt);
+      return { "model:gemini-2.0-flash": () => withTimeout(callGemini(prompt), AI_TIMEOUT_MS) };
     default:
-      throw new Error("Unknown AI_PROVIDER");
+      return {
+        "model:google/gemini-2.0-flash": () => withTimeout(callLovable(prompt), AI_TIMEOUT_MS),
+      };
   }
 }
 
-async function callLovable(prompt: string) {
+async function callLovable(prompt: string): Promise<ExecutorOutput> {
   try {
     const res = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -236,14 +243,14 @@ async function callLovable(prompt: string) {
       throw new Error(`Lovable API error: ${res.status} - ${JSON.stringify(json)}`);
     }
     
-    return JSON.parse(json.choices[0].message.content);
+    return { raw: parseJsonLoose(json.choices?.[0]?.message?.content), usage: openAiUsage(json) };
   } catch (error) {
     console.log('Lovable Error:', error);
     throw error;
   }
 }
 
-async function callOpenAI(prompt: string) {
+async function callOpenAI(prompt: string): Promise<ExecutorOutput> {
   try {
     const res = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
@@ -264,14 +271,14 @@ async function callOpenAI(prompt: string) {
       throw new Error(`OpenAI API error: ${res.status} - ${JSON.stringify(json)}`);
     }
     
-    return JSON.parse(json.choices[0].message.content);
+    return { raw: parseJsonLoose(json.choices?.[0]?.message?.content), usage: openAiUsage(json) };
   } catch (error) {
     console.log('OpenAI Error:', error);
     throw error;
   }
 }
 
-async function callGemini(prompt: string) {
+async function callGemini(prompt: string): Promise<ExecutorOutput> {
   try {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
     const res = await fetch(url, {
@@ -289,82 +296,14 @@ async function callGemini(prompt: string) {
       throw new Error(`Gemini API error: ${res.status} - ${JSON.stringify(json)}`);
     }
     
-    return JSON.parse(json.candidates[0].content.parts[0].text);
+    return {
+      raw: parseJsonLoose(json.candidates?.[0]?.content?.parts?.[0]?.text),
+      usage: geminiUsage(json),
+    };
   } catch (error) {
     console.log('Gemini Error:', error);
     throw error;
   }
-}
-
-// ----------------------------------------------------
-// Prompt
-// ----------------------------------------------------
-
-function buildPrompt(description: string) {
-  return `
-You are a task extraction AI. Extract structured metadata from task descriptions with high accuracy.
-
-CONTEXT UNDERSTANDING:
-- "fix toilet" → space: "Bathroom" or "Restroom"
-- "dirt" or "cleaning" → theme: "Housekeeping" (type: "category")
-- "leak" or "broken" → priority: "urgent"
-- "Tuesday" or "tomorrow" → date: parse to ISO format
-- Person names (e.g., "Frank", "John", "Oliver") → people: explicit human assignees only
-- Do NOT include imperative verbs (have, collect, get), month names in dates (e.g. "June" in "12th June"), or task verbs as people
-- Role references (e.g., "the cleaner", "maintenance") → people: role-based inference
-- Team names (e.g., "Maintenance Team", "Housekeeping") → teams
-- Asset names (e.g., "HVAC Unit A", "Stove") → assets
-
-AUTHORITY SCORING (0-1) - Be precise:
-- Explicit name mentioned (e.g., "Frank", "Kitchen", "HVAC Unit A") → 0.9-1.0 (High confidence)
-- Role-based inference (e.g., "the cleaner", "maintenance staff") → 0.5-0.8 (Medium confidence)
-- Ambiguous or weak inference → 0.3-0.5 (Low confidence)
-- Uncertain or missing → 0.0-0.3 (Very Low - only include if context strongly suggests)
-
-TITLE GENERATION:
-- Create a concise, actionable title (3-8 words)
-- Use imperative mood when appropriate (e.g., "Fix leak in kitchen")
-- Capitalize first letter only
-- No trailing punctuation
-- Be specific but brief
-
-PRIORITY DETECTION:
-- "urgent", "asap", "emergency", "critical" → "urgent"
-- "important", "high priority" → "high"
-- "normal", "standard" → "medium"
-- "low priority", "whenever" → "low"
-- Default: "medium"
-
-DATE PARSING:
-- Relative: "today", "tomorrow", "next week" → parse to ISO date
-- Absolute: "Tuesday", "Jan 15", "2026-01-15" → parse to ISO date
-- Time: "9am", "morning", "afternoon" → include in date if mentioned
-- Empty string if no date mentioned
-
-THEMES:
-- Type can be: "category", "project", "tag", "group"
-- Common categories: "Maintenance", "Housekeeping", "Inspection", "Compliance", "Administrative"
-- Infer from context (e.g., "fix" → "Maintenance", "clean" → "Housekeeping")
-
-Return ONLY valid JSON (no markdown, no code blocks):
-
-{
-  "title": "Concise actionable title",
-  "spaces": [{"name": "Kitchen", "authority": 0.9}],
-  "people": [{"name": "Frank", "authority": 1.0}, {"name": "the cleaner", "authority": 0.6}],
-  "teams": [{"name": "Maintenance Team", "authority": 0.8}],
-  "groups": [],
-  "assets": [{"name": "HVAC Unit A", "authority": 0.95}],
-  "themes": [{"name": "Maintenance", "type": "category", "authority": 0.7}],
-  "priority": "low|medium|high|urgent",
-  "date": "ISO date string or empty",
-  "yes_no": false,
-  "signature": false
-}
-
-DESCRIPTION:
-${description}
-`;
 }
 
 // ----------------------------------------------------
@@ -496,7 +435,7 @@ const jsonErr = (msg: string, status = 400) =>
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const t = setTimeout(() => {
-      reject(new Error("Timeout"));
+      reject(new TimeoutError());
     }, ms);
     
     promise

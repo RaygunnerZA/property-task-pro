@@ -1,0 +1,37 @@
+{
+  "fixture_set": "task_extraction_synthetic_v1",
+  "capability": "task_extraction",
+  "notes": "Fully synthetic. Describes no real property, person or organisation.",
+  "fixtures": [
+    {
+      "id": "t-leak-urgent",
+      "input": { "text": "Urgent leak under the bathroom sink, water on the floor" },
+      "expected": ["priority:urgent", "space:bathroom"]
+    },
+    {
+      "id": "t-kitchen-clean",
+      "input": { "text": "Deep clean the kitchen extractor hood before the weekend" },
+      "expected": ["space:kitchen", "theme:housekeeping"]
+    },
+    {
+      "id": "t-boiler-service",
+      "input": { "text": "Annual boiler service due in the plant room" },
+      "expected": ["space:plant room", "asset:boiler"]
+    },
+    {
+      "id": "t-lift-fault",
+      "input": { "text": "Lift making grinding noise between floors, needs engineer" },
+      "expected": ["asset:lift"]
+    },
+    {
+      "id": "t-no-signal",
+      "input": { "text": "Order more printer paper" },
+      "expected": []
+    },
+    {
+      "id": "t-fire-door",
+      "input": { "text": "Fire door on the second floor corridor will not latch closed" },
+      "expected": ["asset:fire door", "priority:urgent"]
+    }
+  ]
+}

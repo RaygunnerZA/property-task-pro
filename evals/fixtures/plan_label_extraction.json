@@ -1,0 +1,6 @@
+{
+  "fixture_set": "plan_label_extraction_synthetic_v1",
+  "capability": "plan_label_extraction",
+  "notes": "Empty until a synthetic or explicitly consented plan image is added. See README.md — customer drawings must not be added without a written basis.",
+  "fixtures": []
+}
