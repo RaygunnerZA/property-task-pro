@@ -4,17 +4,25 @@ Property operations platform: tasks, compliance, assets, and team workflows. Rea
 
 ## Local setup
 
-Requires [Node.js](https://nodejs.org/) (LTS) and npm.
+Requires [Node.js](https://nodejs.org/) (LTS), npm, [Docker](https://docs.docker.com/desktop/) (or Colima), and the [Supabase CLI](https://supabase.com/docs/guides/cli).
+
+**Do not Dashboard-reset** hosted project `gbtexoyvfpnduykmxunc` — it is production.
 
 ```sh
 git clone <YOUR_GIT_URL>
 cd property-task-pro
 npm ci
-cp .env.example .env   # fill in Supabase values from your project dashboard
+supabase start
+supabase db reset
+npm run gen:types
+# copy API_URL / ANON_KEY / SERVICE_ROLE_KEY from `supabase status` into .env.local
+cp .env.example .env.local
 npm run dev
 ```
 
-Open the URL printed by Vite (typically `http://localhost:8080`).
+Open the URL printed by Vite (typically `http://localhost:8080`). Auth mail: Inbucket at `http://127.0.0.1:54324`.
+
+To hit a **hosted** project instead, put that project’s keys in `.env.local`. Never use production as a shared playground; staging is a separate project (`supabase/STAGING.md`).
 
 Public marketing site (separate origin, no Supabase):
 
@@ -49,7 +57,11 @@ If `.env` was ever committed, rotate the **service role key** in Supabase Dashbo
 | `npm run lint` | ESLint on `src/` (merge gate) |
 | `npm run lint:all` | ESLint on repo TS (excludes `supabase/functions`) |
 | `npm run typecheck` | `tsc --noEmit` (app config) |
-| `npm run gen:types` | Regenerate `src/types/supabase.ts` from linked project |
+| `npm run gen:types` | Regenerate `src/integrations/supabase/types.ts` from **local** Supabase |
+| `npm run test:rls` | Two-org RLS harness (local/staging only; refuses production) |
+| `npm run test:jwt-inventory` | Fail if a new Edge Function disables JWT without an allowlist update |
+| `npm run db:reset` | `supabase db reset` |
+| `npm run db:cutover-stamp` | Gated production history stamp — not daily use |
 
 Package manager: **npm** (`package-lock.json`). Use `npm ci` in CI and fresh clones.
 
@@ -59,18 +71,15 @@ Package manager: **npm** (`package-lock.json`). Use `npm ci` in CI and fresh clo
 - shadcn-ui, Tailwind CSS (neomorphic design system — see `@Docs/04_UI_System.md`)
 - Supabase (Postgres, Auth, Storage, Edge Functions)
 
-### Supabase types
+### Supabase schema and types
 
-Frontend types come from the live public schema (`src/types/supabase.ts`). After DB migrations:
+Git is the rebuildable backend: `supabase start` → `supabase db reset` → `npm run gen:types`.
 
-```sh
-npm run db:push      # apply migrations (after supabase link)
-npm run gen:types
-```
+Active migrations are the 2026-08-17 baseline plus canonical-gap and storage files. Older SQL is under `supabase/migrations/archive/`. Inventory: [`@Docs/Schema_Discrepancy_Register.md`](./@Docs/Schema_Discrepancy_Register.md). Infra: [`@Docs/09_Dev_Infra.md`](@Docs/09_Dev_Infra.md).
 
-Requires Supabase CLI and `supabase link`. If `db push` fails with **organisations already exists**, run `npm run db:diagnose` — usually you need a **database reset** in the Dashboard, then `npm run db:push` again.
+Frontend types: `src/integrations/supabase/types.ts` (local dump). Do not generate types from the production project.
 
-Legacy pre-init SQL is archived under `supabase/migrations/archive/legacy_pre_v2_init/`.
+**Freeze:** no Dashboard DDL; no `db:mark-local-applied` as normal workflow.
 
 ## Engineering
 
@@ -119,4 +128,4 @@ Set `SUPABASE_SERVICE_ROLE_KEY` and other secrets in Supabase → Project Settin
 
 ### Platform admin
 
-Insert your auth user into `platform_admins` — see `supabase/migrations/20260511000001_create_platform_admins.sql` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md).
+Insert your auth user into `platform_admins` — see `supabase/migrations/README.md` and [`@Docs/25_Phase2_Admin_Panel_Spec.md`](./@Docs/25_Phase2_Admin_Panel_Spec.md). Do not put a personal UUID in `supabase/seed.sql`.

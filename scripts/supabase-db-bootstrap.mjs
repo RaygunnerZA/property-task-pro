@@ -1,13 +1,7 @@
 #!/usr/bin/env node
 /**
- * Diagnose remote DB vs migration history and print recovery steps.
- *
- * Usage:
- *   node scripts/supabase-db-bootstrap.mjs
- *   node scripts/supabase-db-bootstrap.mjs --repair-stale-remote
- *   node scripts/supabase-db-bootstrap.mjs --mark-local-applied
- *
- * Requires .env.local: VITE_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+ * Read-only diagnose of the linked hosted project vs git migrations.
+ * Does not repair history. Cutover: npm run db:cutover-stamp (gated).
  */
 import { createClient } from "@supabase/supabase-js";
 import { spawnSync } from "node:child_process";
@@ -18,57 +12,29 @@ import dotenv from "dotenv";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = join(__dirname, "..");
-const INIT_VERSION = "20251218201715";
+const PROD_REF = "gbtexoyvfpnduykmxunc";
 
-/** Remote-only IDs from archived `legacy_pre_v2_init/` (blocks `db push`). */
-const ARCHIVED_LEGACY_PRE_V2_REMOTE_VERSIONS = [
-  "20250101000000", "20250130000000", "20250130000001", "20250130000002",
-  "20250131000000", "20250201000000", "20250201000001", "20250201000002",
-  "20250201000003", "20250201000004", "20250201000005", "20250201000006",
-  "20250201000008", "20250201000009", "20250201000010", "20250202000000",
-  "20250202000001", "20250202000002", "20250202000003", "20250202000004",
-  "20250202000005", "20250202000006", "20250202000007", "20250202000008",
-  "20250202000009", "20250202000011", "20250202000012", "20250202000013",
-  "20250202000014", "20250202000015", "20250202000016", "20250202000017",
-  "20250202000018", "20250202000019",
-];
+if (process.argv.includes("--repair-stale-remote") || process.argv.includes("--mark-local-applied")) {
+  console.error(`
+History repair is frozen.
 
-const STALE_REMOTE_VERSIONS = [
-  "20251208190515", "20251208195211", "20251209135842", "20251209140114",
-  "20251209140500", "20251209140926", "20251209141012", "20251209141205",
-  "20251209141526", "20251209141609", "20251209141739", "20251209141817",
-  "20251209142001", "20251209142038", "20251209142121", "20251209142153",
-  "20251209142238", "20251209142512", "20251209142719", "20251209142837",
-  "20251209142923", "20251209143025", "20251209143114", "20251209143208",
-  "20251209143332", "20251209143342", "20251209143451", "20251209143549",
-  "20251209143650", "20251209143726", "20251209143801", "20251209143837",
-  "20251209143924", "20251209144034", "20251209144215", "20251209144253",
-  "20251209144338", "20251209144430", "20251209144635", "20251209144751",
-  "20251209144851", "20251209145004", "20251209145122", "20251209145242",
-  "20251209145604", "20251210215923", "20251210220503", "20251210220808",
-  "20251210221026", "20251210221316", "20251210221449", "20251210221638",
-  "20251210221901",
-];
-
-const ALL_STALE_REMOTE_VERSIONS = [
-  ...ARCHIVED_LEGACY_PRE_V2_REMOTE_VERSIONS,
-  ...STALE_REMOTE_VERSIONS,
-];
-
-function listLocalMigrationVersions() {
-  const dir = join(root, "supabase/migrations");
-  return readdirSync(dir)
-    .filter((f) => /^\d{14}_.+\.sql$/.test(f))
-    .map((f) => f.slice(0, 14))
-    .sort();
+Daily path: supabase start && supabase db reset (local Docker).
+Production stamp is npm run db:cutover-stamp with FILLA_CUTOVER_CONFIRM=${PROD_REF}
+after staging is proven. Never Dashboard-reset ${PROD_REF}.
+`);
+  process.exit(1);
 }
 
 function loadEnv() {
-  if (existsSync(join(root, ".env.local"))) {
-    dotenv.config({ path: join(root, ".env.local") });
-  } else if (existsSync(join(root, ".env"))) {
-    dotenv.config({ path: join(root, ".env") });
-  }
+  if (existsSync(join(root, ".env.local"))) dotenv.config({ path: join(root, ".env.local") });
+  else if (existsSync(join(root, ".env"))) dotenv.config({ path: join(root, ".env") });
+}
+
+function listLocalMigrationVersions() {
+  return readdirSync(join(root, "supabase/migrations"))
+    .filter((f) => /^\d{14}_.+\.sql$/.test(f))
+    .map((f) => f.slice(0, 14))
+    .sort();
 }
 
 async function tableExists(supabase, table) {
@@ -78,123 +44,39 @@ async function tableExists(supabase, table) {
   return null;
 }
 
-function parseMigrationList(stdout) {
-  const applied = new Set();
-  const pending = new Set();
-  for (const line of stdout.split("\n")) {
-    const m = line.match(/\|\s*(\d{14})\s*\|/);
-    if (!m) continue;
-    if (line.includes("Applied")) applied.add(m[1]);
-    if (line.includes("Pending") || line.includes("Local")) pending.add(m[1]);
-  }
-  return { applied, raw: stdout };
-}
-
 async function main() {
   loadEnv();
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const repairStale = process.argv.includes("--repair-stale-remote");
-  const markLocalApplied = process.argv.includes("--mark-local-applied");
-
   if (!url || !key) {
-    console.error("Missing VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env.local");
+    console.error("Missing VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY");
     process.exit(1);
+  }
+  if (url.includes(PROD_REF)) {
+    console.log("Linked URL looks like production", PROD_REF, "— diagnose only; will not mutate.");
   }
 
   const supabase = createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
-
   const orgExists = await tableExists(supabase, "organisations");
-  const attachmentsExists = await tableExists(supabase, "attachments");
+  const followersExists = await tableExists(supabase, "task_followers");
+  const adminsExists = await tableExists(supabase, "platform_admins");
 
-  const list = spawnSync("supabase", ["migration", "list"], {
-    cwd: root,
-    encoding: "utf8",
-  });
+  const list = spawnSync("supabase", ["migration", "list"], { cwd: root, encoding: "utf8" });
   const migrationStdout = (list.stdout || "") + (list.stderr || "");
-  const initApplied = migrationStdout.includes(INIT_VERSION) &&
-    migrationStdout.includes("Applied");
 
-  console.log("\n=== Filla Supabase DB bootstrap ===\n");
-  console.log("Remote:", url.replace(/https?:\/\//, "").split(".")[0], "…");
-  console.log("organisations table:", orgExists === true ? "EXISTS" : orgExists === false ? "missing" : "unknown");
-  console.log("attachments table:", attachmentsExists === true ? "EXISTS" : attachmentsExists === false ? "missing" : "unknown");
-  console.log(`${INIT_VERSION} (filla_v2_init) in migration list as Applied:`, initApplied ? "yes" : "no / pending");
-
-  if (repairStale) {
-    console.log(
-      "\nRepairing remote-only migration IDs (archived legacy + Dec 2025) as reverted…"
-    );
-    const r = spawnSync(
-      "supabase",
-      ["migration", "repair", "--status", "reverted", ...ALL_STALE_REMOTE_VERSIONS],
-      { cwd: root, stdio: "inherit" }
-    );
-    if (r.status !== 0) process.exit(r.status ?? 1);
-    console.log("Done. If schema already exists: npm run db:mark-local-applied");
-    console.log("Then: npm run db:push\n");
-    return;
-  }
-
-  if (markLocalApplied) {
-    if (!orgExists) {
-      console.error(
-        "Refusing --mark-local-applied: organisations table missing (use db:push on a clean DB)."
-      );
-      process.exit(1);
-    }
-    const versions = listLocalMigrationVersions();
-    console.log(
-      `\nMarking ${versions.length} local migrations as applied (schema drift recovery)…`
-    );
-    const batchSize = 40;
-    for (let i = 0; i < versions.length; i += batchSize) {
-      const batch = versions.slice(i, i + batchSize);
-      const r = spawnSync(
-        "supabase",
-        ["migration", "repair", "--status", "applied", ...batch],
-        { cwd: root, stdio: "inherit" }
-      );
-      if (r.status !== 0) process.exit(r.status ?? 1);
-    }
-    console.log("Done. Run: npm run db:push (should report nothing pending)\n");
-    return;
-  }
-
-  if (orgExists && !initApplied) {
-    console.log(`
-BLOCKED: Schema drift — tables exist but filla_v2_init is not recorded as applied.
-This causes: ERROR relation "organisations" already exists on db push.
-
-Fix (dev):
-  1. Supabase Dashboard → Project Settings → Database → Reset database
-  2. Wait until Table Editor shows no tables
-  3. npm run db:push
-
-If db push fails with "Remote migration versions not found in local":
-  npm run db:repair-stale-remote
-  npm run db:mark-local-applied
-  npm run db:push
-`);
-    process.exit(1);
-  }
-
-  if (!orgExists) {
-    console.log(`
-Ready for a clean push (no organisations table detected).
-  npm run db:push
-
-Active migrations start at ${INIT_VERSION}_filla_v2_init.sql
-(legacy 202501/202502 patches are archived under supabase/migrations/archive/)
-`);
-    process.exit(0);
-  }
-
+  console.log("\n=== Filla DB diagnose (read-only) ===\n");
+  console.log("organisations:", orgExists === true ? "EXISTS" : orgExists === false ? "missing" : "unknown");
+  console.log("task_followers:", followersExists === true ? "EXISTS" : followersExists === false ? "missing" : "unknown");
+  console.log("platform_admins:", adminsExists === true ? "EXISTS" : adminsExists === false ? "missing" : "unknown");
+  console.log("local migrations:", listLocalMigrationVersions().join(", "));
+  console.log("\n--- supabase migration list ---\n");
+  console.log(migrationStdout);
   console.log(`
-Database appears initialized. If the app works, you are done.
-To re-apply all migrations from scratch, reset the database in the Dashboard first.
+Local rebuild: supabase start && supabase db reset
+Staging:       supabase/STAGING.md
+Prod cutover:  npm run db:cutover-stamp (gated)
 `);
 }
 

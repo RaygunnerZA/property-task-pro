@@ -1,0 +1,47 @@
+name: Backend
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  db-reset:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.98.2
+
+      - name: Start local Supabase
+        run: supabase start --exclude studio,imgproxy,edge-runtime,logflare,vector
+
+      - name: Reset database from git migrations
+        run: supabase db reset --yes
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+
+      - name: Two-org RLS isolation
+        run: |
+          eval "$(supabase status -o env)"
+          export VITE_SUPABASE_URL="${API_URL}"
+          export SUPABASE_URL="${API_URL}"
+          export VITE_SUPABASE_PUBLISHABLE_KEY="${ANON_KEY}"
+          export SUPABASE_SERVICE_ROLE_KEY="${SERVICE_ROLE_KEY}"
+          export SUPABASE_DB_URL="${DB_URL}"
+          npm run test:rls
+          npm run test:jwt-inventory
+
+      - name: Unit tests
+        run: npm test

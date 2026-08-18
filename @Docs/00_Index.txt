@@ -27,7 +27,8 @@
 06_Compliance.md            : Document ingestion, critic logic, and expiry rules.
 07_AI_Intelligence.md       : The AI Architecture (Extractor, Critic, Signals).
 08_Translation.md           : i18n structure and Tone of Voice.
-09_Dev_Infra.md             : Folder structure, testing, and deployment rules.
+09_Dev_Infra.md             : Local / staging / prod split, db reset, CI.
+Schema_Discrepancy_Register.md : Working inventory of live vs docs vs types (2026-08-17 squash).
 10_Master_Prompts.md        : Meta-prompts for Builders (Lovable/AI).
 11_Notifications.md         : Notification engine, channels, and routing.
 12_Data_Export.md           : Data portability and export logic.

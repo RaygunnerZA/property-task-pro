@@ -13,10 +13,12 @@
     "dev:force": "vite --force",
     "build": "vite build",
     "build:dev": "vite build --mode development",
-    "gen:types": "npx supabase gen types typescript --linked --schema public > src/types/supabase.ts",
+    "gen:types": "node scripts/gen-types.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:verbose": "vitest run --reporter=verbose",
+    "test:rls": "node scripts/rls-org-isolation.mjs",
+    "test:jwt-inventory": "node scripts/verify-jwt-inventory.mjs",
     "lint": "eslint src",
     "lint:all": "eslint .",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
@@ -24,10 +26,9 @@
     "check:edge-functions": "node scripts/check-edge-functions.mjs",
     "eval:ai": "node scripts/run-ai-eval.mjs",
     "db:diagnose": "node scripts/supabase-db-bootstrap.mjs",
-    "db:repair-stale-remote": "node scripts/supabase-db-bootstrap.mjs --repair-stale-remote",
-    "db:mark-local-applied": "node scripts/supabase-db-bootstrap.mjs --mark-local-applied",
     "db:push": "supabase db push",
-    "db:repair-partial": "node scripts/apply-partial-remote-repair.mjs"
+    "db:reset": "supabase db reset",
+    "db:cutover-stamp": "node scripts/cutover-stamp-baseline.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

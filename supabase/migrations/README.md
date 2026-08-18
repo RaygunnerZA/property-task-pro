@@ -1,90 +1,52 @@
-# Supabase Migrations
+# Supabase migrations
 
-Active migrations in this folder apply in filename order starting at **`20251218201715_filla_v2_init.sql`**.
+Git is the rebuildable source of the Filla backend.
 
-Older **`202501…` / `202502…`** patches live in **`archive/legacy_pre_v2_init/`** (not run by `supabase db push`). They predate init and caused `attachments does not exist` / ordering failures on empty databases.
+## Apply locally
 
-**Fresh remote setup:** Dashboard → reset database (if tables already exist) → `npm run db:push`.
+Requires Docker (Docker Desktop or Colima).
 
-**Drift recovery** (remote has `202501…`/`202502…` history or tables exist but v2 init is not recorded):
+```sh
+supabase start
+supabase db reset   # baseline + canonical gaps + storage + seed.sql
+npm run gen:types
+```
 
-1. `npm run db:repair-stale-remote` — reverts archived legacy + Dec 2025 remote-only IDs
-2. `npm run db:mark-local-applied` — records all local migration files as applied (schema already live)
-3. `npm run db:push` — applies any new migrations only
+Do **not** Dashboard-reset project `gbtexoyvfpnduykmxunc` (it is production). Do **not** use `db:mark-local-applied` as a normal workflow.
 
----
+## Active files (filename order)
 
-## History context
+| File | What |
+|---|---|
+| `20260817120000_baseline.sql` | Live public schema (2026-08-17 dump) |
+| `20260817120001_reconcile_canonical_gaps.sql` | Docs/app objects missing on live |
+| `20260817120002_storage_buckets_and_policies.sql` | Buckets + storage RLS |
 
-### Feb 2025 — RLS iteration period
+History: `archive/pre_baseline_20260817/` (216 files, not run).
 
-The files between `20250201000000` and `20250202000004` represent a rapid iteration cycle on Row Level Security (RLS) policies for the `attachments` table. Seven patch-over-patch migrations exist because the Supabase RLS policy for INSERT evaluated `auth.uid()` differently depending on whether the call came from a service-role client, an anon client, or a JWT-scoped client. Each file incrementally narrowed the issue; `20250202000003_final_attachments_rls_fix.sql` is the authoritative resolution.
+## New changes
 
-**Why it happened:** Auth context in Supabase RLS policies is evaluated at statement time, not at function-call time. Using a helper function to resolve `org_id` worked for SELECT but failed for INSERT because the helper ran under `SECURITY DEFINER` and lost the caller's JWT. The fix was to reference `auth.uid()` directly in the policy condition without a wrapper.
-
-This pattern has not recurred since. The convention established after this period is documented below.
-
-### Jan–Mar 2026 — Stable conventions established
-
-From `20260127` onwards, migrations follow the one-change-per-file convention. No `_final`, `_attempt`, or `_debug` suffixes are permitted.
-
----
+One logical change per new `YYYYMMDDHHMMSS_description.sql`. No `_final` / `_ensure_*` as a substitute for a replayable baseline. Test with `supabase db reset` twice.
 
 ## Conventions
 
-### Naming
+- `-- Description:` at the top.
+- RLS at table creation. Default deny.
+- Use `auth.uid()` plus membership helpers (`is_org_member`, `check_user_org_membership`). Do not rely on JWT `org_id` alone for new policies.
+- Never disable RLS to make a feature work.
 
-```
-YYYYMMDDHHMMSS_short_snake_case_description.sql
-```
+## Platform admin (local)
 
-- **One logical change per file.** Do not bundle unrelated schema changes.
-- **No `_final`, `_attempt`, `_v2`, `_debug`, `_fix2` suffixes.** Each file must be correct as written or superseded by a new file.
-- **Timestamps must be unique.** Use `HHMMSS` sub-seconds (e.g. `000001`, `000002`) within the same day.
-
-### Content
-
-- Always include `-- Description:` at the top of each file explaining what the migration does and why.
-- Wrap DDL in a transaction where possible (`BEGIN; ... COMMIT;`).
-- For RLS policy changes: add the new policy before dropping the old one to avoid a window where access is denied.
-- For new tables: define RLS at creation time, not in a later migration.
-
-### RLS
-
-- Use `auth.uid()` directly in policy conditions — never via a `SECURITY DEFINER` helper function for INSERT policies.
-- Always include both `USING` and `WITH CHECK` for UPDATE policies.
-- Test with an anon client and a JWT client before committing.
-
----
-
-## Seeding a platform admin
-
-To grant platform admin access to a user, run the following SQL in the Supabase SQL editor (production) or via `psql`:
+After reset, insert your **local** auth user:
 
 ```sql
 INSERT INTO platform_admins (user_id)
-VALUES ('your-auth-user-uuid-here')
+VALUES ('your-local-auth-user-uuid')
 ON CONFLICT (user_id) DO NOTHING;
 ```
 
-The `user_id` must match a row in `auth.users`. The admin panel is available at `/admin` in the application.
+Production: only with explicit authorisation; never seed a personal UUID in `seed.sql`.
 
-To revoke admin access:
+## Hosted cutover
 
-```sql
-DELETE FROM platform_admins WHERE user_id = 'your-auth-user-uuid-here';
-```
-
----
-
-## Key schema milestones
-
-| Date | Migration | What changed |
-|------|-----------|-------------|
-| 2025-12-18 | `20251218201715_filla_v2_init.sql` | Full v2 schema init — all core tables |
-| 2026-01-27 | `20260127*` series | Properties, spaces, assets, compliance RLS hardening |
-| 2026-02-01 | `20260201*` series | Attachments table + RLS iteration (see above) |
-| 2026-05-11 | `20260511000001_create_platform_admins.sql` | Platform admin role |
-| 2026-05-11 | `20260511000002_create_admin_rpcs.sql` | Admin RPC functions (`admin_list_orgs`, etc.) |
-| 2026-05-13 | `20260513000000_task_status_waiting_review.sql` | `waiting_review` status added to `task_status` enum |
-| 2026-05-15 | `20260515000001_admin_activity_ai_requests_cursor.sql` | Cursor pagination for admin AI requests |
+Staging: [STAGING.md](../STAGING.md). Production stamp: `npm run db:cutover-stamp` (refuses unless `FILLA_CUTOVER_CONFIRM` matches the project ref).
