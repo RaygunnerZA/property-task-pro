@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { useParams, useNavigate, Link, useSearchParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertySubPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
@@ -161,17 +161,36 @@ export default function SpaceOrganisationScreen() {
           defaultView="list"
         />
       </div>
-      <WorkspaceSurfaceCard
-        title="Floor plans"
-        description="Upload a sheet, confirm building and floor, then review proposed Spaces before creating any."
-      >
-        <Button className="w-full btn-accent-vibrant gap-2" asChild>
-          <Link to={`/properties/${propertyId}/plans`}>
+      <div className="relative">
+        <WorkspaceSurfaceCard
+          className="hover:shadow-e1"
+          title="Floor plans"
+          titleAccessory={
+            <img
+              src="/spaces/floor-plan-icon.png"
+              alt=""
+              width={32}
+              height={32}
+              decoding="async"
+              className="h-8 w-8 shrink-0 object-contain"
+            />
+          }
+          description="Upload a sheet, confirm building and floor, then review proposed Spaces before creating any."
+        >
+          <Button type="button" className="w-full btn-accent-vibrant gap-2" disabled>
             <FileUp className="h-4 w-4" />
             Open building setup
-          </Link>
-        </Button>
-      </WorkspaceSurfaceCard>
+          </Button>
+        </WorkspaceSurfaceCard>
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center rounded-xl bg-background/65"
+          role="status"
+        >
+          <p className="rounded-card bg-card/90 px-3 py-1.5 text-sm font-semibold text-ink shadow-e1">
+            Coming soon
+          </p>
+        </div>
+      </div>
     </div>
   );
 

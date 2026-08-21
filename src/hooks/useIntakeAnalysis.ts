@@ -7,12 +7,14 @@
 import { useMemo } from "react";
 import type { TempImage } from "@/types/temp-image";
 import type { IntakeMode } from "@/types/intake";
+import type { PendingIntakeFile } from "@/utils/ingestIntakeMediaFiles";
 import {
   isMeaningfulSuggestedType,
   textHasIssueSignals,
   textHasComplianceDocumentSignals,
   labelsSuggestComplianceDocument,
 } from "@/lib/intakeWorkflowSignals";
+import { mapIntakeDocumentType, hintsFromImageAnalysis, normalizeIntakeExpiryDate } from "@/lib/mapIntakeDocumentType";
 
 export type WorkflowHint = "task" | "compliance" | "document" | "uncertain";
 
@@ -37,6 +39,8 @@ export interface UseIntakeAnalysisOptions {
   userHasComposed: boolean;
   /** User-selected tab — intent wins over weak AI classification. */
   intakeMode?: IntakeMode;
+  /** Non-image attachments (PDFs) — filenames and pre-save scan hints. */
+  pendingFiles?: PendingIntakeFile[];
 }
 
 type DeriveResult = {
@@ -54,23 +58,38 @@ export function deriveIntakeWorkflow(
   fileCount: number,
   composedText: string,
   userHasComposed: boolean,
-  intakeMode: IntakeMode
+  intakeMode: IntakeMode,
+  pendingFiles: PendingIntakeFile[] = []
 ): DeriveResult {
   const text = composedText.trim().toLowerCase();
   const hasUpload = images.length > 0 || fileCount > 0;
-  const ocrParts = images.map((i) => i.aiOcrText || "").filter(Boolean);
-  const fileNameText = images
-    .map((i) => i.display_name || "")
+  const ocrParts = [
+    ...images.map((i) => i.aiOcrText || "").filter(Boolean),
+    ...pendingFiles.map((file) => file.scanOcrText || "").filter(Boolean),
+  ];
+  const fileNameText = [...images.map((i) => i.display_name || ""), ...pendingFiles.map((f) => f.display_name || "")]
     .join(" ")
     .replace(/[_\-\.]/g, " ")
     .toLowerCase();
   const combinedText = [composedText, ...ocrParts, fileNameText].join("\n").toLowerCase();
 
   const metadata = images[0]?.rawAnalysis?.metadata as Record<string, unknown> | undefined;
-  const docClass = metadata?.document_classification as { type?: string; expiry_date?: string } | undefined;
-  const rawSuggestedType = (metadata?.normalized_document_type as string) || docClass?.type;
-  const suggestedType = isMeaningfulSuggestedType(rawSuggestedType) ? rawSuggestedType!.trim() : null;
-  const suggestedExpiry = docClass?.expiry_date;
+  const imageHints = hintsFromImageAnalysis({
+    ...images[0]?.rawAnalysis,
+    ocr_text: ocrParts.join("\n") || images[0]?.rawAnalysis?.ocr_text,
+  });
+  const scannedType = pendingFiles.map((file) => file.scanDocumentType).find((value) => isMeaningfulSuggestedType(value));
+  const scannedExpiry = pendingFiles.map((file) => file.scanExpiryDate).find((value) => Boolean(value?.trim()));
+  const rawSuggestedType =
+    scannedType || imageHints.documentType;
+  const mappedType = mapIntakeDocumentType(rawSuggestedType);
+  const suggestedType = mappedType?.type || (isMeaningfulSuggestedType(rawSuggestedType) ? rawSuggestedType!.trim() : null);
+  const detectedObjects = images.flatMap((img) => img.rawAnalysis?.detected_objects || []);
+  const expiryFromObject = detectedObjects.find((o) => o.expiry_date)?.expiry_date;
+  const suggestedExpiry =
+    normalizeIntakeExpiryDate(scannedExpiry) ||
+    imageHints.expiryDate ||
+    normalizeIntakeExpiryDate(expiryFromObject);
   const routerOnlyPass = metadata?.router_mode === true;
   const routerHint = metadata?.workflow_hint as WorkflowHint | undefined;
   const routerConfidenceRaw = Number(metadata?.workflow_confidence ?? 0);
@@ -79,10 +98,7 @@ export function deriveIntakeWorkflow(
     : 0;
   const routerTaskTitle =
     typeof metadata?.task_title_hint === "string" ? metadata.task_title_hint : "";
-
-  const detectedObjects = images.flatMap((img) => img.rawAnalysis?.detected_objects || []);
-  const hasExpiry = detectedObjects.some((o) => o.expiry_date);
-  const expiryFromObject = detectedObjects.find((o) => o.expiry_date)?.expiry_date;
+  const hasExpiry = Boolean(suggestedExpiry || expiryFromObject);
   const anomalyText = images
     .flatMap((img) => img.rawAnalysis?.anomalies ?? [])
     .map((a) => String(a))
@@ -249,12 +265,23 @@ export function useIntakeAnalysis({
   composedText,
   userHasComposed,
   intakeMode = "report_issue",
+  pendingFiles = [],
 }: UseIntakeAnalysisOptions): IntakeAnalysisResult {
   return useMemo(() => {
-    const ocrText = images.map((i) => i.aiOcrText || "").filter(Boolean).join("\n");
+    const ocrText = [
+      ...images.map((i) => i.aiOcrText || "").filter(Boolean),
+      ...pendingFiles.map((file) => file.scanOcrText || "").filter(Boolean),
+    ].join("\n");
     const labels = Array.from(new Set(images.flatMap((i) => i.detectedLabels || [])));
 
-    const derived = deriveIntakeWorkflow(images, fileCount, composedText, userHasComposed, intakeMode);
+    const derived = deriveIntakeWorkflow(
+      images,
+      fileCount,
+      composedText,
+      userHasComposed,
+      intakeMode,
+      pendingFiles
+    );
 
     const task_title_hint =
       composedText.trim().length >= 5
@@ -274,5 +301,5 @@ export function useIntakeAnalysis({
       has_strong_document_evidence: derived.hasStrongDocumentEvidence,
       has_issue_signals: derived.hasIssueSignals,
     };
-  }, [images, fileCount, composedText, userHasComposed, intakeMode]);
+  }, [images, fileCount, composedText, userHasComposed, intakeMode, pendingFiles]);
 }

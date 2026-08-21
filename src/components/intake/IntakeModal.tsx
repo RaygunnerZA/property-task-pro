@@ -43,7 +43,12 @@ import { toast as sonnerToast } from "sonner";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDataContext } from "@/contexts/DataContext";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
+import { useIntakeDocumentScan } from "@/hooks/useIntakeDocumentScan";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
+import {
+  INTAKE_COMPLIANCE_PRESETS,
+  isIntakeCompliancePreset,
+} from "@/lib/mapIntakeDocumentType";
 import type { IntakeMode } from "@/types/intake";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
@@ -57,6 +62,7 @@ import {
   type TaskCreatedSource,
 } from "@/hooks/mutations/useCreateTaskMutation";
 import { supabase } from "@/integrations/supabase/client";
+import { createComplianceDocument } from "@/services/compliance/createComplianceDocument";
 import { resolveChip, type AvailableEntities } from "@/services/ai/resolutionPipeline";
 import { mergeAiPeopleIntoChips } from "@/services/ai/mergeAiPeopleChips";
 import { enrichSuggestionChipsWithEntities } from "@/services/ai/enrichSuggestionChipsWithEntities";
@@ -112,20 +118,7 @@ import { useCategories } from "@/hooks/useCategories";
 import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
 import { useTeams } from "@/hooks/useTeams";
 
-const INTAKE_COMPLIANCE_TYPES = [
-  "Fire Certificate",
-  "Gas Safety Certificate",
-  "Electrical Certificate",
-  "EICR",
-  "PAT Test",
-  "Other",
-] as const;
-
-const INTAKE_COMPLIANCE_PRESETS: string[] = INTAKE_COMPLIANCE_TYPES.filter((t) => t !== "Other");
-
-function isIntakeCompliancePreset(type: string): boolean {
-  return INTAKE_COMPLIANCE_PRESETS.includes(type);
-}
+const INTAKE_COMPLIANCE_TYPES = [...INTAKE_COMPLIANCE_PRESETS, "Other"] as const;
 
 const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; label: string }> = [
   { value: "compliance", label: "Compliance" },
@@ -424,33 +417,34 @@ export function IntakeModal({
   useEffect(() => {
     if (userEditedTitle) return;
     const trimmedDescription = description.trim();
-    // Don't auto-populate a title until the description has enough substance.
-    // Without this gate, the fallback locks in fragments like "The b" before
-    // ai-extract has a chance to run (min length 12, debounce 2.3s).
-    if (trimmedDescription.length < 12 && !aiResult?.title) return;
+    const scanTitle = taskFiles.map((file) => file.scanTitle?.trim()).find((value) => value && value.length >= 3);
+    // Don't auto-populate a title until the description has enough substance,
+    // unless a document scan already produced a title.
+    if (trimmedDescription.length < 12 && !aiResult?.title && !scanTitle) return;
 
     const aiRaw = aiResult?.title?.trim() || "";
     const fallback = buildFallbackTitleFromDescription(description);
     const chosen =
-      aiRaw && isUsableGeneratedTitle(aiRaw) ? aiRaw : fallback;
+      scanTitle ||
+      (aiRaw && isUsableGeneratedTitle(aiRaw) ? aiRaw : fallback);
     if (!chosen) return;
     const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
-    // Never commit a fragment — keep the previous title until we have something usable.
-    if (!isUsableGeneratedTitle(processed)) return;
+    if (!scanTitle && !isUsableGeneratedTitle(processed)) return;
 
     setAiTitleGenerated(processed);
-    // User hasn't edited the title, so always upgrade to the latest computed
-    // value (lets AI replace fallback when it arrives, and lets a later
-    // fallback replace an earlier one as the description grows).
     if (titleRef.current.trim() !== processed) setTitle(processed);
     setShowTitleField(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle]);
+  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, taskFiles]);
 
   useEffect(() => {
     if (!description.trim()) {
+      const scanTitle = taskFiles.some((file) => Boolean(file.scanTitle?.trim()));
+      if (scanTitle || userEditedTitle) {
+        setShowTitleField(Boolean(title.trim()) || scanTitle);
+        return;
+      }
       setShowTitleField(false);
-      setUserEditedTitle(false);
       setTitle("");
       setAiTitleGenerated("");
     } else if (aiTitleGenerated && !userEditedTitle && !title.trim()) {
@@ -459,10 +453,12 @@ export function IntakeModal({
     } else if (title.trim() && !showTitleField) {
       setShowTitleField(true);
     }
-  }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField]);
+  }, [description, userEditedTitle, aiTitleGenerated, title, showTitleField, taskFiles]);
 
   const hasDescriptionDraft = Boolean(description.trim());
-  const shouldShowTitleField = hasDescriptionDraft && (showTitleField || aiLoading || Boolean(title.trim()));
+  const shouldShowTitleField =
+    (hasDescriptionDraft && (showTitleField || aiLoading || Boolean(title.trim()))) ||
+    (intakeMode === "add_record" && Boolean(title.trim()));
 
   // Chip row state (simplified: labels only for display; full IDs for submit)
   const [dueDate, setDueDate] = useState("");
@@ -558,6 +554,10 @@ export function IntakeModal({
     setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
   }, []);
 
+  const patchFile = useCallback((localId: string, patch: Partial<PendingTaskFile>) => {
+    setTaskFiles((prev) => prev.map((file) => (file.local_id === localId ? { ...file, ...patch } : file)));
+  }, []);
+
   /** Paste / drop into the description block (same path as Add Photo). */
   const handleDescriptionMediaFiles = useCallback(
     (incomingFiles: File[]) => {
@@ -613,12 +613,31 @@ export function IntakeModal({
     );
   }, []);
 
-  const { imageOcrText, detectedLabels, runFullIntakeAnalysis } = useImageAnalysis({
+  const {
+    imageOcrText,
+    detectedLabels,
+    runFullIntakeAnalysis,
+    waitUntilIdle: waitForImageAnalysis,
+    getLatestFullHints,
+  } = useImageAnalysis({
     images,
     propertyId: propertyId || undefined,
     orgId: orgId ?? "",
     onAnalysisComplete: handleAnalysisComplete,
     onPatchImage: patchImage,
+    preferFullAnalysis: intakeMode === "add_record",
+  });
+
+  const {
+    isScanning: isDocumentScanning,
+    waitUntilIdle: waitForDocumentScans,
+    getLatestHints: getLatestDocumentHints,
+  } = useIntakeDocumentScan({
+    files: taskFiles,
+    onPatchFile: patchFile,
+    orgId,
+    propertyId: propertyId || null,
+    enabled: intakeMode === "add_record",
   });
 
   const detectedObjects = useMemo(
@@ -1187,6 +1206,7 @@ export function IntakeModal({
     composedText: description,
     userHasComposed: description.trim().length > 15,
     intakeMode,
+    pendingFiles: taskFiles,
   });
 
   /** User-facing mode maps to baseline workflow; AI does not choose the starting path. */
@@ -3364,16 +3384,21 @@ export function IntakeModal({
               },
             });
           } else {
-            void supabase.functions.invoke("ai-doc-analyse", {
-              body: {
-                attachment_id: attachment.id,
-                file_url: attachment.file_url,
-                file_name: attachment.file_name || tempImage.display_name,
-                org_id: orgId,
-                property_id: propertyId || null,
-                compliance_document_id: complianceDocumentId || null,
-              },
-            });
+            const imageMeta = tempImage.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+            const alreadyScanned =
+              imageMeta?.intake_stage === "full" && imageMeta?.full_analysis_failed !== true;
+            if (!alreadyScanned) {
+              void supabase.functions.invoke("ai-doc-analyse", {
+                body: {
+                  attachment_id: attachment.id,
+                  file_url: attachment.file_url,
+                  file_name: attachment.file_name || tempImage.display_name,
+                  org_id: orgId,
+                  property_id: propertyId || null,
+                  compliance_document_id: complianceDocumentId || null,
+                },
+              });
+            }
           }
         } catch (error) {
           console.error("[IntakeModal] image upload failed:", error);
@@ -3397,6 +3422,7 @@ export function IntakeModal({
           if (uploadError) throw uploadError;
 
           const { data: fileUrl } = supabase.storage.from("task-images").getPublicUrl(filePath);
+          const alreadyScanned = pendingFile.scanStatus === "done";
           const { data: attachment, error: attachmentError } = await supabase
             .from("attachments")
             .insert({
@@ -3408,6 +3434,14 @@ export function IntakeModal({
               file_type: pendingFile.file_type,
               file_size: pendingFile.file_size,
               upload_status: "complete",
+              ...(alreadyScanned
+                ? {
+                    title: pendingFile.scanTitle || pendingFile.display_name,
+                    document_type: pendingFile.scanDocumentType || null,
+                    expiry_date: pendingFile.scanExpiryDate || null,
+                    ocr_text: pendingFile.scanOcrText || null,
+                  }
+                : {}),
             })
             .select("id,file_url,file_name")
             .single();
@@ -3420,7 +3454,7 @@ export function IntakeModal({
             isImage: false,
           });
 
-          if (mode !== "task") {
+          if (mode !== "task" && !alreadyScanned) {
             void supabase.functions.invoke("ai-doc-analyse", {
               body: {
                 attachment_id: attachment.id,
@@ -3458,25 +3492,36 @@ export function IntakeModal({
         showIntakeError("Add record details", "Enter a note, title, or attachment before saving.");
         return;
       }
-      const complianceTitle = title.trim() || description.trim().slice(0, 80) || "Compliance document";
       setIsSubmitting(true);
       try {
-        const { data, error } = await supabase.functions.invoke("ai-actions-create-compliance", {
-          body: {
-            org_id: orgId,
-            property_id: propertyId || null,
-            title: complianceTitle,
-            compliance_type: (() => {
-              const t = intakeComplianceType.trim();
-              if (!t || t === "Other") return null;
-              return t;
-            })(),
-            expiry_date: intakeComplianceExpiry.trim() || null,
-            attachment_id: null,
-          },
+        await Promise.all([waitForDocumentScans(), waitForImageAnalysis()]);
+        const docHints = getLatestDocumentHints();
+        const imageHints = getLatestFullHints();
+        const resolvedType =
+          intakeComplianceType.trim() || docHints.documentType || imageHints.documentType || "";
+        const resolvedExpiry =
+          intakeComplianceExpiry.trim() || docHints.expiryDate || imageHints.expiryDate || "";
+        const complianceTitle =
+          title.trim() ||
+          docHints.title ||
+          description.trim().slice(0, 80) ||
+          "Compliance document";
+        if (resolvedType && !intakeComplianceType.trim()) {
+          setIntakeComplianceType(resolvedType);
+          setIntakeComplianceTypeOther(!isIntakeCompliancePreset(resolvedType));
+        }
+        if (resolvedExpiry && !intakeComplianceExpiry.trim()) {
+          setIntakeComplianceExpiry(resolvedExpiry);
+        }
+
+        const data = await createComplianceDocument({
+          orgId,
+          propertyId: propertyId || null,
+          title: complianceTitle,
+          documentType: resolvedType,
+          expiryDate: resolvedExpiry || null,
+          notes: description.trim() || null,
         });
-        if (error) throw error;
-        if (!data?.id) throw new Error("No compliance record returned");
 
         const uploaded = await uploadIntakeAttachments({
           parentType: "compliance",
@@ -3485,15 +3530,13 @@ export function IntakeModal({
           complianceDocumentId: data.id,
         });
 
-        if (uploaded.length > 0) {
-          const links = uploaded.map((a) => ({
-            attachment_id: a.id,
-            compliance_document_id: data.id,
-            org_id: orgId,
-          }));
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { error: linkError } = await (supabase as any).from("attachment_compliance").insert(links);
-          if (linkError) throw linkError;
+        if (uploaded[0]?.fileUrl) {
+          const { error: fileUrlError } = await supabase
+            .from("compliance_documents")
+            .update({ file_url: uploaded[0].fileUrl })
+            .eq("id", data.id)
+            .eq("org_id", orgId);
+          if (fileUrlError) throw fileUrlError;
         }
 
         queryClient.invalidateQueries({ queryKey: ["compliance"] });
@@ -3505,7 +3548,7 @@ export function IntakeModal({
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Something went wrong";
+        const message = toErrorMessage(err, "Something went wrong");
         showIntakeError("Could not add to Compliance", message);
       } finally {
         setIsSubmitting(false);
@@ -4246,6 +4289,7 @@ export function IntakeModal({
             )}
             <div className="rounded-lg bg-input shadow-engraved overflow-hidden" {...descriptionDropBind}>
               <textarea
+                {...descriptionDropBind}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onPaste={handleDescriptionPaste}
@@ -4695,7 +4739,7 @@ export function IntakeModal({
             onClick={() => void handleSubmit()}
             disabled={!canSubmitPrimary}
           >
-            {isSubmitting ? "Saving…" : primaryLabel}
+            {isSubmitting ? "Saving…" : isDocumentScanning ? "Reading document…" : primaryLabel}
           </Button>
         </div>
         {!fromIntakeReview && (

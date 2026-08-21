@@ -68,7 +68,10 @@ export function AddToFillaSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="rounded-t-[20px] pb-8 max-h-[85vh] overflow-y-auto">
+          <SheetContent
+            side="bottom"
+            className="rounded-xl pb-8 max-h-[calc(100dvh-2rem)] overflow-y-auto !inset-x-auto !left-1/2 !right-auto !top-4 !bottom-auto !h-auto !w-full max-w-[min(28rem,calc(100vw-1.5rem))] max-lg:!max-w-[min(28rem,calc(100vw-1.5rem))] !-translate-x-1/2"
+          >
           <SheetHeader className="text-left pb-2">
             <SheetTitle className="flex items-center gap-2">
               <Inbox className="h-5 w-5 text-primary" />

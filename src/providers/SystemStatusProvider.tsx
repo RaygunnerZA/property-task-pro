@@ -1,5 +1,4 @@
 import { createContext, useContext, ReactNode, useState, useEffect, useRef, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
 
 type SystemStatus = "healthy" | "degraded" | "offline" | "critical";
 
@@ -87,23 +86,21 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
     heartbeatInFlightRef.current = true;
 
     try {
-      // DB ping only — avoid getSession() here; it acquires the auth token lock and
-      // collides with DataContext / auto-refresh (especially in React StrictMode).
-      const { error } = await supabase.from("organisations").select("id").limit(1);
+      // Reachability only. Do not SELECT org tables here: anon gets 42501/401
+      // (default-deny RLS), which looks like an outage in the console.
+      // Kong requires the public publishable key on /auth/v1/*; omit it and health is 401.
+      const base = String(import.meta.env.VITE_SUPABASE_URL || "").replace(/\/$/, "");
+      const publishableKey = String(import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "");
+      const res = await fetch(`${base}/auth/v1/health`, {
+        headers: publishableKey
+          ? { apikey: publishableKey, Authorization: `Bearer ${publishableKey}` }
+          : undefined,
+      });
+      const healthOk = res.ok;
 
-      if (error) {
-        const isAuthError =
-          error.code === "42501" ||
-          error.code === "PGRST301" ||
-          error.message?.includes("permission denied") ||
-          error.message?.includes("JWT");
-        if (isAuthError) {
-          setSupabaseHealthy(true);
-          setLastError(null);
-        } else {
-          setSupabaseHealthy(false);
-          setLastError("Unable to reach database");
-        }
+      if (!healthOk) {
+        setSupabaseHealthy(false);
+        setLastError("Unable to reach database");
       } else {
         setSupabaseHealthy(true);
         setLastError(null);

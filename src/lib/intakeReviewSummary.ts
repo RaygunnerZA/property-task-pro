@@ -147,7 +147,9 @@ export function intakeReviewSuggestionReason(
 ): string {
   const classification = intakeReviewClassification(artifact);
   if (mode === "add_record") {
-    return `This looks like a ${classification.toLowerCase()} — file it as a property record.`;
+    return classification && classification !== "Upload"
+      ? `Keep this ${classification} on the property file.`
+      : "File it as a property record.";
   }
-  return `This may need follow-up work — create a task to track it.`;
+  return "Create a task to track follow-up work.";
 }

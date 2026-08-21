@@ -17,6 +17,7 @@ import {
   hasUsefulComplianceScanResult,
   isMeaningfulSuggestedType,
 } from "@/lib/intakeWorkflowSignals";
+import { hintsFromImageAnalysis } from "@/lib/mapIntakeDocumentType";
 
 export type PendingTaskFile = PendingIntakeFile;
 
@@ -139,25 +140,6 @@ export function ImageUploadSection({
     return null;
   };
 
-  const inferExpiryFromText = (text?: string) => {
-    const value = (text || "").trim();
-    if (!value) return null;
-
-    const patterns = [
-      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{4}-\d{2}-\d{2})/i,
-      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4})/i,
-      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}(\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4})/i,
-      /\b(?:expiry|expires|expiration|valid until|renewal|renew by|due)\b[^\dA-Za-z]{0,12}([A-Za-z]{3,9}\s+\d{1,2},?\s+\d{4})/i,
-    ];
-
-    for (const pattern of patterns) {
-      const match = value.match(pattern);
-      if (match?.[1]) return match[1].trim();
-    }
-
-    return null;
-  };
-
   const formatDisplayDate = (value?: string | null) => {
     if (!value) return null;
     const normalized = value.trim();
@@ -234,16 +216,13 @@ export function ImageUploadSection({
     const legacyFull = Boolean(image.rawAnalysis) && !isRouterStage && meta?.intake_stage !== "router";
 
     if (isFullStage || legacyFull) {
-      const rawType =
-        meta?.normalized_document_type ||
-        meta?.document_classification?.type ||
-        inferComplianceTypeFromName(image.display_name);
+      const hints = hintsFromImageAnalysis({
+        ...image.rawAnalysis,
+        ocr_text: image.aiOcrText || image.rawAnalysis.ocr_text,
+      });
+      const rawType = hints.documentType || inferComplianceTypeFromName(image.display_name);
       const specificType = isMeaningfulSuggestedType(rawType) ? rawType!.trim() : null;
-      const expiryDate =
-        meta?.document_classification?.expiry_date ||
-        image.rawAnalysis.detected_objects?.find((obj) => obj.expiry_date)?.expiry_date ||
-        inferExpiryFromText(image.aiOcrText);
-      const formattedExpiryDate = formatDisplayDate(expiryDate);
+      const formattedExpiryDate = formatDisplayDate(hints.expiryDate);
       if (hasUsefulComplianceScanResult(specificType, formattedExpiryDate)) {
         return {
           kind: "full_done",
@@ -394,7 +373,9 @@ export function ImageUploadSection({
                     {panel.kind === "full_scanning" && (
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-                        <span>Running compliance scan…</span>
+                        <span>
+                          {intakeMode === "add_record" ? "Reading document…" : "Running compliance scan…"}
+                        </span>
                       </div>
                     )}
                     {panel.kind === "router_ui" && panel.branch === "task" && (
@@ -509,7 +490,10 @@ export function ImageUploadSection({
 
       {files.length > 0 && (
         <div className="space-y-2">
-          {files.map((file) => (
+          {files.map((file) => {
+            const scanType = file.scanDocumentType?.trim() || null;
+            const formattedExpiry = formatDisplayDate(file.scanExpiryDate);
+            return (
             <div
               key={file.local_id}
               className="flex items-center gap-2 rounded-card bg-muted/40 px-3 py-2 shadow-e1"
@@ -517,9 +501,34 @@ export function ImageUploadSection({
               <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">{file.display_name}</p>
-                <p className="text-caption text-muted-foreground">
-                  {(file.file_size / (1024 * 1024)).toFixed(2)} MB
-                </p>
+                {file.scanStatus === "scanning" ? (
+                  <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
+                    <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+                    <span>Reading document…</span>
+                  </div>
+                ) : file.scanStatus === "error" ? (
+                  <p className="text-caption text-muted-foreground">
+                    Couldn&apos;t read details — add them below if needed.
+                  </p>
+                ) : file.scanStatus === "done" && (scanType || formattedExpiry) ? (
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {scanType ? (
+                      <span className="inline-flex rounded-sharp bg-input px-[9px] py-0.5 text-caption font-medium text-foreground shadow-sm">
+                        {scanType}
+                      </span>
+                    ) : null}
+                    {formattedExpiry ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-caption font-medium text-foreground shadow-e1">
+                        <CalendarDays className="h-3 w-3 text-primary" />
+                        Expiry {formattedExpiry}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-caption text-muted-foreground">
+                    {(file.file_size / (1024 * 1024)).toFixed(2)} MB
+                  </p>
+                )}
               </div>
               <button
                 type="button"
@@ -530,7 +539,8 @@ export function ImageUploadSection({
                 <X className="h-3 w-3 text-muted-foreground" />
               </button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

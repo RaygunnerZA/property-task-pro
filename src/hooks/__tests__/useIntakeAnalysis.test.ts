@@ -144,4 +144,31 @@ describe("deriveIntakeWorkflow", () => {
     expect(result.hasStrongDocumentEvidence).toBe(false);
     expect(["task", "uncertain"]).toContain(result.hint);
   });
+
+  it("F: Add Record + scanned PDF fills type and expiry from the file, not the image list", () => {
+    const result = deriveIntakeWorkflow(
+      [],
+      1,
+      "",
+      false,
+      "add_record",
+      [
+        {
+          local_id: "file-1",
+          file: new File([""], "invoice.pdf"),
+          display_name: "11_heat_pump_service_invoice_no_exp.pdf",
+          file_size: 40_000,
+          file_type: "application/pdf",
+          scanStatus: "done",
+          scanTitle: "Heat Pump Service Invoice",
+          scanDocumentType: "Heat Pump Service Invoice",
+          scanExpiryDate: null,
+          scanOcrText: "Invoice for heat pump service",
+        },
+      ]
+    );
+
+    expect(result.documentType).toBe("Heat Pump Service Invoice");
+    expect(result.expiryDate).toBeNull();
+  });
 });

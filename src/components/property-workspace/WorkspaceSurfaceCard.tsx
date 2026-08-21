@@ -8,6 +8,8 @@ export interface WorkspaceSurfaceCardProps {
   className?: string;
   /** Optional title for the card header area */
   title?: string;
+  /** Sits immediately to the right of the title (icons, status). */
+  titleAccessory?: ReactNode;
   description?: string;
 }
 
@@ -18,6 +20,7 @@ export function WorkspaceSurfaceCard({
   children,
   className,
   title,
+  titleAccessory,
   description,
 }: WorkspaceSurfaceCardProps) {
   return (
@@ -31,9 +34,12 @@ export function WorkspaceSurfaceCard({
       {(title || description) && (
         <div className="px-4 pt-4 pb-2">
           {title && (
-            <PanelSectionTitle as="h3" className="mb-0">
-              {title}
-            </PanelSectionTitle>
+            <div className="flex items-center gap-2">
+              <PanelSectionTitle as="h3" className="mb-0">
+                {title}
+              </PanelSectionTitle>
+              {titleAccessory}
+            </div>
           )}
           {description && (
             <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>

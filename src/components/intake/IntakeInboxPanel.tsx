@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { IntakeItem } from "@/types/intake-item";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
+import { intakeInboxCardCopy } from "@/lib/intakeDocumentBriefing";
 import { cn } from "@/lib/utils";
 
 export interface IntakeReviewPayload {
@@ -50,10 +51,7 @@ function IntakeInboxRow({
 }) {
   const isProcessing = item.status === "pending" || item.status === "processing";
   const isFailed = item.status === "failed";
-  const label =
-    item.ai_classification ||
-    item.file_name ||
-    (item.source_type === "forwarded_email" ? "Forwarded email" : "Upload");
+  const { title, insight } = intakeInboxCardCopy(item);
 
   const handleReview = () => {
     if (!item.storage_path && !item.raw_text) return;
@@ -92,14 +90,11 @@ function IntakeInboxRow({
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-foreground">{label}</p>
-        <p className="truncate text-xs text-muted-foreground">
-          {isProcessing
-            ? "Processing…"
-            : isFailed
-              ? item.error_message || "Processing failed"
-              : item.file_name || (item.raw_text ? "Email body" : "")}
-        </p>
+        <p className="truncate text-sm font-medium text-foreground">{title}</p>
+        <p className="truncate text-xs text-muted-foreground">{insight}</p>
+        {item.file_name && item.file_name !== title ? (
+          <p className="truncate text-2xs text-muted-foreground/80">{item.file_name}</p>
+        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

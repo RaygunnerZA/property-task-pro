@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
+import { createComplianceDocument } from "@/services/compliance/createComplianceDocument";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
@@ -74,18 +75,30 @@ export function CreateComplianceFromAI({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("ai-actions-create-compliance", {
-        body: {
-          org_id: orgId,
-          title: title.trim(),
-          compliance_type: complianceType || null,
-          expiry_date: expiryDate.trim() || null,
-          attachment_id: attachmentId || null,
-        },
+      const data = await createComplianceDocument({
+        orgId,
+        title: title.trim(),
+        documentType: complianceType || null,
+        expiryDate: expiryDate.trim() || null,
       });
 
-      if (error) throw error;
-      if (!data?.id) throw new Error("No compliance record returned");
+      if (attachmentId) {
+        const { data: attachment, error: attachmentError } = await supabase
+          .from("attachments")
+          .select("file_url")
+          .eq("id", attachmentId)
+          .eq("org_id", orgId)
+          .maybeSingle();
+        if (attachmentError) throw attachmentError;
+        if (attachment?.file_url) {
+          const { error: fileUrlError } = await supabase
+            .from("compliance_documents")
+            .update({ file_url: attachment.file_url })
+            .eq("id", data.id)
+            .eq("org_id", orgId);
+          if (fileUrlError) throw fileUrlError;
+        }
+      }
 
       toast({ title: "Compliance record created", description: "Linked to image" });
       onOpenChange(false);

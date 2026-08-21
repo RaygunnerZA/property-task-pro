@@ -27,9 +27,10 @@ const STATUS_LABEL: Record<ComplianceStatus, string> = {
 export function normalizeComplianceStatus(rawState?: string | null): ComplianceStatus {
   const state = String(rawState || "").toLowerCase();
   if (state.includes("overdue") || state.includes("expired")) return "overdue";
-  if (state.includes("missing") || state.includes("none")) return "missing";
+  // Portfolio view uses "none" when there is no expiry date. That is not a missing certificate.
+  if (state === "missing") return "missing";
   if (state.includes("expiring") || state.includes("due_soon")) return "expiring";
-  if (state.includes("valid") || state.includes("healthy")) return "healthy";
+  if (state.includes("valid") || state.includes("healthy") || state === "none" || !state) return "healthy";
   return "healthy";
 }
 
@@ -104,7 +105,9 @@ export function getComplianceStatusText(record: ComplianceRecord): string {
   const due = record.nextDueDate || record.expiryDate;
   const dayDelta = daysUntil(due);
   if (record.status === "missing") return "Status: Missing record";
-  if (dayDelta === null) return `Status: ${STATUS_LABEL[record.status]}`;
+  if (dayDelta === null) {
+    return record.status === "healthy" ? "Status: On file" : `Status: ${STATUS_LABEL[record.status]}`;
+  }
   if (dayDelta < 0) return `Status: Overdue by ${Math.abs(dayDelta)} day${Math.abs(dayDelta) === 1 ? "" : "s"}`;
   if (dayDelta <= 30) return `Status: Expiring in ${dayDelta} day${dayDelta === 1 ? "" : "s"}`;
   return `Status: ${STATUS_LABEL[record.status]}`;

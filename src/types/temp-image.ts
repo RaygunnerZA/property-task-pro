@@ -41,6 +41,10 @@ export interface ImageAnalysisResult {
     serial_number?: string;
     expiry_date?: string;
   }>;
+  document_classification?: {
+    type?: string;
+    expiry_date?: string;
+  };
   anomalies?: unknown[];
   metadata?: Record<string, unknown>;
 }

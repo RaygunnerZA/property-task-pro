@@ -7,14 +7,20 @@ import {
   ChevronRight,
   ClipboardCheck,
   FileText,
-  Filter,
+  FolderOpen,
   Search,
   Shield,
   ShieldCheck,
+  Tag,
   Waves,
+  Wrench,
 } from "lucide-react";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
-import { usePropertyDocuments, type PropertyDocument } from "@/hooks/property/usePropertyDocuments";
+import {
+  DOCUMENT_CATEGORIES,
+  usePropertyDocuments,
+  type PropertyDocument,
+} from "@/hooks/property/usePropertyDocuments";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
@@ -24,17 +30,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
-import { FilterChip } from "@/components/chips/filter";
-import { IconButton } from "@/components/ui/IconButton";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
 import { WorkspaceSectionHeading } from "@/components/property-workspace";
-import { DocumentCategoryChips } from "@/components/properties/DocumentCategoryChips";
-import { DocumentSearchFilters } from "@/components/properties/DocumentSearchFilters";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { ComplianceCard } from "@/components/compliance/ComplianceCard";
+import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { propertyComplianceSetupPath, type RecordsView } from "@/lib/propertyRoutes";
@@ -60,15 +63,24 @@ let recordsUploadDeepLinkNonce = 0;
 type ExpiryRange = "all" | "30" | "90" | "365";
 type ComplianceFilter = "all" | "expiring" | "overdue" | "missing";
 
-const RECORDS_TOP_CHIPS: { id: RecordsView; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "expiring", label: "Expiring" },
-  { id: "overdue", label: "Overdue" },
-  { id: "missing", label: "Missing" },
-  { id: "compliance", label: "Compliance" },
-  { id: "documents", label: "Documents" },
-  { id: "asset-docs", label: "Asset docs" },
+const RECORDS_STATUS_FILTERS: { id: string; view: Extract<RecordsView, "all" | "expiring" | "overdue" | "missing">; label: string }[] = [
+  { id: "records-all", view: "all", label: "All" },
+  { id: "records-expiring", view: "expiring", label: "Expiring" },
+  { id: "records-overdue", view: "overdue", label: "Overdue" },
+  { id: "records-missing", view: "missing", label: "Missing" },
 ];
+
+const RECORDS_KIND_FILTERS: { id: string; view: Extract<RecordsView, "compliance" | "documents" | "asset-docs">; label: string }[] = [
+  { id: "records-kind-compliance", view: "compliance", label: "Compliance" },
+  { id: "records-kind-documents", view: "documents", label: "Documents" },
+  { id: "records-kind-asset-docs", view: "asset-docs", label: "Asset docs" },
+];
+
+function recordsViewFilterId(view: RecordsView): string {
+  const kind = RECORDS_KIND_FILTERS.find((item) => item.view === view);
+  if (kind) return kind.id;
+  return RECORDS_STATUS_FILTERS.find((item) => item.view === view)?.id ?? "records-all";
+}
 
 export type PropertyRecordsTabProps = {
   properties: any[];
@@ -108,18 +120,13 @@ export function PropertyRecordsTab({
   const { toast } = useToast();
   const legacyDocFilter = searchParams.get("filter");
 
-  const [complianceSearch, setComplianceSearch] = useState("");
-  const [recordsAdvancedBarOpen, setRecordsAdvancedBarOpen] = useState(false);
+  const [recordsSearch, setRecordsSearch] = useState("");
   const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
   const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
 
   const [category, setCategory] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [expiringSoon, setExpiringSoon] = useState(false);
-  const [expired, setExpired] = useState(false);
-  const [missing, setMissing] = useState(false);
   const [recentlyAdded, setRecentlyAdded] = useState(false);
   const [hazards, setHazards] = useState(false);
   const [unlinked, setUnlinked] = useState(false);
@@ -250,15 +257,15 @@ export function PropertyRecordsTab({
     const tabUsesBroadFetch = recordsView === "compliance" || recordsView === "asset-docs";
     return {
       category: category || undefined,
-      search: search || undefined,
-      expiringSoon: recordsView === "expiring" ? true : !tabUsesBroadFetch && expiringSoon,
-      expired: recordsView === "overdue" ? true : !tabUsesBroadFetch && expired,
-      missing: recordsView === "missing" ? true : !tabUsesBroadFetch && missing,
+      search: recordsSearch || undefined,
+      expiringSoon: recordsView === "expiring",
+      expired: recordsView === "overdue",
+      missing: recordsView === "missing",
       recentlyAdded: tabUsesBroadFetch ? false : recentlyAdded,
       hazards: legacyDocFilter === "hazards" || hazards,
       unlinked: !tabUsesBroadFetch && unlinked,
     };
-  }, [category, search, recordsView, expiringSoon, expired, missing, recentlyAdded, hazards, unlinked, legacyDocFilter]);
+  }, [category, recordsSearch, recordsView, recentlyAdded, hazards, unlinked, legacyDocFilter]);
 
   const { documents, isLoading: docsLoading } = usePropertyDocuments(scopedPropertyId || undefined, mergedDocFilters, {
     limit: 500,
@@ -291,7 +298,7 @@ export function PropertyRecordsTab({
   }, [documents, recordsView]);
 
   const filteredComplianceRecords = useMemo(() => {
-    const query = complianceSearch.trim().toLowerCase();
+    const query = recordsSearch.trim().toLowerCase();
     return scopedComplianceRecords.filter((record) => {
       if (query && !`${record.title} ${record.propertyName} ${record.complianceType}`.toLowerCase().includes(query)) {
         return false;
@@ -310,7 +317,7 @@ export function PropertyRecordsTab({
     });
   }, [
     scopedComplianceRecords,
-    complianceSearch,
+    recordsSearch,
     statusFromView,
     compliancePropertyFilter,
     complianceTypeFilter,
@@ -325,8 +332,47 @@ export function PropertyRecordsTab({
     return Array.from(typeSet).sort((a, b) => a.localeCompare(b));
   }, [scopedComplianceRecords]);
 
-  const complianceSecondaryGroups: FilterGroup[] = useMemo(
+  const recordsPrimaryOptions: FilterOption[] = useMemo(
+    () => RECORDS_STATUS_FILTERS.map((item) => ({ id: item.id, label: item.label })),
+    []
+  );
+
+  const recordsSecondaryGroups: FilterGroup[] = useMemo(
     () => [
+      {
+        id: "records-kind",
+        label: "Kind",
+        options: RECORDS_KIND_FILTERS.map((item) => ({
+          id: item.id,
+          label: item.label,
+          icon:
+            item.view === "compliance" ? (
+              <Shield className="h-4 w-4" />
+            ) : item.view === "asset-docs" ? (
+              <Wrench className="h-4 w-4" />
+            ) : (
+              <FolderOpen className="h-4 w-4" />
+            ),
+        })),
+      },
+      {
+        id: "document-category",
+        label: "Category",
+        options: DOCUMENT_CATEGORIES.map((cat) => ({
+          id: `dcat-${cat}`,
+          label: cat,
+          icon: <Tag className="h-4 w-4" />,
+        })),
+      },
+      {
+        id: "document-flags",
+        label: "Documents",
+        options: [
+          { id: "dflag-recent", label: "Recently added", icon: <Calendar className="h-4 w-4" /> },
+          { id: "dflag-hazards", label: "Hazards", icon: <AlertTriangle className="h-4 w-4" />, color: "#EB6834" },
+          { id: "dflag-unlinked", label: "Unlinked", icon: <FileText className="h-4 w-4" /> },
+        ],
+      },
       {
         id: "compliance-property",
         label: "Property",
@@ -358,41 +404,111 @@ export function PropertyRecordsTab({
     [propertyOptions, complianceTypeOptions]
   );
 
-  const complianceSelectedFilters = useMemo(() => {
+  const recordsSelectedFilters = useMemo(() => {
     const s = new Set<string>();
+    s.add(recordsViewFilterId(recordsView));
+    if (category) s.add(`dcat-${category}`);
+    if (recentlyAdded) s.add("dflag-recent");
+    if (hazards) s.add("dflag-hazards");
+    if (unlinked) s.add("dflag-unlinked");
     if (compliancePropertyFilter !== "all") s.add(`cprop-${compliancePropertyFilter}`);
     if (complianceTypeFilter !== "all") s.add(`ctype-${encodeURIComponent(complianceTypeFilter)}`);
     if (complianceExpiryRange !== "all") s.add(`cexp-${complianceExpiryRange}`);
     return s;
-  }, [compliancePropertyFilter, complianceTypeFilter, complianceExpiryRange]);
+  }, [
+    recordsView,
+    category,
+    recentlyAdded,
+    hazards,
+    unlinked,
+    compliancePropertyFilter,
+    complianceTypeFilter,
+    complianceExpiryRange,
+  ]);
 
-  const handleComplianceFilterChange = useCallback(
+  const recordsHasExtraFilters =
+    recordsView !== "all" ||
+    Boolean(category) ||
+    recentlyAdded ||
+    hazards ||
+    unlinked ||
+    compliancePropertyFilter !== "all" ||
+    complianceTypeFilter !== "all" ||
+    complianceExpiryRange !== "all";
+
+  const resetRecordsFilters = useCallback(() => {
+    onRecordsViewChange("all");
+    setCategory(null);
+    setRecentlyAdded(false);
+    setHazards(false);
+    setUnlinked(false);
+    setCompliancePropertyFilter("all");
+    setComplianceTypeFilter("all");
+    setComplianceExpiryRange("all");
+    setRecordsSearch("");
+  }, [onRecordsViewChange]);
+
+  const handleRecordsFilterChange = useCallback(
     (filterId: string, selected: boolean) => {
+      const status = RECORDS_STATUS_FILTERS.find((item) => item.id === filterId);
+      if (status) {
+        onRecordsViewChange(selected ? status.view : "all");
+        return;
+      }
+      const kind = RECORDS_KIND_FILTERS.find((item) => item.id === filterId);
+      if (kind) {
+        onRecordsViewChange(selected ? kind.view : "all");
+        return;
+      }
+      if (filterId.startsWith("dcat-")) {
+        const next = filterId.slice(5);
+        setCategory(selected ? next : null);
+        return;
+      }
+      if (filterId === "dflag-recent") {
+        setRecentlyAdded(selected);
+        return;
+      }
+      if (filterId === "dflag-hazards") {
+        setHazards(selected);
+        return;
+      }
+      if (filterId === "dflag-unlinked") {
+        setUnlinked(selected);
+        return;
+      }
       if (filterId.startsWith("cprop-")) {
         const id = filterId.slice(6);
-        if (selected) setCompliancePropertyFilter(id);
-        else setCompliancePropertyFilter("all");
+        setCompliancePropertyFilter(selected ? id : "all");
         return;
       }
       if (filterId.startsWith("ctype-")) {
         const t = decodeURIComponent(filterId.slice(6));
-        if (selected) setComplianceTypeFilter(t);
-        else setComplianceTypeFilter("all");
+        setComplianceTypeFilter(selected ? t : "all");
         return;
       }
       if (filterId.startsWith("cexp-")) {
         const range = filterId.slice(5) as ExpiryRange;
-        if (selected) setComplianceExpiryRange(range);
-        else setComplianceExpiryRange("all");
+        setComplianceExpiryRange(selected ? range : "all");
       }
     },
-    []
+    [onRecordsViewChange]
   );
 
   const selectedComplianceRecord = useMemo(
-    () => filteredComplianceRecords.find((r) => r.id === selectedComplianceId) ?? null,
-    [filteredComplianceRecords, selectedComplianceId]
+    () =>
+      selectedComplianceId
+        ? complianceRecords.find((r) => r.id === selectedComplianceId) ??
+          filteredComplianceRecords.find((r) => r.id === selectedComplianceId) ??
+          null
+        : null,
+    [complianceRecords, filteredComplianceRecords, selectedComplianceId]
   );
+
+  const [complianceDrawerOpen, setComplianceDrawerOpen] = useState(false);
+  useEffect(() => {
+    setComplianceDrawerOpen(Boolean(selectedComplianceRecord));
+  }, [selectedComplianceRecord]);
 
   const showComplianceList = recordsView !== "documents" && recordsView !== "asset-docs";
   const showDocumentsPanel =
@@ -496,62 +612,30 @@ export function PropertyRecordsTab({
       )}
 
       <div className="mb-3 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <IconButton
-            role="filter-toggle"
-            icon={<Filter className="h-4 w-4" />}
-            active={recordsAdvancedBarOpen}
-            onClick={() => setRecordsAdvancedBarOpen((o) => !o)}
-            aria-label={recordsAdvancedBarOpen ? "Hide record filters" : "Property and type filters"}
-            tooltip={recordsAdvancedBarOpen ? "Hide filters" : "Record filters"}
-          />
-          {RECORDS_TOP_CHIPS.map(({ id, label }) => (
-            <FilterChip
-              key={id}
-              label={label}
-              selected={recordsView === id}
-              onSelect={() => onRecordsViewChange(id)}
-            />
-          ))}
-        </div>
+        <FilterBar
+          primaryOptions={recordsPrimaryOptions}
+          secondaryGroups={recordsSecondaryGroups}
+          selectedFilters={recordsSelectedFilters}
+          onFilterChange={handleRecordsFilterChange}
+          primaryOptionLimit={0}
+          clearPreservePrefixes={[]}
+          collapseFilterChipAfterMs={2000}
+          collapseInteractionRootRef={panelRef}
+          showClearButton={recordsHasExtraFilters}
+          onClearAll={resetRecordsFilters}
+        />
 
         <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
           <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
           <input
             type="search"
-            value={complianceSearch}
-            onChange={(event) => setComplianceSearch(event.target.value)}
+            value={recordsSearch}
+            onChange={(event) => setRecordsSearch(event.target.value)}
             placeholder="Search records, certificates, or types"
             className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
             aria-label="Search records"
           />
         </div>
-
-        {recordsAdvancedBarOpen ? (
-          <FilterBar
-            primaryOptions={[] as FilterOption[]}
-            secondaryGroups={complianceSecondaryGroups}
-            selectedFilters={complianceSelectedFilters}
-            onFilterChange={handleComplianceFilterChange}
-            primaryOptionLimit={0}
-            clearPreservePrefixes={[]}
-            collapseFilterChipAfterMs={2000}
-            collapseInteractionRootRef={panelRef}
-            hideFilterByButton
-            defaultNavigationLevel="categories"
-            onExitCategoriesLevel={() => setRecordsAdvancedBarOpen(false)}
-            showClearButton={
-              compliancePropertyFilter !== "all" ||
-              complianceTypeFilter !== "all" ||
-              complianceExpiryRange !== "all"
-            }
-            onClearAll={() => {
-              setCompliancePropertyFilter("all");
-              setComplianceTypeFilter("all");
-              setComplianceExpiryRange("all");
-            }}
-          />
-        ) : null}
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
@@ -668,23 +752,6 @@ export function PropertyRecordsTab({
               onUploadComplete={handleRefresh}
               accept={RECORDS_FILE_ACCEPT}
             />
-            <DocumentCategoryChips selected={category} onSelect={setCategory} />
-            <DocumentSearchFilters
-              search={search}
-              onSearchChange={setSearch}
-              expiringSoon={expiringSoon}
-              expired={expired}
-              missing={missing}
-              recentlyAdded={recentlyAdded}
-              hazards={hazards}
-              unlinked={unlinked}
-              onExpiringSoonToggle={() => setExpiringSoon((s) => !s)}
-              onExpiredToggle={() => setExpired((s) => !s)}
-              onMissingToggle={() => setMissing((s) => !s)}
-              onRecentlyAddedToggle={() => setRecentlyAdded((s) => !s)}
-              onHazardsToggle={() => setHazards((s) => !s)}
-              onUnlinkedToggle={() => setUnlinked((s) => !s)}
-            />
             {docsLoading ? (
               <p className="text-xs text-muted-foreground">Loading documents…</p>
             ) : documentsForWork.length === 0 ? (
@@ -710,25 +777,34 @@ export function PropertyRecordsTab({
           </section>
         )}
 
-        {selectedComplianceRecord && (
-          <div className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs space-y-1.5">
-            <p className="font-medium text-foreground">Record detail</p>
-            <p>
-              <span className="text-muted-foreground">Type:</span> {selectedComplianceRecord.complianceType}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Property:</span> {selectedComplianceRecord.propertyName}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Expiry:</span>{" "}
-              {formatDueText(selectedComplianceRecord.nextDueDate || selectedComplianceRecord.expiryDate)}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Evidence:</span> {selectedComplianceRecord.linkedDocument}
-            </p>
-          </div>
-        )}
       </div>
+
+      <ComplianceDetailDrawer
+        open={complianceDrawerOpen}
+        onOpenChange={(open) => {
+          setComplianceDrawerOpen(open);
+          if (!open) setSelectedComplianceId(null);
+        }}
+        compliance={
+          selectedComplianceRecord
+            ? {
+                id: selectedComplianceRecord.id,
+                title: selectedComplianceRecord.title,
+                property_id: selectedComplianceRecord.propertyId,
+                property_name: selectedComplianceRecord.propertyName,
+                expiry_date: selectedComplianceRecord.expiryDate,
+                next_due_date: selectedComplianceRecord.nextDueDate,
+                expiry_state:
+                  selectedComplianceRecord.status === "overdue"
+                    ? "expired"
+                    : selectedComplianceRecord.status === "expiring"
+                      ? "expiring"
+                      : "valid",
+                document_type: selectedComplianceRecord.complianceType,
+              }
+            : null
+        }
+      />
 
       <DocumentDetailDrawer
         documentId={selectedDocId}

@@ -126,13 +126,13 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   },
   document_analysis: {
     functionName: "ai-doc-analyse",
-    promptVersion: "doc-analysis-v1",
+    promptVersion: "doc-analysis-v2",
     requires: { vision: true, structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   photo_asset_identification: {
     functionName: "ai-image-analyse",
-    promptVersion: "image-analysis-v1",
+    promptVersion: "image-analysis-v2",
     requires: { vision: true, structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },

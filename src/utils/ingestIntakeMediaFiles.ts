@@ -2,12 +2,20 @@ import type { DragEvent } from "react";
 import type { TempImage } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 
+export type IntakeFileScanStatus = "scanning" | "done" | "error" | "skipped";
+
 export interface PendingIntakeFile {
   local_id: string;
   file: File;
   display_name: string;
   file_size: number;
   file_type: string;
+  /** Pre-save document scan. Suggestions only — user can edit before save. */
+  scanStatus?: IntakeFileScanStatus;
+  scanTitle?: string | null;
+  scanDocumentType?: string | null;
+  scanExpiryDate?: string | null;
+  scanOcrText?: string | null;
 }
 
 export const INTAKE_MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
@@ -64,13 +72,16 @@ export function dataTransferFiles(data: DataTransfer | null | undefined): File[]
 }
 
 type FileDropBind = {
-  onDragEnter: (event: DragEvent) => void;
-  onDragOver: (event: DragEvent) => void;
-  onDrop: (event: DragEvent) => void;
+  onDragEnterCapture: (event: DragEvent) => void;
+  onDragOverCapture: (event: DragEvent) => void;
+  onDropCapture: (event: DragEvent) => void;
 };
 
 /**
  * Silent drop target — no visual chrome. Callers must not change layout/styling.
+ *
+ * Uses capture-phase handlers so nested `<textarea>` / `<input>` fields cannot
+ * swallow the drop (browsers otherwise insert a file path as text).
  */
 export function fileDropBind(onFiles: (files: File[]) => void): FileDropBind {
   const allow = (event: DragEvent) => {
@@ -81,14 +92,14 @@ export function fileDropBind(onFiles: (files: File[]) => void): FileDropBind {
   };
 
   return {
-    onDragEnter: (event) => {
+    onDragEnterCapture: (event) => {
       allow(event);
     },
-    onDragOver: (event) => {
+    onDragOverCapture: (event) => {
       if (!allow(event)) return;
       event.dataTransfer.dropEffect = "copy";
     },
-    onDrop: (event) => {
+    onDropCapture: (event) => {
       if (!allow(event)) return;
       const files = dataTransferFiles(event.dataTransfer);
       if (files.length) onFiles(files);

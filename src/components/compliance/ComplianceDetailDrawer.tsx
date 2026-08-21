@@ -58,70 +58,70 @@ export function ComplianceDetailDrawer({
     }
   };
 
-  if (!compliance) return null;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            {compliance.title || "Compliance Item"}
+            {compliance?.title || "Record detail"}
           </SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-4">
-          <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", statusConfig.color)}>
-            <StatusIcon className="h-4 w-4" />
-            <span className="font-medium">{statusConfig.label}</span>
-          </div>
-          {compliance.property_name && (
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Property</div>
-              <div className="font-medium">{compliance.property_name}</div>
+        {compliance ? (
+          <div className="mt-6 space-y-4">
+            <div className={cn("flex items-center gap-2 px-3 py-2 rounded-lg", statusConfig.color)}>
+              <StatusIcon className="h-4 w-4" />
+              <span className="font-medium">{statusConfig.label}</span>
             </div>
-          )}
-          {compliance.document_type && (
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Type</div>
-              <div>{compliance.document_type}</div>
-            </div>
-          )}
-          {(compliance.next_due_date || compliance.expiry_date) && (
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Due / Expiry</div>
+            {compliance.property_name && (
               <div>
-                {format(
-                  parseISO(compliance.next_due_date || compliance.expiry_date!),
-                  "MMM dd, yyyy"
-                )}
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Property</div>
+                <div className="font-medium">{compliance.property_name}</div>
               </div>
-            </div>
-          )}
-          {Array.isArray(compliance.hazards) && compliance.hazards.length > 0 && (
+            )}
+            {compliance.document_type && (
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Type</div>
+                <div>{compliance.document_type}</div>
+              </div>
+            )}
+            {(compliance.next_due_date || compliance.expiry_date) && (
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Due / Expiry</div>
+                <div>
+                  {format(
+                    parseISO(compliance.next_due_date || compliance.expiry_date!),
+                    "MMM dd, yyyy"
+                  )}
+                </div>
+              </div>
+            )}
+            {Array.isArray(compliance.hazards) && compliance.hazards.length > 0 && (
+              <div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Hazards</div>
+                <div className="flex flex-wrap gap-1">
+                  {compliance.hazards.map((h) => (
+                    <HazardBadge key={h} hazard={h} />
+                  ))}
+                </div>
+              </div>
+            )}
+            <ComplianceGraphMini complianceDocumentId={compliance.id} />
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Hazards</div>
-              <div className="flex flex-wrap gap-1">
-                {compliance.hazards.map((h) => (
-                  <HazardBadge key={h} hazard={h} />
-                ))}
-              </div>
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Graph Impact</div>
+              <GraphInsightPanel
+                start={{ type: "compliance", id: compliance.id }}
+                depth={2}
+                variant="compact"
+              />
             </div>
-          )}
-          <ComplianceGraphMini complianceDocumentId={compliance.id} />
-          <div>
-            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Graph Impact</div>
-            <GraphInsightPanel
-              start={{ type: "compliance", id: compliance.id }}
-              depth={2}
-              variant="compact"
-            />
+            {compliance.property_id && (
+              <Button variant="outline" className="w-full" onClick={handleViewProperty}>
+                View property compliance
+              </Button>
+            )}
           </div>
-          {compliance.property_id && (
-            <Button variant="outline" className="w-full" onClick={handleViewProperty}>
-              View property compliance
-            </Button>
-          )}
-        </div>
+        ) : null}
       </SheetContent>
     </Sheet>
   );

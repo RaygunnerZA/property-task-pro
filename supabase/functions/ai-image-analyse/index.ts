@@ -64,7 +64,7 @@ interface ResponseBody {
 const ANALYSIS_PROMPT = `Analyze this property/maintenance image. Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 
 {
-  "ocr_text": "All readable text from the image (labels, signs, plates, serial numbers)",
+  "ocr_text": "All readable text from the image (labels, signs, plates, serial numbers, table cells)",
   "detected_labels": ["fire extinguisher", "serial 8844", "expiry 2027", ...],
   "detected_objects": [
     {
@@ -84,7 +84,14 @@ const ANALYSIS_PROMPT = `Analyze this property/maintenance image. Return ONLY va
   "metadata": {}
 }
 
-Focus on: appliances (boiler, pump, HVAC), safety equipment (extinguisher, DB board), serial numbers, expiry dates, model names, warnings. Use snake_case for type.`;
+Rules:
+- Read the whole page, including headers and tables.
+- If this is a certificate, inspection, or service record, set document_classification.type to the document's own title (never "None" or "Unknown").
+- document_classification.expiry_date must be the next due / next test / next inspection / valid until / expiry date, as YYYY-MM-DD. Convert UK dates such as 01/03/26 to 2026-03-01.
+- If several dates appear, use the next-due date, not the date of service or print date.
+- Never invent a date that is not printed.
+- For equipment photos (not documents), still extract serials and any expiry printed on labels.
+- Use snake_case for detected object type.`;
 
 const ROUTER_PROMPT = `You are a fast intake router for a property management app.
 Return ONLY valid JSON (no markdown) with this exact structure:
@@ -106,6 +113,7 @@ Rules:
 - Visible damage, leak, staining, broken parts, corrosion, or fault evidence → workflow_hint task.
 - Prefer uncertain over compliance when the image is equipment without readable certificate/document text.
 - document_type_hint must be null unless a real certificate/document type is visible (never use "None" or "Unknown" as a type string).
+- expiry_date_hint is the next due / next test / valid until / expiry date as YYYY-MM-DD, or null. Convert UK dates (01/03/26 → 2026-03-01). Never invent a date.
 - If unsure, use uncertain with low confidence.`;
 
 const MEANINGLESS_DOC_TYPES = new Set([
@@ -389,6 +397,7 @@ function normalizeResponse(raw: unknown): ResponseBody {
     normalized_document_type: normalizedDocType,
     normalized_asset_type: normalizedAssetType,
     normalized_expiry: normalizedExpiry,
+    document_classification: docClass ?? (parsed.metadata as Record<string, unknown> | undefined)?.document_classification,
     confidence_map: confidenceMap,
     raw_ocr: rawOcr,
     suggested_icon: suggestedIcon,
