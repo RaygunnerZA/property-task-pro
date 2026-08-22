@@ -466,10 +466,26 @@ export function TaskList({
     return filteredTasks.filter((task) => task.status === "completed").length;
   }, [filteredTasks, hideDoneSection]);
 
+  // Softly appear as the last list slot once 4+ completed cards are in view.
   const showAutoArchiveCard =
-    !embeddedSliderOnly &&
-    !embeddedVerticalList &&
-    visibleCompletedCount >= 3;
+    !embeddedSliderOnly && visibleCompletedCount >= 4;
+
+  const autoArchiveLayout =
+    embeddedVerticalList || view === "horizontal" ? "inline" : "tile";
+
+  const autoArchiveCell = showAutoArchiveCard ? (
+    <div
+      key="auto-archive"
+      className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both"
+    >
+      <AutoArchiveCard
+        layout={autoArchiveLayout}
+        intervalId={autoArchiveIntervalId}
+        onSelectInterval={toggleAutoArchiveInterval}
+        onRestoreClick={() => setRestoreSheetOpen(true)}
+      />
+    </div>
+  ) : null;
 
   const primaryOptions: FilterOption[] = useMemo(() => {
     const opts: FilterOption[] = [
@@ -831,6 +847,7 @@ export function TaskList({
                           />
                         </div>
                       ))}
+                      {autoArchiveCell}
                     </div>
                   ) : (
                   <div className="list-stagger divide-y divide-input-bg">
@@ -849,6 +866,9 @@ export function TaskList({
                         />
                       </div>
                     ))}
+                    {autoArchiveCell ? (
+                      <div className="min-w-0 py-2.5 last:pb-0">{autoArchiveCell}</div>
+                    ) : null}
                   </div>
                   )
                 ) : embeddedInIssuesWorkbench ? (
@@ -864,6 +884,17 @@ export function TaskList({
                             />
                           </div>
                         ))}
+                        {showAutoArchiveCard ? (
+                          <div className="w-[200px] flex-shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+                            <AutoArchiveCard
+                              layout="tile"
+                              className="h-[290px]"
+                              intervalId={autoArchiveIntervalId}
+                              onSelectInterval={toggleAutoArchiveInterval}
+                              onRestoreClick={() => setRestoreSheetOpen(true)}
+                            />
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                     {/* Right-side fade scroll affordance — matches property slider in LeftColumn */}
@@ -890,6 +921,17 @@ export function TaskList({
                           />
                         </div>
                       ))}
+                      {showAutoArchiveCard ? (
+                        <div className="w-[200px] flex-shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+                          <AutoArchiveCard
+                            layout="tile"
+                            className="h-[290px]"
+                            intervalId={autoArchiveIntervalId}
+                            onSelectInterval={toggleAutoArchiveInterval}
+                            onRestoreClick={() => setRestoreSheetOpen(true)}
+                          />
+                        </div>
+                      ) : null}
                     </div>
                   </div>
                   {/* Desktop: Grid layout - 4 columns */}
@@ -898,8 +940,10 @@ export function TaskList({
                       "list-stagger mt-0 hidden min-w-0 gap-3 sm:grid",
                       cn(
                         "sm:grid-cols-3",
-                        groupedTasks.todo.length === 1 && "sm:grid-cols-1",
-                        groupedTasks.todo.length === 2 && "sm:grid-cols-2"
+                        (groupedTasks.todo.length + (showAutoArchiveCard ? 1 : 0)) === 1 &&
+                          "sm:grid-cols-1",
+                        (groupedTasks.todo.length + (showAutoArchiveCard ? 1 : 0)) === 2 &&
+                          "sm:grid-cols-2"
                       )
                     )}
                   >
@@ -912,6 +956,7 @@ export function TaskList({
                         />
                       </div>
                     ))}
+                    {autoArchiveCell}
                   </div>
                 </>
                 )
@@ -925,6 +970,7 @@ export function TaskList({
                       metaDensity={compactTaskMeta ? "compact" : "default"}
                     />
                   ))}
+                  {autoArchiveCell}
                 </div>
               )}
             </div>
@@ -954,14 +1000,6 @@ export function TaskList({
               </div>
             </div>
           )}
-
-          {showAutoArchiveCard ? (
-            <AutoArchiveCard
-              intervalId={autoArchiveIntervalId}
-              onSelectInterval={toggleAutoArchiveInterval}
-              onRestoreClick={() => setRestoreSheetOpen(true)}
-            />
-          ) : null}
           </div>
         )}
       </div>

@@ -8,7 +8,9 @@ import {
 describe("autoArchive", () => {
   it("recognises interval ids", () => {
     expect(isAutoArchiveIntervalId("1d")).toBe(true);
+    expect(isAutoArchiveIntervalId("3d")).toBe(true);
     expect(isAutoArchiveIntervalId("weekly")).toBe(true);
+    expect(isAutoArchiveIntervalId("monthly")).toBe(false);
     expect(isAutoArchiveIntervalId("nope")).toBe(false);
   });
 
@@ -16,7 +18,6 @@ describe("autoArchive", () => {
     expect(intervalDays("1d")).toBe(1);
     expect(intervalDays("3d")).toBe(3);
     expect(intervalDays("weekly")).toBe(7);
-    expect(intervalDays("monthly")).toBe(30);
   });
 
   it("detects completed tasks past the window", () => {
@@ -28,7 +29,7 @@ describe("autoArchive", () => {
       isCompletedPastArchiveWindow("2026-08-22T06:00:00.000Z", null, "1d", now)
     ).toBe(false);
     expect(
-      isCompletedPastArchiveWindow(null, "2026-07-01T00:00:00.000Z", "monthly", now)
+      isCompletedPastArchiveWindow(null, "2026-07-01T00:00:00.000Z", "weekly", now)
     ).toBe(true);
   });
 });

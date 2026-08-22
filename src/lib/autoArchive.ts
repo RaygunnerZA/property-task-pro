@@ -1,10 +1,9 @@
 /** Client preference for auto-archiving completed tasks (localStorage; no DB column). */
 
 export const AUTO_ARCHIVE_INTERVALS = [
-  { id: "1d", label: "1 day", days: 1 },
-  { id: "3d", label: "3 days", days: 3 },
-  { id: "weekly", label: "weekly", days: 7 },
-  { id: "monthly", label: "monthly", days: 30 },
+  { id: "1d", label: ">24HRS", days: 1 },
+  { id: "3d", label: "3 DAYS", days: 3 },
+  { id: "weekly", label: "WEEKLY", days: 7 },
 ] as const;
 
 export type AutoArchiveIntervalId = (typeof AUTO_ARCHIVE_INTERVALS)[number]["id"];
