@@ -32,6 +32,10 @@ import {
   taskMatchesStatusFilters,
 } from "@/lib/taskStatus";
 import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
+import { AutoArchiveCard } from "@/components/tasks/AutoArchiveCard";
+import { RestoreArchivedTasksSheet } from "@/components/tasks/RestoreArchivedTasksSheet";
+import { useAutoArchivePreference } from "@/hooks/useAutoArchivePreference";
+import { useAutoArchiveRunner } from "@/hooks/useAutoArchiveRunner";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -152,6 +156,10 @@ export function TaskList({
   const { userId } = useDataContext();
   const workbenchControls = useOptionalWorkbenchControls();
   const useHeaderControls = embeddedInIssuesWorkbench && workbenchControls != null;
+  const { intervalId: autoArchiveIntervalId, toggleInterval: toggleAutoArchiveInterval } =
+    useAutoArchivePreference();
+  const [restoreSheetOpen, setRestoreSheetOpen] = useState(false);
+  useAutoArchiveRunner(tasksData, autoArchiveIntervalId);
   
   // Property filters start as inactive by default (no filters = show all properties)
   const [internalSelectedFilters, setInternalSelectedFilters] = useState<Set<string>>(() => {
@@ -451,6 +459,17 @@ export function TaskList({
 
     return { todo, done };
   }, [filteredTasks, workbenchControls?.sortBy, hideDoneSection]);
+
+  // Visible completed cards only (All keeps completed inline; Open/Urgent/My hide them).
+  const visibleCompletedCount = useMemo(() => {
+    if (hideDoneSection) return 0;
+    return filteredTasks.filter((task) => task.status === "completed").length;
+  }, [filteredTasks, hideDoneSection]);
+
+  const showAutoArchiveCard =
+    !embeddedSliderOnly &&
+    !embeddedVerticalList &&
+    visibleCompletedCount >= 3;
 
   const primaryOptions: FilterOption[] = useMemo(() => {
     const opts: FilterOption[] = [
@@ -935,9 +954,22 @@ export function TaskList({
               </div>
             </div>
           )}
+
+          {showAutoArchiveCard ? (
+            <AutoArchiveCard
+              intervalId={autoArchiveIntervalId}
+              onSelectInterval={toggleAutoArchiveInterval}
+              onRestoreClick={() => setRestoreSheetOpen(true)}
+            />
+          ) : null}
           </div>
         )}
       </div>
+
+      <RestoreArchivedTasksSheet
+        open={restoreSheetOpen}
+        onOpenChange={setRestoreSheetOpen}
+      />
     </div>
   );
 }

@@ -117,6 +117,7 @@ import { Input } from "@/components/ui/input";
 import { useCategories } from "@/hooks/useCategories";
 import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
 import { useTeams } from "@/hooks/useTeams";
+import { scheduleInlineInputBlur } from "@/lib/inlineChipInput";
 
 const INTAKE_COMPLIANCE_TYPES = [...INTAKE_COMPLIANCE_PRESETS, "Other"] as const;
 
@@ -549,6 +550,9 @@ export function IntakeModal({
   const intakeWhereSpaceInputRef = useRef<HTMLInputElement>(null);
   const intakeAssetInputRef = useRef<HTMLInputElement>(null);
   const intakeTagInputRef = useRef<HTMLInputElement>(null);
+  const intakeTagPanelRef = useRef<HTMLDivElement>(null);
+  const tagCreateOpenRef = useRef(false);
+  tagCreateOpenRef.current = tagCreateOpen;
 
   const patchImage = useCallback((localId: string, patch: Partial<TempImage>) => {
     setImages((prev) => prev.map((img) => (img.local_id === localId ? { ...img, ...patch } : img)));
@@ -3066,6 +3070,13 @@ export function IntakeModal({
           setIntakeTagQuery("");
         };
 
+        const openTagCreate = (name: string) => {
+          const trimmed = name.trim();
+          if (!trimmed) return;
+          setTagCreateName(trimmed);
+          setTagCreateOpen(true);
+        };
+
         return {
           row2: (
             <>
@@ -3094,8 +3105,8 @@ export function IntakeModal({
                     }
                   }}
                   placeholder="SEARCH"
-                className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
-                style={{ width: intakeSearchInputWidth(intakeTagQuery.length) }}
+                  className={cn(INTAKE_INLINE_INPUT_CLASS, "min-w-[65px]")}
+                  style={{ width: intakeSearchInputWidth(intakeTagQuery.length) }}
                 />
               )}
               {intakeTagEditing ? (
@@ -3114,16 +3125,18 @@ export function IntakeModal({
                       const first = tagSuggestionsInline[0];
                       if (first) commitTagId(first.id);
                       else if (intakeTagQuery.trim() && !hasExactTagMatch) {
-                        setTagCreateName(intakeTagQuery.trim());
-                        setTagCreateOpen(true);
+                        openTagCreate(intakeTagQuery);
                       }
                     }
                   }}
                   onBlur={() => {
-                    window.setTimeout(() => {
+                    // Keep editing while Create Tag dialog is open, and while focus
+                    // moves to suggestion chips in this panel (same pattern as CategorySection).
+                    scheduleInlineInputBlur(intakeTagPanelRef.current, () => {
+                      if (tagCreateOpenRef.current) return;
                       setIntakeTagEditing(false);
                       setIntakeTagQuery("");
-                    }, 150);
+                    });
                   }}
                   placeholder="ADD TAG"
                   className={INTAKE_INLINE_INPUT_CLASS}
@@ -3134,7 +3147,8 @@ export function IntakeModal({
                   epistemic="proposal"
                   label="+ TAG"
                   truncate={false}
-                  pressOnPointerDown
+                  // No pressOnPointerDown: transfer delay + absolute collapse blocks the next
+                  // click and races blur when switching into the ADD TAG input.
                   onPress={() => {
                     setIntakeTagEditing(true);
                     setIntakeTagQuery("");
@@ -3142,55 +3156,51 @@ export function IntakeModal({
                   className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 h-[24px]"
                 />
               )}
-            </>
-          ),
-          row3: (
-            <>
-              {intakeTagEditing &&
-                tagSuggestionsInline.map((c) => (
-                  <SemanticChip
-                    key={c.id}
-                    epistemic="proposal"
-                    label={`+${c.name}`.toUpperCase()}
-                    truncate={false}
-                    pressOnPointerDown
-                    onPress={() => commitTagId(c.id)}
-                    className="shrink-0"
-                  />
-                ))}
-              {intakeTagEditing && intakeTagQuery.trim() && !hasExactTagMatch && (
+              {/* Keep matches on the same line — only while searching / adding */}
+              {intakeTagEditing
+                ? tagSuggestionsInline.map((c) => (
+                    <SemanticChip
+                      key={c.id}
+                      epistemic="proposal"
+                      label={`+${c.name}`.toUpperCase()}
+                      truncate={false}
+                      onPress={() => commitTagId(c.id)}
+                      className="shrink-0"
+                    />
+                  ))
+                : null}
+              {intakeTagEditing && intakeTagQuery.trim() && !hasExactTagMatch ? (
                 <SemanticChip
                   epistemic="proposal"
                   label={`ADD ${intakeTagQuery.trim().toUpperCase()}`}
                   truncate={false}
-                  pressOnPointerDown
-                  onPress={() => {
-                    setTagCreateName(intakeTagQuery.trim());
-                    setTagCreateOpen(true);
-                  }}
+                  onPress={() => openTagCreate(intakeTagQuery)}
                   className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1 max-w-[200px]"
                 />
-              )}
-              {tagMatches
-                .filter((cat) => !selectedThemeIds.includes(cat.id))
-                .slice(0, 20)
-                .map((cat) => (
-                <SemanticChip
-                  key={cat.id}
-                  epistemic="proposal"
-                  label={cat.name.toUpperCase()}
-                  truncate
-                  pressOnPointerDown
-                  onPress={() => {
-                    setSelectedThemeIds((prev) =>
-                      prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
-                    );
-                  }}
-                  className="shrink-0 max-w-[200px]"
-                />
-              ))}
+              ) : null}
+              {!intakeTagEditing && tq
+                ? tagMatches
+                    .filter((cat) => !selectedThemeIds.includes(cat.id))
+                    .slice(0, 8)
+                    .map((cat) => (
+                      <SemanticChip
+                        key={cat.id}
+                        epistemic="proposal"
+                        label={cat.name.toUpperCase()}
+                        truncate
+                        onPress={() => {
+                          setSelectedThemeIds((prev) =>
+                            prev.includes(cat.id) ? prev.filter((id) => id !== cat.id) : [...prev, cat.id]
+                          );
+                          setIntakeTagQuery("");
+                        }}
+                        className="shrink-0 max-w-[200px]"
+                      />
+                    ))
+                : null}
             </>
           ),
+          row3: null,
         };
       }
 
@@ -4467,9 +4477,13 @@ export function IntakeModal({
               assetFacts={intakeRowChips
                 .filter((c) => c.slot === "asset")
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
-              categoryFacts={intakeRowChips
-                .filter((c) => c.slot === "category")
-                .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
+              categoryFacts={
+                openChipSlot === "category"
+                  ? []
+                  : intakeRowChips
+                      .filter((c) => c.slot === "category")
+                      .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))
+              }
               complianceFacts={intakeRowChips
                 .filter((c) => c.slot === "compliance")
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}
@@ -4669,7 +4683,10 @@ export function IntakeModal({
                   ? (() => {
                       const rows = renderSlotContent(openChipSlot, () => setOpenChipSlot(null));
                       return (
-                        <div className="space-y-2">
+                        <div
+                          ref={openChipSlot === "category" ? intakeTagPanelRef : undefined}
+                          className="space-y-2"
+                        >
                           {rows.row2 ? (
                             <div className="flex flex-wrap items-center gap-1.5">{rows.row2}</div>
                           ) : null}

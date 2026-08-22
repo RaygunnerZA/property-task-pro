@@ -347,7 +347,6 @@ export function CategorySection({
               label="+ Tag"
               truncate={false}
               onPress={handleAddTagClick}
-              pressOnPointerDown
               className="shrink-0 px-2.5 py-1.5 bg-background shadow-e1"
             />
           ) : null}
