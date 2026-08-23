@@ -28,13 +28,33 @@ Source kinds (provenance): `filla_curated` \| `org_upload` \| `operational_disco
 ```
 Existing inputs (uploads, messages, compliance, tasks, docs, Filla Brain)
   → Knowledge candidates
-  → Extractor (reuse ai-doc-analyse / intake where possible)
-  → Second-model critic (knowledge-critic)
+  → Extractor (reuse ai-doc-analyse / intake where possible; create_knowledge opt-in)
+  → Second-model critic (knowledge-critic) — mandatory
   → Admin or org Owner/Manager review
   → Published Knowledge
-  → /knowledge, assistant-reasoner, future checklists/SEO
+  → /knowledge, assistant-reasoner, Content Tree (internal), future checklists
 ```
 
+## Internal Intake (v1 — Upload + Manual)
+
+Platform admin surface: `/admin/knowledge` → **Intake**.
+
+| Route | Behaviour |
+|-------|-----------|
+| **Upload** | CSV/XLSX → column mapping preview → Create candidates. PDF/DOCX/TXT stored in private `knowledge-intake` as provenance; DOCX/TXT can prefill Manual. |
+| **Manual** | Single candidate form with required applicability → create → critic. |
+
+Paste and URL intake are deferred.
+
+**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata.
+
+## Content Tree (internal)
+
+After Knowledge is verified/published: `/admin/knowledge` → **Content tree**.
+
+Stages: Knowledge → SEO → Brief → Outputs (`core_article`, `faq`, `in_app_tip`) → Creative/Publishing stubs.
+
+Approved outputs are not silently overwritten; upstream changes mark `needs_update`.
 ## Review ownership
 
 * Organisation scope: Owner/Manager in-product.

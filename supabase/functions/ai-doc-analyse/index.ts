@@ -30,6 +30,8 @@ interface RequestBody {
   attachment_id?: string | null; // if provided, we update the attachment
   compliance_document_id?: string | null; // if provided (e.g. compliance upload), we update compliance_documents directly
   overwrite?: boolean;
+  /** Opt-in: create a Knowledge candidate. Default false — analyse ≠ Knowledge intake. */
+  create_knowledge?: boolean;
 }
 
 interface DetectedAsset {
@@ -536,7 +538,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { file_url, file_name, property_id, org_id, attachment_id, compliance_document_id, overwrite = false } = body;
+    const {
+      file_url,
+      file_name,
+      property_id,
+      org_id,
+      attachment_id,
+      compliance_document_id,
+      overwrite = false,
+      create_knowledge = false,
+    } = body;
 
     if (!file_url || !file_name || !org_id) {
       return new Response(
@@ -826,8 +837,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Knowledge candidate from document analysis (org-scoped; never auto-published)
-    if (serviceRoleKey && result.title && org_id) {
+    // Knowledge candidate only when explicitly requested (never auto-publish)
+    if (create_knowledge && serviceRoleKey && result.title && org_id) {
       try {
         const admin = createClient(supabaseUrl, serviceRoleKey, {
           auth: { autoRefreshToken: false, persistSession: false },
