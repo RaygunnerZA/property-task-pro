@@ -440,6 +440,9 @@ verify_jwt = false
 [functions.ai-doc-analyse]
 verify_jwt = false
 
+[functions.knowledge-intake-url]
+verify_jwt = true
+
 [functions.knowledge-critic]
 verify_jwt = false
 

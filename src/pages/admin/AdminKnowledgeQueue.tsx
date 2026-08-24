@@ -4,14 +4,15 @@ import {
   useAdminKnowledgeMetrics,
   useAdminKnowledgeQueue,
   useAdminSetKnowledgeStatus,
-  useAdminUpsertPlatformKnowledge,
 } from "@/hooks/admin/useAdminKnowledge";
+import { AdminKnowledgeIntakePanel } from "@/components/admin/AdminKnowledgeIntakePanel";
+import { AdminContentTreePanel } from "@/components/admin/AdminContentTreePanel";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import type { KnowledgeRow, KnowledgeStatus } from "@/types/knowledge";
 import { toast } from "sonner";
+
+type AdminKnowledgeTab = "review" | "publishing" | "intake" | "content" | "metrics";
 
 function StatusBadge({ status }: { status: string }) {
   return (
@@ -32,28 +33,39 @@ function QueueRow({
 }) {
   return (
     <div className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="font-medium text-sm truncate">{row.title}</p>
-          <p className="text-xs text-muted-foreground line-clamp-2">
-            {row.summary || row.body || "No summary"}
-          </p>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <StatusBadge status={row.status} />
-            <StatusBadge status={row.scope} />
-            <StatusBadge status={row.source_kind} />
-            {row.trust_score != null && (
-              <span className="text-xs text-muted-foreground font-mono">
-                trust {Number(row.trust_score).toFixed(2)}
-              </span>
-            )}
-            {row.cohort_size != null && (
-              <span className="text-xs text-muted-foreground font-mono">
-                cohort {row.cohort_size}
-              </span>
-            )}
-          </div>
+      <div className="min-w-0 space-y-1">
+        <p className="font-medium text-sm truncate">{row.title}</p>
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {row.summary || row.body || "No summary"}
+        </p>
+        <div className="flex flex-wrap gap-2 pt-1">
+          <StatusBadge status={row.status} />
+          <StatusBadge status={row.scope} />
+          <StatusBadge status={row.source_kind} />
+          {row.trust_score != null && (
+            <span className="text-xs text-muted-foreground font-mono">
+              trust {Number(row.trust_score).toFixed(2)}
+            </span>
+          )}
+          {row.cohort_size != null && (
+            <span className="text-xs text-muted-foreground font-mono">
+              cohort {row.cohort_size}
+            </span>
+          )}
         </div>
+        {row.attributes &&
+          typeof row.attributes === "object" &&
+          Object.keys(row.attributes).length > 0 && (
+            <p className="text-xs text-muted-foreground truncate pt-1">
+              attrs:{" "}
+              {Object.keys(row.attributes)
+                .slice(0, 8)
+                .join(", ")}
+              {Object.keys(row.attributes).length > 8
+                ? ` +${Object.keys(row.attributes).length - 8}`
+                : ""}
+            </p>
+          )}
       </div>
       <div className="flex flex-wrap gap-2">
         {row.status === "candidate" && (
@@ -113,7 +125,7 @@ function MetricChip({ label, value }: { label: string; value: string | number })
 }
 
 export default function AdminKnowledgeQueue() {
-  const [tab, setTab] = useState<"review" | "publishing" | "metrics">("review");
+  const [tab, setTab] = useState<AdminKnowledgeTab>("review");
   const statuses = useMemo<KnowledgeStatus[]>(
     () => (tab === "publishing" ? ["verified"] : ["candidate", "verified", "stale"]),
     [tab]
@@ -121,12 +133,7 @@ export default function AdminKnowledgeQueue() {
   const { data, isLoading, error } = useAdminKnowledgeQueue(statuses);
   const metricsQuery = useAdminKnowledgeMetrics();
   const setStatus = useAdminSetKnowledgeStatus();
-  const upsert = useAdminUpsertPlatformKnowledge();
 
-  const platformMetrics = useMemo(
-    () => metricsQuery.data?.find((r) => r.org_name === "_platform"),
-    [metricsQuery.data]
-  );
   const orgMetrics = useMemo(
     () => (metricsQuery.data ?? []).filter((r) => r.org_name !== "_platform"),
     [metricsQuery.data]
@@ -143,10 +150,6 @@ export default function AdminKnowledgeQueue() {
     };
   }, [metricsQuery.data]);
 
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [body, setBody] = useState("");
-
   const handleStatus = (id: string, status: KnowledgeStatus) => {
     setStatus.mutate(
       { knowledgeId: id, status },
@@ -157,24 +160,13 @@ export default function AdminKnowledgeQueue() {
     );
   };
 
-  const handleCreate = () => {
-    if (!title.trim()) {
-      toast.error("Title required");
-      return;
-    }
-    upsert.mutate(
-      { title: title.trim(), summary: summary.trim() || undefined, body: body.trim() || undefined },
-      {
-        onSuccess: () => {
-          toast.success("Platform knowledge candidate created");
-          setTitle("");
-          setSummary("");
-          setBody("");
-        },
-        onError: (e) => toast.error(e instanceof Error ? e.message : "Create failed"),
-      }
-    );
-  };
+  const tabs: { id: AdminKnowledgeTab; label: string }[] = [
+    { id: "review", label: "Review queue" },
+    { id: "publishing", label: "Publishing" },
+    { id: "intake", label: "Add Knowledge" },
+    { id: "content", label: "Content tree" },
+    { id: "metrics", label: "Metrics" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -182,45 +174,29 @@ export default function AdminKnowledgeQueue() {
         <div>
           <h1 className="text-xl font-semibold flex items-center gap-2">
             <BookOpen className="h-5 w-5 text-primary" />
-            Knowledge review
+            Knowledge
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Platform and community candidates. Org rows appear for support override.
+            Add Knowledge → review → content tree. Critic is mandatory; nothing auto-publishes.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant={tab === "review" ? "default" : "outline"}
-            className={cn("border-0", tab === "review" ? "shadow-primary-btn" : "btn-neomorphic")}
-            onClick={() => setTab("review")}
-          >
-            Review queue
-          </Button>
-          <Button
-            size="sm"
-            variant={tab === "publishing" ? "default" : "outline"}
-            className={cn(
-              "border-0",
-              tab === "publishing" ? "shadow-primary-btn" : "btn-neomorphic"
-            )}
-            onClick={() => setTab("publishing")}
-          >
-            Publishing
-          </Button>
-          <Button
-            size="sm"
-            variant={tab === "metrics" ? "default" : "outline"}
-            className={cn(
-              "border-0",
-              tab === "metrics" ? "shadow-primary-btn" : "btn-neomorphic"
-            )}
-            onClick={() => setTab("metrics")}
-          >
-            Metrics
-          </Button>
+        <div className="flex flex-wrap gap-2">
+          {tabs.map((t) => (
+            <Button
+              key={t.id}
+              size="sm"
+              variant={tab === t.id ? "default" : "outline"}
+              className={cn("border-0", tab === t.id ? "shadow-primary-btn" : "btn-neomorphic")}
+              onClick={() => setTab(t.id)}
+            >
+              {t.label}
+            </Button>
+          ))}
         </div>
       </div>
+
+      {tab === "intake" && <AdminKnowledgeIntakePanel />}
+      {tab === "content" && <AdminContentTreePanel />}
 
       {tab === "metrics" && (
         <div className="space-y-4">
@@ -228,98 +204,48 @@ export default function AdminKnowledgeQueue() {
             <MetricChip label="Created" value={totals.created} />
             <MetricChip label="Verified" value={totals.verified} />
             <MetricChip label="Reused" value={totals.reused} />
-            <MetricChip label="Questions answered" value={totals.answered} />
-            <MetricChip label="Automation created" value={totals.automation} />
-            <MetricChip
-              label="Time saved"
-              value={`${Math.round(totals.minutes)}m`}
-            />
+            <MetricChip label="Answered" value={totals.answered} />
+            <MetricChip label="Automation" value={totals.automation} />
+            <MetricChip label="Minutes saved" value={Math.round(totals.minutes)} />
           </div>
-          {platformMetrics && (
-            <p className="text-xs text-muted-foreground">
-              Platform knowledge: {platformMetrics.knowledge_created} created ·{" "}
-              {platformMetrics.knowledge_verified} verified ·{" "}
-              {platformMetrics.knowledge_published} published
-            </p>
-          )}
           {metricsQuery.isLoading && (
-            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            </div>
           )}
           <div className="overflow-x-auto rounded-xl bg-card/80 shadow-e1">
-            <table className="w-full text-left text-xs">
-              <thead className="text-muted-foreground font-mono uppercase tracking-wider">
-                <tr>
-                  <th className="px-3 py-2">Org</th>
-                  <th className="px-3 py-2">Created</th>
-                  <th className="px-3 py-2">Verified</th>
-                  <th className="px-3 py-2">Reused</th>
-                  <th className="px-3 py-2">Answered</th>
-                  <th className="px-3 py-2">Automation</th>
-                  <th className="px-3 py-2">Time saved</th>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground border-b border-border/40">
+                  <th className="p-3 font-medium">Organisation</th>
+                  <th className="p-3 font-medium">Created</th>
+                  <th className="p-3 font-medium">Verified</th>
+                  <th className="p-3 font-medium">Published</th>
+                  <th className="p-3 font-medium">Reused</th>
+                  <th className="p-3 font-medium">Answered</th>
                 </tr>
               </thead>
               <tbody>
-                {orgMetrics.map((row) => (
-                  <tr key={row.org_id} className="border-t border-border/40">
-                    <td className="px-3 py-2 font-medium">{row.org_name}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.knowledge_created}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.knowledge_verified}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.knowledge_reused}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.questions_answered}</td>
-                    <td className="px-3 py-2 tabular-nums">{row.automation_created}</td>
-                    <td className="px-3 py-2 tabular-nums">
-                      {Math.round(Number(row.time_saved_minutes || 0))}m
-                    </td>
+                {orgMetrics.map((r) => (
+                  <tr key={r.org_id} className="border-b border-border/20">
+                    <td className="p-3">{r.org_name}</td>
+                    <td className="p-3 tabular-nums">{r.knowledge_created}</td>
+                    <td className="p-3 tabular-nums">{r.knowledge_verified}</td>
+                    <td className="p-3 tabular-nums">{r.knowledge_published}</td>
+                    <td className="p-3 tabular-nums">{r.knowledge_reused}</td>
+                    <td className="p-3 tabular-nums">{r.questions_answered}</td>
                   </tr>
                 ))}
-                {orgMetrics.length === 0 && !metricsQuery.isLoading && (
-                  <tr>
-                    <td colSpan={7} className="px-3 py-6 text-muted-foreground text-center">
-                      No organisation Knowledge activity yet.
-                    </td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {tab !== "metrics" && (
-        <>
-          <div className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-            <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground">
-              Create platform knowledge
-            </p>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Title"
-              className="border-0 shadow-engraved bg-input"
-            />
-            <Input
-              value={summary}
-              onChange={(e) => setSummary(e.target.value)}
-              placeholder="Summary"
-              className="border-0 shadow-engraved bg-input"
-            />
-            <Textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="Body"
-              className="border-0 shadow-engraved bg-input min-h-[80px]"
-            />
-            <Button
-              className="shadow-primary-btn border-0"
-              disabled={upsert.isPending}
-              onClick={handleCreate}
-            >
-              {upsert.isPending ? "Saving…" : "Add candidate"}
-            </Button>
-          </div>
-
+      {(tab === "review" || tab === "publishing") && (
+        <div className="space-y-3">
           {isLoading && (
-            <div className="flex justify-center py-10">
+            <div className="flex justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-primary" />
             </div>
           )}
@@ -328,20 +254,18 @@ export default function AdminKnowledgeQueue() {
               {error instanceof Error ? error.message : "Failed to load queue"}
             </p>
           )}
-          {!isLoading && !error && (data?.length ?? 0) === 0 && (
-            <p className="text-sm text-muted-foreground">Queue is empty.</p>
+          {!isLoading && (data ?? []).length === 0 && (
+            <p className="text-sm text-muted-foreground">No items in this queue.</p>
           )}
-          <div className="space-y-3">
-            {(data ?? []).map((row) => (
-              <QueueRow
-                key={row.id}
-                row={row}
-                busy={setStatus.isPending}
-                onStatus={handleStatus}
-              />
-            ))}
-          </div>
-        </>
+          {(data ?? []).map((row) => (
+            <QueueRow
+              key={row.id}
+              row={row}
+              busy={setStatus.isPending}
+              onStatus={handleStatus}
+            />
+          ))}
+        </div>
       )}
     </div>
   );

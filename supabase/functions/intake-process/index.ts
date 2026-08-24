@@ -2,6 +2,7 @@
 // Sets status pending → processing → ready|failed. Does not emit signals or create records.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { buildIntakeDocStub, isUsableDocAnalysis } from "../_shared/intakeDocStub.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -187,7 +188,15 @@ Deno.serve(async (req) => {
           (result.title as string) ||
           null;
         aiConfidence = typeof result.confidence === "number" ? result.confidence : null;
-        aiExtracted = result;
+        aiExtracted = isUsableDocAnalysis(result)
+          ? result
+          : buildIntakeDocStub(fileName, (result.ocr_text as string | undefined) ?? null);
+        if (!aiClassification) {
+          aiClassification =
+            (aiExtracted.document_type as string | undefined) ||
+            (aiExtracted.title as string | undefined) ||
+            null;
+        }
       }
 
       await admin

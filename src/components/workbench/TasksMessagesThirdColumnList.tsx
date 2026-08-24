@@ -62,9 +62,25 @@ export function TasksMessagesThirdColumnList({
       personThreads
         .map((thread) => ({
           ...thread,
-          taskPreviews: thread.taskPreviews.filter((p) => openTaskIds.has(p.taskId)),
+          taskPreviews: [...thread.taskPreviews]
+            .filter((p) => openTaskIds.has(p.taskId))
+            .sort((a, b) => {
+              if (a.isUnread !== b.isUnread) return a.isUnread ? -1 : 1;
+              return (
+                new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+              );
+            }),
         }))
-        .filter((thread) => thread.taskPreviews.length > 0),
+        .filter((thread) => thread.taskPreviews.length > 0)
+        .sort((a, b) => {
+          const aUnread = a.taskPreviews.some((p) => p.isUnread);
+          const bUnread = b.taskPreviews.some((p) => p.isUnread);
+          if (aUnread !== bUnread) return aUnread ? -1 : 1;
+          return (
+            new Date(b.latestCreatedAt).getTime() -
+            new Date(a.latestCreatedAt).getTime()
+          );
+        }),
     [personThreads, openTaskIds]
   );
 

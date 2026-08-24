@@ -13,18 +13,42 @@ interface AdminLayoutProps {
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { data: isAdmin, isLoading } = useIsPlatformAdmin();
+  const { data: isAdmin, isLoading, isError, error, refetch } = useIsPlatformAdmin();
 
   useEffect(() => {
-    if (!isLoading && isAdmin === false) {
+    // Only bounce confirmed non-admins — never on load/error (that looked like “reverts to home”).
+    if (!isLoading && !isError && isAdmin === false) {
       navigate("/", { replace: true });
     }
-  }, [isAdmin, isLoading, navigate]);
+  }, [isAdmin, isLoading, isError, navigate]);
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-paper flex items-center justify-center">
         <div className="w-5 h-5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-paper flex items-center justify-center px-4">
+        <div className="max-w-md space-y-3 text-center">
+          <Shield className="mx-auto h-6 w-6 text-muted-foreground" />
+          <h1 className="text-base font-semibold text-foreground">Admin check failed</h1>
+          <p className="text-sm text-muted-foreground">
+            {error instanceof Error
+              ? error.message
+              : "Couldn’t verify platform admin access. Try again, or check that platform_admins is migrated."}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="text-sm text-primary underline-offset-2 hover:underline"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

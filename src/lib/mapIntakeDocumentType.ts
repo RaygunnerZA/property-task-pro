@@ -20,7 +20,9 @@ const ALIASES: Record<string, (typeof INTAKE_COMPLIANCE_PRESETS)[number]> = {
   "electrical certificate": "Electrical Certificate",
   eic: "Electrical Certificate",
   "electrical installation certificate": "Electrical Certificate",
-  eicr: "EICR",
+  epc: "EPC",
+  "energy performance certificate": "EPC",
+  "energy performance": "EPC",
   "electrical installation condition report": "EICR",
   "pat test": "PAT Test",
   pat: "PAT Test",
@@ -206,4 +208,31 @@ export function sanitizeScanTitle(raw?: string | null): string | null {
   const cleaned = raw.replace(/[\u0000-\u001F]+/g, " ").replace(/\s+/g, " ").trim();
   if (cleaned.length < 3) return null;
   return cleaned.slice(0, 120);
+}
+
+/**
+ * Human record title for Add Record / intake review (e.g. Gas Safety Certificate → Gas Safety Record).
+ */
+export function naturalLanguageRecordTitle(rawType?: string | null): string | null {
+  const mapped = mapIntakeDocumentType(rawType);
+  const type = mapped?.type ?? (isMeaningfulSuggestedType(rawType) ? rawType!.trim() : null);
+  if (!type) return null;
+
+  if (/\brecord\b/i.test(type)) return type.slice(0, 120);
+  if (type === "Fire Certificate") return "Fire Safety Record";
+  if (type === "Electrical Certificate") return "Electrical Safety Record";
+  if (type === "Gas Safety Certificate") return "Gas Safety Record";
+  if (type === "EICR") return "EICR Record";
+  if (type === "PAT Test") return "PAT Test Record";
+  if (type === "EPC") return "EPC Record";
+
+  if (/\bcertificate\b/i.test(type)) {
+    return type.replace(/\bcertificate\b/i, "Record").replace(/\s+/g, " ").trim().slice(0, 120);
+  }
+
+  if (/\b(test|assessment|report|invoice|receipt|quote)\b/i.test(type)) {
+    return type.slice(0, 120);
+  }
+
+  return `${type} Record`.slice(0, 120);
 }

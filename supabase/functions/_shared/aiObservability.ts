@@ -20,6 +20,8 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Current list prices per 1k tokens. Update here when pricing changes.
 const COST_PER_1K_TOKENS: Record<string, { input: number; output: number }> = {
+  "gemini-3.6-flash":          { input: 0.000075, output: 0.0003 },
+  "gemini-2.5-flash":          { input: 0.000075, output: 0.0003 },
   "gemini-2.0-flash":        { input: 0.000075, output: 0.0003 },
   "gemini-1.5-pro":          { input: 0.00125,  output: 0.005  },
   "gpt-4o-mini":             { input: 0.00015,  output: 0.0006 },

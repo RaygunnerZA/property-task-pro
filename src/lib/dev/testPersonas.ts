@@ -90,6 +90,10 @@ export const TEST_PERSONA_STORAGE_KEY = "filla_dev_test_persona_id";
 export const TEST_PERSONA_ORG_STORAGE_KEY = "filla_dev_test_persona_org_id";
 
 export function getTestPersonaPassword(): string {
+  // Never surface a default password outside local/dev builds.
+  const isDevBuild =
+    import.meta.env.DEV || import.meta.env.VITE_APP_DEV_BUILD === "true";
+  if (!isDevBuild) return "";
   return import.meta.env.VITE_DEV_TEST_PASSWORD ?? "TestPassword123!";
 }
 

@@ -6,6 +6,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";
 import { runCapability, type ExecutorOutput } from "../_shared/aiCall.ts";
+import { knowledgeGeminiApiKey, geminiGenerateContentUrl, GEMINI_FLASH_MODEL } from "../_shared/geminiKeys.ts";
 import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 
 interface CriticVerdict {
@@ -54,6 +55,7 @@ async function callOpenAICritic(
   title: string,
   summary: string | null,
   body: string | null,
+  attributes: Record<string, unknown>,
   provenance: Record<string, unknown>
 ): Promise<ExecutorOutput> {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -73,11 +75,12 @@ async function callOpenAICritic(
             "You are a strict knowledge critic for a property-operations platform. " +
             "Score draft knowledge for factual safety, specificity, and non-hallucination. " +
             'Return JSON: {"trust_score":0-1,"notes":"string","verified":boolean}. ' +
-            "verified=true only if trust_score >= 0.7 and claims are supportable from the draft text.",
+            "verified=true only if trust_score >= 0.7 and claims are supportable from the draft text. " +
+            "Treat attributes as structured facts (not editorial body).",
         },
         {
           role: "user",
-          content: JSON.stringify({ title, summary, body, provenance }),
+          content: JSON.stringify({ title, summary, body, attributes, provenance }),
         },
       ],
     }),
@@ -92,10 +95,10 @@ async function callGeminiCritic(
   title: string,
   summary: string | null,
   body: string | null,
+  attributes: Record<string, unknown>,
   provenance: Record<string, unknown>
 ): Promise<ExecutorOutput> {
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+  const url = geminiGenerateContentUrl(GEMINI_FLASH_MODEL, apiKey);
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -107,8 +110,9 @@ async function callGeminiCritic(
               text:
                 "You are a strict knowledge critic. Return ONLY JSON " +
                 '{"trust_score":0-1,"notes":"string","verified":boolean}. ' +
-                "verified=true only if trust_score >= 0.7.\n\n" +
-                JSON.stringify({ title, summary, body, provenance }),
+                "verified=true only if trust_score >= 0.7. " +
+                "attributes are structured facts, not editorial body.\n\n" +
+                JSON.stringify({ title, summary, body, attributes, provenance }),
             },
           ],
         },
@@ -148,7 +152,7 @@ Deno.serve(async (req) => {
 
   const { data: row, error: loadErr } = await admin
     .from("knowledge")
-    .select("id, title, summary, body, provenance, org_id, status")
+    .select("id, title, summary, body, attributes, provenance, org_id, status")
     .eq("id", knowledge_id)
     .maybeSingle();
 
@@ -165,8 +169,9 @@ Deno.serve(async (req) => {
 
   const logOrg = org_id ?? row.org_id ?? "00000000-0000-0000-0000-000000000000";
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
-  const geminiKey = Deno.env.get("GEMINI_API_KEY");
+  const geminiKey = knowledgeGeminiApiKey();
   const provenance = (row.provenance as Record<string, unknown>) ?? {};
+  const attributes = (row.attributes as Record<string, unknown>) ?? {};
 
   // Ch 7: the critic must not reuse the extractor's provider. The boundary enforces
   // that constraint, and resolves to nothing rather than faking a second opinion.
@@ -180,11 +185,25 @@ Deno.serve(async (req) => {
     executors: {
       "model:gpt-4o-mini": () => {
         if (!openaiKey) throw new Error("OPENAI_API_KEY not set");
-        return callOpenAICritic(openaiKey, row.title, row.summary, row.body, provenance);
+        return callOpenAICritic(
+          openaiKey,
+          row.title,
+          row.summary,
+          row.body,
+          attributes,
+          provenance
+        );
       },
       "model:gemini-2.0-flash": () => {
-        if (!geminiKey) throw new Error("GEMINI_API_KEY not set");
-        return callGeminiCritic(geminiKey, row.title, row.summary, row.body, provenance);
+        if (!geminiKey) throw new Error("Gemini API key not set");
+        return callGeminiCritic(
+          geminiKey,
+          row.title,
+          row.summary,
+          row.body,
+          attributes,
+          provenance
+        );
       },
     },
     validate: validateVerdict,

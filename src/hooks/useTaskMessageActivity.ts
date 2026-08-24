@@ -214,14 +214,29 @@ export function useTaskMessageActivity() {
       }
     }
 
-    return Array.from(byAuthor.values()).sort(
-      (a, b) =>
-        new Date(b.latestCreatedAt).getTime() - new Date(a.latestCreatedAt).getTime()
-    );
+    return Array.from(byAuthor.values())
+      .map((thread) => ({
+        ...thread,
+        taskPreviews: [...thread.taskPreviews].sort((a, b) => {
+          if (a.isUnread !== b.isUnread) return a.isUnread ? -1 : 1;
+          return (
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+        }),
+      }))
+      .sort((a, b) => {
+        const aUnread = a.taskPreviews.some((p) => p.isUnread);
+        const bUnread = b.taskPreviews.some((p) => p.isUnread);
+        if (aUnread !== bUnread) return aUnread ? -1 : 1;
+        return (
+          new Date(b.latestCreatedAt).getTime() -
+          new Date(a.latestCreatedAt).getTime()
+        );
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data, memberById, userId, seenTick]);
 
-  /** Unique authors of most recent task messages (no duplicates), newest first. */
+  /** Unique authors: unread first, then newest. */
   const recentAuthors = useMemo(() => {
     const seen = new Set<string>();
     const authors: {
@@ -231,9 +246,10 @@ export function useTaskMessageActivity() {
       authorAvatarUrl: string | null;
       accentColor: string;
     }[] = [];
-    for (const preview of Object.values(latestByTask).sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    )) {
+    for (const preview of Object.values(latestByTask).sort((a, b) => {
+      if (a.isUnread !== b.isUnread) return a.isUnread ? -1 : 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    })) {
       const key = preview.authorUserId ?? `name:${preview.authorName}`;
       if (seen.has(key)) continue;
       seen.add(key);

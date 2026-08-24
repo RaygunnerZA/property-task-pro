@@ -14,12 +14,13 @@ Finish the existing Knowledge system before expanding it.
 
 Build in this order:
 
-1. Applicability (jurisdiction, region, language, audience) — requires Ch 3 schema update first
-2. Entity links (Properties, Spaces, Assets, Compliance, Tasks, Reports). Add Records only after updating the data model.
-3. Provenance and verification history
-4. Search
-5. Assistant citations (published Knowledge only)
-6. Reuse, stale and superseded metrics
+1. Applicability (jurisdiction, region, language, audience) — `knowledge.applicability` jsonb (shipped with Content Tree foundation)
+2. **Knowledge Intake (v1):** Upload (CSV/XLSX + docs) + Manual → candidates + sources + mandatory critic. Paste/URL deferred.
+3. Entity links (Properties, Spaces, Assets, Compliance, Tasks, Reports). Add Records only after updating the data model.
+4. Provenance and verification history (admin detail + `knowledge_sources` writes on Intake)
+5. Search
+6. Assistant citations (published Knowledge only)
+7. Reuse, stale and superseded metrics
 
 Knowledge remains guidance. It never replaces Tasks, Compliance, Records or Signals.
 
@@ -101,15 +102,15 @@ Do not add a fifth status column. `archived` remains an admin/system state.
 
 ## Priority 5 — Internal Editorial
 
-Only after the Knowledge loop is stable.
+Requires Applicability + Intake + review loop (sequenced in Priority 1 before Content Tree UI).
 
 Generate:
 
 ```
-Knowledge → SEO Brief → One article type → Human review → Publish
+Knowledge → SEO Opportunity → Editorial Brief → Core article + FAQ + In-app tip → Human review
 ```
 
-Do not build a multi-format content platform yet.
+Creative and Publishing stages are visible stubs only. Admin surface: `/admin/knowledge` → Content tree. No customer nav changes. No external publish integrations.
 
 ---
 

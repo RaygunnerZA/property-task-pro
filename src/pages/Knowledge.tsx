@@ -34,6 +34,16 @@ function KnowledgeCard({ row }: { row: KnowledgeRow }) {
           <span className="font-mono">trust {Number(row.trust_score).toFixed(2)}</span>
         )}
       </div>
+      {row.attributes &&
+        typeof row.attributes === "object" &&
+        Object.keys(row.attributes).length > 0 && (
+          <p className="text-xs text-muted-foreground truncate">
+            {Object.entries(row.attributes)
+              .slice(0, 4)
+              .map(([k, v]) => `${k}: ${String(v)}`)
+              .join(" · ")}
+          </p>
+        )}
     </article>
   );
 }
