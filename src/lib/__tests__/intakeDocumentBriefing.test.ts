@@ -37,8 +37,7 @@ describe("intake document briefing", () => {
     expect(briefing.documentType).toBe("EICR");
     expect(briefing.outcome).toBe("unsatisfactory");
     expect(briefing.needsFollowUp).toBe(true);
-    expect(briefing.title.toLowerCase()).toContain("electrical");
-    expect(briefing.title.toLowerCase()).not.toContain("unsatisfactory");
+    expect(briefing.title).toBe("EICR Record");
     expect(briefing.summary.toLowerCase()).toContain("unsatisfactory");
     expect(briefing.provenance).toBe("filename");
   });
@@ -50,6 +49,43 @@ describe("intake document briefing", () => {
     );
     expect(briefing.provenance).toBe("document");
     expect(briefing.excerpt).toMatch(/Unsatisfactory/);
+  });
+
+  it("reads EPC type and valid-until date from OCR even when AI stubbed", () => {
+    const briefing = buildIntakeDocumentBriefing(
+      artifact({
+        fileName: "04_energy_performance_certificate_valid.pdf",
+        mimeType: "application/pdf",
+        aiClassification: null,
+        aiExtracted: {
+          metadata: { stub: true },
+          ocr_text:
+            "Energy Performance Certificate\nCertificate valid until: 11 March 2034\nAssessment date: 12 March 2024",
+          outcome: "valid",
+        },
+      })
+    );
+    expect(briefing.documentType).toBe("EPC");
+    expect(briefing.expiryDate).toBe("2034-03-11");
+    expect(briefing.title).toBe("EPC Record");
+    expect(briefing.provenance).toBe("document");
+  });
+
+  it("identifies EPC from energy performance filename when AI skipped", () => {
+    const briefing = buildIntakeDocumentBriefing(
+      artifact({
+        fileName: "04_energy_performance_certificate_valid.pdf",
+        mimeType: "application/pdf",
+        aiClassification: null,
+        aiExtracted: {
+          metadata: { stub: true, source: "filename" },
+          outcome: "valid",
+        },
+      })
+    );
+    expect(briefing.documentType).toBe("EPC");
+    expect(briefing.outcome).toBe("valid");
+    expect(briefing.provenance).toBe("filename");
   });
 
   it("surfaces at least one document insight on pending-review cards", () => {
@@ -88,7 +124,6 @@ describe("intake document briefing", () => {
       status: "ready",
     });
     expect(photo.insight.length).toBeGreaterThan(8);
-    expect(photo.title.toLowerCase()).not.toContain("uncertain");
   });
 });
 

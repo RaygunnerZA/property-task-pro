@@ -35,18 +35,25 @@ Existing inputs (uploads, messages, compliance, tasks, docs, Filla Brain)
   → /knowledge, assistant-reasoner, Content Tree (internal), future checklists
 ```
 
-## Internal Intake (v1 — Upload + Manual)
+## Internal Intake (Add Knowledge)
 
-Platform admin surface: `/admin/knowledge` → **Intake**.
+Platform admin surface: `/admin/knowledge` → **Intake** → **Add Knowledge**.
 
 | Route | Behaviour |
 |-------|-----------|
-| **Upload** | CSV/XLSX → column mapping preview → Create candidates. PDF/DOCX/TXT stored in private `knowledge-intake` as provenance; DOCX/TXT can prefill Manual. |
+| **Upload file** | CSV/XLSX → deterministic workbook parse (sheet names, headers, sample rows, relationships) → AI workbook interpretation across the whole manifest (classify each sheet as Knowledge data / reference context / not for knowledge) → per-sheet mapping only for included Knowledge sheets. Context sheets stay attached to the intake batch as provenance and critic context. PDF/DOCX/TXT/images → `ai-doc-analyse` with `knowledge_intake` → review proposed candidates → bulk import. Source file stored in `knowledge-intake`. |
+| **Add URL** | `knowledge-intake-url` (safe fetch, SSRF controls) → storage snapshot + `ai-doc-analyse` → same proposal review flow. Preserves URL, retrieval date, and source metadata. |
 | **Manual** | Single candidate form with required applicability → create → critic. |
 
-Paste and URL intake are deferred.
+Paste intake remains deferred.
 
-**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata.
+**Document ≠ one Knowledge row:** extraction may propose multiple distinct candidates (findings, guidance items). Admin selects/edits before import.
+
+**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata (filename, sheet, row). Structured spreadsheet columns land in `knowledge.attributes` (jsonb); Skip means explicit discard only. Do **not** assume every worksheet represents Knowledge rows: only `knowledge_data` sheets create candidates by default; `reference_context` sheets may inform interpretation and remain attached as provenance; `not_for_knowledge` sheets are excluded unless an admin overrides. If interpretation confidence is low, default to `reference_context`, not `knowledge_data`.
+
+**Org uploads (future/customer):** same `ai-doc-analyse` extraction; default scope `organisation` via `create_knowledge_candidate` — not platform admin bulk RPCs.
+
+**Standard attribute keys (conventions, not columns):** `category`, `legal_status`, `applies_when`, `action`, `frequency`, `timing`, `evidence`, `responsible_party`, `professional_required`, `insurance_relevance`, `risk_or_consequence`, `priority`, `lead_time_days`, `app_logic`, plus custom slug keys from source headers.
 
 ## Content Tree (internal)
 

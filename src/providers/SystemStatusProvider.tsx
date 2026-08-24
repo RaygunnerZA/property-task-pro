@@ -98,6 +98,22 @@ export function SystemStatusProvider({ children }: SystemStatusProviderProps) {
       });
       const healthOk = res.ok;
 
+      // #region agent log
+      fetch("http://127.0.0.1:7410/ingest/6d369163-f131-49c2-8952-c57e2a819080", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "bec20f" },
+        body: JSON.stringify({
+          sessionId: "bec20f",
+          runId: "verify-key",
+          hypothesisId: "G",
+          location: "src/providers/SystemStatusProvider.tsx:heartbeat",
+          message: "auth health ping with apikey",
+          data: { healthOk, healthStatus: res.status, sentApiKey: Boolean(publishableKey) },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+
       if (!healthOk) {
         setSupabaseHealthy(false);
         setLastError("Unable to reach database");

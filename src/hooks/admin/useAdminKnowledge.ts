@@ -13,6 +13,13 @@ import type {
   KnowledgeRow,
   KnowledgeStatus,
 } from "@/types/knowledge";
+import {
+  PLATFORM_AI_ORG_ID,
+  type DocAnalysePayload,
+  type KnowledgeSourceProvenance,
+  type ProposedKnowledgeCandidate,
+} from "@/lib/knowledge/knowledgeDocumentIntake";
+import type { WorkbookManifest } from "@/lib/knowledge/knowledgeSheetParse";
 
 export type AdminKnowledgeMetricsRow = {
   org_id: string;
@@ -188,13 +195,18 @@ export function useAdminBulkCreateKnowledgeCandidates() {
       mime?: string;
       storageBucket?: string | null;
       storagePath?: string | null;
-      columnMapping: Record<string, string>;
+      columnMapping: Record<string, unknown>;
+      sheetNames?: string[];
+      batchMetadata?: Record<string, unknown>;
       candidates: Array<{
         title: string;
         summary?: string;
         body?: string;
         applicability: KnowledgeApplicability;
+        attributes?: Record<string, string>;
+        provenance?: Record<string, string>;
         source_row?: number;
+        sheet_name?: string;
       }>;
     }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -207,7 +219,11 @@ export function useAdminBulkCreateKnowledgeCandidates() {
           p_storage_path: input.storagePath ?? null,
           p_row_count: input.candidates.length,
           p_column_mapping: input.columnMapping,
-          p_metadata: {},
+          p_metadata: {
+            sheet_names: input.sheetNames ?? [],
+            multi_sheet: (input.sheetNames?.length ?? 0) > 1,
+            ...(input.batchMetadata ?? {}),
+          },
         }
       );
       if (batchErr) throw batchErr;
@@ -222,7 +238,10 @@ export function useAdminBulkCreateKnowledgeCandidates() {
             summary: c.summary ?? null,
             body: c.body ?? null,
             applicability: c.applicability,
+            attributes: c.attributes ?? {},
+            provenance: c.provenance ?? {},
             source_row: c.source_row ?? null,
+            sheet_name: c.sheet_name ?? null,
           })),
         }
       );
@@ -253,7 +272,7 @@ export function useAdminUploadKnowledgeIntakeFile() {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
-      const safe = file.name.replace(/[^\w.\-]+/g, "_").slice(0, 120);
+      const safe = file.name.replace(/[^\w.-]+/g, "_").slice(0, 120);
       const path = `platform/${user.id}/${crypto.randomUUID()}-${safe}`;
       const { error } = await supabase.storage.from("knowledge-intake").upload(path, file, {
         contentType: file.type || "application/octet-stream",
@@ -261,6 +280,189 @@ export function useAdminUploadKnowledgeIntakeFile() {
       });
       if (error) throw error;
       return { bucket: "knowledge-intake", path, filename: file.name, mime: file.type };
+    },
+  });
+}
+
+export type KnowledgeIntakeStorage = {
+  bucket: string;
+  path: string;
+  filename: string;
+  mime: string;
+};
+
+/** Run ai-doc-analyse in knowledge_intake mode (proposals only — no DB writes). */
+export function useAdminAnalyseKnowledgeDocument() {
+  return useMutation({
+    mutationFn: async (storage: KnowledgeIntakeStorage) => {
+      const { data: signed, error: signErr } = await supabase.storage
+        .from(storage.bucket)
+        .createSignedUrl(storage.path, 3600);
+      if (signErr || !signed?.signedUrl) {
+        throw signErr ?? new Error("Could not sign storage URL");
+      }
+
+      const { data, error } = await supabase.functions.invoke("ai-doc-analyse", {
+        body: {
+          file_url: signed.signedUrl,
+          file_name: storage.filename,
+          org_id: PLATFORM_AI_ORG_ID,
+          knowledge_intake: true,
+        },
+      });
+      if (error) throw error;
+
+      const payload = (data ?? {}) as DocAnalysePayload;
+      if (payload.ok === false || payload.skipped || payload.error === "ai_allowance_exhausted") {
+        throw new Error(payload.error ?? "Document analysis skipped");
+      }
+      return payload;
+    },
+  });
+}
+
+export type KnowledgeUrlIntakeResult = {
+  ok: boolean;
+  storage: KnowledgeIntakeStorage;
+  source: KnowledgeSourceProvenance & { final_url?: string };
+  analysis: DocAnalysePayload;
+};
+
+export type WorkbookSheetInterpretationResult = {
+  sheet_name: string;
+  classification: "knowledge_data" | "context" | "exclude";
+  confidence: number;
+  reason: string;
+  row_semantics: string;
+  related_sheets: string[];
+  should_create_candidates: boolean;
+};
+
+export type WorkbookInterpretationResult = {
+  ok?: boolean;
+  interpretation_status?: "ok" | "fallback";
+  interpretation_error?: string | null;
+  sheets: WorkbookSheetInterpretationResult[];
+};
+
+/** Safe URL fetch + storage + ai-doc-analyse (platform admin only). */
+export function useAdminAnalyseKnowledgeUrl() {
+  return useMutation({
+    mutationFn: async (url: string) => {
+      const trimmed = url.trim();
+      if (!trimmed) throw new Error("URL required");
+
+      const { data, error } = await supabase.functions.invoke("knowledge-intake-url", {
+        body: { url: trimmed },
+      });
+      if (error) throw error;
+
+      const payload = data as KnowledgeUrlIntakeResult & { error?: string };
+      if (!payload?.ok) throw new Error(payload.error ?? "URL intake failed");
+      return payload;
+    },
+  });
+}
+
+export function useAdminInterpretKnowledgeWorkbook() {
+  return useMutation({
+    mutationFn: async (manifest: WorkbookManifest) => {
+      const { data, error } = await supabase.functions.invoke("ai-doc-analyse", {
+        body: {
+          org_id: PLATFORM_AI_ORG_ID,
+          file_name: "workbook-manifest.json",
+          workbook_manifest: manifest,
+        },
+      });
+      if (error) throw error;
+      const payload = data as WorkbookInterpretationResult & {
+        ok?: boolean;
+        skipped?: boolean;
+        error?: string;
+      };
+      if (payload.skipped || payload.error === "ai_allowance_exhausted") {
+        throw new Error(payload.error ?? "Workbook interpretation skipped");
+      }
+      return payload;
+    },
+  });
+}
+
+export function useAdminImportKnowledgeProposals() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      filename: string;
+      mime?: string;
+      storage: KnowledgeIntakeStorage | null;
+      intakeMode: "upload" | "url" | "manual";
+      source: KnowledgeSourceProvenance;
+      proposals: ProposedKnowledgeCandidate[];
+    }) => {
+      const selected = input.proposals.filter((p) => p.selected);
+      if (!selected.length) throw new Error("No candidates selected");
+
+      for (const p of selected) {
+        if (
+          p.applicability.jurisdictions.length === 0 &&
+          !p.applicability.unscoped
+        ) {
+          throw new Error(`Applicability required for “${p.title}”`);
+        }
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: batch, error: batchErr } = await (supabase as any).rpc(
+        "admin_create_knowledge_intake_batch",
+        {
+          p_source_filename: input.filename,
+          p_source_mime: input.mime ?? null,
+          p_storage_bucket: input.storage?.bucket ?? null,
+          p_storage_path: input.storage?.path ?? null,
+          p_row_count: selected.length,
+          p_column_mapping: {},
+          p_metadata: {
+            intake_mode: input.intakeMode,
+            source: input.source,
+          },
+        }
+      );
+      if (batchErr) throw batchErr;
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc(
+        "admin_bulk_create_platform_knowledge_candidates",
+        {
+          p_batch_id: batch.id,
+          p_candidates: selected.map((p) => ({
+            title: p.title,
+            summary: p.summary || null,
+            body: p.body || null,
+            applicability: p.applicability,
+            attributes: p.attributes,
+            provenance: {
+              ...p.provenance,
+              ...input.source,
+              intake_mode: input.intakeMode,
+            },
+          })),
+        }
+      );
+      if (error) throw error;
+
+      const result = data as { batch_id: string; created_count: number; knowledge_ids: string[] };
+      for (const id of result.knowledge_ids ?? []) {
+        try {
+          await invokeKnowledgeCritic(id);
+        } catch (err) {
+          console.error("knowledge-critic failed for", id, err);
+        }
+      }
+      return result;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-metrics"] });
     },
   });
 }

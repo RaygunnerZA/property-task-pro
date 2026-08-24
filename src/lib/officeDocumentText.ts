@@ -32,7 +32,8 @@ function findEocd(bytes: Uint8Array): number {
   return -1;
 }
 
-async function readZipEntry(bytes: Uint8Array, wanted: string): Promise<Uint8Array | null> {
+/** Read one path from a ZIP (central directory preferred; used by Knowledge XLSX parse). */
+export async function readZipEntry(bytes: Uint8Array, wanted: string): Promise<Uint8Array | null> {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const eocd = findEocd(bytes);
   if (eocd < 0) return readZipEntryLocal(bytes, wanted);

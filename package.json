@@ -24,6 +24,7 @@
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "preview": "vite preview",
     "check:edge-functions": "node scripts/check-edge-functions.mjs",
+    "smoke:knowledge-ai": "node scripts/smoke-knowledge-ai.mjs",
     "eval:ai": "node scripts/run-ai-eval.mjs",
     "db:diagnose": "node scripts/supabase-db-bootstrap.mjs",
     "db:push": "supabase db push",

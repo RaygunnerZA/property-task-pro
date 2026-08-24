@@ -3,6 +3,7 @@
 const MEANINGLESS_TYPE_VALUES = new Set([
   "none",
   "unknown",
+  "uncertain",
   "n/a",
   "na",
   "null",

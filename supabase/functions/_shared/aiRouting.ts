@@ -33,7 +33,7 @@ export const STRATEGIES: Record<string, Strategy> = {
     id: "model:gemini-2.0-flash",
     kind: "model",
     provider: "GEMINI",
-    model: "gemini-2.0-flash",
+    model: "gemini-3.6-flash",
     vision: true,
     pdf: true,
     structuredJson: true,
@@ -86,6 +86,7 @@ export const STRATEGIES: Record<string, Strategy> = {
 export type Capability =
   | "task_extraction"
   | "document_analysis"
+  | "workbook_interpretation"
   | "photo_asset_identification"
   | "compliance_clause_rewrite"
   | "knowledge_critique"
@@ -128,6 +129,12 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
     functionName: "ai-doc-analyse",
     promptVersion: "doc-analysis-v2",
     requires: { vision: true, structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  workbook_interpretation: {
+    functionName: "ai-doc-analyse",
+    promptVersion: "workbook-interpret-v1",
+    requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   photo_asset_identification: {

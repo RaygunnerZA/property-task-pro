@@ -15,6 +15,52 @@ export type KnowledgeSourceKind =
 
 export type KnowledgeAudience = "owner" | "manager" | "field" | "tenant" | "public";
 
+const AUDIENCE_ALIASES: Record<string, KnowledgeAudience> = {
+  owner: "owner",
+  landlord: "owner",
+  homeowner: "owner",
+  proprietor: "owner",
+  freeholder: "owner",
+  manager: "manager",
+  "property manager": "manager",
+  "managing agent": "manager",
+  agent: "manager",
+  admin: "manager",
+  administrator: "manager",
+  field: "field",
+  staff: "field",
+  operative: "field",
+  technician: "field",
+  contractor: "field",
+  tradesperson: "field",
+  tenant: "tenant",
+  resident: "tenant",
+  renter: "tenant",
+  occupant: "tenant",
+  leaseholder: "tenant",
+  public: "public",
+  anyone: "public",
+  general: "public",
+  consumer: "public",
+};
+
+/** Map spreadsheet audience labels to canonical roles; drop unknowns. */
+export function canonicalizeKnowledgeAudiences(raw: string[]): KnowledgeAudience[] {
+  const out = new Set<KnowledgeAudience>();
+  for (const cell of raw) {
+    const parts = cell
+      .toLowerCase()
+      .split(/\s*(?:,|;|\||\/|&|\+|\band\b)\s*/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    for (const part of parts) {
+      const mapped = AUDIENCE_ALIASES[part];
+      if (mapped) out.add(mapped);
+    }
+  }
+  return [...out];
+}
+
 /** Canonical applicability shape stored on knowledge.applicability */
 export type KnowledgeApplicability = {
   jurisdictions: string[];
@@ -42,6 +88,8 @@ export interface KnowledgeRow {
   summary: string | null;
   body: string | null;
   content: Record<string, unknown>;
+  /** Structured facts from intake / type-specific fields (freeform object). */
+  attributes?: Record<string, unknown>;
   source_kind: KnowledgeSourceKind;
   trust_score: number | null;
   provenance: Record<string, unknown>;

@@ -115,11 +115,16 @@ function sortRecentlyAdded(tasks: any[]) {
 
 function sortByLatestMessage(
   tasks: any[],
-  latestByTask: Record<string, { createdAt: string }>
+  latestByTask: Record<string, { createdAt: string; isUnread?: boolean }>
 ) {
   return [...tasks].sort((a, b) => {
-    const aAt = latestByTask[String(a.id)]?.createdAt ?? a.created_at ?? 0;
-    const bAt = latestByTask[String(b.id)]?.createdAt ?? b.created_at ?? 0;
+    const aPreview = latestByTask[String(a.id)];
+    const bPreview = latestByTask[String(b.id)];
+    const aUnread = Boolean(aPreview?.isUnread);
+    const bUnread = Boolean(bPreview?.isUnread);
+    if (aUnread !== bUnread) return aUnread ? -1 : 1;
+    const aAt = aPreview?.createdAt ?? a.created_at ?? 0;
+    const bAt = bPreview?.createdAt ?? b.created_at ?? 0;
     return new Date(bAt).getTime() - new Date(aAt).getTime();
   });
 }
@@ -240,11 +245,12 @@ export function TasksWorkbenchPanel({
     [messageTasks, latestByTask]
   );
 
-  /** Authors for the Messages filter strip — scoped to visible message tasks, unique, newest first. */
+  /** Authors for the Messages filter strip — unread authors first, then newest. */
   const scopedMessageAuthors = useMemo(() => {
     const seen = new Set<string>();
     const authors: typeof recentAuthors = [];
-    for (const task of messageTasks) {
+    const orderedTasks = sortByLatestMessage(messageTasks, latestByTask);
+    for (const task of orderedTasks) {
       const preview = latestByTask[String(task.id)];
       if (!preview) continue;
       const key = preview.authorUserId ?? `name:${preview.authorName}`;
@@ -277,9 +283,12 @@ export function TasksWorkbenchPanel({
       selectedPropertyIds,
       searchQuery,
     });
-    // "recent" on Messages = latest message order (already applied). Other sorts override.
+    // Default Messages order: new (unread) first, then most recent message.
+    // Other sorts override that.
     if (sortBy !== "recent") {
       list = sortTasksByWorkbenchSort(list, sortBy);
+    } else {
+      list = sortByLatestMessage(list, latestByTask);
     }
     return list;
   }, [

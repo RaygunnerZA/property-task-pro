@@ -26,6 +26,7 @@ import {
   aiOpsMeteringKey,
   type AiOpsGate,
 } from "./aiEntitlements.ts";
+import { hasGeminiProvider } from "./geminiKeys.ts";
 import {
   CAPABILITIES,
   TimeoutError,
@@ -97,9 +98,9 @@ export interface RunCapabilityResult<T> {
 
 function availableProviders(): Provider[] {
   const providers: Provider[] = [];
-  if (Deno.env.get("GEMINI_API_KEY")) providers.push("GEMINI");
+  if (hasGeminiProvider()) providers.push("GEMINI");
   if (Deno.env.get("OPENAI_API_KEY")) providers.push("OPENAI");
-  if (Deno.env.get("LOVABLE_API_KEY")) providers.push("LOVABLE");
+
   return providers;
 }
 

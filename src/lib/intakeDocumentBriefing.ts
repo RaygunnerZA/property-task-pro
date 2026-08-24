@@ -1,4 +1,4 @@
-import { mapIntakeDocumentType, normalizeIntakeExpiryDate } from "@/lib/mapIntakeDocumentType";
+import { mapIntakeDocumentType, normalizeIntakeExpiryDate, inferExpiryFromOcrText, naturalLanguageRecordTitle } from "@/lib/mapIntakeDocumentType";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
 
 export type IntakeDocOutcome =
@@ -59,17 +59,21 @@ function inferTypeFromText(text: string): string | null {
   const trimmed = text.trim();
   if (!trimmed) return null;
   if (/^(other|misc|uncertain|document|upload)$/i.test(trimmed)) return null;
-  if (trimmed.length <= 80) {
-    const mapped = mapIntakeDocumentType(trimmed);
-    if (mapped && !/^(other|misc)$/i.test(mapped.type)) return mapped.type;
-  }
-  const value = text.toLowerCase();
+
+  const value = trimmed.toLowerCase().replace(/[_./\\-]+/g, " ");
   if (/\beicr\b|electrical(?:\s+installation)?\s+condition/.test(value)) return "EICR";
+  if (/\bepc\b|energy performance/.test(value)) return "EPC";
   if (/\bgas\s*safe|gas safety/.test(value)) return "Gas Safety Certificate";
   if (/\bpat\b|portable appliance/.test(value)) return "PAT Test";
   if (/\bfire\s+risk/.test(value)) return "Fire Risk Assessment";
   if (/\bfire\b/.test(value) && /\bcertificate\b/.test(value)) return "Fire Certificate";
   if (/\binvoice\b|\breceipt\b|\bquote\b/.test(value)) return "Invoice";
+
+  if (trimmed.length <= 80 && !/\.[a-z0-9]{2,5}$/i.test(trimmed)) {
+    const mapped = mapIntakeDocumentType(trimmed);
+    if (mapped && !/^(other|misc)$/i.test(mapped.type)) return mapped.type;
+  }
+
   return null;
 }
 
@@ -91,7 +95,7 @@ function extractedRecord(artifact: IntakeSourceArtifact): Record<string, unknown
 function titleFromStem(fileName: string | null): string {
   const human = humanizeIntakeFileStem(fileName);
   return human
-    .replace(/\b(unsatisfactory|satisfactory|failed|fail|pass|passed|expired)\b/gi, "")
+    .replace(/\b(unsatisfactory|satisfactory|failed|fail|pass|passed|expired|valid)\b/gi, "")
     .replace(/\s+/g, " ")
     .trim() || human;
 }
@@ -108,20 +112,26 @@ export function buildIntakeDocumentBriefing(
     .filter(Boolean)
     .join("\n");
 
+  const rawType = String(extracted.document_type || artifact.aiClassification || "");
+  const mappedType = mapIntakeDocumentType(rawType);
+  const mappedIsOther = mappedType?.type && /^other$/i.test(mappedType.type);
   const documentType =
-    inferTypeFromText(String(extracted.document_type || artifact.aiClassification || "")) ||
+    (mappedType && !mappedIsOther ? mappedType.type : null) ||
+    inferTypeFromText(rawType) ||
     inferTypeFromText(combined);
 
   const outcomeFromAi = inferOutcomeFromText(String(extracted.outcome || extracted.status || ""));
   const outcome =
     outcomeFromAi !== "unknown" ? outcomeFromAi : inferOutcomeFromText(combined);
 
-  const expiryDate = normalizeIntakeExpiryDate(
-    (extracted.expiry_date as string | undefined) || (extracted.expiry_date_hint as string | undefined)
-  );
+  const expiryDate =
+    normalizeIntakeExpiryDate(
+      (extracted.expiry_date as string | undefined) || (extracted.expiry_date_hint as string | undefined)
+    ) || inferExpiryFromOcrText(ocr);
 
   const aiTitle = String(extracted.title || "").trim();
   const title =
+    naturalLanguageRecordTitle(documentType) ||
     (aiTitle && !isStub && !/^[0-9]+[_\-]/.test(aiTitle) ? aiTitle : "") ||
     titleFromStem(artifact.fileName);
 
@@ -129,13 +139,8 @@ export function buildIntakeDocumentBriefing(
     ? (extracted.findings as unknown[]).map((item) => String(item).trim()).filter(Boolean).slice(0, 6)
     : [];
 
-  const provenance: IntakeReadProvenance = ocr.length >= 40 && !isStub ? "document" : ocr.length >= 40 ? "document" : artifact.fileName ? "filename" : "none";
-
-  // If we extracted office text locally, that is a real document read even when AI stubbed.
   const effectiveProvenance: IntakeReadProvenance =
-    (officeText && officeText.trim().length >= 40) || (ocr.length >= 40 && !isStub)
-      ? "document"
-      : provenance;
+    ocr.length >= 40 ? "document" : artifact.fileName ? "filename" : "none";
 
   const excerpt = (officeText?.trim() || ocr).slice(0, 900);
 

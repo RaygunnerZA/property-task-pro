@@ -53,6 +53,19 @@ function QueueRow({
             </span>
           )}
         </div>
+        {row.attributes &&
+          typeof row.attributes === "object" &&
+          Object.keys(row.attributes).length > 0 && (
+            <p className="text-xs text-muted-foreground truncate pt-1">
+              attrs:{" "}
+              {Object.keys(row.attributes)
+                .slice(0, 8)
+                .join(", ")}
+              {Object.keys(row.attributes).length > 8
+                ? ` +${Object.keys(row.attributes).length - 8}`
+                : ""}
+            </p>
+          )}
       </div>
       <div className="flex flex-wrap gap-2">
         {row.status === "candidate" && (
@@ -150,7 +163,7 @@ export default function AdminKnowledgeQueue() {
   const tabs: { id: AdminKnowledgeTab; label: string }[] = [
     { id: "review", label: "Review queue" },
     { id: "publishing", label: "Publishing" },
-    { id: "intake", label: "Intake" },
+    { id: "intake", label: "Add Knowledge" },
     { id: "content", label: "Content tree" },
     { id: "metrics", label: "Metrics" },
   ];
@@ -164,7 +177,7 @@ export default function AdminKnowledgeQueue() {
             Knowledge
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Intake → review → content tree. Critic is mandatory; nothing auto-publishes.
+            Add Knowledge → review → content tree. Critic is mandatory; nothing auto-publishes.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

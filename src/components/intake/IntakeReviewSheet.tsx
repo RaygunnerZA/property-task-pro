@@ -24,6 +24,7 @@ import { useIntakeItemsInvalidator } from "@/hooks/useIntakeItems";
 import { useToast } from "@/hooks/use-toast";
 import type { IntakeMode } from "@/types/intake";
 import type { IntakeReviewPayload } from "@/components/intake/IntakeInboxPanel";
+import type { IntakeItemStatus, IntakeSourceArtifact } from "@/types/intake-item";
 import {
   formatIntakeFileSize,
   isImageMime,
@@ -72,10 +73,58 @@ export function IntakeReviewSheet({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [officeText, setOfficeText] = useState<string | null>(null);
   const [dismissing, setDismissing] = useState(false);
+  const [artifact, setArtifact] = useState<IntakeSourceArtifact | null>(payload?.sourceArtifact ?? null);
+  const [itemStatus, setItemStatus] = useState<IntakeItemStatus | null>(null);
 
-  const artifact = payload?.sourceArtifact;
+  useEffect(() => {
+    setArtifact(payload?.sourceArtifact ?? null);
+    setItemStatus(null);
+  }, [payload?.sourceArtifact?.intakeItemId]);
+
+  useEffect(() => {
+    if (!open || !payload?.sourceArtifact?.intakeItemId) return;
+
+    let cancelled = false;
+    let timer: number | undefined;
+
+    const load = async () => {
+      const { data, error } = await supabase
+        .from("intake_items")
+        .select("*")
+        .eq("id", payload.sourceArtifact.intakeItemId)
+        .maybeSingle();
+      if (cancelled || error || !data) return;
+
+      setItemStatus(data.status as IntakeItemStatus);
+      setArtifact({
+        intakeItemId: data.id,
+        storagePath: data.storage_path,
+        fileName: data.file_name,
+        mimeType: data.mime_type || payload.sourceArtifact.mimeType,
+        rawText: data.raw_text,
+        sourceType: data.source_type,
+        aiClassification: data.ai_classification,
+        aiExtracted: (data.ai_extracted as Record<string, unknown> | null) ?? null,
+      });
+
+      if (data.status === "pending" || data.status === "processing") {
+        timer = window.setTimeout(() => {
+          void load();
+        }, 2500);
+      }
+    };
+
+    void load();
+
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, [open, payload?.sourceArtifact]);
+
   const suggestedMode = artifact ? suggestIntakeMode(artifact) : "add_record";
   const briefing = artifact ? buildIntakeDocumentBriefing(artifact, officeText) : null;
+  const scanStillRunning = itemStatus === "pending" || itemStatus === "processing";
   const fileSizeLabel = formatIntakeFileSize(payload?.fileSize ?? null);
   const isImage = artifact ? isImageMime(artifact.mimeType) : false;
   const isPdf = artifact ? isPdfMime(artifact.mimeType, artifact.fileName) : false;
@@ -241,6 +290,12 @@ export function IntakeReviewSheet({
           <p className="text-sm leading-relaxed text-foreground">{briefing.summary}</p>
 
           <dl className="divide-y divide-border/40">
+            {scanStillRunning ? (
+              <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                Reading document…
+              </div>
+            ) : null}
             <FactRow label="Type" value={briefing.documentType || "Not identified"} />
             <FactRow label="Outcome" value={intakeOutcomeLabel(briefing.outcome)} />
             <FactRow
