@@ -101,7 +101,9 @@ function proposalRow(
   };
 }
 
-/** Build 1–8 distinct candidates from extractor output (document = source, not one row). */
+/** Build 1–8 distinct candidates from extractor output (document = source, not one row).
+ * Cap is intentional UX for human review — not a hard system limit. Re-run intake or
+ * split the source if a document yields more than eight durable insights. */
 export function proposalsFromDocAnalysis(
   analysis: DocAnalysePayload,
   source: KnowledgeSourceProvenance

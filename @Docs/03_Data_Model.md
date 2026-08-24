@@ -15,7 +15,7 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 **Platform administration (Phase 2 — read-only `/admin`):**
 *   `platform_admins` — `user_id` (PK → `auth.users`), `added_by`, `added_at`, `notes`. Separate privilege from org membership; grants cross-org **read** only via SECURITY DEFINER RPCs. RLS: authenticated users may SELECT their own row (`user_id = auth.uid()`); no app-level INSERT/DELETE. Rows are added in the Supabase dashboard or a controlled migration.
 *   `is_platform_admin()` — stable SQL helper (SECURITY DEFINER) used by RPCs and the frontend guard.
-*   Sentinel org UUID `00000000-0000-0000-0000-000000000000` — reserved `_platform` row in `organisations` so platform-scoped `audit_logs` rows can satisfy `org_id` FK; real org list queries exclude this id.
+*   Sentinel org UUID `00000000-0000-0000-0000-000000000000` — reserved `_platform` row in `organisations` so platform-scoped `audit_logs` rows can satisfy `org_id` FK; real org list queries exclude this id (`admin_list_orgs` WHERE, and `organisations_slug_lookup` excludes the sentinel so it is never client-readable via the open slug policy).
 *   Admin RPCs (each checks admin, logs to `audit_logs`, returns empty if not admin): `admin_list_orgs`, `admin_get_org`, `admin_list_org_members`, `admin_get_org_activity`, `admin_get_org_ai_requests`, `admin_list_knowledge_review_queue`, `admin_get_knowledge`, `admin_set_knowledge_status`, `admin_upsert_platform_knowledge`, `admin_knowledge_metrics_snapshot`.
 
 **Properties & Assets:**
