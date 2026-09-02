@@ -90,6 +90,7 @@ export type Capability =
   | "photo_asset_identification"
   | "compliance_clause_rewrite"
   | "knowledge_critique"
+  | "knowledge_guidance_draft"
   | "plan_label_extraction";
 
 export interface CapabilityRequirements {
@@ -127,7 +128,7 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   },
   document_analysis: {
     functionName: "ai-doc-analyse",
-    promptVersion: "doc-analysis-v2",
+    promptVersion: "doc-analysis-v3",
     requires: { vision: true, structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
@@ -157,8 +158,16 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
     functionName: "knowledge-critic",
     promptVersion: "knowledge-critic-v1",
     requires: { structuredJson: true },
-    order: ["model:gpt-4o-mini", "model:gemini-2.0-flash"],
+    // Prefer Gemini so OpenAI quota does not block the mandatory critic.
+    // mustDifferFrom still skips Gemini when the extractor already used it.
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
     requireDistinctProvider: true,
+  },
+  knowledge_guidance_draft: {
+    functionName: "knowledge-generate-guidance",
+    promptVersion: "knowledge-guidance-draft-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   plan_label_extraction: {
     functionName: "building-plan-process",

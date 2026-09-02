@@ -18,6 +18,28 @@ import {
   isMeaningfulSuggestedType,
 } from "@/lib/intakeWorkflowSignals";
 import { hintsFromImageAnalysis } from "@/lib/mapIntakeDocumentType";
+import { useCyclingScanMessage } from "@/hooks/useCyclingScanMessage";
+import { formatIntakeDateDisplay } from "@/lib/intakeDocumentDates";
+
+function CyclingScanStatus({ variant }: { variant: "document" | "image" }) {
+  const message = useCyclingScanMessage(true, variant);
+  return (
+    <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
+      <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
+function CyclingFullScanStatus({ isAddRecord }: { isAddRecord: boolean }) {
+  const message = useCyclingScanMessage(true, isAddRecord ? "document" : "image");
+  return (
+    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
+      <span>{isAddRecord ? message : "Running compliance scan…"}</span>
+    </div>
+  );
+}
 
 export type PendingTaskFile = PendingIntakeFile;
 
@@ -371,12 +393,7 @@ export function ImageUploadSection({
                       </div>
                     )}
                     {panel.kind === "full_scanning" && (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-primary" />
-                        <span>
-                          {intakeMode === "add_record" ? "Reading document…" : "Running compliance scan…"}
-                        </span>
-                      </div>
+                      <CyclingFullScanStatus isAddRecord={intakeMode === "add_record"} />
                     )}
                     {panel.kind === "router_ui" && panel.branch === "task" && (
                       <div className="space-y-2">
@@ -502,25 +519,42 @@ export function ImageUploadSection({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-medium text-foreground">{file.display_name}</p>
                 {file.scanStatus === "scanning" ? (
-                  <div className="mt-0.5 flex items-center gap-1.5 text-caption text-muted-foreground">
-                    <Loader2 className="h-3 w-3 shrink-0 animate-spin text-primary" />
-                    <span>Reading document…</span>
-                  </div>
+                  <CyclingScanStatus variant="document" />
                 ) : file.scanStatus === "error" ? (
                   <p className="text-caption text-muted-foreground">
-                    Couldn&apos;t read details — add them below if needed.
+                    {file.scanWasStub
+                      ? "Couldn’t fully read this PDF — add type and dates below."
+                      : "Couldn’t read details — add them below if needed."}
                   </p>
-                ) : file.scanStatus === "done" && (scanType || formattedExpiry) ? (
+                ) : file.scanStatus === "done" &&
+                  (scanType ||
+                    formattedExpiry ||
+                    (file.scanImportantDates?.length ?? 0) > 0 ||
+                    (file.scanNextSteps?.length ?? 0) > 0) ? (
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {scanType ? (
                       <span className="inline-flex rounded-sharp bg-input px-[9px] py-0.5 text-caption font-medium text-foreground shadow-sm">
                         {scanType}
                       </span>
                     ) : null}
-                    {formattedExpiry ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-caption font-medium text-foreground shadow-e1">
+                    {(file.scanImportantDates?.length
+                      ? file.scanImportantDates.slice(0, 3)
+                      : formattedExpiry
+                        ? [{ id: "exp", label: "Expiry", date: file.scanExpiryDate! }]
+                        : []
+                    ).map((d) => (
+                      <span
+                        key={d.id}
+                        className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-0.5 text-caption font-medium text-foreground shadow-e1"
+                      >
                         <CalendarDays className="h-3 w-3 text-primary" />
-                        Expiry {formattedExpiry}
+                        {d.label} {formatIntakeDateDisplay(d.date)}
+                      </span>
+                    ))}
+                    {(file.scanNextSteps?.length ?? 0) > 0 ? (
+                      <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-foreground">
+                        {file.scanNextSteps!.length} next step
+                        {file.scanNextSteps!.length === 1 ? "" : "s"}
                       </span>
                     ) : null}
                   </div>

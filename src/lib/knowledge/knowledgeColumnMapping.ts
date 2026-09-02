@@ -5,6 +5,7 @@
 
 import type { KnowledgeApplicability } from "@/types/knowledge";
 import { canonicalizeKnowledgeAudiences } from "@/types/knowledge";
+import { resolveImportedDraftGuidance } from "@/lib/knowledge/knowledgeDraftGuidance";
 
 export type SheetGridLike = {
   headers: string[];
@@ -45,7 +46,17 @@ export type ColumnMappingSuggestion = {
 
 export type ColumnMappingSuggestions = Record<string, ColumnMappingSuggestion>;
 
-export type IntakeProvenance = Partial<Record<ProvenanceField, string>>;
+export type IntakeProvenance = Partial<Record<ProvenanceField, string>> & {
+  /** Set when summary/body was filled from imported action/task/notes (still unverified). */
+  guidance_draft?: {
+    source: string;
+    proposed_at: string;
+    supported_by: string[];
+    unverified: true;
+    model?: string | null;
+    provider?: string | null;
+  };
+};
 
 export type MappedKnowledgeDraft = {
   title: string;
@@ -97,10 +108,11 @@ const PROVENANCE_ALIASES: Record<ProvenanceField, string[]> = {
   source_url: [
     "official source url",
     "source url",
-    "official source",
     "source link",
+    "official url",
+    "url",
   ],
-  citation: ["citation", "cite", "reference"],
+  citation: ["citation", "cite", "reference", "official source"],
   source_document: ["source document", "source doc", "filename"],
   reviewed_date: ["last reviewed", "review date", "reviewed date", "reviewed"],
   verification_status: ["verification status", "verification"],
@@ -443,6 +455,31 @@ function splitMulti(value: string): string[] {
     .filter(Boolean);
 }
 
+/** Reject spreadsheet row numbers / cell refs masquerading as prose or URLs. */
+export function isRowNumberOrCellRef(value: string): boolean {
+  const t = value.trim();
+  if (/^\d{1,6}$/.test(t)) return true;
+  if (/^[A-Za-z]{1,3}\d{1,6}$/.test(t)) return true;
+  if (/^row\s*\d+$/i.test(t)) return true;
+  return false;
+}
+
+export function isValidHttpUrlValue(value: string): boolean {
+  try {
+    const u = new URL(value.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function sanitizeGuidanceCell(value: string): string {
+  if (!value.trim()) return "";
+  if (isRowNumberOrCellRef(value)) return "";
+  if (!/[A-Za-zÀ-ÿ]/.test(value)) return "";
+  return value.trim();
+}
+
 function cellFor(
   headerIndex: Map<string, number>,
   row: string[],
@@ -470,15 +507,19 @@ export function applyColumnMapping(
     const title = cellFor(headerIndex, row, titleHeader);
     if (!title) return;
 
-    const summary = cellFor(
-      headerIndex,
-      row,
-      findHeader((v) => v.dest === "core" && v.field === "summary")
+    const summaryRaw = sanitizeGuidanceCell(
+      cellFor(
+        headerIndex,
+        row,
+        findHeader((v) => v.dest === "core" && v.field === "summary")
+      )
     );
-    const body = cellFor(
-      headerIndex,
-      row,
-      findHeader((v) => v.dest === "core" && v.field === "body")
+    const bodyRaw = sanitizeGuidanceCell(
+      cellFor(
+        headerIndex,
+        row,
+        findHeader((v) => v.dest === "core" && v.field === "body")
+      )
     );
 
     const jurisdictions = splitMulti(
@@ -496,10 +537,44 @@ export function applyColumnMapping(
       const cell = cellFor(headerIndex, row, header);
       if (!cell) continue;
       if (value.dest === "attribute") {
+        if (
+          (value.key === "action" ||
+            value.key === "notes" ||
+            value.key === "guidance" ||
+            value.key === "task") &&
+          isRowNumberOrCellRef(cell)
+        ) {
+          continue;
+        }
         attributes[value.key] = cell;
       } else if (value.dest === "provenance") {
-        provenance[value.field] = cell;
+        if (value.field === "source_url") {
+          if (isValidHttpUrlValue(cell)) {
+            provenance.source_url = cell.trim();
+          } else if (!isRowNumberOrCellRef(cell)) {
+            provenance.citation = provenance.citation || cell;
+          }
+        } else {
+          provenance[value.field] = cell;
+        }
       }
+    }
+
+    // Promote owner action / task / notes into draft guidance when core fields empty.
+    const resolved = resolveImportedDraftGuidance({
+      summary: summaryRaw,
+      body: bodyRaw,
+      attributes,
+    });
+    const summary = resolved.summary ?? "";
+    const body = resolved.body ?? "";
+    if (resolved.isDraft && resolved.source !== "empty") {
+      provenance.guidance_draft = {
+        source: resolved.source,
+        proposed_at: new Date().toISOString(),
+        supported_by: resolved.supportedBy,
+        unverified: true,
+      };
     }
 
     drafts.push({

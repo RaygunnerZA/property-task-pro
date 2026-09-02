@@ -20,6 +20,10 @@ import {
   type ProposedKnowledgeCandidate,
 } from "@/lib/knowledge/knowledgeDocumentIntake";
 import type { WorkbookManifest } from "@/lib/knowledge/knowledgeSheetParse";
+import {
+  formatEdgeFunctionToast,
+  parseEdgeFunctionError,
+} from "@/lib/edgeFunctionErrors";
 
 export type AdminKnowledgeMetricsRow = {
   org_id: string;
@@ -68,6 +72,77 @@ async function invokeKnowledgeCritic(knowledgeId: string) {
   if (error) throw error;
 }
 
+async function invokeKnowledgeGenerateGuidance(
+  knowledgeIds: string[],
+  opts?: { mode?: "generate" | "improve"; persist?: boolean }
+) {
+  const { data, error, response } = await supabase.functions.invoke(
+    "knowledge-generate-guidance",
+    {
+      body:
+        knowledgeIds.length === 1
+          ? {
+              knowledge_id: knowledgeIds[0],
+              mode: opts?.mode ?? "generate",
+              persist: opts?.persist !== false,
+            }
+          : {
+              knowledge_ids: knowledgeIds,
+              mode: opts?.mode ?? "generate",
+              persist: opts?.persist !== false,
+            },
+    }
+  );
+
+  if (error) {
+    const info = await parseEdgeFunctionError(error, data);
+    if (!info.status && response) info.status = response.status;
+    const message = formatEdgeFunctionToast(info);
+    const err = new Error(message) as Error & {
+      code?: string;
+      requestId?: string;
+      status?: number;
+    };
+    err.code = info.code;
+    err.requestId = info.requestId;
+    err.status = info.status;
+    throw err;
+  }
+
+  const payload = data as {
+    ok: boolean;
+    generated: number;
+    mode?: string;
+    request_id?: string;
+    code?: string;
+    message?: string;
+    results: Array<{
+      id: string;
+      ok: boolean;
+      error?: string;
+      code?: string;
+      summary?: string;
+      persisted?: boolean;
+    }>;
+  };
+
+  if (payload && payload.ok === false && knowledgeIds.length === 1) {
+    const first = payload.results?.[0];
+    const info = {
+      message:
+        payload.message ||
+        first?.error ||
+        "Guidance could not be improved.",
+      code: payload.code || first?.code,
+      requestId: payload.request_id,
+    };
+    throw new Error(formatEdgeFunctionToast(info));
+  }
+
+  return payload;
+}
+
+
 export function useAdminKnowledgeQueue(statuses: KnowledgeStatus[] = ["candidate", "verified"]) {
   return useQuery({
     queryKey: ["admin-knowledge-queue", statuses.join(",")],
@@ -79,6 +154,23 @@ export function useAdminKnowledgeQueue(statuses: KnowledgeStatus[] = ["candidate
       });
       if (error) throw error;
       return (data ?? []) as KnowledgeRow[];
+    },
+  });
+}
+
+/** Canonical sources for one or many knowledge ids (list + detail agreement). */
+export function useAdminKnowledgeSources(knowledgeIds: string[]) {
+  const key = [...knowledgeIds].sort().join(",");
+  return useQuery({
+    queryKey: ["admin-knowledge-sources", key],
+    enabled: knowledgeIds.length > 0,
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_list_knowledge_sources", {
+        p_knowledge_ids: knowledgeIds,
+      });
+      if (error) throw error;
+      return (data ?? []) as KnowledgeSourceRow[];
     },
   });
 }
@@ -127,6 +219,112 @@ export function useAdminSetKnowledgeStatus() {
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-metrics"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+    },
+  });
+}
+
+export function useAdminRunKnowledgeCritic() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (knowledgeId: string) => {
+      await invokeKnowledgeCritic(knowledgeId);
+    },
+    onSuccess: (_data, knowledgeId) => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", knowledgeId] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+    },
+  });
+}
+
+export function useAdminGenerateKnowledgeGuidance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      knowledgeIds: string[];
+      mode?: "generate" | "improve";
+      persist?: boolean;
+    }) => {
+      if (input.knowledgeIds.length === 0) {
+        return { ok: true, generated: 0, results: [] };
+      }
+      return invokeKnowledgeGenerateGuidance(input.knowledgeIds, {
+        mode: input.mode,
+        persist: input.persist,
+      });
+    },
+    onSuccess: (_data, vars) => {
+      if (vars.persist === false) return;
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-missing-guidance"] });
+    },
+  });
+}
+
+export function useAdminMissingGuidanceCount() {
+  return useQuery({
+    queryKey: ["admin-knowledge-missing-guidance"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_count_knowledge_missing_guidance");
+      if (error) throw error;
+      return Number(data ?? 0);
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useAdminSetDraftGuidance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      knowledgeId: string;
+      summary: string;
+      body?: string | null;
+      draftMeta?: Record<string, unknown>;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_set_knowledge_draft_guidance", {
+        p_knowledge_id: input.knowledgeId,
+        p_summary: input.summary,
+        p_body: input.body ?? null,
+        p_draft_meta: input.draftMeta ?? {
+          source: "human_edit",
+          proposed_at: new Date().toISOString(),
+          supported_by: ["manual_edit"],
+          unverified: true,
+        },
+      });
+      if (error) throw error;
+      return data as KnowledgeRow;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-missing-guidance"] });
+    },
+  });
+}
+
+export function useAdminApplyDeterministicGuidance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (knowledgeIds?: string[]) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc(
+        "admin_apply_deterministic_draft_guidance",
+        { p_knowledge_ids: knowledgeIds?.length ? knowledgeIds : null }
+      );
+      if (error) throw error;
+      return data as { updated: number };
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-missing-guidance"] });
     },
   });
 }

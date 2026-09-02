@@ -8,6 +8,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  extractImportantDatesFromOcr,
+  mergeImportantDates,
+  normalizeImportantDates,
+  normalizeNextSteps,
+  primaryExpiryFromDates,
+} from "@/lib/intakeDocumentDates";
+import {
   mapIntakeDocumentType,
   normalizeIntakeExpiryDate,
   sanitizeScanTitle,
@@ -39,6 +46,12 @@ interface DocAnalysePayload {
   document_type?: string | null;
   expiry_date?: string | null;
   ocr_text?: string | null;
+  summary?: string | null;
+  outcome?: string | null;
+  findings?: string[];
+  important_dates?: Array<{ label?: string; date?: string; kind?: string }>;
+  compliance_recommendations?: string[];
+  metadata?: Record<string, unknown> | null;
 }
 
 function safeExtension(fileName: string): string {
@@ -54,6 +67,27 @@ function shouldSkipFile(file: PendingIntakeFile): boolean {
   const mime = (file.file_type || "").toLowerCase();
   if (mime.includes("zip") || mime.includes("executable")) return true;
   return false;
+}
+
+function mergeScanFields(
+  prev: PendingIntakeFile | undefined,
+  file: PendingIntakeFile
+): PendingIntakeFile {
+  return {
+    ...file,
+    scanStatus: file.scanStatus ?? prev?.scanStatus,
+    scanTitle: file.scanTitle !== undefined ? file.scanTitle : prev?.scanTitle,
+    scanDocumentType:
+      file.scanDocumentType !== undefined ? file.scanDocumentType : prev?.scanDocumentType,
+    scanExpiryDate: file.scanExpiryDate !== undefined ? file.scanExpiryDate : prev?.scanExpiryDate,
+    scanOcrText: file.scanOcrText !== undefined ? file.scanOcrText : prev?.scanOcrText,
+    scanSummary: file.scanSummary !== undefined ? file.scanSummary : prev?.scanSummary,
+    scanOutcome: file.scanOutcome !== undefined ? file.scanOutcome : prev?.scanOutcome,
+    scanImportantDates:
+      file.scanImportantDates !== undefined ? file.scanImportantDates : prev?.scanImportantDates,
+    scanNextSteps: file.scanNextSteps !== undefined ? file.scanNextSteps : prev?.scanNextSteps,
+    scanWasStub: file.scanWasStub !== undefined ? file.scanWasStub : prev?.scanWasStub,
+  };
 }
 
 export function useIntakeDocumentScan({
@@ -90,10 +124,11 @@ export function useIntakeDocumentScan({
     const withType = all.find((file) => file.scanDocumentType);
     const withExpiry = all.find((file) => file.scanExpiryDate);
     const withTitle = all.find((file) => file.scanTitle);
+    const dates = all.flatMap((file) => file.scanImportantDates ?? []);
     return {
       title: withTitle?.scanTitle ?? null,
       documentType: withType?.scanDocumentType ?? withTitle?.scanDocumentType ?? null,
-      expiryDate: withExpiry?.scanExpiryDate ?? null,
+      expiryDate: withExpiry?.scanExpiryDate ?? primaryExpiryFromDates(dates),
     };
   }, []);
 
@@ -139,13 +174,45 @@ export function useIntakeDocumentScan({
           return;
         }
 
+        const wasStub = Boolean(payload.metadata?.stub);
+        const ocrText = payload.ocr_text ? payload.ocr_text.slice(0, 3000) : null;
         const mapped = mapIntakeDocumentType(payload.document_type);
+        const fromModel = normalizeImportantDates(
+          payload.important_dates,
+          normalizeIntakeExpiryDate(payload.expiry_date)
+        );
+        const fromOcr = extractImportantDatesFromOcr(ocrText);
+        const dates = mergeImportantDates(fromModel, fromOcr);
+        const nextSteps = normalizeNextSteps(
+          payload.findings,
+          payload.compliance_recommendations,
+          payload.outcome
+        );
+        const expiry =
+          normalizeIntakeExpiryDate(payload.expiry_date) || primaryExpiryFromDates(dates);
+
+        // Weak stub with no usable content → surface as soft error so the user
+        // knows to add details manually (common for hard-to-read PDFs).
+        if (wasStub && !ocrText && dates.length === 0 && !mapped) {
+          patch(file.local_id, {
+            scanStatus: "error",
+            scanWasStub: true,
+            scanTitle: sanitizeScanTitle(payload.title),
+          });
+          return;
+        }
+
         const next: Partial<PendingIntakeFile> = {
           scanStatus: "done",
           scanTitle: sanitizeScanTitle(payload.title),
           scanDocumentType: mapped?.type ?? null,
-          scanExpiryDate: normalizeIntakeExpiryDate(payload.expiry_date),
-          scanOcrText: payload.ocr_text ? payload.ocr_text.slice(0, 2000) : null,
+          scanExpiryDate: expiry,
+          scanOcrText: ocrText,
+          scanSummary: payload.summary?.trim() || null,
+          scanOutcome: payload.outcome?.trim() || null,
+          scanImportantDates: dates,
+          scanNextSteps: nextSteps,
+          scanWasStub: wasStub,
         };
         patch(file.local_id, next);
       } catch (err) {
@@ -169,15 +236,7 @@ export function useIntakeDocumentScan({
 
     for (const file of files) {
       const prev = latestRef.current.get(file.local_id);
-      latestRef.current.set(file.local_id, {
-        ...file,
-        scanStatus: file.scanStatus ?? prev?.scanStatus,
-        scanTitle: file.scanTitle !== undefined ? file.scanTitle : prev?.scanTitle,
-        scanDocumentType:
-          file.scanDocumentType !== undefined ? file.scanDocumentType : prev?.scanDocumentType,
-        scanExpiryDate: file.scanExpiryDate !== undefined ? file.scanExpiryDate : prev?.scanExpiryDate,
-        scanOcrText: file.scanOcrText !== undefined ? file.scanOcrText : prev?.scanOcrText,
-      });
+      latestRef.current.set(file.local_id, mergeScanFields(prev, file));
     }
 
     const knownIds = new Set(files.map((file) => file.local_id));

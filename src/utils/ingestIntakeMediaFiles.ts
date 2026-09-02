@@ -1,6 +1,7 @@
 import type { DragEvent } from "react";
 import type { TempImage } from "@/types/temp-image";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
+import type { IntakeImportantDate, IntakeScanNextStep } from "@/lib/intakeDocumentDates";
 
 export type IntakeFileScanStatus = "scanning" | "done" | "error" | "skipped";
 
@@ -16,6 +17,12 @@ export interface PendingIntakeFile {
   scanDocumentType?: string | null;
   scanExpiryDate?: string | null;
   scanOcrText?: string | null;
+  scanSummary?: string | null;
+  scanOutcome?: string | null;
+  scanImportantDates?: IntakeImportantDate[];
+  scanNextSteps?: IntakeScanNextStep[];
+  /** True when the edge function returned a filename stub rather than a real read. */
+  scanWasStub?: boolean;
 }
 
 export const INTAKE_MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB

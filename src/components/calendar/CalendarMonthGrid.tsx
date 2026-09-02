@@ -30,11 +30,9 @@ import {
 } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import {
-  calendarTypeColorWithAlpha,
-  getCalendarTypeColor,
-  inferCalendarType,
-  type CalendarTypeId,
-} from "@/lib/calendarTypes";
+  resolveCalendarChipBackground,
+  resolveCalendarChipColor,
+} from "@/lib/calendarSeriesColor";
 import {
   buildCalendarPlacements,
   buildScheduleUpdate,
@@ -150,8 +148,7 @@ function CalendarTaskChip({
   /** Property name is redundant when only one property exists in scope. */
   const propertyLabel =
     propertyMap.size > 1 ? taskPropertyLabel(task, propertyMap) : "";
-  const calType = inferCalendarType(placement.task) as CalendarTypeId;
-  const color = getCalendarTypeColor(calType);
+  const { baseColor, isSeriesColor } = resolveCalendarChipColor(placement.task);
   const isRepeat = placement.source === "repeat";
   const compact = singleLine || isRepeat;
 
@@ -163,14 +160,17 @@ function CalendarTaskChip({
     disabled: isDragOverlay,
   });
 
-  const chipBackground = calendarTypeColorWithAlpha(color, isRepeat ? 0.16 : 0.35);
+  const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat);
   const title = task.title || "Task";
 
   return (
     <button
       ref={isDragOverlay ? undefined : setNodeRef}
       type="button"
-      style={{ backgroundColor: chipBackground }}
+      style={{
+        backgroundColor: chipBackground,
+        ...(isSeriesColor ? { borderLeft: `3px solid ${baseColor}` } : undefined),
+      }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
@@ -185,7 +185,10 @@ function CalendarTaskChip({
       className={cn(
         compact ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
         "transition-[height,min-height,opacity] duration-150 ease-out",
-        isRepeat && "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
+        isSeriesColor && "pl-2",
+        isRepeat &&
+          !isSeriesColor &&
+          "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -203,12 +206,23 @@ function CalendarTaskChip({
       {compact ? (
         <span className="flex min-w-0 flex-1 items-center gap-0.5">
           {isRepeat ? (
-            <Repeat className="h-2.5 w-2.5 shrink-0 text-ink/35" aria-hidden />
+            <Repeat
+              className={cn(
+                "h-2.5 w-2.5 shrink-0",
+                isSeriesColor ? "text-ink/55" : "text-ink/35"
+              )}
+              style={isSeriesColor ? { color: baseColor } : undefined}
+              aria-hidden
+            />
           ) : null}
           <span
             className={cn(
               "min-w-0 flex-1 truncate",
-              isRepeat ? "font-normal text-ink/50" : "font-medium text-ink"
+              isRepeat
+                ? isSeriesColor
+                  ? "font-medium text-ink/75"
+                  : "font-normal text-ink/50"
+                : "font-medium text-ink"
             )}
             title={isRepeat ? `${title} (repeats)` : title}
           >

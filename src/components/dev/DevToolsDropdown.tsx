@@ -2,15 +2,17 @@
  * Dev Tools Dropdown — Header integration
  *
  * Provides quick access to all dev mode features from any page.
- * Renders when isDevBuild (local dev or VITE_APP_DEV_BUILD=true deployment).
+ * Renders only for allowlisted internal users on a local/dev build
+ * (see `canAccessDevTools`). Never for production customers.
  */
 
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useDevMode } from "@/context/useDevMode";
-import { isDevBuild } from "@/context/DevModeContext";
 import type { DevUserRole } from "@/context/DevModeContext";
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgScope } from "@/hooks/useOrgScope";
+import { useCanAccessDevTools } from "@/hooks/useCanAccessDevTools";
 import { useSupabase } from "@/integrations/supabase/useSupabase";
 import { generateCompliancePack } from "@/services/dev/generateCompliancePack";
 import { seedRolePlayScenario } from "@/services/dev/seedRolePlayScenario";
@@ -40,6 +42,7 @@ import {
   MessageSquare,
   Loader2,
   Radio,
+  BookOpen,
 } from "lucide-react";
 import { useDevEmbedLayout } from "@/hooks/useDevEmbedLayout";
 import { cn } from "@/lib/utils";
@@ -76,11 +79,13 @@ const TIME_SHIFTS: { days: number; label: string }[] = [
 ];
 
 export function DevToolsDropdown() {
-  if (!isDevBuild) return null;
+  const canAccess = useCanAccessDevTools();
+  if (!canAccess) return null;
   return <DevToolsDropdownInner />;
 }
 
 function DevToolsDropdownInner() {
+  const navigate = useNavigate();
   const devEmbed = useDevEmbedLayout();
   const devMode = useDevMode();
   const supabase = useSupabase();
@@ -238,6 +243,10 @@ function DevToolsDropdownInner() {
             {devMode.enabled && (
               <Check className="ml-auto h-3.5 w-3.5 text-primary-deep" />
             )}
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate("/admin/knowledge")}>
+            <BookOpen className="mr-2 h-4 w-4" />
+            Knowledge CMS
           </DropdownMenuItem>
         </DropdownMenuGroup>
 

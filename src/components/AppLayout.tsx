@@ -6,7 +6,6 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { ThirdColumnProvider } from '@/contexts/ThirdColumnContext';
 import { AssistantProvider } from '@/contexts/AssistantContext';
 import { AppChromeProvider, useAppChrome } from '@/contexts/AppChromeContext';
-import { isDevBuild } from '@/context/DevModeContext';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { MobileBottomNav } from '@/components/navigation/MobileBottomNav';
 import { MobileAppHeader } from '@/components/layout/MobileAppHeader';
@@ -15,6 +14,7 @@ import {
   isWorkbenchHeaderAboveNavPath,
 } from '@/lib/mainNavigation';
 import { DevToolsOverlays } from '@/components/dev/DevToolsOverlays';
+import { useCanAccessDevTools } from '@/hooks/useCanAccessDevTools';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -26,6 +26,7 @@ function AppLayoutShell({ children }: AppLayoutProps) {
   const mainRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const chrome = useAppChrome();
+  const canAccessDevTools = useCanAccessDevTools();
   const ownsChromeHeader = chrome?.ownsHeader ?? false;
   const isHubHome = isMobileHeaderExcludedPath(pathname);
   const headerAboveNav = isWorkbenchHeaderAboveNavPath(pathname) || ownsChromeHeader;
@@ -83,7 +84,7 @@ function AppLayoutShell({ children }: AppLayoutProps) {
           <MobileBottomNav />
         </div>
 
-        {(import.meta.env.DEV || isDevBuild) && (
+        {canAccessDevTools && (
           <ErrorBoundary regionTitle="Dev tools">
             <DevToolsOverlays />
           </ErrorBoundary>
