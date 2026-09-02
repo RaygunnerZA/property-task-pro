@@ -103,7 +103,9 @@ describe("knowledgeSheetParse", () => {
       app_logic: "Cron weekly",
       evidence: "Certificate",
     });
+    expect(drafts[0].summary).toBe("Book engineer");
     expect(drafts[0].body).toBe("");
+    expect(drafts[0].provenance.guidance_draft?.source).toBe("imported_action");
   });
 
   it("recognises README sheet names", () => {

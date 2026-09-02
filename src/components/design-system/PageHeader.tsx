@@ -1,6 +1,6 @@
 import { ReactNode, lazy, Suspense, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { isDevBuild } from "@/context/DevModeContext";
+import { useCanAccessDevTools } from "@/hooks/useCanAccessDevTools";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 import { MobileHeaderSearchButton } from "@/components/layout/MobileHeaderSearchButton";
 
@@ -30,6 +30,7 @@ function PageHeaderToolbar({
   accentColor?: string;
 }) {
   const onGradient = surface === "gradient";
+  const canAccessDevTools = useCanAccessDevTools();
   return (
     <div
       className={cn(
@@ -37,7 +38,7 @@ function PageHeaderToolbar({
         className
       )}
     >
-      {isDevBuild && (
+      {canAccessDevTools && (
         <Suspense fallback={null}>
           <DevToolsDropdown />
         </Suspense>

@@ -446,6 +446,9 @@ verify_jwt = true
 [functions.knowledge-critic]
 verify_jwt = false
 
+[functions.knowledge-generate-guidance]
+verify_jwt = true
+
 [functions.knowledge-discovery]
 verify_jwt = false
 

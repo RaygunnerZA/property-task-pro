@@ -95,6 +95,7 @@ interface ResponseBody {
   summary: string | null;
   outcome: string | null;
   findings: string[];
+  important_dates: Array<{ label: string; date: string; kind: string }>;
   detected_spaces: string[];
   detected_assets: DetectedAsset[];
   compliance_recommendations: string[];
@@ -158,15 +159,22 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 
 {
   "title": "Clear human title (not the raw filename)",
-  "document_type": "EICR | Gas Safety Certificate | Fire Risk Assessment | Fire Certificate | PAT Test | EPC | Legionella Risk Assessment | EIC | Asbestos Register | O&M Manual | Insurance Certificate | Lease | Plan | Other",
+  "document_type": "EICR | Gas Safety Certificate | Fire Risk Assessment | Fire Certificate | PAT Test | EPC | Legionella Risk Assessment | EIC | Asbestos Register | O&M Manual | Insurance Certificate | Lease | Plan | Water Hygiene Laboratory Report | Other",
   "category": "Electrical | Fire Safety | Mechanical | Water | Legal | Plans | Insurance | O&M Manuals | Misc",
-  "expiry_date": "YYYY-MM-DD or null if not found — never invent a date. Use next due / next test / next inspection / valid until / expiry. Convert UK dates such as 01/03/26 to 2026-03-01. If several dates appear, prefer next due over date of service.",
+  "expiry_date": "YYYY-MM-DD or null if not found — never invent a date. Prefer next due / next test / next inspection / valid until / expiry over service or print dates. Convert UK dates such as 01/03/26 to 2026-03-01.",
+  "important_dates": [
+    {
+      "label": "Short human label e.g. Collected / Received / Report issued / Next due / Expiry",
+      "date": "YYYY-MM-DD",
+      "kind": "expiry | next_due | service | issued | collected | received | other"
+    }
+  ],
   "renewal_frequency": "annual | 5-year | 6mo | 1yr | 2yr | 5yr | null",
   "confidence": 0.0 to 1.0,
   "summary": "2 short sentences: what this document is, and what it concludes",
-  "outcome": "satisfactory | unsatisfactory | pass | fail | expired | valid | unknown",
-  "findings": ["up to 5 short factual bullets from the document"],
-  "ocr_text": "Readable text from the document (first 2000 chars)",
+  "outcome": "satisfactory | unsatisfactory | pass | fail | expired | valid | unknown | action_required",
+  "findings": ["up to 6 short factual bullets — include critical results and immediate control measures as separate bullets"],
+  "ocr_text": "Readable text from the document (first 3000 chars)",
   "detected_spaces": ["space names found in document"],
   "detected_assets": [
     {
@@ -176,12 +184,17 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
       "confidence": 0.0 to 1.0
     }
   ],
-  "compliance_recommendations": ["suggestions based on document type"],
+  "compliance_recommendations": ["actionable next steps an operator should take — include control measures, re-sample, disinfect, take out of service, etc."],
   "hazards": ["fire", "electrical", "slip", "water", "structural", "obstruction", "hygiene", "ventilation", "unknown"],
   "metadata": {}
 }
 
-Focus on: certificates, inspection outcomes (especially satisfactory/unsatisfactory), expiry dates, space references, serial/model numbers, safety warnings. Prefer null over invented dates.`;
+Rules for dates:
+- List EVERY clearly labelled date in important_dates (collected, received, issued, service, next due, expiry). Prefer null over invented dates.
+- expiry_date must be the primary renewal / next-due date when present; otherwise null.
+- For laboratory / inspection reports with control measures, put each measure in findings or compliance_recommendations as short operator actions.
+
+Focus on: certificates, inspection outcomes (especially HIGH / ACTION REQUIRED / unsatisfactory), all labelled dates, space references, serial/model numbers, safety warnings. Prefer null over invented dates.`;
 
 function docPromptSuffix(knowledgeIntake: boolean): string {
   return knowledgeIntake ? KNOWLEDGE_INTAKE_PROMPT_SUFFIX : "";
@@ -457,14 +470,28 @@ function normalizeDocResponse(raw: unknown, fileName: string): ResponseBody {
   const summary = typeof parsed.summary === "string" ? parsed.summary.trim() || null : null;
   const outcome = typeof parsed.outcome === "string" ? parsed.outcome.trim().toLowerCase() || null : null;
   const findings = Array.isArray(parsed.findings)
-    ? parsed.findings.map((item) => String(item).trim()).filter(Boolean).slice(0, 6)
+    ? parsed.findings.map((item) => String(item).trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const important_dates = Array.isArray(parsed.important_dates)
+    ? parsed.important_dates
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const row = item as Record<string, unknown>;
+          return {
+            label: String(row.label ?? row.name ?? "Date").trim().slice(0, 80) || "Date",
+            date: String(row.date ?? row.value ?? "").trim(),
+            kind: String(row.kind ?? row.type ?? "other").trim().toLowerCase() || "other",
+          };
+        })
+        .filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date) || row.date.length > 0)
+        .slice(0, 12)
     : [];
   const detected_spaces = Array.isArray(parsed.detected_spaces) ? parsed.detected_spaces : [];
   const detected_assets = Array.isArray(parsed.detected_assets)
     ? (parsed.detected_assets as DetectedAsset[])
     : [];
   const compliance_recommendations = Array.isArray(parsed.compliance_recommendations)
-    ? parsed.compliance_recommendations
+    ? parsed.compliance_recommendations.map((item) => String(item).trim()).filter(Boolean).slice(0, 8)
     : [];
   const hazards = Array.isArray(parsed.hazards) ? parsed.hazards : [];
   const metadata = (parsed.metadata as Record<string, unknown>) || {};
@@ -481,10 +508,11 @@ function normalizeDocResponse(raw: unknown, fileName: string): ResponseBody {
     expiry_date,
     renewal_frequency,
     confidence,
-    ocr_text,
+    ocr_text: typeof ocr_text === "string" ? ocr_text.slice(0, 3000) : null,
     summary,
     outcome,
     findings,
+    important_dates,
     detected_spaces,
     detected_assets,
     compliance_recommendations,
@@ -518,6 +546,7 @@ function stubResponse(fileName: string, ocrText?: string | null): ResponseBody {
     summary: (stub.summary as string | null) ?? null,
     outcome: (stub.outcome as string | null) ?? null,
     findings: [],
+    important_dates: [],
     detected_spaces: [],
     detected_assets: [],
     compliance_recommendations: [],
@@ -903,6 +932,10 @@ Deno.serve(async (req) => {
             detected_spaces: result.detected_spaces,
             detected_assets: result.detected_assets,
             compliance_recommendations: result.compliance_recommendations,
+            findings: result.findings,
+            important_dates: result.important_dates,
+            summary: result.summary,
+            outcome: result.outcome,
             hazards: result.hazards,
             analysed_at: new Date().toISOString(),
             ...result.metadata,

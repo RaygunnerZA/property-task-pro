@@ -44,11 +44,14 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useDataContext } from "@/contexts/DataContext";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
 import { useIntakeDocumentScan } from "@/hooks/useIntakeDocumentScan";
-import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
+import { useCyclingScanMessage } from "@/hooks/useCyclingScanMessage";
+import { IntakeComplianceScanReview } from "@/components/intake/IntakeComplianceScanReview";
+import { aggregateIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
 import {
-  INTAKE_COMPLIANCE_PRESETS,
   isIntakeCompliancePreset,
+  INTAKE_COMPLIANCE_PRESETS,
 } from "@/lib/mapIntakeDocumentType";
+import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
 import type { IntakeMode } from "@/types/intake";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
@@ -382,6 +385,8 @@ export function IntakeModal({
   const [intakeComplianceTypeOther, setIntakeComplianceTypeOther] = useState(false);
   const [intakeComplianceExpiry, setIntakeComplianceExpiry] = useState("");
   const [createReminderFromCompliance, setCreateReminderFromCompliance] = useState(false);
+  const [selectedScanDateIds, setSelectedScanDateIds] = useState<Set<string>>(new Set());
+  const [selectedScanStepIds, setSelectedScanStepIds] = useState<Set<string>>(new Set());
   const complianceTypeOtherInputRef = useRef<HTMLInputElement>(null);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -643,6 +648,44 @@ export function IntakeModal({
     propertyId: propertyId || null,
     enabled: intakeMode === "add_record",
   });
+
+  const documentScanProgressLabel = useCyclingScanMessage(
+    isDocumentScanning && intakeMode === "add_record",
+    "document"
+  );
+
+  const scanReview = useMemo(
+    () => aggregateIntakeScanReview(taskFiles),
+    [taskFiles]
+  );
+
+  useEffect(() => {
+    if (scanReview.dates.length === 0 && scanReview.nextSteps.length === 0) return;
+
+    setSelectedScanDateIds((prev) => {
+      const known = new Set(scanReview.dates.map((d) => d.id));
+      const retained = [...prev].filter((id) => known.has(id));
+      if (retained.length > 0) return new Set(retained);
+      return new Set(
+        scanReview.dates.filter((d) => d.remindByDefault).map((d) => d.id)
+      );
+    });
+
+    setSelectedScanStepIds((prev) => {
+      const known = new Set(scanReview.nextSteps.map((s) => s.id));
+      const retained = [...prev].filter((id) => known.has(id));
+      if (retained.length > 0) return new Set(retained);
+      return new Set(
+        scanReview.nextSteps.filter((s) => s.selectedByDefault).map((s) => s.id)
+      );
+    });
+  }, [scanReview]);
+
+  useEffect(() => {
+    if (intakeComplianceExpiry.trim()) return;
+    const preferred = scanReview.dates.find((d) => d.remindByDefault)?.date;
+    if (preferred) setIntakeComplianceExpiry(preferred);
+  }, [scanReview, intakeComplianceExpiry]);
 
   const detectedObjects = useMemo(
     () =>
@@ -3549,11 +3592,108 @@ export function IntakeModal({
           if (fileUrlError) throw fileUrlError;
         }
 
+        if (createReminderFromCompliance) {
+          const selectedDates = scanReview.dates.filter((d) =>
+            selectedScanDateIds.has(d.id)
+          );
+          const selectedSteps = scanReview.nextSteps.filter((s) =>
+            selectedScanStepIds.has(s.id)
+          );
+
+          const reminderDates =
+            selectedDates.length > 0
+              ? selectedDates
+              : resolvedExpiry
+                ? [
+                    {
+                      id: "primary-expiry",
+                      label: "Expiry / renewal",
+                      date: resolvedExpiry,
+                      kind: "expiry" as const,
+                      remindByDefault: true,
+                    },
+                  ]
+                : [];
+
+          let firstReminderId: string | null = null;
+
+          for (const item of reminderDates) {
+            const due = new Date(`${item.date}T09:00:00`);
+            const reminder = await createTaskMutation.mutateAsync({
+              source: "manual",
+              insert: {
+                org_id: orgId,
+                title: `${item.label}: ${complianceTitle}`.slice(0, 120),
+                description: `Reminder from compliance record “${complianceTitle}”.`,
+                property_id: propertyId || null,
+                due_at: Number.isFinite(due.getTime()) ? due.toISOString() : null,
+                priority: "medium",
+                status: "open" as const,
+                is_compliance: true,
+                compliance_level: "medium",
+              },
+            });
+            if (!firstReminderId && reminder?.id) firstReminderId = reminder.id;
+          }
+
+          if (selectedSteps.length > 0) {
+            let actionTaskId = firstReminderId;
+            if (!actionTaskId) {
+              const followUp = await createTaskMutation.mutateAsync({
+                source: "manual",
+                insert: {
+                  org_id: orgId,
+                  title: `Follow up: ${complianceTitle}`.slice(0, 120),
+                  description: null,
+                  property_id: propertyId || null,
+                  due_at: null,
+                  priority: "high",
+                  status: "open" as const,
+                  is_compliance: true,
+                  compliance_level: "high",
+                },
+              });
+              actionTaskId = followUp?.id ?? null;
+            }
+            if (actionTaskId && orgId) {
+              const rows = selectedSteps
+                .map((step, index) => {
+                  const fields = buildSubtaskPersistFields(
+                    { title: step.text.slice(0, 200) },
+                    index
+                  );
+                  if (!fields.title) return null;
+                  return {
+                    task_id: actionTaskId,
+                    org_id: orgId,
+                    ...fields,
+                  };
+                })
+                .filter(Boolean);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const { error: subtaskError } = await (supabase as any)
+                .from("subtasks")
+                .insert(rows);
+              if (subtaskError) {
+                console.warn("[IntakeModal] reminder checklist save failed:", subtaskError);
+              }
+            }
+          }
+
+          queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        }
+
         queryClient.invalidateQueries({ queryKey: ["compliance"] });
         queryClient.invalidateQueries({ queryKey: ["compliance_recommendations"] });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         const celebrated = markQuickWinComplete("upload", propertyId);
-        if (!celebrated) toast({ title: "Added to Compliance" });
+        if (!celebrated) {
+          toast({
+            title: createReminderFromCompliance
+              ? "Record added — reminders created"
+              : "Added to Compliance",
+          });
+        }
         await markIntakeItemConfirmed();
         onOpenChange(false);
         resetForm();
@@ -3759,6 +3899,8 @@ export function IntakeModal({
     setIntakeComplianceTypeOther(false);
     setIntakeComplianceExpiry("");
     setCreateReminderFromCompliance(false);
+    setSelectedScanDateIds(new Set());
+    setSelectedScanStepIds(new Set());
     setOpenChipSlot(null);
     setDueDate("");
     setWhenTab("due");
@@ -3915,38 +4057,73 @@ export function IntakeModal({
       ? "What are you recording? Add a certificate, inspection, or note…"
       : "What Needs Doing?";
 
+  const isColumnComposerOpen = variant === "column" && headless && !collapseComposer;
+
   const intakeModeTabs = (
     <div
       ref={intakeTabListRef}
-      className="flex h-12 w-full min-w-0 flex-nowrap items-stretch gap-1 rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      className={cn(
+        "flex w-full min-w-0 flex-nowrap gap-1",
+        isColumnComposerOpen
+          ? "h-12 w-full items-end rounded-t-[23px] bg-[rgba(0,0,0,0.03)] px-0 pt-1.5 pb-0 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+          : "h-12 items-stretch rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+      )}
       role="tablist"
       aria-label="Intake type"
     >
-      {(["report_issue", "add_record"] as const).map((m) => (
+      {(["report_issue", "add_record"] as const).map((m) => {
+        const selected = intakeMode === m;
+        const isCreate = m === "report_issue";
+        return (
         <button
           key={m}
           type="button"
           role="tab"
-          aria-selected={intakeMode === m}
+          aria-selected={selected}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 rounded-card px-2.5 py-2 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
-            intakeMode === m
-              ? m === "report_issue"
-                ? "bg-primary text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
-                : "bg-[hsl(16_82%_56%)] text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-              : "text-muted-foreground hover:text-foreground"
+            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 px-2.5 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            isColumnComposerOpen
+              ? cn(
+                  "py-2",
+                  selected
+                    ? cn(
+                        "relative z-10 mb-0 rounded-t-[12px] rounded-b-none py-2.5 font-semibold",
+                        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95),-2px_-2px_4px_rgba(255,255,255,0.88),2px_-2px_4px_rgba(255,255,255,0.88)]",
+                        isCreate
+                          ? "bg-background text-primary"
+                          : "bg-background text-[hsl(16_82%_56%)]"
+                      )
+                    : "rounded-card text-muted-foreground hover:text-foreground/90"
+                )
+              : cn(
+                  "rounded-card py-2",
+                  selected
+                    ? isCreate
+                      ? "bg-primary text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
+                      : "bg-[hsl(16_82%_56%)] text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
+                    : "text-muted-foreground hover:text-foreground"
+                )
           )}
+          style={
+            isColumnComposerOpen && selected
+              ? {
+                  ...PAPER_TEXTURE_STYLE,
+                  backgroundColor: "hsl(var(--background))",
+                }
+              : undefined
+          }
         >
           <span
             data-intake-tab-icon
             className={cn(
               "inline-flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4",
-              collapseIntakeTabIcons && "hidden"
+              collapseIntakeTabIcons && "hidden",
+              isColumnComposerOpen && selected && (isCreate ? "text-primary" : "text-[hsl(16_82%_56%)]")
             )}
             aria-hidden
           >
-            {m === "report_issue" ? <Plus aria-hidden /> : <FileText aria-hidden />}
+            {isCreate ? <Plus aria-hidden /> : <FileText aria-hidden />}
           </span>
           <span
             className={cn(
@@ -3954,10 +4131,11 @@ export function IntakeModal({
               truncateIntakeTabLabels && "truncate"
             )}
           >
-            {m === "report_issue" ? "Create Task" : "Add Record"}
+            {isCreate ? "Create Task" : "Add Record"}
           </span>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 
@@ -3984,7 +4162,12 @@ export function IntakeModal({
   );
 
   const intakeModeSwitcher = (
-    <div className={cn("relative w-full min-w-0", collapseComposer ? "h-9" : "h-12")}>
+    <div
+      className={cn(
+        "relative w-full min-w-0",
+        collapseComposer ? "h-9" : "h-12"
+      )}
+    >
       <div
         className={cn(
           "absolute inset-0 transition-all duration-300 ease-out",
@@ -4233,14 +4416,32 @@ export function IntakeModal({
       )}
 
       {variant === "column" && headless && (
-        <div className="shrink-0 px-2 pt-2 pb-1">{intakeModeSwitcher}</div>
+        <div
+          className={cn(
+            "shrink-0",
+            isColumnComposerOpen ? "mx-2 mt-2 pb-0 pt-2" : "px-2 pt-2 pb-1"
+          )}
+        >
+          {intakeModeSwitcher}
+        </div>
       )}
 
       <div
         className={cn(
           "flex-1 py-3 space-y-3 min-h-0",
           variant === "column" && headless
-            ? "overflow-visible px-2 rounded-[23px]"
+            ? cn(
+                "overflow-visible",
+                isColumnComposerOpen
+                  ? cn(
+                      "mx-2 px-2 py-3",
+                      intakeMode === "report_issue"
+                        ? "rounded-b-[23px] rounded-tr-[23px]"
+                        : "rounded-b-[23px] rounded-tl-[23px]",
+                      "shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
+                    )
+                  : "px-2 rounded-[23px]"
+              )
             : "overflow-y-auto overscroll-contain px-4",
           variant === "column" &&
             headless &&
@@ -4252,12 +4453,17 @@ export function IntakeModal({
             "transition-[max-height,opacity,padding] duration-300 ease-out"
         )}
         style={
-          variant === "column" && headless && !collapseComposer
+          variant === "column" && headless && isColumnComposerOpen
             ? {
-                background:
-                  "linear-gradient(0deg, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, 0.5) 100%)",
+                ...PAPER_TEXTURE_STYLE,
+                backgroundColor: "hsl(var(--background))",
               }
-            : undefined
+            : variant === "column" && headless && !collapseComposer
+              ? {
+                  background:
+                    "linear-gradient(0deg, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, 0.5) 100%)",
+                }
+              : undefined
         }
         aria-hidden={variant === "column" && headless && collapseComposer}
       >
@@ -4411,7 +4617,9 @@ export function IntakeModal({
                   ) : null}
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Expiry / renewal</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Primary expiry / renewal
+                  </Label>
                   <input
                     type="date"
                     value={intakeComplianceExpiry}
@@ -4419,15 +4627,42 @@ export function IntakeModal({
                     className="mt-1 w-full h-9 rounded-lg border border-input bg-input px-2 text-sm"
                   />
                 </div>
-                <label className="flex items-center gap-2 text-xs cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={createReminderFromCompliance}
-                    onChange={(e) => setCreateReminderFromCompliance(e.target.checked)}
-                    className="rounded border-input"
-                  />
-                  Create reminder task
-                </label>
+                <IntakeComplianceScanReview
+                  dates={scanReview.dates}
+                  selectedDateIds={selectedScanDateIds}
+                  onToggleDate={(id) =>
+                    setSelectedScanDateIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                  nextSteps={scanReview.nextSteps}
+                  selectedStepIds={selectedScanStepIds}
+                  onToggleStep={(id) =>
+                    setSelectedScanStepIds((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(id)) next.delete(id);
+                      else next.add(id);
+                      return next;
+                    })
+                  }
+                  createReminders={createReminderFromCompliance}
+                  onCreateRemindersChange={setCreateReminderFromCompliance}
+                  remindersLabel={scanReview.remindersLabel}
+                />
+                {scanReview.dates.length === 0 && scanReview.nextSteps.length === 0 ? (
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={createReminderFromCompliance}
+                      onChange={(e) => setCreateReminderFromCompliance(e.target.checked)}
+                      className="rounded border-input"
+                    />
+                    Create reminder task
+                  </label>
+                ) : null}
               </div>
             </div>
           )}
@@ -4756,7 +4991,11 @@ export function IntakeModal({
             onClick={() => void handleSubmit()}
             disabled={!canSubmitPrimary}
           >
-            {isSubmitting ? "Saving…" : isDocumentScanning ? "Reading document…" : primaryLabel}
+            {isSubmitting
+              ? "Saving…"
+              : isDocumentScanning
+                ? documentScanProgressLabel
+                : primaryLabel}
           </Button>
         </div>
         {!fromIntakeReview && (
@@ -4890,18 +5129,8 @@ export function IntakeModal({
       <div
         className={cn(
           "flex flex-col min-h-0 p-0 gap-0 border-0 transition-[box-shadow,border-radius,background-color] duration-300 ease-out",
-          collapseComposer
-            ? "h-auto rounded-none bg-transparent shadow-none"
-            : "h-full rounded-[23px] shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
+          collapseComposer ? "h-auto rounded-none bg-transparent shadow-none" : "h-full bg-transparent shadow-none"
         )}
-        style={
-          collapseComposer
-            ? undefined
-            : {
-                ...PAPER_TEXTURE_STYLE,
-                backgroundColor: "hsl(var(--background))",
-              }
-        }
       >
         {content}
       </div>

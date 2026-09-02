@@ -132,12 +132,12 @@ const SettingsTrash = lazyWithRetry(() => import("./pages/settings/SettingsTrash
 const DebugData = lazy(() => import("./pages/DebugData"));
 
 // Admin panel (lazy, guarded by AdminLayout)
-const AdminLayout         = lazy(() => import("./pages/admin/AdminLayout"));
-const AdminOrgList        = lazy(() => import("./pages/admin/AdminOrgList"));
-const AdminOrgDetail      = lazy(() => import("./pages/admin/AdminOrgDetail"));
-const AdminOrgAiRequests  = lazy(() => import("./pages/admin/AdminOrgAiRequests"));
-const AdminBillingUtilization = lazy(() => import("./pages/admin/AdminBillingUtilization"));
-const AdminKnowledgeQueue = lazy(() => import("./pages/admin/AdminKnowledgeQueue"));
+const AdminLayout         = lazyWithRetry(() => import("./pages/admin/AdminLayout"));
+const AdminOrgList        = lazyWithRetry(() => import("./pages/admin/AdminOrgList"));
+const AdminOrgDetail      = lazyWithRetry(() => import("./pages/admin/AdminOrgDetail"));
+const AdminOrgAiRequests  = lazyWithRetry(() => import("./pages/admin/AdminOrgAiRequests"));
+const AdminBillingUtilization = lazyWithRetry(() => import("./pages/admin/AdminBillingUtilization"));
+const AdminKnowledgeQueue = lazyWithRetry(() => import("./pages/admin/AdminKnowledgeQueue"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

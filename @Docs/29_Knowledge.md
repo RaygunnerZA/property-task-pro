@@ -57,7 +57,7 @@ Paste intake remains deferred.
 
 ## Content Tree (internal)
 
-After Knowledge is verified/published: `/admin/knowledge` → **Content tree**.
+After Knowledge is verified/published: `/admin/knowledge` → **Outputs** (Content tree).
 
 Stages: Knowledge → SEO → Brief → Outputs (`core_article`, `faq`, `in_app_tip`) → Creative/Publishing stubs.
 
@@ -67,6 +67,8 @@ Approved outputs are not silently overwritten; upstream changes mark `needs_upda
 * Organisation scope: Owner/Manager in-product.
 * Platform + community: platform admins in `/admin`.
 * Platform admins may override org rows via audited admin RPCs.
+
+**Admin review UX:** Review is a dense workbench table (select, title, jurisdiction, applies when, guidance, classification, sources, checks, actions). Ready-to-publish and detail sheet stay meaning-first. Draft guidance may be imported from owner action/task text or AI-proposed; drafts remain unverified until critic + human verify. Guidance quality states: Missing → Needs improvement → Meaningful draft → Verified. Short circular imports (e.g. “as required” without conditions) need **Improve guidance**. Editing critic-relevant fields invalidates the prior critic (`stale_after_guidance_edit`); primary action becomes **Run critic**, never Verify against a stale result. Batch actions: generate missing, improve weak, run critic for eligible — never batch Verify/Publish. Lifecycle: Candidate → draft guidance → critic → human verification → ready to publish → publish. Critic and human verification are mandatory; nothing auto-verifies or auto-publishes. `admin_set_knowledge_status` gates verify/publish server-side (quality guidance, authoritative source, current critic pass, applicability, human verifier) and rejects `candidate → published` (`verify_before_publish`). Check states: Passed / Failed / Incomplete / Not run / Required — never mark Passed when a check did not run. `trust_score` is ranking-only and never overrides mandatory gates.
 
 ## Privacy
 
