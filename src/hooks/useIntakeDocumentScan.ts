@@ -10,8 +10,9 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   extractImportantDatesFromOcr,
   mergeImportantDates,
+  normalizeFindings,
   normalizeImportantDates,
-  normalizeNextSteps,
+  normalizeRequiredActions,
   primaryExpiryFromDates,
 } from "@/lib/intakeDocumentDates";
 import {
@@ -48,7 +49,7 @@ interface DocAnalysePayload {
   ocr_text?: string | null;
   summary?: string | null;
   outcome?: string | null;
-  findings?: string[];
+  findings?: Array<string | { text?: string; status?: string }>;
   important_dates?: Array<{ label?: string; date?: string; kind?: string }>;
   compliance_recommendations?: string[];
   metadata?: Record<string, unknown> | null;
@@ -85,7 +86,8 @@ function mergeScanFields(
     scanOutcome: file.scanOutcome !== undefined ? file.scanOutcome : prev?.scanOutcome,
     scanImportantDates:
       file.scanImportantDates !== undefined ? file.scanImportantDates : prev?.scanImportantDates,
-    scanNextSteps: file.scanNextSteps !== undefined ? file.scanNextSteps : prev?.scanNextSteps,
+    scanFindings: file.scanFindings !== undefined ? file.scanFindings : prev?.scanFindings,
+    scanActions: file.scanActions !== undefined ? file.scanActions : prev?.scanActions,
     scanWasStub: file.scanWasStub !== undefined ? file.scanWasStub : prev?.scanWasStub,
   };
 }
@@ -183,8 +185,8 @@ export function useIntakeDocumentScan({
         );
         const fromOcr = extractImportantDatesFromOcr(ocrText);
         const dates = mergeImportantDates(fromModel, fromOcr);
-        const nextSteps = normalizeNextSteps(
-          payload.findings,
+        const findings = normalizeFindings(payload.findings);
+        const actions = normalizeRequiredActions(
           payload.compliance_recommendations,
           payload.outcome
         );
@@ -211,7 +213,8 @@ export function useIntakeDocumentScan({
           scanSummary: payload.summary?.trim() || null,
           scanOutcome: payload.outcome?.trim() || null,
           scanImportantDates: dates,
-          scanNextSteps: nextSteps,
+          scanFindings: findings,
+          scanActions: actions,
           scanWasStub: wasStub,
         };
         patch(file.local_id, next);

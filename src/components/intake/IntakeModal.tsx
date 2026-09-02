@@ -47,6 +47,7 @@ import { useIntakeDocumentScan } from "@/hooks/useIntakeDocumentScan";
 import { useCyclingScanMessage } from "@/hooks/useCyclingScanMessage";
 import { IntakeComplianceScanReview } from "@/components/intake/IntakeComplianceScanReview";
 import { aggregateIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
+import { primaryExpiryFromDates } from "@/lib/intakeDocumentDates";
 import {
   isIntakeCompliancePreset,
   INTAKE_COMPLIANCE_PRESETS,
@@ -385,8 +386,9 @@ export function IntakeModal({
   const [intakeComplianceTypeOther, setIntakeComplianceTypeOther] = useState(false);
   const [intakeComplianceExpiry, setIntakeComplianceExpiry] = useState("");
   const [createReminderFromCompliance, setCreateReminderFromCompliance] = useState(false);
-  const [selectedScanDateIds, setSelectedScanDateIds] = useState<Set<string>>(new Set());
-  const [selectedScanStepIds, setSelectedScanStepIds] = useState<Set<string>>(new Set());
+  const [selectedScanActionIds, setSelectedScanActionIds] = useState<Set<string>>(new Set());
+  /** Guard so critical scans only auto-tick the create-tasks box once. */
+  const autoCheckedCreateTasksRef = useRef(false);
   const complianceTypeOtherInputRef = useRef<HTMLInputElement>(null);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -655,36 +657,37 @@ export function IntakeModal({
   );
 
   const scanReview = useMemo(
-    () => aggregateIntakeScanReview(taskFiles),
-    [taskFiles]
+    () => aggregateIntakeScanReview(taskFiles, images),
+    [taskFiles, images]
   );
 
   useEffect(() => {
-    if (scanReview.dates.length === 0 && scanReview.nextSteps.length === 0) return;
+    if (scanReview.actions.length === 0) return;
 
-    setSelectedScanDateIds((prev) => {
-      const known = new Set(scanReview.dates.map((d) => d.id));
+    setSelectedScanActionIds((prev) => {
+      const known = new Set(scanReview.actions.map((a) => a.id));
       const retained = [...prev].filter((id) => known.has(id));
       if (retained.length > 0) return new Set(retained);
       return new Set(
-        scanReview.dates.filter((d) => d.remindByDefault).map((d) => d.id)
+        scanReview.actions.filter((a) => a.selectedByDefault).map((a) => a.id)
       );
     });
 
-    setSelectedScanStepIds((prev) => {
-      const known = new Set(scanReview.nextSteps.map((s) => s.id));
-      const retained = [...prev].filter((id) => known.has(id));
-      if (retained.length > 0) return new Set(retained);
-      return new Set(
-        scanReview.nextSteps.filter((s) => s.selectedByDefault).map((s) => s.id)
-      );
-    });
+    // Safety bias: a critical outcome pre-ticks task creation (still visible
+    // and deselectable before save). Never re-tick after the user unticks.
+    if (scanReview.outcomeSeverity === "critical" && !autoCheckedCreateTasksRef.current) {
+      autoCheckedCreateTasksRef.current = true;
+      setCreateReminderFromCompliance(true);
+    }
   }, [scanReview]);
 
   useEffect(() => {
-    if (intakeComplianceExpiry.trim()) return;
-    const preferred = scanReview.dates.find((d) => d.remindByDefault)?.date;
-    if (preferred) setIntakeComplianceExpiry(preferred);
+    // Prefill only with a genuine renewal date (expiry / next inspection) —
+    // never a corrective deadline or an informational date.
+    const renewal = primaryExpiryFromDates(scanReview.dates);
+    if (renewal && !intakeComplianceExpiry.trim()) {
+      setIntakeComplianceExpiry(renewal);
+    }
   }, [scanReview, intakeComplianceExpiry]);
 
   const detectedObjects = useMemo(
@@ -3593,91 +3596,45 @@ export function IntakeModal({
         }
 
         if (createReminderFromCompliance) {
-          const selectedDates = scanReview.dates.filter((d) =>
-            selectedScanDateIds.has(d.id)
-          );
-          const selectedSteps = scanReview.nextSteps.filter((s) =>
-            selectedScanStepIds.has(s.id)
+          const selectedActions = scanReview.actions.filter((a) =>
+            selectedScanActionIds.has(a.id)
           );
 
-          const reminderDates =
-            selectedDates.length > 0
-              ? selectedDates
+          // No scan-derived actions confirmed → fall back to a single renewal
+          // reminder from the record's primary expiry (legacy behaviour).
+          const toCreate =
+            selectedActions.length > 0
+              ? selectedActions
               : resolvedExpiry
                 ? [
                     {
                       id: "primary-expiry",
-                      label: "Expiry / renewal",
-                      date: resolvedExpiry,
-                      kind: "expiry" as const,
-                      remindByDefault: true,
+                      text: `Expiry / renewal: ${complianceTitle}`,
+                      deadline: resolvedExpiry,
+                      immediate: false,
+                      kind: "reminder" as const,
+                      selectedByDefault: true,
                     },
                   ]
                 : [];
 
-          let firstReminderId: string | null = null;
-
-          for (const item of reminderDates) {
-            const due = new Date(`${item.date}T09:00:00`);
-            const reminder = await createTaskMutation.mutateAsync({
+          for (const action of toCreate) {
+            const due = action.deadline ? new Date(`${action.deadline}T09:00:00`) : null;
+            await createTaskMutation.mutateAsync({
               source: "manual",
               insert: {
                 org_id: orgId,
-                title: `${item.label}: ${complianceTitle}`.slice(0, 120),
-                description: `Reminder from compliance record “${complianceTitle}”.`,
+                title: action.text.slice(0, 120),
+                description: `From compliance record “${complianceTitle}”.`,
                 property_id: propertyId || null,
-                due_at: Number.isFinite(due.getTime()) ? due.toISOString() : null,
-                priority: "medium",
+                due_at:
+                  due && Number.isFinite(due.getTime()) ? due.toISOString() : null,
+                priority: action.immediate ? "high" : "medium",
                 status: "open" as const,
                 is_compliance: true,
-                compliance_level: "medium",
+                compliance_level: action.immediate ? "high" : "medium",
               },
             });
-            if (!firstReminderId && reminder?.id) firstReminderId = reminder.id;
-          }
-
-          if (selectedSteps.length > 0) {
-            let actionTaskId = firstReminderId;
-            if (!actionTaskId) {
-              const followUp = await createTaskMutation.mutateAsync({
-                source: "manual",
-                insert: {
-                  org_id: orgId,
-                  title: `Follow up: ${complianceTitle}`.slice(0, 120),
-                  description: null,
-                  property_id: propertyId || null,
-                  due_at: null,
-                  priority: "high",
-                  status: "open" as const,
-                  is_compliance: true,
-                  compliance_level: "high",
-                },
-              });
-              actionTaskId = followUp?.id ?? null;
-            }
-            if (actionTaskId && orgId) {
-              const rows = selectedSteps
-                .map((step, index) => {
-                  const fields = buildSubtaskPersistFields(
-                    { title: step.text.slice(0, 200) },
-                    index
-                  );
-                  if (!fields.title) return null;
-                  return {
-                    task_id: actionTaskId,
-                    org_id: orgId,
-                    ...fields,
-                  };
-                })
-                .filter(Boolean);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const { error: subtaskError } = await (supabase as any)
-                .from("subtasks")
-                .insert(rows);
-              if (subtaskError) {
-                console.warn("[IntakeModal] reminder checklist save failed:", subtaskError);
-              }
-            }
           }
 
           queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -3690,7 +3647,7 @@ export function IntakeModal({
         if (!celebrated) {
           toast({
             title: createReminderFromCompliance
-              ? "Record added — reminders created"
+              ? "Record added — tasks created"
               : "Added to Compliance",
           });
         }
@@ -3899,8 +3856,8 @@ export function IntakeModal({
     setIntakeComplianceTypeOther(false);
     setIntakeComplianceExpiry("");
     setCreateReminderFromCompliance(false);
-    setSelectedScanDateIds(new Set());
-    setSelectedScanStepIds(new Set());
+    setSelectedScanActionIds(new Set());
+    autoCheckedCreateTasksRef.current = false;
     setOpenChipSlot(null);
     setDueDate("");
     setWhenTab("due");
@@ -4052,9 +4009,14 @@ export function IntakeModal({
       ? "Add Record"
       : "Create Task";
 
+  const addRecordHasScanSummary =
+    intakeMode === "add_record" &&
+    (Boolean(scanReview.outcome) || scanReview.dates.length > 0 || scanReview.actions.length > 0);
   const descriptionPlaceholder =
     intakeMode === "add_record"
-      ? "What are you recording? Add a certificate, inspection, or note…"
+      ? addRecordHasScanSummary
+        ? "Add a note (optional)…"
+        : "What are you recording? Add a certificate, inspection, or note…"
       : "What Needs Doing?";
 
   const isColumnComposerOpen = variant === "column" && headless && !collapseComposer;
@@ -4616,53 +4578,63 @@ export function IntakeModal({
                     />
                   ) : null}
                 </div>
-                <div>
-                  <Label className="text-xs text-muted-foreground">
-                    Primary expiry / renewal
-                  </Label>
-                  <input
-                    type="date"
-                    value={intakeComplianceExpiry}
-                    onChange={(e) => setIntakeComplianceExpiry(e.target.value)}
-                    className="mt-1 w-full h-9 rounded-lg border border-input bg-input px-2 text-sm"
-                  />
-                </div>
-                <IntakeComplianceScanReview
-                  dates={scanReview.dates}
-                  selectedDateIds={selectedScanDateIds}
-                  onToggleDate={(id) =>
-                    setSelectedScanDateIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      return next;
-                    })
-                  }
-                  nextSteps={scanReview.nextSteps}
-                  selectedStepIds={selectedScanStepIds}
-                  onToggleStep={(id) =>
-                    setSelectedScanStepIds((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(id)) next.delete(id);
-                      else next.add(id);
-                      return next;
-                    })
-                  }
-                  createReminders={createReminderFromCompliance}
-                  onCreateRemindersChange={setCreateReminderFromCompliance}
-                  remindersLabel={scanReview.remindersLabel}
-                />
-                {scanReview.dates.length === 0 && scanReview.nextSteps.length === 0 ? (
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={createReminderFromCompliance}
-                      onChange={(e) => setCreateReminderFromCompliance(e.target.checked)}
-                      className="rounded border-input"
-                    />
-                    Create reminder task
-                  </label>
-                ) : null}
+                {(() => {
+                  const hasScanReview =
+                    Boolean(scanReview.outcome) ||
+                    scanReview.dates.length > 0 ||
+                    scanReview.actions.length > 0 ||
+                    scanReview.failFindings.length > 0 ||
+                    scanReview.otherFindings.length > 0;
+                  const hasRenewalDate = scanReview.dates.some(
+                    (d) => d.kind === "expiry" || d.kind === "next_due"
+                  );
+                  const showPrimaryDate = hasRenewalDate || !hasScanReview;
+                  return (
+                    <>
+                      {showPrimaryDate ? (
+                        <div>
+                          <Label className="text-xs text-muted-foreground">
+                            {scanReview.dates.some((d) => d.kind === "next_due") &&
+                            !scanReview.dates.some((d) => d.kind === "expiry")
+                              ? "Next inspection / renewal"
+                              : "Primary expiry / renewal"}
+                          </Label>
+                          <input
+                            type="date"
+                            value={intakeComplianceExpiry}
+                            onChange={(e) => setIntakeComplianceExpiry(e.target.value)}
+                            className="mt-1 w-full h-9 rounded-lg border border-input bg-input px-2 text-sm"
+                          />
+                        </div>
+                      ) : null}
+                      <IntakeComplianceScanReview
+                        review={scanReview}
+                        selectedActionIds={selectedScanActionIds}
+                        onToggleAction={(id) =>
+                          setSelectedScanActionIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(id)) next.delete(id);
+                            else next.add(id);
+                            return next;
+                          })
+                        }
+                        createTasks={createReminderFromCompliance}
+                        onCreateTasksChange={setCreateReminderFromCompliance}
+                      />
+                      {!hasScanReview ? (
+                        <label className="flex items-center gap-2 text-xs cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={createReminderFromCompliance}
+                            onChange={(e) => setCreateReminderFromCompliance(e.target.checked)}
+                            className="rounded border-input"
+                          />
+                          Create reminder task
+                        </label>
+                      ) : null}
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}

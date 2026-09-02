@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   isIntakeCompliancePreset,
   inferExpiryFromOcrText,
-  hintsFromImageAnalysis,
   mapIntakeDocumentType,
   normalizeIntakeExpiryDate,
   sanitizeScanTitle,
@@ -57,24 +56,6 @@ describe("inferExpiryFromOcrText", () => {
 
   it("does not treat an unlabeled date as expiry", () => {
     expect(inferExpiryFromOcrText("Printed 01/03/26")).toBeNull();
-  });
-});
-
-describe("hintsFromImageAnalysis", () => {
-  it("reads top-level classification the edge function actually returns", () => {
-    const hints = hintsFromImageAnalysis({
-      ocr_text: "",
-      metadata: {
-        normalized_expiry: "04/05/27",
-        normalized_document_type: "Fire Extinguisher Service Certificate",
-      },
-      document_classification: {
-        type: "Fire Extinguisher Service Certificate",
-        expiry_date: "04/05/27",
-      },
-    });
-    expect(hints.documentType).toBe("Fire Extinguisher Service Certificate");
-    expect(hints.expiryDate).toBe("2027-05-04");
   });
 });
 

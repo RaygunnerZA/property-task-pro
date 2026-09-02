@@ -17,9 +17,10 @@ import {
   hasUsefulComplianceScanResult,
   isMeaningfulSuggestedType,
 } from "@/lib/intakeWorkflowSignals";
-import { hintsFromImageAnalysis } from "@/lib/mapIntakeDocumentType";
+import { hintsFromImageAnalysis } from "@/lib/hintsFromImageAnalysis";
 import { useCyclingScanMessage } from "@/hooks/useCyclingScanMessage";
 import { formatIntakeDateDisplay } from "@/lib/intakeDocumentDates";
+import { aggregateIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
 
 function CyclingScanStatus({ variant }: { variant: "document" | "image" }) {
   const message = useCyclingScanMessage(true, variant);
@@ -211,7 +212,12 @@ export function ImageUploadSection({
     | { kind: "preparing" }
     | { kind: "router_scanning" }
     | { kind: "full_scanning" }
-    | { kind: "full_done"; specificType: string | null; formattedExpiryDate: string | null }
+    | {
+        kind: "full_done";
+        specificType: string | null;
+        dateChips: Array<{ id: string; label: string; dateLabel: string }>;
+        signalCount: number;
+      }
     | { kind: "image_analysed" }
     | { kind: "router_ui"; branch: "task" | "compliance" | "uncertain"; confidence?: number };
 
@@ -238,18 +244,28 @@ export function ImageUploadSection({
     const legacyFull = Boolean(image.rawAnalysis) && !isRouterStage && meta?.intake_stage !== "router";
 
     if (isFullStage || legacyFull) {
+      const review = aggregateIntakeScanReview([], [image]);
       const hints = hintsFromImageAnalysis({
         ...image.rawAnalysis,
         ocr_text: image.aiOcrText || image.rawAnalysis.ocr_text,
       });
       const rawType = hints.documentType || inferComplianceTypeFromName(image.display_name);
       const specificType = isMeaningfulSuggestedType(rawType) ? rawType!.trim() : null;
-      const formattedExpiryDate = formatDisplayDate(hints.expiryDate);
-      if (hasUsefulComplianceScanResult(specificType, formattedExpiryDate)) {
+      const dateChips = review.dates.slice(0, 3).map((d) => ({
+        id: d.id,
+        label: d.label,
+        dateLabel: formatIntakeDateDisplay(d.date),
+      }));
+      const hasUseful =
+        hasUsefulComplianceScanResult(specificType, dateChips[0]?.dateLabel ?? null) ||
+        review.actions.length > 0 ||
+        review.signals.length > 0;
+      if (hasUseful) {
         return {
           kind: "full_done",
           specificType,
-          formattedExpiryDate,
+          dateChips,
+          signalCount: review.signals.length + review.actions.length,
         };
       }
       return { kind: "image_analysed" };
@@ -488,10 +504,20 @@ export function ImageUploadSection({
                               {panel.specificType}
                             </div>
                           ) : null}
-                          {panel.formattedExpiryDate ? (
-                            <div className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-caption font-medium text-foreground shadow-e1">
+                          {panel.dateChips.map((chip) => (
+                            <div
+                              key={chip.id}
+                              className="inline-flex items-center gap-1 rounded-full bg-background/80 px-2 py-1 text-caption font-medium text-foreground shadow-e1"
+                            >
                               <CalendarDays className="h-3.5 w-3.5 text-primary" />
-                              <span>Expiry {panel.formattedExpiryDate}</span>
+                              <span>
+                                {chip.label} {chip.dateLabel}
+                              </span>
+                            </div>
+                          ))}
+                          {panel.signalCount > 0 ? (
+                            <div className="inline-flex rounded-full bg-destructive/10 px-2 py-1 text-caption font-medium text-destructive">
+                              {panel.signalCount} signal{panel.signalCount === 1 ? "" : "s"}
                             </div>
                           ) : null}
                         </div>
@@ -530,7 +556,7 @@ export function ImageUploadSection({
                   (scanType ||
                     formattedExpiry ||
                     (file.scanImportantDates?.length ?? 0) > 0 ||
-                    (file.scanNextSteps?.length ?? 0) > 0) ? (
+                    (file.scanActions?.length ?? 0) > 0) ? (
                   <div className="mt-1 flex flex-wrap gap-1.5">
                     {scanType ? (
                       <span className="inline-flex rounded-sharp bg-input px-[9px] py-0.5 text-caption font-medium text-foreground shadow-sm">
@@ -551,10 +577,10 @@ export function ImageUploadSection({
                         {d.label} {formatIntakeDateDisplay(d.date)}
                       </span>
                     ))}
-                    {(file.scanNextSteps?.length ?? 0) > 0 ? (
+                    {(file.scanActions?.length ?? 0) > 0 ? (
                       <span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-caption font-medium text-foreground">
-                        {file.scanNextSteps!.length} next step
-                        {file.scanNextSteps!.length === 1 ? "" : "s"}
+                        {file.scanActions!.length} action
+                        {file.scanActions!.length === 1 ? "" : "s"}
                       </span>
                     ) : null}
                   </div>

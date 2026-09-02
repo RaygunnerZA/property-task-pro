@@ -46,6 +46,10 @@ export interface ImageAnalysisResult {
     expiry_date?: string;
   };
   anomalies?: unknown[];
+  important_dates?: Array<{ label?: string; date?: string; kind?: string }>;
+  findings?: Array<string | { text?: string; status?: string }>;
+  outcome?: string | null;
+  compliance_recommendations?: string[];
   metadata?: Record<string, unknown>;
 }
 

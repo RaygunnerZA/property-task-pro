@@ -8,7 +8,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
-import { hintsFromImageAnalysis } from "@/lib/mapIntakeDocumentType";
+import { hintsFromImageAnalysis } from "@/lib/hintsFromImageAnalysis";
 
 export interface ImageScanHints {
   documentType: string | null;

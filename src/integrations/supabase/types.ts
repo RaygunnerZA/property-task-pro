@@ -50,6 +50,63 @@ export type Database = {
           },
         ]
       }
+      ai_capability_evals: {
+        Row: {
+          capability: string
+          cost_usd: number | null
+          created_at: string
+          created_by: string | null
+          detail: Json
+          false_positive_rate: number | null
+          fixture_count: number
+          fixture_set: string
+          id: string
+          latency_ms_p50: number | null
+          model: string
+          notes: string | null
+          prompt_version: string
+          provider: string
+          recall: number | null
+          schema_valid_rate: number | null
+        }
+        Insert: {
+          capability: string
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          false_positive_rate?: number | null
+          fixture_count?: number
+          fixture_set: string
+          id?: string
+          latency_ms_p50?: number | null
+          model: string
+          notes?: string | null
+          prompt_version: string
+          provider: string
+          recall?: number | null
+          schema_valid_rate?: number | null
+        }
+        Update: {
+          capability?: string
+          cost_usd?: number | null
+          created_at?: string
+          created_by?: string | null
+          detail?: Json
+          false_positive_rate?: number | null
+          fixture_count?: number
+          fixture_set?: string
+          id?: string
+          latency_ms_p50?: number | null
+          model?: string
+          notes?: string | null
+          prompt_version?: string
+          provider?: string
+          recall?: number | null
+          schema_valid_rate?: number | null
+        }
+        Relationships: []
+      }
       ai_extraction_history: {
         Row: {
           extracted_at: string | null
@@ -309,6 +366,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ai_requests_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ai_resolution_audit: {
+        Row: {
+          chosen_payload: Json
+          created_at: string
+          id: string
+          org_id: string
+          suggestion_payload: Json
+          task_temp_id: string | null
+          user_id: string
+        }
+        Insert: {
+          chosen_payload: Json
+          created_at?: string
+          id?: string
+          org_id: string
+          suggestion_payload: Json
+          task_temp_id?: string | null
+          user_id: string
+        }
+        Update: {
+          chosen_payload?: Json
+          created_at?: string
+          id?: string
+          org_id?: string
+          suggestion_payload?: Json
+          task_temp_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_resolution_audit_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -7098,6 +7193,31 @@ export type Database = {
           strategy: string
         }[]
       }
+      admin_ai_plan_extraction_metrics: {
+        Args: { p_since?: string }
+        Returns: {
+          acceptance_rate: number
+          avg_confidence: number
+          corrected: number
+          correction_rate: number
+          imported: number
+          model: string
+          prompt_version: string
+          proposals: number
+          provider: string
+          rejected: number
+          rejection_rate: number
+        }[]
+      }
+      admin_ai_resolution_metrics: {
+        Args: { p_since?: string }
+        Returns: {
+          correction_rate: number
+          corrections: number
+          day: string
+          suggestions: number
+        }[]
+      }
       admin_billing_utilization_snapshot: {
         Args: never
         Returns: {
@@ -8016,6 +8136,24 @@ export type Database = {
       purge_completed_tasks: {
         Args: { p_days: number; p_org: string }
         Returns: number
+      }
+      record_ai_capability_eval: {
+        Args: {
+          p_capability: string
+          p_cost_usd?: number
+          p_detail?: Json
+          p_false_positive_rate?: number
+          p_fixture_count: number
+          p_fixture_set: string
+          p_latency_ms_p50?: number
+          p_model: string
+          p_notes?: string
+          p_prompt_version: string
+          p_provider: string
+          p_recall?: number
+          p_schema_valid_rate?: number
+        }
+        Returns: string
       }
       record_knowledge_usage: {
         Args: {

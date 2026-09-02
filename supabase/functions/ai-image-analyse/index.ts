@@ -57,6 +57,10 @@ interface ResponseBody {
   detected_objects: DetectedObject[];
   document_classification?: DocumentClassification;
   anomalies: unknown[];
+  important_dates?: Array<{ label: string; date: string; kind: string }>;
+  findings?: Array<{ text: string; status: string }>;
+  outcome?: string | null;
+  compliance_recommendations?: string[];
   suggested_icon?: string | null;
   metadata: Record<string, unknown>;
 }
@@ -64,8 +68,8 @@ interface ResponseBody {
 const ANALYSIS_PROMPT = `Analyze this property/maintenance image. Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 
 {
-  "ocr_text": "All readable text from the image (labels, signs, plates, serial numbers, table cells)",
-  "detected_labels": ["fire extinguisher", "serial 8844", "expiry 2027", ...],
+  "ocr_text": "All readable text from the image (labels, signs, plates, serial numbers, table cells, control measures)",
+  "detected_labels": ["fire extinguisher", "serial 8844", "legionella", "action required", ...],
   "detected_objects": [
     {
       "type": "fire_extinguisher",
@@ -77,19 +81,34 @@ const ANALYSIS_PROMPT = `Analyze this property/maintenance image. Return ONLY va
     }
   ],
   "document_classification": {
-    "type": "Fire Certificate",
-    "expiry_date": "2025-04-01"
+    "type": "Water Hygiene Laboratory Report",
+    "expiry_date": "2026-09-20"
   },
+  "important_dates": [
+    {
+      "label": "Collected",
+      "date": "2026-08-18",
+      "kind": "action_deadline | expiry | next_due | service | issued | collected | received | other"
+    }
+  ],
+  "outcome": "satisfactory | unsatisfactory | pass | fail | expired | valid | unknown | action_required",
+  "findings": [
+    { "text": "Short factual observation from the document", "status": "pass | fail | info" }
+  ],
+  "compliance_recommendations": ["operator actions only (repair X, take out of service, re-sample) — include the printed deadline inside the action text when stated"],
   "anomalies": [],
   "metadata": {}
 }
 
 Rules:
-- Read the whole page, including headers and tables.
-- If this is a certificate, inspection, or service record, set document_classification.type to the document's own title (never "None" or "Unknown").
-- document_classification.expiry_date must be the next due / next test / next inspection / valid until / expiry date, as YYYY-MM-DD. Convert UK dates such as 01/03/26 to 2026-03-01.
-- If several dates appear, use the next-due date, not the date of service or print date.
+- Read the whole page, including headers, tables, and highlighted warning boxes.
+- If this is a certificate, inspection, laboratory, or service record, set document_classification.type to the document's own title (never "None" or "Unknown").
+- List EVERY clearly labelled date in important_dates with kind one of: action_deadline | expiry | next_due | service | issued | collected | received | other. Prefer null over invented dates. Convert UK dates such as 01/03/26 or 18 August 2026 to YYYY-MM-DD.
+- A deadline to fix, repair, remedy or rectify a defect ("repair before", "corrective action by", "à corriger avant") is kind "action_deadline" — never expiry or next_due.
+- document_classification.expiry_date must be ONLY a true next due / next test / next inspection / valid until / expiry date. Do NOT put report issued, collected, received, service dates or corrective deadlines there — put those in important_dates instead. If there is no renewal/next-due date, set expiry_date to null.
 - Never invent a date that is not printed.
+- findings are recorded observations with status: "fail" for non-conformities/defects/action-required results, "pass" for conforming/acceptable observations, "info" otherwise. Findings are NOT actions.
+- compliance_recommendations are operator actions only (repair X, take out of service, arrange compensatory surveillance).
 - For equipment photos (not documents), still extract serials and any expiry printed on labels.
 - Use snake_case for detected object type.`;
 
@@ -392,6 +411,51 @@ function normalizeResponse(raw: unknown): ResponseBody {
     suggestedIcon = HAZARD_OBJECT_TO_ICON[detectedObjects[0].type] ?? HAZARD_OBJECT_TO_ICON[detectedObjects[0].label?.toLowerCase()] ?? "alert-triangle";
   }
 
+  const importantDates = Array.isArray((parsed as Record<string, unknown>).important_dates)
+    ? ((parsed as Record<string, unknown>).important_dates as unknown[])
+        .filter((item) => item && typeof item === "object")
+        .map((item) => {
+          const row = item as Record<string, unknown>;
+          return {
+            label: String(row.label ?? row.name ?? "Date").trim().slice(0, 80) || "Date",
+            date: String(row.date ?? row.value ?? "").trim(),
+            kind: String(row.kind ?? row.type ?? "other").trim().toLowerCase() || "other",
+          };
+        })
+        .filter((row) => row.date.length > 0)
+        .slice(0, 12)
+    : [];
+  // Findings may arrive as strings (legacy) or { text, status } objects.
+  const findings = Array.isArray((parsed as Record<string, unknown>).findings)
+    ? ((parsed as Record<string, unknown>).findings as unknown[])
+        .map((item) => {
+          if (typeof item === "string") return { text: item.trim(), status: "info" };
+          if (item && typeof item === "object") {
+            const row = item as Record<string, unknown>;
+            const text = String(row.text ?? "").trim();
+            const s = String(row.status ?? "").toLowerCase();
+            return {
+              text,
+              status: s === "pass" || s === "fail" || s === "info" ? s : "info",
+            };
+          }
+          return { text: "", status: "info" };
+        })
+        .filter((row) => row.text.length > 0)
+        .slice(0, 10)
+    : [];
+  const complianceRecommendations = Array.isArray(
+    (parsed as Record<string, unknown>).compliance_recommendations
+  )
+    ? ((parsed as Record<string, unknown>).compliance_recommendations as unknown[])
+        .map((item) => String(item).trim())
+        .filter(Boolean)
+        .slice(0, 8)
+    : [];
+  const outcomeRaw = (parsed as Record<string, unknown>).outcome;
+  const outcome =
+    typeof outcomeRaw === "string" ? outcomeRaw.trim().toLowerCase() || null : null;
+
   const metadata: Record<string, unknown> = {
     ...(parsed.metadata ?? {}),
     normalized_document_type: normalizedDocType,
@@ -401,6 +465,10 @@ function normalizeResponse(raw: unknown): ResponseBody {
     confidence_map: confidenceMap,
     raw_ocr: rawOcr,
     suggested_icon: suggestedIcon,
+    important_dates: importantDates,
+    findings,
+    compliance_recommendations: complianceRecommendations,
+    outcome,
   };
 
   return {
@@ -409,6 +477,10 @@ function normalizeResponse(raw: unknown): ResponseBody {
     detected_objects: detectedObjects,
     document_classification: docClass,
     anomalies: Array.isArray(parsed.anomalies) ? parsed.anomalies : [],
+    important_dates: importantDates,
+    findings,
+    outcome,
+    compliance_recommendations: complianceRecommendations,
     suggested_icon: suggestedIcon,
     metadata,
   };

@@ -94,7 +94,7 @@ interface ResponseBody {
   ocr_text: string | null;
   summary: string | null;
   outcome: string | null;
-  findings: string[];
+  findings: Array<{ text: string; status: string }>;
   important_dates: Array<{ label: string; date: string; kind: string }>;
   detected_spaces: string[];
   detected_assets: DetectedAsset[];
@@ -161,19 +161,21 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
   "title": "Clear human title (not the raw filename)",
   "document_type": "EICR | Gas Safety Certificate | Fire Risk Assessment | Fire Certificate | PAT Test | EPC | Legionella Risk Assessment | EIC | Asbestos Register | O&M Manual | Insurance Certificate | Lease | Plan | Water Hygiene Laboratory Report | Other",
   "category": "Electrical | Fire Safety | Mechanical | Water | Legal | Plans | Insurance | O&M Manuals | Misc",
-  "expiry_date": "YYYY-MM-DD or null if not found — never invent a date. Prefer next due / next test / next inspection / valid until / expiry over service or print dates. Convert UK dates such as 01/03/26 to 2026-03-01.",
+  "expiry_date": "YYYY-MM-DD or null if not found — never invent a date. ONLY a true renewal / next due / next inspection / valid until date. Never a corrective/repair deadline, service or print date. Convert UK dates such as 01/03/26 to 2026-03-01.",
   "important_dates": [
     {
-      "label": "Short human label e.g. Collected / Received / Report issued / Next due / Expiry",
+      "label": "Short human label e.g. Collected / Received / Report issued / Inspection date / Repair by / Next due / Expiry",
       "date": "YYYY-MM-DD",
-      "kind": "expiry | next_due | service | issued | collected | received | other"
+      "kind": "action_deadline | expiry | next_due | service | issued | collected | received | other"
     }
   ],
   "renewal_frequency": "annual | 5-year | 6mo | 1yr | 2yr | 5yr | null",
   "confidence": 0.0 to 1.0,
   "summary": "2 short sentences: what this document is, and what it concludes",
   "outcome": "satisfactory | unsatisfactory | pass | fail | expired | valid | unknown | action_required",
-  "findings": ["up to 6 short factual bullets — include critical results and immediate control measures as separate bullets"],
+  "findings": [
+    { "text": "Short factual observation from the document", "status": "pass | fail | info" }
+  ],
   "ocr_text": "Readable text from the document (first 3000 chars)",
   "detected_spaces": ["space names found in document"],
   "detected_assets": [
@@ -190,9 +192,13 @@ Return ONLY valid JSON (no markdown, no code blocks) with this exact structure:
 }
 
 Rules for dates:
-- List EVERY clearly labelled date in important_dates (collected, received, issued, service, next due, expiry). Prefer null over invented dates.
-- expiry_date must be the primary renewal / next-due date when present; otherwise null.
-- For laboratory / inspection reports with control measures, put each measure in findings or compliance_recommendations as short operator actions.
+- List EVERY clearly labelled date in important_dates (collected, received, issued, service/inspection date, repair-by/corrective deadline, next due, expiry). Prefer null over invented dates.
+- A deadline to fix, repair, remedy or rectify a defect ("repair before", "corrective action by", "à corriger avant") is kind "action_deadline" — never expiry or next_due.
+- expiry_date must be the primary renewal / next-due date when present; otherwise null. Never put a corrective deadline there.
+
+Rules for findings vs actions:
+- findings are recorded observations with status: "fail" for non-conformities/defects/action-required results, "pass" for conforming/acceptable observations, "info" otherwise. Findings are NOT actions.
+- compliance_recommendations are the operator actions only (repair X, take out of service, re-sample, disinfect). Include the printed deadline inside the action text when the document states one.
 
 Focus on: certificates, inspection outcomes (especially HIGH / ACTION REQUIRED / unsatisfactory), all labelled dates, space references, serial/model numbers, safety warnings. Prefer null over invented dates.`;
 
@@ -469,8 +475,24 @@ function normalizeDocResponse(raw: unknown, fileName: string): ResponseBody {
   const ocr_text = (parsed.ocr_text as string) || null;
   const summary = typeof parsed.summary === "string" ? parsed.summary.trim() || null : null;
   const outcome = typeof parsed.outcome === "string" ? parsed.outcome.trim().toLowerCase() || null : null;
+  // Findings may arrive as strings (legacy) or { text, status } objects.
   const findings = Array.isArray(parsed.findings)
-    ? parsed.findings.map((item) => String(item).trim()).filter(Boolean).slice(0, 8)
+    ? parsed.findings
+        .map((item) => {
+          if (typeof item === "string") return { text: item.trim(), status: "info" };
+          if (item && typeof item === "object") {
+            const row = item as Record<string, unknown>;
+            const text = String(row.text ?? "").trim();
+            const s = String(row.status ?? "").toLowerCase();
+            return {
+              text,
+              status: s === "pass" || s === "fail" || s === "info" ? s : "info",
+            };
+          }
+          return { text: "", status: "info" };
+        })
+        .filter((row) => row.text.length > 0)
+        .slice(0, 10)
     : [];
   const important_dates = Array.isArray(parsed.important_dates)
     ? parsed.important_dates

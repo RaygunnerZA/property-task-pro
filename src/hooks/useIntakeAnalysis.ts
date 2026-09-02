@@ -14,7 +14,8 @@ import {
   textHasComplianceDocumentSignals,
   labelsSuggestComplianceDocument,
 } from "@/lib/intakeWorkflowSignals";
-import { mapIntakeDocumentType, hintsFromImageAnalysis, normalizeIntakeExpiryDate } from "@/lib/mapIntakeDocumentType";
+import { mapIntakeDocumentType, normalizeIntakeExpiryDate } from "@/lib/mapIntakeDocumentType";
+import { hintsFromImageAnalysis } from "@/lib/hintsFromImageAnalysis";
 
 export type WorkflowHint = "task" | "compliance" | "document" | "uncertain";
 

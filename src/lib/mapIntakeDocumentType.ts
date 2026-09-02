@@ -172,37 +172,6 @@ export type ImageAnalysisLike = {
   metadata?: Record<string, unknown>;
 };
 
-/**
- * Read type/expiry from every field the analyser actually returns.
- * The edge function puts classification at the top level and copies the date to
- * metadata.normalized_expiry — not only metadata.document_classification.
- */
-export function hintsFromImageAnalysis(result?: ImageAnalysisLike | null): {
-  documentType: string | null;
-  expiryDate: string | null;
-} {
-  if (!result) return { documentType: null, expiryDate: null };
-  const meta = result.metadata ?? {};
-  const nested = meta.document_classification as { type?: string; expiry_date?: string } | undefined;
-  const top = result.document_classification;
-  const rawType =
-    (typeof meta.normalized_document_type === "string" ? meta.normalized_document_type : null) ||
-    nested?.type ||
-    top?.type;
-  const mapped = mapIntakeDocumentType(rawType);
-  const rawExpiry =
-    nested?.expiry_date ||
-    top?.expiry_date ||
-    (typeof meta.normalized_expiry === "string" ? meta.normalized_expiry : null) ||
-    result.detected_objects?.find((obj) => obj.expiry_date)?.expiry_date;
-  const ocr =
-    result.ocr_text || (typeof meta.raw_ocr === "string" ? meta.raw_ocr : "");
-  return {
-    documentType: mapped?.type ?? (isMeaningfulSuggestedType(rawType) ? rawType!.trim() : null),
-    expiryDate: normalizeIntakeExpiryDate(rawExpiry) || inferExpiryFromOcrText(ocr),
-  };
-}
-
 export function sanitizeScanTitle(raw?: string | null): string | null {
   if (!raw) return null;
   const cleaned = raw.replace(/[\u0000-\u001F]+/g, " ").replace(/\s+/g, " ").trim();
