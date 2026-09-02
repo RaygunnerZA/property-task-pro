@@ -47,4 +47,5 @@ Schema_Discrepancy_Register.md : Working inventory of live vs docs vs types (202
 29_Knowledge.md             : Knowledge capability guide (defers to Ch 3 + Appendix A + Ch 7).
 30_Phase2_Knowledge_First.md : Phase 2 roadmap — finish Knowledge loop before editorial/distribution (defers to Ch 3, 7, 29, Appendix A).
 31_Public_Site.md           : Public marketing origin vs app origin, DNS, and session isolation.
+32_Phase3_Knowledge_Depth_And_Hardening.md : Phase 3 backlog — Knowledge depth, platform hardening, product debt (defers to Ch 3, 7, 20, 29, 30).
 Appendix_A.md               : Entity -> Context Map.

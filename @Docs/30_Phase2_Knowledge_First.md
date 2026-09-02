@@ -15,18 +15,22 @@ Finish the existing Knowledge system before expanding it.
 Build in this order:
 
 1. Applicability (jurisdiction, region, language, audience) — `knowledge.applicability` jsonb (shipped with Content Tree foundation)
-2. **Knowledge Intake (v1):** Upload (CSV/XLSX + docs) + Manual → candidates + sources + mandatory critic. Paste/URL deferred.
-3. Entity links (Properties, Spaces, Assets, Compliance, Tasks, Reports). Add Records only after updating the data model.
-4. Provenance and verification history (admin detail + `knowledge_sources` writes on Intake)
-5. Search
-6. Assistant citations (published Knowledge only)
-7. Reuse, stale and superseded metrics
+2. **Knowledge Intake (v1):** Upload (CSV/XLSX + docs) + **Add URL** + Manual → candidates + sources + mandatory critic. (**URL shipped.** Paste deferred — see `@Docs/32_Phase3_Knowledge_Depth_And_Hardening.md`.)
+3. Entity links (Properties, Spaces, Assets, Compliance, Tasks, Reports) — **remaining → Ch 32**
+4. Provenance and verification history (admin detail Activity + `knowledge_sources` on Intake) — foundation shipped; deeper surfaces → Ch 32
+5. Search — org ILIKE search shipped; richer search → Ch 32
+6. Assistant citations (published Knowledge only) — **→ Ch 32**
+7. Reuse, stale and superseded metrics — **→ Ch 32**
+
+Harder Knowledge completion, Living Knowledge, Discovery, Content Tree generation, and platform hardening are tracked in **`@Docs/32_Phase3_Knowledge_Depth_And_Hardening.md`**. Do not reopen those as drive-bys in Phase 2 PRs.
 
 Knowledge remains guidance. It never replaces Tasks, Compliance, Records or Signals.
 
 ---
 
 ## Priority 2 — Living Knowledge
+
+**Remaining → `@Docs/32_Phase3_Knowledge_Depth_And_Hardening.md`.**
 
 Surface Knowledge inside existing workflows.
 

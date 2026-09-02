@@ -83,8 +83,9 @@ export function AdminContentTreePanel() {
           <h2 className="font-medium text-sm">Content topics</h2>
         </div>
         <p className="text-xs text-muted-foreground">
-          Knowledge → SEO → Brief → Core article / FAQ / In-app tip. Creative and Publishing are
-          stubs. No external publish integrations in v1.
+          Knowledge → SEO → Brief → Core article / FAQ / In-app tip. Stages 5–6
+          (Creative and Publishing) are intentional stubs — no generation or channel
+          integrations in this release.
         </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="text-xs space-y-1 flex-1 min-w-[12rem]">
@@ -312,7 +313,9 @@ export function AdminContentTreePanel() {
           <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-2 opacity-70">
             <h3 className="text-sm font-medium">5–6 · Creative · Publishing</h3>
             <p className="text-xs text-muted-foreground">
-              Stubs only — no asset production or channel integrations in this release.
+              Intentional stubs only. No creative asset production, scheduling, or external
+              publish channels until Phase 3 (see @Docs/32). Manual Outputs above remain the
+              working path.
             </p>
           </section>
         </div>

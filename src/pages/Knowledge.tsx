@@ -1,61 +1,113 @@
 import { useState } from "react";
-import { BookOpen, Loader2, Search } from "lucide-react";
+import { BookOpen, Loader2, Plus, Search, X } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { usePublishedKnowledge } from "@/hooks/usePublishedKnowledge";
 import {
   useOrgKnowledgeMetrics,
   useOrgKnowledgeReviewQueue,
   useSetKnowledgeStatus,
+  useUpsertOrgKnowledge,
 } from "@/hooks/useOrgKnowledgeReview";
+import { knowledgeStatusUserLabel } from "@/lib/knowledge/knowledgeStatusLabel";
+import { displayCanonicalGuidance } from "@/lib/knowledge/knowledgeReviewState";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { KnowledgeRow } from "@/types/knowledge";
 
-function KnowledgeCard({ row }: { row: KnowledgeRow }) {
+function formatApplicability(row: KnowledgeRow): string {
+  const app = row.applicability;
+  if (!app || typeof app !== "object") return "—";
+  const record = app as Record<string, unknown>;
+  if (record.unscoped === true) return "Global";
+  const jurisdictions = Array.isArray(record.jurisdictions)
+    ? (record.jurisdictions as unknown[]).map(String).filter(Boolean)
+    : [];
+  if (jurisdictions.length === 0) return "Jurisdiction not set";
+  return jurisdictions.join(" · ");
+}
+
+function KnowledgeCard({
+  row,
+  onOpen,
+}: {
+  row: KnowledgeRow;
+  onOpen: () => void;
+}) {
   return (
-    <article className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-2">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full text-left rounded-xl bg-card/80 shadow-e1 p-4 space-y-2 hover:bg-muted/30 transition-colors"
+    >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-sm font-medium leading-snug">{row.title}</h3>
         <span className="shrink-0 text-caption font-mono uppercase tracking-wider text-muted-foreground">
-          {row.scope}
+          {knowledgeStatusUserLabel(row.status)}
         </span>
       </div>
-      {row.summary && (
-        <p className="text-sm text-muted-foreground line-clamp-3">{row.summary}</p>
-      )}
-      {row.body && !row.summary && (
-        <p className="text-sm text-muted-foreground line-clamp-3">{row.body}</p>
-      )}
-      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-        <span className="font-mono uppercase tracking-wider">{row.source_kind}</span>
-        {row.trust_score != null && (
-          <span className="font-mono">trust {Number(row.trust_score).toFixed(2)}</span>
-        )}
-      </div>
-      {row.attributes &&
-        typeof row.attributes === "object" &&
-        Object.keys(row.attributes).length > 0 && (
-          <p className="text-xs text-muted-foreground truncate">
-            {Object.entries(row.attributes)
-              .slice(0, 4)
-              .map(([k, v]) => `${k}: ${String(v)}`)
-              .join(" · ")}
-          </p>
-        )}
-    </article>
+      <p className="text-sm text-muted-foreground line-clamp-3">
+        {displayCanonicalGuidance(row)}
+      </p>
+      <p className="text-xs text-muted-foreground">{formatApplicability(row)}</p>
+    </button>
   );
 }
 
 export default function Knowledge() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
+  const [detail, setDetail] = useState<KnowledgeRow | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newSummary, setNewSummary] = useState("");
+
   const { data, isLoading, error } = usePublishedKnowledge(query);
   const { data: reviewQueue, canReview, isLoading: reviewLoading } =
     useOrgKnowledgeReviewQueue();
   const { data: metrics } = useOrgKnowledgeMetrics();
   const setStatus = useSetKnowledgeStatus();
+  const upsertOrg = useUpsertOrgKnowledge();
+
+  const clearSearch = () => {
+    setSearch("");
+    setQuery("");
+  };
+
+  const submitGuidance = () => {
+    const title = newTitle.trim();
+    const summary = newSummary.trim();
+    if (title.length < 3) {
+      toast.error("Title is required");
+      return;
+    }
+    if (summary.length < 12) {
+      toast.error("Add a short guidance summary");
+      return;
+    }
+    upsertOrg.mutate(
+      { title, summary },
+      {
+        onSuccess: () => {
+          toast.success("Added to organisation review queue");
+          setNewTitle("");
+          setNewSummary("");
+          setAddOpen(false);
+        },
+        onError: (e) =>
+          toast.error(e instanceof Error ? e.message : "Could not create guidance"),
+      }
+    );
+  };
 
   return (
     <StandardPage
@@ -88,8 +140,9 @@ export default function Knowledge() {
             ))}
           </div>
         )}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
+
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[12rem]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               value={search}
@@ -107,7 +160,68 @@ export default function Knowledge() {
           >
             Search
           </Button>
+          {query && (
+            <Button
+              variant="outline"
+              className="border-0 btn-neomorphic"
+              onClick={clearSearch}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
+          {canReview && (
+            <Button
+              variant="outline"
+              className="border-0 btn-neomorphic"
+              onClick={() => setAddOpen((o) => !o)}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add guidance
+            </Button>
+          )}
         </div>
+
+        {canReview && addOpen && (
+          <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+            <h2 className="text-sm font-medium">Add organisation guidance</h2>
+            <p className="text-xs text-muted-foreground">
+              Creates a candidate in your review queue. It will not publish until verified.
+            </p>
+            <Input
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Title"
+              className="border-0 shadow-engraved bg-input"
+            />
+            <Textarea
+              value={newSummary}
+              onChange={(e) => setNewSummary(e.target.value)}
+              placeholder="Homeowner-readable guidance (one or two sentences)…"
+              rows={3}
+              className="border-0 shadow-engraved bg-input resize-none"
+            />
+            <div className="flex gap-2">
+              <Button
+                className="shadow-primary-btn border-0"
+                disabled={upsertOrg.isPending}
+                onClick={submitGuidance}
+              >
+                {upsertOrg.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Save to review queue
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setAddOpen(false)}
+                disabled={upsertOrg.isPending}
+              >
+                Cancel
+              </Button>
+            </div>
+          </section>
+        )}
 
         {canReview && (
           <section className="space-y-3">
@@ -116,7 +230,9 @@ export default function Knowledge() {
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
             )}
             {!reviewLoading && (reviewQueue?.length ?? 0) === 0 && (
-              <p className="text-sm text-muted-foreground">No candidates awaiting review.</p>
+              <p className="text-sm text-muted-foreground">
+                No candidates awaiting review.
+              </p>
             )}
             <div className="space-y-2">
               {(reviewQueue ?? []).map((row) => (
@@ -129,13 +245,10 @@ export default function Knowledge() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="text-sm font-medium truncate">{row.title}</p>
                     <p className="text-xs text-muted-foreground line-clamp-2">
-                      {row.summary || row.body || "No summary"}
+                      {displayCanonicalGuidance(row)}
                     </p>
                     <p className="text-caption font-mono uppercase text-muted-foreground">
-                      {row.status} · {row.source_kind}
-                      {row.trust_score != null
-                        ? ` · trust ${Number(row.trust_score).toFixed(2)}`
-                        : ""}
+                      {knowledgeStatusUserLabel(row.status)}
                     </p>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -151,7 +264,9 @@ export default function Knowledge() {
                             {
                               onSuccess: () => toast.success("Verified"),
                               onError: (e) =>
-                                toast.error(e instanceof Error ? e.message : "Failed"),
+                                toast.error(
+                                  e instanceof Error ? e.message : "Failed"
+                                ),
                             }
                           )
                         }
@@ -169,7 +284,9 @@ export default function Knowledge() {
                           {
                             onSuccess: () => toast.success("Published"),
                             onError: (e) =>
-                              toast.error(e instanceof Error ? e.message : "Failed"),
+                              toast.error(
+                                e instanceof Error ? e.message : "Failed"
+                              ),
                           }
                         )
                       }
@@ -187,7 +304,9 @@ export default function Knowledge() {
                           {
                             onSuccess: () => toast.success("Archived"),
                             onError: (e) =>
-                              toast.error(e instanceof Error ? e.message : "Failed"),
+                              toast.error(
+                                e instanceof Error ? e.message : "Failed"
+                              ),
                           }
                         )
                       }
@@ -214,17 +333,75 @@ export default function Knowledge() {
             </p>
           )}
           {!isLoading && !error && (data?.length ?? 0) === 0 && (
-            <div className="rounded-xl bg-card/70 p-6 shadow-e1 text-sm text-muted-foreground">
-              No published knowledge yet. Verified guidance will appear here.
+            <div className="rounded-xl bg-card/70 p-6 shadow-e1 text-sm text-muted-foreground space-y-2">
+              {query ? (
+                <>
+                  <p>No matches for “{query}”.</p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-0 btn-neomorphic"
+                    onClick={clearSearch}
+                  >
+                    Clear search
+                  </Button>
+                </>
+              ) : (
+                <p>No published knowledge yet. Verified guidance will appear here.</p>
+              )}
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
             {(data ?? []).map((row) => (
-              <KnowledgeCard key={row.id} row={row} />
+              <KnowledgeCard
+                key={row.id}
+                row={row}
+                onOpen={() => setDetail(row)}
+              />
             ))}
           </div>
         </section>
       </div>
+
+      <Sheet open={!!detail} onOpenChange={(open) => !open && setDetail(null)}>
+        <SheetContent className="sm:max-w-md overflow-y-auto">
+          {detail && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{detail.title}</SheetTitle>
+                <SheetDescription>
+                  {knowledgeStatusUserLabel(detail.status)}
+                  {detail.scope === "platform" ? " · Platform" : " · Organisation"}
+                </SheetDescription>
+              </SheetHeader>
+              <div className="mt-6 space-y-4 text-sm">
+                <div>
+                  <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
+                    Guidance
+                  </p>
+                  <p className="text-foreground leading-relaxed whitespace-pre-wrap">
+                    {displayCanonicalGuidance(detail)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
+                    Applicability
+                  </p>
+                  <p className="text-muted-foreground">{formatApplicability(detail)}</p>
+                </div>
+                {detail.body && detail.summary && detail.body.trim() !== detail.summary.trim() && (
+                  <div>
+                    <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
+                      Detail
+                    </p>
+                    <p className="text-muted-foreground whitespace-pre-wrap">{detail.body}</p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </StandardPage>
   );
 }

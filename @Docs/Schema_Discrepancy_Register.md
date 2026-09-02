@@ -17,16 +17,18 @@ Freeze: no Dashboard DDL; no `db:mark-local-applied` as normal workflow. New sch
 
 `gbtexoyvfpnduykmxunc` is production **and** shared dev. Do **not** Dashboard-reset it. Local: `supabase start`. Staging: new project (see [supabase/STAGING.md](../supabase/STAGING.md)).
 
-## Live vs constitution (keep docs → added in `20260817120001`)
+## Live vs constitution (keep docs → added in `20260817120001`) — Resolved
 
-| Object | Live | Docs / app | Decision |
+These objects were missing on live at squash capture and were **added** via `20260817120001_reconcile_canonical_gaps.sql` (and follow-ups). Do not re-litigate as open gaps.
+
+| Object | Live (at capture) | Docs / app | Status |
 |---|---|---|---|
-| `platform_admins`, `is_platform_admin()`, admin RPCs | missing | required | **keep docs** — added |
-| `task_followers`, `member_can_mutate_task` | missing | required | **keep docs** — added |
-| `ai_route_overrides` + pin RPCs | missing | required | **keep docs** — added |
-| `geo_captures` + `geo_capture_context` | missing | required | **keep docs** — added (RLS uses `is_org_member`, not JWT-only `current_org_id`) |
-| `issues`, `evidence`, `contractor_tokens`, `schedule_items`, `task_instances` | missing | listed in Ch 3 | **keep docs** — minimal tables + org RLS |
-| `geo_captures` insert using `current_org_id()` | n/a | skill: JWT must not be only org source | overlay uses membership helper |
+| `platform_admins`, `is_platform_admin()`, admin RPCs | missing | required | **Resolved** — present on live |
+| `task_followers`, `member_can_mutate_task` | missing | required | **Resolved** — present on live |
+| `ai_route_overrides` + pin RPCs | missing | required | **Resolved** — present on live |
+| `geo_captures` + `geo_capture_context` | missing | required | **Resolved** — present; RLS uses `is_org_member`, not JWT-only `current_org_id` |
+| `issues`, `evidence`, `contractor_tokens`, `schedule_items`, `task_instances` | missing | listed in Ch 3 | **Resolved** — minimal tables + org RLS |
+| `geo_captures` insert using `current_org_id()` | n/a | skill: JWT must not be only org source | **Resolved** — overlay uses membership helper |
 
 ## Live vs constitution (not created in squash)
 
@@ -43,14 +45,14 @@ Tables on live that are not in Ch 3 as first-class: `groups`, `group_members`, `
 
 Ch 3 says there is **no** `ai_models` registry; live still has the table. Keep the table; routing stays in code.
 
-## Dual TypeScript types
+## Dual TypeScript types — Resolved
 
-| File | PostgREST | Used by app? |
-|---|---|---|
-| `src/integrations/supabase/types.ts` | 14.1 | **yes** (`client.ts`) |
-| `src/types/supabase.ts` | 14.5 | no (now a re-export) |
+| File | Role |
+|---|---|
+| `src/integrations/supabase/types.ts` | **App source of truth** (`client.ts`) |
+| `src/types/supabase.ts` | Re-export / legacy alias — not a second schema |
 
-`npm run gen:types` now dumps **local** public schema into `src/integrations/supabase/types.ts`.
+`npm run gen:types` dumps **local** public schema into `src/integrations/supabase/types.ts`.
 
 ## Storage
 

@@ -24,7 +24,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { SemanticChip } from "@/components/chips/semantic";
 import {
   Loader2,
-  ChevronDown,
   Upload,
   X,
   Building2,
@@ -121,10 +120,7 @@ export function InviteUserForm({
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
 
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
   const [sendEmail, setSendEmail] = useState(true);
-  const [generateLink, setGenerateLink] = useState(false);
   const [inviteMessage, setInviteMessage] = useState("");
 
   const [notifyOnAssign, setNotifyOnAssign] = useState(true);
@@ -159,9 +155,7 @@ export function InviteUserForm({
     setTeamSearch("");
     setTags([]);
     setTagInput("");
-    setAdvancedOpen(false);
     setSendEmail(true);
-    setGenerateLink(false);
     setInviteMessage("");
     setNotifyOnAssign(true);
     setNotifyBeforeDue(true);
@@ -819,45 +813,7 @@ export function InviteUserForm({
             </p>
           </section>
 
-          {/* ── 8. ADVANCED RESTRICTIONS (collapsed) ── */}
-          {(role === "owner" || role === "manager") && (
-            <section>
-              <button
-                type="button"
-                onClick={() => setAdvancedOpen(!advancedOpen)}
-                className="flex items-center gap-2 text-xs font-mono uppercase text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", advancedOpen && "rotate-180")} />
-                Advanced Access Restrictions
-              </button>
-              {advancedOpen && (
-                <div className="mt-3 p-4 rounded-card shadow-engraved bg-background space-y-3">
-                  <p className="text-xs text-muted-foreground">
-                    Optionally restrict this user to specific spaces or asset types.
-                    Leave blank for full access within assigned properties.
-                  </p>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Space restrictions</Label>
-                    <Input
-                      placeholder="Not implemented yet"
-                      disabled
-                      className="shadow-engraved border-0 opacity-50"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Asset type restrictions</Label>
-                    <Input
-                      placeholder="Not implemented yet"
-                      disabled
-                      className="shadow-engraved border-0 opacity-50"
-                    />
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* ── 9. NOTIFICATION PREFERENCES ── */}
+          {/* ── 8. NOTIFICATION PREFERENCES ── */}
           <section className="space-y-3">
             <Label className="text-xs font-mono uppercase text-muted-foreground flex items-center gap-1.5">
               <Bell className="h-3 w-3" /> Notification Preferences
@@ -880,7 +836,7 @@ export function InviteUserForm({
             </div>
           </section>
 
-          {/* ── 10. INVITATION SETTINGS ── */}
+          {/* ── 9. INVITATION SETTINGS ── */}
           <section className="space-y-3">
             <Label className="text-xs font-mono uppercase text-muted-foreground block">
               Invitation
@@ -892,13 +848,6 @@ export function InviteUserForm({
                   onCheckedChange={(c) => setSendEmail(!!c)}
                 />
                 <span className="text-sm">Send invite email immediately</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <Checkbox
-                  checked={generateLink}
-                  onCheckedChange={(c) => setGenerateLink(!!c)}
-                />
-                <span className="text-sm">Generate invite link manually</span>
               </label>
             </div>
             <div className="space-y-1.5">

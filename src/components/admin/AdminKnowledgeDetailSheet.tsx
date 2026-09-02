@@ -634,6 +634,28 @@ export function AdminKnowledgeDetailSheet({
                 )}
               </Section>
 
+              <Section title="Activity">
+                {events.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">No verification events yet.</p>
+                ) : (
+                  <ul className="space-y-2">
+                    {events.slice(0, 12).map((ev) => (
+                      <li
+                        key={ev.id}
+                        className="flex flex-col gap-0.5 border-b border-border/30 border-dashed pb-2 last:border-0"
+                      >
+                        <span className="text-xs font-medium text-foreground">
+                          {ev.event_type.replace(/_/g, " ")}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground">
+                          {new Date(ev.created_at).toLocaleString()}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Section>
+
               <Section title="Used by">
                 <p className="text-muted-foreground">
                   0 tasks · 0 properties · 0 answers · 0 articles
