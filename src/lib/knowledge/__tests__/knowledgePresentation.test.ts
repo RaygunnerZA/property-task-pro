@@ -225,7 +225,8 @@ describe("knowledgePresentation gates", () => {
   it("allows FR SPANC when local lookup is documented", () => {
     const row = baseRow({
       title: "Private sanitation compliance / SPANC",
-      summary: "Owners must maintain private sanitation and allow SPANC inspection.",
+      summary:
+        "In France, owners of private sanitation systems must keep the installation maintained and allow SPANC inspections, then complete any remediation required by the local authority within the stated deadlines.",
       applicability: {
         jurisdictions: ["FR"],
         regions: [],
@@ -264,7 +265,8 @@ describe("knowledgePresentation gates", () => {
       status: "verified",
       reviewed_by: "user-1",
       title: "Private sanitation compliance / SPANC",
-      summary: "Owners must maintain private sanitation and allow SPANC inspection.",
+      summary:
+        "In France, owners of private sanitation systems must keep the installation maintained and allow SPANC inspections, then complete any remediation required by the local authority within the stated deadlines.",
       applicability: {
         jurisdictions: ["FR"],
         regions: [],
