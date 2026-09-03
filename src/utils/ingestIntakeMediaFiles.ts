@@ -6,6 +6,7 @@ import type {
   IntakeScanAction,
   IntakeScanFinding,
 } from "@/lib/intakeDocumentDates";
+import type { IntakeDetectedAsset } from "@/lib/matchIntakeAssets";
 
 export type IntakeFileScanStatus = "scanning" | "done" | "error" | "skipped";
 
@@ -26,8 +27,11 @@ export interface PendingIntakeFile {
   scanImportantDates?: IntakeImportantDate[];
   scanFindings?: IntakeScanFinding[];
   scanActions?: IntakeScanAction[];
+  scanDetectedAssets?: IntakeDetectedAsset[];
   /** True when the edge function returned a filename stub rather than a real read. */
   scanWasStub?: boolean;
+  /** Pre-save scan timed out or AI was unreachable — post-save analysis will retry. */
+  scanDeferred?: boolean;
 }
 
 export const INTAKE_MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB

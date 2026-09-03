@@ -99,6 +99,13 @@ export async function parseEdgeFunctionError(
     }
 
     if (err.message && !/non-2xx/i.test(err.message)) {
+      if (err.name === "FunctionsFetchError" || /failed to send a request to the edge function/i.test(err.message)) {
+        return {
+          message:
+            "Could not reach the content-generate edge function. Deploy it with: supabase functions deploy content-generate",
+          code: "edge_function_unreachable",
+        };
+      }
       return { message: err.message };
     }
   }

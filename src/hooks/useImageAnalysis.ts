@@ -9,6 +9,10 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { hintsFromImageAnalysis } from "@/lib/hintsFromImageAnalysis";
+import {
+  IntakeScanTimeoutError,
+  withIntakeScanTimeout,
+} from "@/lib/intakeScanDeferral";
 
 export interface ImageScanHints {
   documentType: string | null;
@@ -177,14 +181,16 @@ export function useImageAnalysis({
 
       try {
         const imageBase64 = await blobToBase64(source);
-        const { data, error } = await supabase.functions.invoke("ai-image-analyse", {
-          body: {
-            image: imageBase64,
-            org_id: orgId,
-            property_id: propertyId || null,
-            mode: "full",
-          },
-        });
+        const { data, error } = await withIntakeScanTimeout(
+          supabase.functions.invoke("ai-image-analyse", {
+            body: {
+              image: imageBase64,
+              org_id: orgId,
+              property_id: propertyId || null,
+              mode: "full",
+            },
+          })
+        );
 
         if (error) {
           console.warn("[useImageAnalysis] Full analysis error:", error);
@@ -196,6 +202,7 @@ export function useImageAnalysis({
                 ...(img.rawAnalysis?.metadata || {}),
                 intake_stage: "full",
                 full_analysis_failed: true,
+                scan_deferred: true,
               },
             },
           });
@@ -231,6 +238,7 @@ export function useImageAnalysis({
           detectedLabels: result.detected_labels ?? [],
         });
       } catch (err) {
+        const deferred = err instanceof IntakeScanTimeoutError;
         console.warn("[useImageAnalysis] Full analysis failed:", err);
         onPatchImage?.(localId, {
           intakeFullAnalysisPending: false,
@@ -240,6 +248,7 @@ export function useImageAnalysis({
               ...(img.rawAnalysis?.metadata || {}),
               intake_stage: "full",
               full_analysis_failed: true,
+              scan_deferred: deferred ? true : undefined,
             },
           },
         });

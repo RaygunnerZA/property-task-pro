@@ -5,6 +5,11 @@
 
 import type { KnowledgeApplicability } from "@/types/knowledge";
 import { EMPTY_APPLICABILITY } from "@/types/knowledge";
+import {
+  mergeClaimsWithAttributeFallback,
+  serializeClaimsForRpc,
+  type KnowledgeClaimRow,
+} from "@/lib/knowledge/knowledgeClaims";
 
 /** Platform sentinel org for AI metering on admin/platform intake. */
 export const PLATFORM_AI_ORG_ID = "00000000-0000-0000-0000-000000000000";
@@ -29,6 +34,14 @@ export type DocAnalyseKnowledgeProposal = {
   summary?: string | null;
   body?: string | null;
   attributes?: Record<string, string>;
+  /** Source-backed facts; established:false = explicit unknown (do not invent). */
+  claims?: Array<{
+    text?: string;
+    claim_text?: string;
+    category?: string;
+    source_location?: string;
+    established?: boolean;
+  }>;
 };
 
 export type DocAnalysePayload = {
@@ -54,6 +67,7 @@ export type ProposedKnowledgeCandidate = {
   summary: string;
   body: string;
   attributes: Record<string, string>;
+  claims: KnowledgeClaimRow[];
   provenance: KnowledgeSourceProvenance;
   applicability: KnowledgeApplicability;
   selected: boolean;
@@ -82,16 +96,19 @@ function proposalRow(
     summary?: string;
     body?: string;
     attributes?: Record<string, string>;
+    claims?: DocAnalyseKnowledgeProposal["claims"];
   },
   source: KnowledgeSourceProvenance,
   analysis: DocAnalysePayload
 ): ProposedKnowledgeCandidate {
+  const attributes = { ...baseAttributes(analysis), ...(partial.attributes ?? {}) };
   return {
     clientId: newClientId(),
     title: clip(partial.title, 240),
     summary: clip(partial.summary, 800),
     body: clip(partial.body, 12000),
-    attributes: { ...baseAttributes(analysis), ...(partial.attributes ?? {}) },
+    attributes,
+    claims: mergeClaimsWithAttributeFallback(partial.claims, attributes),
     provenance: {
       ...source,
       citation: source.citation ?? (clip(analysis.title, 200) || undefined),
@@ -117,6 +134,7 @@ export function proposalsFromDocAnalysis(
               summary: p.summary ?? undefined,
               body: p.body ?? undefined,
               attributes: p.attributes,
+              claims: p.claims,
             },
             source,
             analysis

@@ -105,7 +105,27 @@ export interface KnowledgeRow {
 }
 
 export type ContentTopicStatus = "draft" | "active" | "archived";
-export type ContentOutputKind = "core_article" | "faq" | "in_app_tip";
+
+export type ContentTopicWorkflowStatus =
+  | "generating_seo"
+  | "seo_review"
+  | "generating_brief"
+  | "brief_review"
+  | "ready_for_outputs"
+  | "generating_outputs"
+  | "output_review"
+  | "visual_concept_review"
+  | "generating_final_assets"
+  | "ready_for_publishing"
+  | "generation_failed";
+
+export type ContentOutputKind =
+  | "core_article"
+  | "faq"
+  | "in_app_tip"
+  | "newsletter"
+  | "social_post"
+  | "reel_script";
 export type ContentOutputStatus =
   | "draft"
   | "needs_review"
@@ -119,6 +139,7 @@ export interface ContentTopicRow {
   knowledge_id: string;
   title: string;
   status: ContentTopicStatus;
+  workflow_status: ContentTopicWorkflowStatus;
   seo: Record<string, unknown>;
   brief: Record<string, unknown>;
   creative: Record<string, unknown>;

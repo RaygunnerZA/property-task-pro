@@ -82,6 +82,13 @@ interface KnowledgeProposal {
   summary?: string | null;
   body?: string | null;
   attributes?: Record<string, string>;
+  claims?: Array<{
+    text?: string;
+    claim_text?: string;
+    category?: string;
+    source_location?: string | null;
+    established?: boolean;
+  }>;
 }
 
 interface ResponseBody {
@@ -143,13 +150,26 @@ Additionally, extract distinct reusable knowledge for property operators (NOT th
 Add to your JSON:
 "knowledge_proposals": [
   {
-    "title": "Short title for one reusable fact or guidance",
-    "summary": "One sentence",
-    "body": "Actionable guidance if needed",
-    "attributes": { "category": "optional", "applies_when": "optional" }
+    "title": "Short title for one reusable topic",
+    "summary": "One sentence headline",
+    "body": "Concise actionable guidance if needed",
+    "attributes": { "category": "optional", "applies_when": "optional" },
+    "claims": [
+      {
+        "text": "One atomic fact from the source",
+        "category": "obligation | applicability | responsibility | standard | testing | replacement | evidence | exception | consequence | other",
+        "source_location": "section/heading if visible, else null",
+        "established": true
+      }
+    ]
   }
 ]
-Rules: 1–8 proposals max; each must stand alone; split separate topics/requirements/actions; do not duplicate the same fact; operational metadata only in attributes, not body prose about the file itself.`;
+Rules:
+- 1–8 proposals max; each must stand alone; split separate topics/requirements/actions.
+- Prefer many small claims under a topic over a long summary that discards detail.
+- Only include claims the source explicitly supports. Never invent legal duties, standards, deadlines, or penalties from general knowledge.
+- If an important detail is missing from the source, add a claim with established:false describing what is unknown (e.g. "Replacement interval not stated").
+- Do not duplicate the same fact; operational metadata only in attributes, not body prose about the file itself.`;
 
 const DOC_ANALYSIS_PROMPT = `Analyze this property document. Extract metadata for facilities/property management.
 

@@ -19,6 +19,10 @@ import {
   type KnowledgeSourceProvenance,
   type ProposedKnowledgeCandidate,
 } from "@/lib/knowledge/knowledgeDocumentIntake";
+import {
+  mergeClaimsWithAttributeFallback,
+  serializeClaimsForRpc,
+} from "@/lib/knowledge/knowledgeClaims";
 import type { WorkbookManifest } from "@/lib/knowledge/knowledgeSheetParse";
 import {
   formatEdgeFunctionToast,
@@ -63,6 +67,7 @@ export type KnowledgeDetailPayload = {
   knowledge: KnowledgeRow;
   sources: KnowledgeSourceRow[];
   verification_events: KnowledgeVerificationEventRow[];
+  claims?: Array<Record<string, unknown>>;
 };
 
 async function invokeKnowledgeCritic(knowledgeId: string) {
@@ -638,6 +643,11 @@ export function useAdminImportKnowledgeProposals() {
             body: p.body || null,
             applicability: p.applicability,
             attributes: p.attributes,
+            claims: serializeClaimsForRpc(
+              p.claims?.length
+                ? p.claims
+                : mergeClaimsWithAttributeFallback([], p.attributes)
+            ),
             provenance: {
               ...p.provenance,
               ...input.source,
@@ -694,6 +704,7 @@ export function useAdminContentTopic(topicId: string | null) {
         knowledge: KnowledgeRow;
         outputs: ContentOutputRow[];
         sources: KnowledgeSourceRow[];
+        claims?: Array<Record<string, unknown>>;
       };
     },
   });
@@ -702,11 +713,16 @@ export function useAdminContentTopic(topicId: string | null) {
 export function useAdminCreateContentTopic() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { knowledgeId: string; title?: string }) => {
+    mutationFn: async (input: {
+      knowledgeId: string;
+      title?: string;
+      allowDuplicate?: boolean;
+    }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc("admin_create_content_topic", {
         p_knowledge_id: input.knowledgeId,
         p_title: input.title ?? null,
+        p_allow_duplicate: input.allowDuplicate ?? false,
       });
       if (error) throw error;
       return data as ContentTopicRow;
@@ -728,6 +744,7 @@ export function useAdminUpsertContentTopicStage() {
       publishing?: Record<string, unknown>;
       title?: string;
       status?: string;
+      workflowStatus?: string;
     }) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any).rpc("admin_upsert_content_topic_stage", {
@@ -738,6 +755,7 @@ export function useAdminUpsertContentTopicStage() {
         p_publishing: input.publishing ?? null,
         p_title: input.title ?? null,
         p_status: input.status ?? null,
+        p_workflow_status: input.workflowStatus ?? null,
       });
       if (error) throw error;
       return data as ContentTopicRow;
@@ -745,6 +763,164 @@ export function useAdminUpsertContentTopicStage() {
     onSuccess: (_row, vars) => {
       void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
       void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+async function invokeContentGenerate(body: {
+  topicId: string;
+  stage: "seo" | "brief" | "output" | "visual_concept" | "visual_final";
+  outputKinds?: ContentOutputKind[];
+  regenerate?: boolean;
+}) {
+  const generatingStatus: Record<typeof body.stage, string> = {
+    seo: "generating_seo",
+    brief: "generating_brief",
+    output: "generating_outputs",
+    visual_concept: "visual_concept_review",
+    visual_final: "generating_final_assets",
+  };
+
+  const nextStatus = generatingStatus[body.stage];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: statusErr } = await (supabase as any).rpc("admin_set_content_topic_workflow_status", {
+    p_topic_id: body.topicId,
+    p_workflow_status: nextStatus,
+    p_generation_error: null,
+  });
+  if (statusErr) {
+    const msg = statusErr.message ?? "Could not start generation";
+    throw new Error(
+      /could not find the function/i.test(msg)
+        ? "Content workflow migration not applied. Run npm run db:push."
+        : msg
+    );
+  }
+
+  let data: unknown;
+  let error: unknown;
+  let response: Response | undefined;
+  try {
+    ({ data, error, response } = await supabase.functions.invoke("content-generate", {
+      body: {
+        topic_id: body.topicId,
+        stage: body.stage,
+        output_kinds: body.outputKinds,
+        regenerate: body.regenerate ?? false,
+      },
+    }));
+  } catch (fetchErr) {
+    const info = await parseEdgeFunctionError(fetchErr, data);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any).rpc("admin_set_content_topic_workflow_status", {
+      p_topic_id: body.topicId,
+      p_workflow_status: "generation_failed",
+      p_generation_error: info.message.slice(0, 500),
+    });
+    throw new Error(formatEdgeFunctionToast(info));
+  }
+
+  if (error) {
+    const info = await parseEdgeFunctionError(error, data);
+    if (!info.status && response) info.status = response.status;
+    throw new Error(formatEdgeFunctionToast(info));
+  }
+
+  const payload = data as { ok?: boolean; code?: string; message?: string; request_id?: string };
+  if (payload?.ok === false) {
+    throw new Error(
+      formatEdgeFunctionToast({
+        message: payload.message ?? "Content generation failed",
+        code: payload.code,
+        requestId: payload.request_id,
+      })
+    );
+  }
+
+  return data;
+}
+
+export function useAdminGenerateContent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: invokeContentGenerate,
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+export function useAdminApproveContentTopicSeo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { topicId: string; seo?: Record<string, unknown> }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_approve_content_topic_seo", {
+        p_topic_id: input.topicId,
+        p_seo: input.seo ?? null,
+      });
+      if (error) throw error;
+      return data as ContentTopicRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+export function useAdminRejectContentTopicSeo() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { topicId: string; reason?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_reject_content_topic_seo", {
+        p_topic_id: input.topicId,
+        p_reason: input.reason ?? null,
+      });
+      if (error) throw error;
+      return data as ContentTopicRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+    },
+  });
+}
+
+export function useAdminApproveContentTopicBrief() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { topicId: string; brief?: Record<string, unknown> }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_approve_content_topic_brief", {
+        p_topic_id: input.topicId,
+        p_brief: input.brief ?? null,
+      });
+      if (error) throw error;
+      return data as ContentTopicRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+export function useAdminRejectContentTopicBrief() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { topicId: string; reason?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_reject_content_topic_brief", {
+        p_topic_id: input.topicId,
+        p_reason: input.reason ?? null,
+      });
+      if (error) throw error;
+      return data as ContentTopicRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
     },
   });
 }

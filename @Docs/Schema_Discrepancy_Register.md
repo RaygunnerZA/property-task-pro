@@ -35,7 +35,7 @@ These objects were missing on live at squash capture and were **added** via `202
 | Object | Notes | Decision |
 |---|---|---|
 | `asset_inspections`, `asset_themes`, `assistant_logs`, `brain_extract_pending`, `compliance_auto_tasks`, `compliance_contractors`, `compliance_history`, `listed_buildings`, `notification_events`, `notifications`, `property_graph_edges`, `property_legal`, `property_utilities`, `space_ui_groups`, `task_assets`, `task_compliance`, `task_image_annotation_versions`, `task_teams` | In app generated types and/or old migrations; **not** on live | **bug / later PR** — do not invent in squash. Add forward migrations when the product path needs them. |
-| `ai_capability_evals` + `record_ai_capability_eval` + `admin_ai_plan_extraction_metrics` / `admin_ai_resolution_metrics` | Archive-only at squash; client already wrote `ai_resolution_audit` | **Resolved** — `20260902120000_ai_capability_evals_and_resolution_audit.sql` (apply with `db:push` / local migrate). `ai_resolution_audit` is created if missing; still no `ai_request_id` (Stage 6). |
+| `ai_capability_evals` + `record_ai_capability_eval` + `admin_ai_plan_extraction_metrics` / `admin_ai_resolution_metrics` | Archive-only at squash; client already wrote `ai_resolution_audit` | **Resolved** — `20260902120000` applied on live. `admin_list_ai_route_overrides` (`20260903080000`) is the admin read path (Ch 25 RPCs). `ai_resolution_audit` still has no `ai_request_id` (Stage 6). |
 | Empty `assigned_properties` grants all properties | Skill + docs §3.3 disagree | **bug (flagged)** — do not change in squash |
 
 ## Live-only / legacy (keep live)
@@ -85,6 +85,12 @@ Local: Inbucket + `site_url = http://127.0.0.1:8080` in `supabase/config.toml`. 
 | `knowledge-discovery` | no user `getUser()` | **bug (flagged)** |
 
 Squash does **not** flip these flags. Track as security follow-up; do not add more JWT-off user-callable functions.
+
+## Pending local migrations (not yet on live)
+
+| Object | Notes | Decision |
+|---|---|---|
+| `knowledge_claims` + claim RPCs (`20260903200000_knowledge_claims.sql`) | Atomic source-backed facts under Knowledge; Content SEO grounding uses established claims and treats unknowns as gaps. Docs updated in Ch 3 / Ch 29. | **Apply via `npm run db:push`** before relying on Content claim grounding in prod |
 
 ## Policies that depend on JWT org claim
 

@@ -104,6 +104,8 @@ const DEFAULT_COST_UNITS: Record<string, number> = {
   "building-plan-process": 5,
   "knowledge-critic": 2,
   "knowledge-discovery": 1,
+  "content-generate": 2,
+  "knowledge-generate-guidance": 1,
 };
 
 /**

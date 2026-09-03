@@ -19,6 +19,7 @@ export async function createComplianceDocument(input: {
   documentType?: string | null;
   expiryDate?: string | null;
   notes?: string | null;
+  linkedAssetIds?: string[] | null;
 }): Promise<{ id: string }> {
   const documentType =
     input.documentType?.trim() && input.documentType.trim() !== "Other"
@@ -26,6 +27,7 @@ export async function createComplianceDocument(input: {
       : null;
   const expiry = input.expiryDate?.trim() || null;
   const notes = input.notes?.trim() || null;
+  const linkedAssetIds = (input.linkedAssetIds ?? []).filter(Boolean);
 
   const { data, error } = await supabase
     .from("compliance_documents")
@@ -37,6 +39,7 @@ export async function createComplianceDocument(input: {
       expiry_date: expiry,
       next_due_date: expiry,
       notes,
+      linked_asset_ids: linkedAssetIds.length > 0 ? linkedAssetIds : [],
       status: complianceStatusFromExpiry(expiry),
     })
     .select("id")

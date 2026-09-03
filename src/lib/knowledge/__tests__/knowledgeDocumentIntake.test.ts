@@ -32,6 +32,35 @@ describe("knowledgeDocumentIntake", () => {
     expect(proposals[0].selected).toBe(true);
   });
 
+  it("preserves extractor claims including explicit unknowns", () => {
+    const proposals = proposalsFromDocAnalysis(
+      {
+        knowledge_proposals: [
+          {
+            title: "Smoke alarms — France",
+            summary: "Residential smoke alarm duties",
+            claims: [
+              {
+                text: "At least one compliant smoke alarm is required",
+                category: "obligation",
+                established: true,
+              },
+              {
+                text: "Replacement interval not stated",
+                category: "replacement",
+                established: false,
+              },
+            ],
+          },
+        ],
+      },
+      source
+    );
+    expect(proposals[0].claims).toHaveLength(2);
+    expect(proposals[0].claims[0].verification_status).toBe("extracted");
+    expect(proposals[0].claims[1].verification_status).toBe("unknown");
+  });
+
   it("splits recommendations into separate candidates when main row exists", () => {
     const proposals = proposalsFromDocAnalysis(
       {

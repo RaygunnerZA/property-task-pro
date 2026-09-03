@@ -137,6 +137,7 @@ const AdminOrgList        = lazyWithRetry(() => import("./pages/admin/AdminOrgLi
 const AdminOrgDetail      = lazyWithRetry(() => import("./pages/admin/AdminOrgDetail"));
 const AdminOrgAiRequests  = lazyWithRetry(() => import("./pages/admin/AdminOrgAiRequests"));
 const AdminBillingUtilization = lazyWithRetry(() => import("./pages/admin/AdminBillingUtilization"));
+const AdminAiRoutes = lazyWithRetry(() => import("./pages/admin/AdminAiRoutes"));
 const AdminKnowledgeQueue = lazyWithRetry(() => import("./pages/admin/AdminKnowledgeQueue"));
 
 const queryClient = new QueryClient({
@@ -326,6 +327,7 @@ const App = () => {
                         <Route path="orgs/:orgId" element={<RouteBoundary title="Admin — Org detail"><AdminOrgDetail /></RouteBoundary>} />
                         <Route path="orgs/:orgId/ai" element={<RouteBoundary title="Admin — AI requests"><AdminOrgAiRequests /></RouteBoundary>} />
                         <Route path="billing" element={<RouteBoundary title="Admin — Billing utilization"><AdminBillingUtilization /></RouteBoundary>} />
+                        <Route path="ai" element={<RouteBoundary title="Admin — AI routes"><AdminAiRoutes /></RouteBoundary>} />
                         <Route path="knowledge" element={<RouteBoundary title="Admin — Knowledge"><AdminKnowledgeQueue /></RouteBoundary>} />
                       </Route>
 

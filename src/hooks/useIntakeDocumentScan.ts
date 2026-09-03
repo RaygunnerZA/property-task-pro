@@ -20,6 +20,7 @@ import {
   normalizeIntakeExpiryDate,
   sanitizeScanTitle,
 } from "@/lib/mapIntakeDocumentType";
+import { withIntakeScanTimeout } from "@/lib/intakeScanDeferral";
 import type { PendingIntakeFile } from "@/utils/ingestIntakeMediaFiles";
 
 const MAX_CONCURRENT = 2;
@@ -52,6 +53,12 @@ interface DocAnalysePayload {
   findings?: Array<string | { text?: string; status?: string }>;
   important_dates?: Array<{ label?: string; date?: string; kind?: string }>;
   compliance_recommendations?: string[];
+  detected_assets?: Array<{
+    name?: string;
+    serial_number?: string;
+    model?: string;
+    confidence?: number;
+  }>;
   metadata?: Record<string, unknown> | null;
 }
 
@@ -88,6 +95,8 @@ function mergeScanFields(
       file.scanImportantDates !== undefined ? file.scanImportantDates : prev?.scanImportantDates,
     scanFindings: file.scanFindings !== undefined ? file.scanFindings : prev?.scanFindings,
     scanActions: file.scanActions !== undefined ? file.scanActions : prev?.scanActions,
+    scanDetectedAssets:
+      file.scanDetectedAssets !== undefined ? file.scanDetectedAssets : prev?.scanDetectedAssets,
     scanWasStub: file.scanWasStub !== undefined ? file.scanWasStub : prev?.scanWasStub,
   };
 }
@@ -159,20 +168,25 @@ export function useIntakeDocumentScan({
         if (uploadError) throw uploadError;
 
         const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(scratchPath);
-        const { data, error } = await supabase.functions.invoke("ai-doc-analyse", {
-          body: {
-            file_url: urlData.publicUrl,
-            file_name: file.display_name,
-            org_id: orgId,
-            property_id: propertyId || null,
-          },
-        });
+        const { data, error } = await withIntakeScanTimeout(
+          supabase.functions.invoke("ai-doc-analyse", {
+            body: {
+              file_url: urlData.publicUrl,
+              file_name: file.display_name,
+              org_id: orgId,
+              property_id: propertyId || null,
+            },
+          })
+        );
 
         if (error) throw error;
 
         const payload = (data || {}) as DocAnalysePayload;
         if (payload.ok === false || payload.skipped || payload.error === "ai_allowance_exhausted") {
-          patch(file.local_id, { scanStatus: "error" });
+          patch(file.local_id, {
+            scanStatus: "error",
+            scanDeferred: payload.error !== "ai_allowance_exhausted",
+          });
           return;
         }
 
@@ -190,6 +204,23 @@ export function useIntakeDocumentScan({
           payload.compliance_recommendations,
           payload.outcome
         );
+        const detectedAssets = Array.isArray(payload.detected_assets)
+          ? payload.detected_assets
+              .map((item) => ({
+                name: typeof item?.name === "string" ? item.name.trim().slice(0, 80) : null,
+                serial_number:
+                  typeof item?.serial_number === "string"
+                    ? item.serial_number.trim().slice(0, 80)
+                    : null,
+                model: typeof item?.model === "string" ? item.model.trim().slice(0, 80) : null,
+                confidence:
+                  typeof item?.confidence === "number" && Number.isFinite(item.confidence)
+                    ? item.confidence
+                    : null,
+              }))
+              .filter((item) => item.name || item.serial_number)
+              .slice(0, 8)
+          : [];
         const expiry =
           normalizeIntakeExpiryDate(payload.expiry_date) || primaryExpiryFromDates(dates);
 
@@ -215,12 +246,16 @@ export function useIntakeDocumentScan({
           scanImportantDates: dates,
           scanFindings: findings,
           scanActions: actions,
+          scanDetectedAssets: detectedAssets,
           scanWasStub: wasStub,
         };
         patch(file.local_id, next);
       } catch (err) {
         console.warn("[useIntakeDocumentScan] scan failed:", err);
-        patch(file.local_id, { scanStatus: "error" });
+        patch(file.local_id, {
+          scanStatus: "error",
+          scanDeferred: true,
+        });
       } finally {
         void supabase.storage.from("task-images").remove([scratchPath]).then(
           () => undefined,

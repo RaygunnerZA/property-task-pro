@@ -67,9 +67,10 @@ const VERIFIED_TRUST_FLOOR = 0.7;
 
 const CRITIC_SYSTEM =
   "You are a strict knowledge critic for a property-operations platform. " +
-  "Evaluate the CURRENT guidance text against linked official sources and structured applicability. " +
+  "Evaluate the CURRENT guidance text and structured claims against linked official sources and applicability. " +
   "Do not praise writing quality, completeness, or provenance metadata. " +
   "Do not treat spreadsheet filenames as evidence. " +
+  "Do not invent missing facts. Unknown claims mean the source did not establish them — that is correct, not a failure by itself. " +
   "For empty findings use an empty string — never the word None. " +
   "If there are no contradictions, set contradictions to exactly: No contradictions found. " +
   "Return JSON only: " +
@@ -77,7 +78,7 @@ const CRITIC_SYSTEM =
   '"claims_checked":"string","source_alignment":"string",' +
   '"applicability_concerns":"string","contradictions":"string",' +
   '"required_corrections":"string"}. ' +
-  "verified=true only if trust_score >= 0.7 AND claims are supported by linked sources " +
+  "verified=true only if trust_score >= 0.7 AND established claims are supported by linked sources " +
   "AND no material contradictions. If sources are missing or guidance is empty/circular, verified must be false.";
 
 interface CriticInput {
@@ -99,7 +100,8 @@ function criticPayload(
   body: string | null,
   attributes: Record<string, unknown>,
   applicability: unknown,
-  sources: unknown[]
+  sources: unknown[],
+  claims: unknown[]
 ) {
   return JSON.stringify({
     title,
@@ -107,6 +109,7 @@ function criticPayload(
     body,
     attributes,
     applicability,
+    claims,
     linked_sources: sources,
   });
 }
@@ -209,6 +212,19 @@ Deno.serve(async (req) => {
       source_type: s.source_type,
     }));
 
+  const { data: claimRows } = await admin
+    .from("knowledge_claims")
+    .select("claim_text, category, verification_status, source_location")
+    .eq("knowledge_id", knowledge_id)
+    .order("sort_order", { ascending: true });
+
+  const claims = (claimRows ?? []).map((c) => ({
+    text: c.claim_text,
+    category: c.category,
+    verification_status: c.verification_status,
+    source_location: c.source_location,
+  }));
+
   const logOrg = org_id ?? row.org_id ?? "00000000-0000-0000-0000-000000000000";
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
   const geminiKey = knowledgeGeminiApiKey();
@@ -219,7 +235,8 @@ Deno.serve(async (req) => {
     row.body,
     attributes,
     row.applicability,
-    linkedSources
+    linkedSources,
+    claims
   );
 
   // Platform Knowledge critic is admin ops — do not burn org AI packs / sentinel quota.
@@ -268,6 +285,15 @@ Deno.serve(async (req) => {
     if (applyErr) {
       return jsonResponse({ ok: false, error: applyErr.message }, 500);
     }
+    await admin.rpc("apply_knowledge_claim_critic", {
+      p_knowledge_id: knowledge_id,
+      p_critic_result: {
+        verified: false,
+        claims_checked: null,
+        required_corrections: "Run the critic before verification.",
+      },
+      p_passed: false,
+    });
     return jsonResponse({
       ok: false,
       knowledge: updated,
@@ -315,6 +341,12 @@ Deno.serve(async (req) => {
   if (applyErr) {
     return jsonResponse({ ok: false, error: applyErr.message }, 500);
   }
+
+  await admin.rpc("apply_knowledge_claim_critic", {
+    p_knowledge_id: knowledge_id,
+    p_critic_result: criticResult,
+    p_passed: criticPassed,
+  });
 
   return jsonResponse({
     ok: true,

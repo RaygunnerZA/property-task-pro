@@ -548,9 +548,11 @@ export function ImageUploadSection({
                   <CyclingScanStatus variant="document" />
                 ) : file.scanStatus === "error" ? (
                   <p className="text-caption text-muted-foreground">
-                    {file.scanWasStub
-                      ? "Couldn’t fully read this PDF — add type and dates below."
-                      : "Couldn’t read details — add them below if needed."}
+                    {file.scanDeferred
+                      ? "Reading is delayed — save now; details will be filled in later."
+                      : file.scanWasStub
+                        ? "Couldn’t fully read this PDF — add type and dates below."
+                        : "Couldn’t read details — add them below if needed."}
                   </p>
                 ) : file.scanStatus === "done" &&
                   (scanType ||

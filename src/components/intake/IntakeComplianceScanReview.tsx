@@ -6,11 +6,13 @@
  */
 
 import { useState } from "react";
-import { AlertTriangle, BadgeCheck, CalendarDays, ChevronDown, ChevronRight } from "lucide-react";
+import { AlertTriangle, BadgeCheck, CalendarDays, ChevronDown, ChevronRight, Link2 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { formatIntakeDateDisplay } from "@/lib/intakeDocumentDates";
 import type { AggregatedIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
+import type { IntakeAssetMatch, IntakeUnmatchedAsset } from "@/lib/matchIntakeAssets";
+import { formatLinkedAssetLabel } from "@/lib/matchIntakeAssets";
 
 type Props = {
   review: AggregatedIntakeScanReview;
@@ -18,6 +20,9 @@ type Props = {
   onToggleAction: (id: string) => void;
   createTasks: boolean;
   onCreateTasksChange: (value: boolean) => void;
+  linkedAssets?: IntakeAssetMatch[];
+  proposedAssets?: IntakeUnmatchedAsset[];
+  onAddProposedAsset?: (label: string) => void;
   className?: string;
 };
 
@@ -27,6 +32,9 @@ export function IntakeComplianceScanReview({
   onToggleAction,
   createTasks,
   onCreateTasksChange,
+  linkedAssets = [],
+  proposedAssets = [],
+  onAddProposedAsset,
   className,
 }: Props) {
   const [findingsOpen, setFindingsOpen] = useState(false);
@@ -46,7 +54,9 @@ export function IntakeComplianceScanReview({
     dates.length > 0 ||
     actions.length > 0 ||
     failFindings.length > 0 ||
-    otherFindings.length > 0;
+    otherFindings.length > 0 ||
+    linkedAssets.length > 0 ||
+    proposedAssets.length > 0;
   if (!hasContent) return null;
 
   const selectedCount = actions.filter((a) => selectedActionIds.has(a.id)).length;
@@ -106,6 +116,38 @@ export function IntakeComplianceScanReview({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {(linkedAssets.length > 0 || proposedAssets.length > 0) && (
+        <div className="space-y-1.5">
+          {linkedAssets.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Linked to</Label>
+              {linkedAssets.map((asset) => (
+                <div key={asset.assetId} className="flex items-center gap-1.5 text-xs text-foreground">
+                  <Link2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
+                  <span>{formatLinkedAssetLabel(asset)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {proposedAssets.map((proposed) => (
+            <div key={proposed.label} className="flex items-center justify-between gap-2 text-xs">
+              <span className="min-w-0 text-muted-foreground">
+                New asset detected: {proposed.label}
+              </span>
+              {onAddProposedAsset ? (
+                <button
+                  type="button"
+                  onClick={() => onAddProposedAsset(proposed.label)}
+                  className="shrink-0 font-medium text-primary hover:underline"
+                >
+                  Add to property
+                </button>
+              ) : null}
+            </div>
+          ))}
         </div>
       )}
 

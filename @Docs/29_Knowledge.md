@@ -49,7 +49,9 @@ Paste intake remains deferred.
 
 **Document ≠ one Knowledge row:** extraction may propose multiple distinct candidates (findings, guidance items). Admin selects/edits before import.
 
-**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata (filename, sheet, row). Structured spreadsheet columns land in `knowledge.attributes` (jsonb); Skip means explicit discard only. Do **not** assume every worksheet represents Knowledge rows: only `knowledge_data` sheets create candidates by default; `reference_context` sheets may inform interpretation and remain attached as provenance; `not_for_knowledge` sheets are excluded unless an admin overrides. If interpretation confidence is low, default to `reference_context`, not `knowledge_data`.
+**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata (filename, sheet, row). Structured spreadsheet columns land in `knowledge.attributes` (jsonb) and are also preserved as `knowledge_claims` (source-backed facts). Skip means explicit discard only. Do **not** assume every worksheet represents Knowledge rows: only `knowledge_data` sheets create candidates by default; `reference_context` sheets may inform interpretation and remain attached as provenance; `not_for_knowledge` sheets are excluded unless an admin overrides. If interpretation confidence is low, default to `reference_context`, not `knowledge_data`.
+
+**Claims (depth under the headline):** Title/summary stay concise. Extractors write atomic claims with category, optional source location, and verification status. Missing source detail becomes `unknown` — never invented from general knowledge. Critic reviews claims with guidance; human verify promotes `extracted` → `verified` while unknowns remain gaps for Content/SEO.
 
 **Org uploads (future/customer):** same `ai-doc-analyse` extraction; default scope `organisation` via `create_knowledge_candidate` — not platform admin bulk RPCs.
 

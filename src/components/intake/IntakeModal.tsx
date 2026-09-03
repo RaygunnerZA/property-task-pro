@@ -49,6 +49,19 @@ import { IntakeComplianceScanReview } from "@/components/intake/IntakeCompliance
 import { aggregateIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
 import { primaryExpiryFromDates } from "@/lib/intakeDocumentDates";
 import {
+  collectDetectedAssets,
+  matchIntakeAssets,
+} from "@/lib/matchIntakeAssets";
+import {
+  buildIntakeScanProvenance,
+  intakeScanProvenanceMetadata,
+} from "@/lib/intakeScanProvenance";
+import {
+  INTAKE_DEFERRED_SCAN_NOTIFICATION,
+  intakeAttachmentsWillProcessLater,
+  waitForIntakePreScans,
+} from "@/lib/intakeScanDeferral";
+import {
   isIntakeCompliancePreset,
   INTAKE_COMPLIANCE_PRESETS,
 } from "@/lib/mapIntakeDocumentType";
@@ -549,7 +562,10 @@ export function IntakeModal({
   const [tagCreateOpen, setTagCreateOpen] = useState(false);
   const [tagCreateName, setTagCreateName] = useState("");
   const [tagCreating, setTagCreating] = useState(false);
-  const [availableAssets, setAvailableAssets] = useState<Array<{ id: string; name: string }>>([]);
+  const [availableAssets, setAvailableAssets] = useState<
+    Array<{ id: string; name: string; serial_number?: string | null }>
+  >([]);
+  const autoLinkedAssetIdsRef = useRef(new Set<string>());
 
   const { categories, refresh: refreshCategories } = useCategories();
 
@@ -661,6 +677,29 @@ export function IntakeModal({
     [taskFiles, images]
   );
 
+  const intakeAssetMatch = useMemo(() => {
+    const fromFiles = taskFiles
+      .filter((file) => file.scanStatus === "done")
+      .map((file) => file.scanDetectedAssets ?? []);
+    const fromImages = images
+      .filter((img) => {
+        const stage = (img.rawAnalysis?.metadata as Record<string, unknown> | undefined)
+          ?.intake_stage;
+        return Boolean(img.rawAnalysis) && stage !== "router";
+      })
+      .map((img) =>
+        (img.rawAnalysis?.detected_objects ?? []).map((obj) => ({
+          name: obj.label,
+          serial_number: obj.serial_number,
+          confidence: obj.confidence,
+        }))
+      );
+    return matchIntakeAssets(
+      collectDetectedAssets({ fromFiles, fromImages }),
+      availableAssets
+    );
+  }, [taskFiles, images, availableAssets]);
+
   useEffect(() => {
     if (scanReview.actions.length === 0) return;
 
@@ -689,6 +728,21 @@ export function IntakeModal({
       setIntakeComplianceExpiry(renewal);
     }
   }, [scanReview, intakeComplianceExpiry]);
+
+  useEffect(() => {
+    const fresh = intakeAssetMatch.matches.filter(
+      (match) => !autoLinkedAssetIdsRef.current.has(match.assetId)
+    );
+    if (fresh.length === 0) return;
+    for (const match of fresh) autoLinkedAssetIdsRef.current.add(match.assetId);
+    setSelectedAssetIds((prev) => {
+      const next = [...prev];
+      for (const match of fresh) {
+        if (!next.includes(match.assetId)) next.push(match.assetId);
+      }
+      return next;
+    });
+  }, [intakeAssetMatch]);
 
   const detectedObjects = useMemo(
     () =>
@@ -1125,20 +1179,26 @@ export function IntakeModal({
     try {
       let query = supabase
         .from("assets")
-        .select("id, name")
+        .select("id, name, serial_number")
         .eq("org_id", orgId)
         .eq("property_id", propertyId);
-      if (selectedSpaceIds[0]) {
+      if (intakeMode !== "add_record" && selectedSpaceIds[0]) {
         query = query.eq("space_id", selectedSpaceIds[0]);
       }
       const { data, error } = await query;
       if (error) throw error;
-      setAvailableAssets((data || []).map((asset) => ({ id: asset.id, name: asset.name || "" })));
+      setAvailableAssets(
+        (data || []).map((asset) => ({
+          id: asset.id,
+          name: asset.name || "",
+          serial_number: asset.serial_number,
+        }))
+      );
     } catch (error) {
       console.error("[IntakeModal] failed loading assets", error);
       setAvailableAssets([]);
     }
-  }, [orgId, propertyId, selectedSpaceIds]);
+  }, [orgId, propertyId, selectedSpaceIds, intakeMode]);
 
   useEffect(() => {
     void loadAssets();
@@ -3371,9 +3431,10 @@ export function IntakeModal({
       mode: "task" | "compliance" | "document";
       taskId?: string;
       complianceDocumentId?: string;
+      scanMetadata?: Record<string, unknown> | null;
     }): Promise<UploadedAttachment[]> => {
       if (!orgId) return [];
-      const { parentType, parentId, mode, taskId, complianceDocumentId } = params;
+      const { parentType, parentId, mode, taskId, complianceDocumentId, scanMetadata } = params;
       const uploaded: UploadedAttachment[] = [];
 
       for (const tempImage of images) {
@@ -3416,6 +3477,13 @@ export function IntakeModal({
               file_size: tempImage.optimized_blob.size,
               annotation_json: tempImage.annotation_json || [],
               upload_status: "complete",
+              ...(scanMetadata
+                ? {
+                    metadata: scanMetadata,
+                    ocr_text:
+                      tempImage.aiOcrText || tempImage.rawAnalysis?.ocr_text || null,
+                  }
+                : {}),
             })
             .select("id,file_url,file_name")
             .single();
@@ -3496,8 +3564,11 @@ export function IntakeModal({
                     document_type: pendingFile.scanDocumentType || null,
                     expiry_date: pendingFile.scanExpiryDate || null,
                     ocr_text: pendingFile.scanOcrText || null,
+                    ...(scanMetadata ? { metadata: scanMetadata } : {}),
                   }
-                : {}),
+                : scanMetadata
+                  ? { metadata: scanMetadata }
+                  : {}),
             })
             .select("id,file_url,file_name")
             .single();
@@ -3550,7 +3621,11 @@ export function IntakeModal({
       }
       setIsSubmitting(true);
       try {
-        await Promise.all([waitForDocumentScans(), waitForImageAnalysis()]);
+        await waitForIntakePreScans({
+          waitForDocumentScans,
+          waitForImageAnalysis,
+        });
+        const scanQueuedForLater = intakeAttachmentsWillProcessLater(taskFiles, images);
         const docHints = getLatestDocumentHints();
         const imageHints = getLatestFullHints();
         const resolvedType =
@@ -3577,6 +3652,22 @@ export function IntakeModal({
           documentType: resolvedType,
           expiryDate: resolvedExpiry || null,
           notes: description.trim() || null,
+          linkedAssetIds: selectedAssetIds,
+        });
+
+        const provenance = buildIntakeScanProvenance({
+          review: scanReview,
+          source:
+            taskFiles.some((file) => file.scanStatus === "done") &&
+            images.some((img) => Boolean(img.rawAnalysis))
+              ? "mixed"
+              : taskFiles.some((file) => file.scanStatus === "done")
+                ? "document_scan"
+                : "image_scan",
+          confirmedActionIds: createReminderFromCompliance
+            ? [...selectedScanActionIds]
+            : [],
+          linkedAssetIds: selectedAssetIds,
         });
 
         const uploaded = await uploadIntakeAttachments({
@@ -3584,6 +3675,7 @@ export function IntakeModal({
           parentId: data.id,
           mode: "compliance",
           complianceDocumentId: data.id,
+          scanMetadata: intakeScanProvenanceMetadata(provenance),
         });
 
         if (uploaded[0]?.fileUrl) {
@@ -3645,11 +3737,18 @@ export function IntakeModal({
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         const celebrated = markQuickWinComplete("upload", propertyId);
         if (!celebrated) {
-          toast({
-            title: createReminderFromCompliance
-              ? "Record added — tasks created"
-              : "Added to Compliance",
-          });
+          if (scanQueuedForLater) {
+            toast(INTAKE_DEFERRED_SCAN_NOTIFICATION);
+            sonnerToast.info(INTAKE_DEFERRED_SCAN_NOTIFICATION.title, {
+              description: INTAKE_DEFERRED_SCAN_NOTIFICATION.description,
+            });
+          } else {
+            toast({
+              title: createReminderFromCompliance
+                ? "Record added — tasks created"
+                : "Added to Compliance",
+            });
+          }
         }
         await markIntakeItemConfirmed();
         onOpenChange(false);
@@ -3858,6 +3957,7 @@ export function IntakeModal({
     setCreateReminderFromCompliance(false);
     setSelectedScanActionIds(new Set());
     autoCheckedCreateTasksRef.current = false;
+    autoLinkedAssetIdsRef.current = new Set();
     setOpenChipSlot(null);
     setDueDate("");
     setWhenTab("due");
@@ -4584,7 +4684,9 @@ export function IntakeModal({
                     scanReview.dates.length > 0 ||
                     scanReview.actions.length > 0 ||
                     scanReview.failFindings.length > 0 ||
-                    scanReview.otherFindings.length > 0;
+                    scanReview.otherFindings.length > 0 ||
+                    intakeAssetMatch.matches.length > 0 ||
+                    intakeAssetMatch.unmatched.length > 0;
                   const hasRenewalDate = scanReview.dates.some(
                     (d) => d.kind === "expiry" || d.kind === "next_due"
                   );
@@ -4620,6 +4722,14 @@ export function IntakeModal({
                         }
                         createTasks={createReminderFromCompliance}
                         onCreateTasksChange={setCreateReminderFromCompliance}
+                        linkedAssets={intakeAssetMatch.matches.filter((match) =>
+                          selectedAssetIds.includes(match.assetId)
+                        )}
+                        proposedAssets={intakeAssetMatch.unmatched}
+                        onAddProposedAsset={(label) => {
+                          setAssetDraftName(label);
+                          setShowCreateAssetDialog(true);
+                        }}
                       />
                       {!hasScanReview ? (
                         <label className="flex items-center gap-2 text-xs cursor-pointer">

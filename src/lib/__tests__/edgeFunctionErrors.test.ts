@@ -44,4 +44,16 @@ describe("edgeFunctionErrors", () => {
     expect(formatEdgeFunctionToast(info)).toContain("no AI provider is configured");
     expect(formatEdgeFunctionToast(info)).toContain("Request: req-9");
   });
+
+  it("maps FunctionsFetchError to deploy guidance", async () => {
+    const info = await parseEdgeFunctionError(
+      {
+        name: "FunctionsFetchError",
+        message: "Failed to send a request to the Edge Function",
+      },
+      null
+    );
+    expect(info.code).toBe("edge_function_unreachable");
+    expect(formatEdgeFunctionToast(info)).toContain("content-generate");
+  });
 });

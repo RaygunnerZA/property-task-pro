@@ -91,7 +91,11 @@ export type Capability =
   | "compliance_clause_rewrite"
   | "knowledge_critique"
   | "knowledge_guidance_draft"
-  | "plan_label_extraction";
+  | "plan_label_extraction"
+  | "content_seo_draft"
+  | "content_brief_draft"
+  | "content_output_draft"
+  | "content_visual_brief";
 
 export interface CapabilityRequirements {
   vision?: boolean;
@@ -173,6 +177,30 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
     functionName: "building-plan-process",
     promptVersion: "plan-spaces-v1",
     requires: { vision: true, structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  content_seo_draft: {
+    functionName: "content-generate",
+    promptVersion: "content-tree-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  content_brief_draft: {
+    functionName: "content-generate",
+    promptVersion: "content-tree-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  content_output_draft: {
+    functionName: "content-generate",
+    promptVersion: "content-tree-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  content_visual_brief: {
+    functionName: "content-generate",
+    promptVersion: "content-tree-v1",
+    requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
 };
