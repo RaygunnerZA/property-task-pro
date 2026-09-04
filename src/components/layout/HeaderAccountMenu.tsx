@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, LogOut, Settings, Trash2, UserCircle } from "lucide-react";
+import { Bell, BookOpen, LogOut, Settings, Trash2, UserCircle } from "lucide-react";
 import { useDataContext } from "@/contexts/DataContext";
+import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -27,6 +28,7 @@ export function HeaderAccountMenu({
 }: HeaderAccountMenuProps) {
   const navigate = useNavigate();
   const { user, organisation } = useDataContext();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -103,6 +105,17 @@ export function HeaderAccountMenu({
             Notifications
           </Link>
         </DropdownMenuItem>
+        {isPlatformAdmin === true && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild className="cursor-pointer rounded-[6px]">
+              <Link to="/admin/knowledge" className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-muted-foreground" />
+                Knowledge admin
+              </Link>
+            </DropdownMenuItem>
+          </>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer rounded-[6px] text-destructive focus:text-destructive"

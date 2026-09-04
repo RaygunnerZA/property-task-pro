@@ -154,7 +154,7 @@ export function normalizeKnowledgeClaims(raw: unknown): KnowledgeClaimRow[] {
       out.length
     );
     if (normalized) out.push(normalized);
-    if (out.length >= 40) break;
+    if (out.length >= 80) break;
   }
   return out;
 }
@@ -202,8 +202,7 @@ export function claimsForContentGrounding(claims: KnowledgeClaimRow[]): {
 } {
   return {
     verified: claims
-      .filter((c) => c.verification_status === "verified" || c.verification_status === "extracted")
-      .filter((c) => c.verification_status !== "unknown")
+      .filter((c) => c.verification_status === "verified")
       .map((c) => ({
         text: c.claim_text,
         category: c.category,
@@ -213,6 +212,50 @@ export function claimsForContentGrounding(claims: KnowledgeClaimRow[]): {
       .filter((c) => c.verification_status === "unknown" || c.verification_status === "unresolved")
       .map((c) => ({ text: c.claim_text, category: c.category })),
   };
+}
+
+export function summarizeKnowledgeClaims(claims: Array<{ verification_status?: string }>): {
+  total: number;
+  verified: number;
+  extracted: number;
+  unknown: number;
+  unresolved: number;
+  rejected: number;
+} {
+  const summary = {
+    total: claims.length,
+    verified: 0,
+    extracted: 0,
+    unknown: 0,
+    unresolved: 0,
+    rejected: 0,
+  };
+  for (const c of claims) {
+    const status = String(c.verification_status ?? "");
+    if (status === "verified") summary.verified += 1;
+    else if (status === "extracted") summary.extracted += 1;
+    else if (status === "unknown") summary.unknown += 1;
+    else if (status === "unresolved") summary.unresolved += 1;
+    else if (status === "rejected") summary.rejected += 1;
+  }
+  return summary;
+}
+
+export function claimStatusLabel(status: string): string {
+  switch (status) {
+    case "verified":
+      return "Verified";
+    case "extracted":
+      return "Extracted";
+    case "unknown":
+      return "Unknown";
+    case "unresolved":
+      return "Unresolved";
+    case "rejected":
+      return "Rejected";
+    default:
+      return status || "Claim";
+  }
 }
 
 export function serializeClaimsForRpc(claims: KnowledgeClaimRow[]): Record<string, unknown>[] {

@@ -8051,6 +8051,10 @@ export type Database = {
         Args: { p_claims?: Json; p_knowledge_id: string }
         Returns: number
       }
+      replace_knowledge_extracted_claims: {
+        Args: { p_claims?: Json; p_knowledge_id: string }
+        Returns: number
+      }
       knowledge_critic_content_fingerprint: {
         Args: { p_knowledge_id: string }
         Returns: string

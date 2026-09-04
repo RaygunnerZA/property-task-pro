@@ -67,7 +67,7 @@ Audio bucket from old migrations is **not** on live. **keep live** (omit) until 
 
 ## Auth (Dashboard — cannot dump)
 
-Hosted: Site URL / redirects must stay `https://app.filla.app` (`@Docs/31_Public_Site.md`).
+Hosted: Site URL / redirects must stay on the product origin `https://filla.app` (`@Docs/31_Public_Site.md`). `app.filla.app` is not live.
 
 Local: Inbucket + `site_url = http://127.0.0.1:8080` in `supabase/config.toml`. Social providers are **not** copied; enable per project.
 
@@ -90,7 +90,7 @@ Squash does **not** flip these flags. Track as security follow-up; do not add mo
 
 | Object | Notes | Decision |
 |---|---|---|
-| `knowledge_claims` + claim RPCs (`20260903200000_knowledge_claims.sql`) | Atomic source-backed facts under Knowledge; Content SEO grounding uses established claims and treats unknowns as gaps. Docs updated in Ch 3 / Ch 29. | **Apply via `npm run db:push`** before relying on Content claim grounding in prod |
+| `knowledge_claims` + claim RPCs (`20260903200000_knowledge_claims.sql`, `20260904090000_knowledge_claims_enrichment.sql`) | Atomic source-backed facts under Knowledge; Content SEO grounding uses verified claims; `knowledge-extract-claims` re-extracts from sources; output grounding critic stores `structured.grounding`. Docs updated in Ch 3 / Ch 29. | **Apply via `npm run db:push`** |
 
 ## Policies that depend on JWT org claim
 

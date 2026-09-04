@@ -1,3 +1,4 @@
-# Product origin (app.filla.app). Index the public site at www.filla.app instead.
+# Product origin (filla.app / property-task-pro.vercel.app).
+# Index the public marketing site at www.filla.app when that project is attached.
 User-agent: *
 Disallow: /

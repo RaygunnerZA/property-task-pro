@@ -9,11 +9,13 @@ import {
   Plus,
   Settings,
   CheckSquare,
+  BookOpen,
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
 import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
+import { useIsPlatformAdmin } from '@/hooks/admin/useIsPlatformAdmin';
 import fillaLogo from '@/assets/filla-logo.svg';
 import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
 import fillaDarkLogo from '@/assets/filla-dark.png';
@@ -70,6 +72,7 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
   const { data: properties = [] } = usePropertiesQuery();
+  const { data: isPlatformAdmin } = useIsPlatformAdmin();
   const isMultiProperty = properties.length > 1;
 
   const mainNavItems = useMemo(
@@ -338,6 +341,31 @@ export function AppSidebar() {
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {isPlatformAdmin === true && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
+                    <Link
+                      to="/admin/knowledge"
+                      className={cn(
+                        "no-underline",
+                        navLinkClass(currentPath.startsWith("/admin/knowledge"))
+                      )}
+                      aria-label="Knowledge admin"
+                    >
+                      <BookOpen className={cn(iconClass, "shrink-0")} />
+                      <span
+                        className={cn(
+                          "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
+                          open ? "max-w-[11rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+                        )}
+                      >
+                        Knowledge admin
+                      </span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {open && (
                 <SidebarMenuItem>

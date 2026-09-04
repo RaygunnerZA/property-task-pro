@@ -13,10 +13,12 @@ export const AI_CAPABILITY_IDS = [
   "compliance_clause_rewrite",
   "knowledge_critique",
   "knowledge_guidance_draft",
+  "knowledge_claim_extract",
   "plan_label_extraction",
   "content_seo_draft",
   "content_brief_draft",
   "content_output_draft",
+  "content_output_grounding",
   "content_visual_brief",
 ] as const;
 
@@ -71,6 +73,11 @@ export const AI_CAPABILITY_META: Record<
     compiledPrimary: "model:gemini-2.0-flash",
     functionName: "knowledge-generate-guidance",
   },
+  knowledge_claim_extract: {
+    label: "Knowledge claim extraction",
+    compiledPrimary: "model:gemini-2.0-flash",
+    functionName: "knowledge-extract-claims",
+  },
   plan_label_extraction: {
     label: "Plan label extraction",
     compiledPrimary: "model:gemini-2.0-flash",
@@ -89,6 +96,11 @@ export const AI_CAPABILITY_META: Record<
   content_output_draft: {
     label: "Content output draft",
     compiledPrimary: "model:gemini-2.0-flash",
+    functionName: "content-generate",
+  },
+  content_output_grounding: {
+    label: "Content output grounding critic",
+    compiledPrimary: "model:gpt-4o-mini",
     functionName: "content-generate",
   },
   content_visual_brief: {

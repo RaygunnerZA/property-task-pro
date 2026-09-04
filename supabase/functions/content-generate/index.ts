@@ -149,20 +149,21 @@ async function callGemini(system: string, payload: string): Promise<ExecutorOutp
 
 const SEO_SYSTEM =
   "You are an SEO strategist for UK/EU property compliance content. " +
-  "Package the verified Knowledge claims for search. Prefer structured claims over inventing facts. " +
-  "The short approved guidance is a headline — claims are the factual basis. " +
+  "Package ONLY the verified Knowledge claims for search. Prefer structured verified claims over inventing facts. " +
+  "The short approved guidance is a headline — verified claims are the factual basis. " +
   "Do NOT invent legal duties, deadlines, standards, or penalties. " +
-  "If a needed detail is absent from established claims, list it in evidence_gaps (a Knowledge gap). " +
+  "Do NOT treat extracted/unverified claims as established facts. " +
+  "If a needed detail is absent from verified claims, list it in evidence_gaps (a Knowledge gap). " +
   "Include claim_gaps (unknown/unresolved Knowledge claims) in evidence_gaps. " +
-  "If source text is missing and no established claims exist, set source_content_unavailable true. " +
+  "If source text is missing and no verified claims exist, set source_content_unavailable true. " +
   "Return JSON only with keys: primary_search_theme, primary_keyword, secondary_keywords (array), " +
   "search_intent, target_audience, user_problem, jurisdiction, content_angle, source_coverage_summary, " +
   "evidence_gaps (array), research_warnings (array), source_content_unavailable (boolean).";
 
 const BRIEF_SYSTEM =
   "You are an editorial strategist for homeowner property compliance content. " +
-  "Use approved SEO, verified Knowledge claims, applicability, guidance, and sources. " +
-  "Do NOT invent facts beyond established claims and sources. Missing claim details are Knowledge gaps. " +
+  "Use approved SEO, verified Knowledge claims only, applicability, guidance, and sources. " +
+  "Do NOT invent facts beyond verified claims and sources. Missing claim details are Knowledge gaps. " +
   "Return JSON only with keys: " +
   "content_angle, working_title, intended_reader, reader_outcome, proposed_sections (array), " +
   "questions_to_answer (array), legal_factual_distinctions (array), required_source_points (array), " +
@@ -172,7 +173,17 @@ const BRIEF_SYSTEM =
 const OUTPUT_SYSTEM =
   "You write editorial content for a property compliance platform. " +
   "Stay consistent with verified Knowledge claims and authoritative sources. Do not invent legal requirements. " +
+  "Every factual assertion must be supportable by the verified claims list. " +
   "Return JSON only: {\"title\":\"...\",\"body\":\"markdown or plain text\"}.";
+
+const GROUNDING_SYSTEM =
+  "You are a grounding critic for property compliance content. " +
+  "Compare every factual assertion in the draft output against the verified Knowledge claims only. " +
+  "Flag any assertion that is not supported by a verified claim (unsupported additions, invented duties, " +
+  "deadlines, standards, penalties, or scope expansions). Paraphrase is OK when meaning matches a verified claim. " +
+  "Do not invent new facts. Return JSON only: " +
+  "{\"supported_count\":0,\"unsupported_assertions\":[{\"text\":\"...\",\"reason\":\"...\"}]," +
+  "\"knowledge_gaps\":[\"...\"],\"passed\":true}.";
 
 const VISUAL_BRIEF_SYSTEM =
   "You create visual art direction for Filla content using a layered paper-cut illustration style. " +
@@ -203,10 +214,7 @@ function buildKnowledgePayload(
   });
   const anyText = sourceMaterial.some((s) => s.text_available);
   const established = claims
-    .filter((c) => {
-      const status = String(c.verification_status ?? "");
-      return status === "verified" || status === "extracted";
-    })
+    .filter((c) => String(c.verification_status ?? "") === "verified")
     .map((c) => ({
       text: c.claim_text,
       category: c.category,
@@ -221,6 +229,9 @@ function buildKnowledgePayload(
       text: c.claim_text,
       category: c.category,
     }));
+  const pendingExtracted = claims.filter(
+    (c) => String(c.verification_status ?? "") === "extracted"
+  ).length;
   return {
     knowledge: {
       title: knowledge.title,
@@ -238,8 +249,10 @@ function buildKnowledgePayload(
       version: knowledge.version,
     },
     claims: {
+      verified: established,
       established,
       unknown_or_unresolved: unknown,
+      pending_extracted_count: pendingExtracted,
     },
     sources: sourceMaterial,
     source_content_unavailable: !anyText && established.length === 0,
@@ -326,6 +339,33 @@ function validateOutput(raw: unknown): { title: string; body: string } {
   return {
     title: String(p.title ?? "").trim(),
     body,
+  };
+}
+
+function validateGrounding(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new SchemaError("Grounding response was not a JSON object");
+  }
+  const p = raw as Record<string, unknown>;
+  const unsupported = Array.isArray(p.unsupported_assertions)
+    ? (p.unsupported_assertions as unknown[])
+        .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+        .map((item) => ({
+          text: asText(item.text),
+          reason: asText(item.reason),
+        }))
+        .filter((item) => item.text.length > 0)
+    : [];
+  const passed =
+    typeof p.passed === "boolean" ? p.passed : unsupported.length === 0;
+  return {
+    supported_count:
+      typeof p.supported_count === "number" && Number.isFinite(p.supported_count)
+        ? p.supported_count
+        : 0,
+    unsupported_assertions: unsupported,
+    knowledge_gaps: asList(p.knowledge_gaps),
+    passed: passed && unsupported.length === 0,
   };
 }
 
@@ -597,7 +637,12 @@ Deno.serve(async (req) => {
       const validKinds = [
         "core_article", "faq", "in_app_tip", "newsletter", "social_post", "reel_script",
       ];
-      const results: Array<{ kind: string; ok: boolean; error?: string }> = [];
+      const results: Array<{
+        kind: string;
+        ok: boolean;
+        error?: string;
+        grounding_passed?: boolean;
+      }> = [];
 
       for (const kind of kinds) {
         if (!validKinds.includes(kind)) {
@@ -635,20 +680,103 @@ Deno.serve(async (req) => {
 
           if (!run.ok || !run.value) throw new Error(run.error ?? "Output generation failed");
 
+          const knowledgePayload = buildKnowledgePayload(
+            knowledge,
+            sources,
+            claims,
+            seoApproved ?? undefined,
+            briefApproved ?? undefined
+          );
+          const verifiedClaims = knowledgePayload.claims.verified;
+
+          let grounding: Record<string, unknown> = {
+            passed: verifiedClaims.length > 0,
+            supported_count: 0,
+            unsupported_assertions: [],
+            knowledge_gaps: [],
+            skipped: false,
+          };
+
+          try {
+            const groundingRun = await runCapability<Record<string, unknown>>(admin, {
+              capability: "content_output_grounding" as never,
+              orgId: PLATFORM_ORG,
+              userId: userData.user.id,
+              entity: { type: "content_topic", id: topic_id },
+              metadata: { stage: "output_grounding", output_kind: kind, request_id: requestId },
+              mustDifferFrom: run.strategy?.provider ?? null,
+              allowFallback: true,
+              skipGate: true,
+              executors: {
+                "model:gpt-4o-mini": () =>
+                  callOpenAI(
+                    GROUNDING_SYSTEM,
+                    JSON.stringify({
+                      output: run.value,
+                      verified_claims: verifiedClaims,
+                      unknown_or_unresolved: knowledgePayload.claims.unknown_or_unresolved,
+                    })
+                  ),
+                "model:gemini-2.0-flash": () => {
+                  if (!geminiKey) throw new Error("Gemini API key not set");
+                  return callGemini(
+                    GROUNDING_SYSTEM,
+                    JSON.stringify({
+                      output: run.value,
+                      verified_claims: verifiedClaims,
+                      unknown_or_unresolved: knowledgePayload.claims.unknown_or_unresolved,
+                    })
+                  );
+                },
+              },
+              validate: validateGrounding,
+            });
+            if (groundingRun.ok && groundingRun.value) {
+              grounding = {
+                ...groundingRun.value,
+                skipped: false,
+                strategy_id: strategyIdOf(groundingRun.strategy),
+              };
+            } else {
+              grounding = {
+                ...grounding,
+                skipped: true,
+                error: groundingRun.error ?? "grounding_unavailable",
+              };
+            }
+          } catch (e) {
+            grounding = {
+              ...grounding,
+              skipped: true,
+              error: e instanceof Error ? e.message : "grounding_failed",
+            };
+          }
+
           const provenance = generationProvenance(run.strategy, knowledge.version as number, {
             output_kind: kind,
+            grounding,
           });
+
+          const outputStatus =
+            grounding.passed === true && grounding.skipped !== true
+              ? "needs_review"
+              : "draft";
 
           await adminWriteRpc("admin_upsert_content_output", {
             p_topic_id: topic_id,
             p_output_kind: kind,
             p_title: run.value.title || null,
             p_body: run.value.body,
-            p_status: "draft",
+            p_status: outputStatus,
+            p_structured: { grounding },
             p_provenance: provenance,
           });
 
-          results.push({ kind, ok: true });
+          results.push({
+            kind,
+            ok: true,
+            grounding_passed: grounding.passed === true && grounding.skipped !== true,
+          });
         } catch (e) {
           results.push({
             kind,

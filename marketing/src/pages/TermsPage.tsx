@@ -10,7 +10,7 @@ export function TermsPage() {
       <div className="mt-8 space-y-4 text-base leading-relaxed">
         <p>
           The public website describes Filla. Using the product requires creating an
-          account on app.filla.app, which is a separate service with its own session.
+          account on filla.app, which is a separate service with its own session.
         </p>
         <p>
           Home is a free plan for one active property and one coordinating member.

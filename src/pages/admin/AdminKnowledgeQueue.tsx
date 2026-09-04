@@ -10,7 +10,9 @@ import {
 import { AdminKnowledgeIntakePanel } from "@/components/admin/AdminKnowledgeIntakePanel";
 import { AdminContentTreePanel } from "@/components/admin/AdminContentTreePanel";
 import { AdminKnowledgeDetailSheet } from "@/components/admin/AdminKnowledgeDetailSheet";
+import { AdminKnowledgeGapsPanel } from "@/components/admin/AdminKnowledgeGapsPanel";
 import { AdminKnowledgeReviewWorkbench } from "@/components/admin/AdminKnowledgeReviewWorkbench";
+import { AdminKnowledgeUpdatesPanel } from "@/components/admin/AdminKnowledgeUpdatesPanel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { KnowledgeRow, KnowledgeStatus } from "@/types/knowledge";
@@ -22,7 +24,8 @@ import {
 } from "@/lib/knowledge/knowledgePresentation";
 import { toast } from "sonner";
 
-type AdminKnowledgeTab = "review" | "publishing" | "intake" | "content" | "metrics";
+type AdminKnowledgeTab = "add" | "review" | "publishing" | "content" | "metrics";
+type AddSubTab = "add" | "gaps" | "update";
 
 function checkTone(status: TrustCheckStatus): string {
   switch (status) {
@@ -205,16 +208,15 @@ function MetricChip({
 }
 
 export default function AdminKnowledgeQueue() {
-  const [tab, setTab] = useState<AdminKnowledgeTab>("review");
+  const [tab, setTab] = useState<AdminKnowledgeTab>("add");
+  const [addSubTab, setAddSubTab] = useState<AddSubTab>("add");
   const [detailId, setDetailId] = useState<string | null>(null);
-  const statuses = useMemo<KnowledgeStatus[]>(
-    () =>
-      tab === "publishing"
-        ? ["verified"]
-        : ["candidate", "verified", "stale"],
-    [tab]
-  );
-  const { data, isLoading, error } = useAdminKnowledgeQueue(statuses);
+  const { data, isLoading, error } = useAdminKnowledgeQueue([
+    "candidate",
+    "verified",
+    "published",
+    "stale",
+  ]);
   const metricsQuery = useAdminKnowledgeMetrics();
   const setStatus = useAdminSetKnowledgeStatus();
 
@@ -230,26 +232,26 @@ export default function AdminKnowledgeQueue() {
     return map;
   }, [sourcesQuery.data]);
 
-  const visibleRows = useMemo(() => {
-    const rows = data ?? [];
-    if (tab !== "publishing") {
-      // Verified but not publication-ready stay in Review.
-      if (tab === "review") {
-        return rows.filter((r) => {
-          if (r.status !== "verified") return true;
-          const checksReady = isPublicationReady(
-            r,
-            queueCardPreview(r, sourcesByKnowledge.get(r.id) ?? []).checks
-          );
-          return !checksReady;
-        });
-      }
-      return rows;
-    }
-    return rows.filter((r) =>
-      isPublicationReady(r, queueCardPreview(r, sourcesByKnowledge.get(r.id) ?? []).checks)
+  const reviewRows = useMemo(() => {
+    return (data ?? []).filter((r) => {
+      if (r.status === "published" || r.status === "archived") return false;
+      if (r.status === "candidate" || r.status === "stale") return true;
+      if (r.status !== "verified") return true;
+      const checksReady = isPublicationReady(
+        r,
+        queueCardPreview(r, sourcesByKnowledge.get(r.id) ?? []).checks
+      );
+      return !checksReady;
+    });
+  }, [data, sourcesByKnowledge]);
+
+  const publishingRows = useMemo(() => {
+    return (data ?? []).filter(
+      (r) =>
+        r.status === "verified" &&
+        isPublicationReady(r, queueCardPreview(r, sourcesByKnowledge.get(r.id) ?? []).checks)
     );
-  }, [data, tab, sourcesByKnowledge]);
+  }, [data, sourcesByKnowledge]);
 
   const orgMetrics = useMemo(
     () => (metricsQuery.data ?? []).filter((r) => r.org_name !== "_platform"),
@@ -292,11 +294,17 @@ export default function AdminKnowledgeQueue() {
   };
 
   const tabs: { id: AdminKnowledgeTab; label: string }[] = [
+    { id: "add", label: "Add Knowledge" },
     { id: "review", label: "Review" },
     { id: "publishing", label: "Ready to publish" },
-    { id: "intake", label: "Add Knowledge" },
     { id: "content", label: "Outputs" },
     { id: "metrics", label: "Overview" },
+  ];
+
+  const addSubs: { id: AddSubTab; label: string }[] = [
+    { id: "add", label: "Add" },
+    { id: "gaps", label: "Gaps" },
+    { id: "update", label: "Update" },
   ];
 
   return (
@@ -308,8 +316,8 @@ export default function AdminKnowledgeQueue() {
             Knowledge
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Candidate → open review → verify → publish. Critic and human verification are
-            mandatory.
+            Add what Filla should know, close gaps, watch for change — then review, publish, and
+            use it.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -327,7 +335,37 @@ export default function AdminKnowledgeQueue() {
         </div>
       </div>
 
-      {tab === "intake" && <AdminKnowledgeIntakePanel />}
+      {tab === "add" && (
+        <div className="space-y-5">
+          <div className="flex flex-wrap gap-2">
+            {addSubs.map((s) => (
+              <Button
+                key={s.id}
+                size="sm"
+                variant={addSubTab === s.id ? "default" : "outline"}
+                className={cn(
+                  "border-0 h-8 text-xs",
+                  addSubTab === s.id ? "shadow-primary-btn" : "btn-neomorphic"
+                )}
+                onClick={() => setAddSubTab(s.id)}
+              >
+                {s.label}
+              </Button>
+            ))}
+          </div>
+          {addSubTab === "add" && <AdminKnowledgeIntakePanel />}
+          {addSubTab === "gaps" && (
+            <AdminKnowledgeGapsPanel rows={(data ?? []) as KnowledgeRow[]} />
+          )}
+          {addSubTab === "update" && (
+            <AdminKnowledgeUpdatesPanel
+              rows={(data ?? []) as KnowledgeRow[]}
+              sourcesByKnowledge={sourcesByKnowledge}
+            />
+          )}
+        </div>
+      )}
+
       {tab === "content" && <AdminContentTreePanel />}
 
       {tab === "metrics" && (
@@ -384,21 +422,27 @@ export default function AdminKnowledgeQueue() {
         </div>
       )}
 
-      {tab === "review" && (
-        <div className="space-y-3">
+      <div className="space-y-8" hidden={tab !== "review"} inert={tab !== "review" ? true : undefined}>
+        <section className="space-y-3">
+          <div>
+            <h2 className="font-medium text-sm">Review</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Guidance, claims, critic, and human verification. Newly added candidates appear here.
+            </p>
+          </div>
           {error && (
             <p className="text-sm text-destructive">
               {error instanceof Error ? error.message : "Failed to load queue"}
             </p>
           )}
           <AdminKnowledgeReviewWorkbench
-            rows={visibleRows}
+            rows={reviewRows}
             sourcesByKnowledge={sourcesByKnowledge}
             isLoading={isLoading}
             onOpen={(id) => setDetailId(id)}
           />
-        </div>
-      )}
+        </section>
+      </div>
 
       {tab === "publishing" && (
         <div className="space-y-3">
@@ -412,12 +456,12 @@ export default function AdminKnowledgeQueue() {
               {error instanceof Error ? error.message : "Failed to load queue"}
             </p>
           )}
-          {!isLoading && visibleRows.length === 0 && (
+          {!isLoading && publishingRows.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Nothing ready to publish. Verify candidates with all checks passing first.
             </p>
           )}
-          {visibleRows.map((row) => (
+          {publishingRows.map((row) => (
             <QueueCard
               key={row.id}
               row={row}

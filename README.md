@@ -92,35 +92,37 @@ Frontend types: `src/integrations/supabase/types.ts` (local dump). Do not genera
 
 ## Deploy (Vercel + Supabase)
 
-Public site and product are **separate origins**. See [`@Docs/31_Public_Site.md`](./@Docs/31_Public_Site.md).
+Product Production hosts and the marketing split: [`@Docs/31_Public_Site.md`](./@Docs/31_Public_Site.md).
 
 | Origin | Vercel project | Directory |
 |---|---|---|
-| `www.filla.app` | Marketing | `marketing/` (`npm run build`, output `dist`) |
-| `app.filla.app` | Product | repo root (`npm run build`, output `dist`) |
+| `filla.app` (+ `property-task-pro.vercel.app`) | Product | repo root (`npm run build`, output `dist`) |
+| `www.filla.app` (when attached) | Marketing | `marketing/` (`npm run build`, output `dist`) |
+
+`app.filla.app` is not a live Production domain. Do not use it in Auth or share links.
 
 ### Product project
 
 1. Connect the repo at the repository root. Build `npm run build`, output `dist`.
-2. Domain: `app.filla.app`.
+2. Domains: `filla.app` and `property-task-pro.vercel.app` (Production).
 3. **Environment variables** (Production / Preview as needed):
    - `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID`
-   - `VITE_APP_URL=https://app.filla.app` (no trailing slash)
+   - `VITE_APP_URL=https://filla.app` (no trailing slash)
    - `VITE_MARKETING_URL=https://www.filla.app`
    - `VITE_POSTHOG_KEY` (optional)
 4. Redeploy after env changes (Vite bakes `VITE_*` at build time).
 
 ### Marketing project
 
-See [`marketing/README.md`](./marketing/README.md). Root directory `marketing`. Env: `VITE_APP_ORIGIN=https://app.filla.app`. No Supabase keys.
+See [`marketing/README.md`](./marketing/README.md). Root directory `marketing`. Env: `VITE_APP_ORIGIN=https://filla.app`. No Supabase keys.
 
 ### Supabase Auth URLs
 
 Dashboard → **Authentication** → **URL Configuration**:
 
-- **Site URL:** `https://app.filla.app` (same as `VITE_APP_URL`)
-- **Redirect URLs:** app-origin paths only — `/verify`, `/login`, `/signup`, `/auth/callback`, `/reset-password`, `/accept-invitation`
-- Do **not** allowlist `www.filla.app`
+- **Site URL:** `https://filla.app` (same as `VITE_APP_URL`)
+- **Redirect URLs:** product-origin paths — `/verify`, `/login`, `/signup`, `/auth/callback`, `/reset-password`, `/accept-invitation` (include the vercel.app alias if users sign in there)
+- Do **not** allowlist a marketing host for auth redirects
 
 ### Edge function secrets
 

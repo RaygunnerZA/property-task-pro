@@ -47,11 +47,20 @@ describe("knowledgeClaims", () => {
 
   it("separates packaging facts from unknown gaps for SEO grounding", () => {
     const claims = normalizeKnowledgeClaims([
-      { claim_text: "At least one compliant smoke alarm is required", category: "obligation" },
+      {
+        claim_text: "At least one compliant smoke alarm is required",
+        category: "obligation",
+        verification_status: "verified",
+      },
       {
         claim_text: "Replacement interval not stated",
         category: "replacement",
         established: false,
+      },
+      {
+        claim_text: "Still awaiting human verify",
+        category: "testing",
+        verification_status: "extracted",
       },
     ]);
     const grounded = claimsForContentGrounding(claims);

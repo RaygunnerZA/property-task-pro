@@ -91,10 +91,12 @@ export type Capability =
   | "compliance_clause_rewrite"
   | "knowledge_critique"
   | "knowledge_guidance_draft"
+  | "knowledge_claim_extract"
   | "plan_label_extraction"
   | "content_seo_draft"
   | "content_brief_draft"
   | "content_output_draft"
+  | "content_output_grounding"
   | "content_visual_brief";
 
 export interface CapabilityRequirements {
@@ -173,6 +175,12 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
+  knowledge_claim_extract: {
+    functionName: "knowledge-extract-claims",
+    promptVersion: "knowledge-extract-claims-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
   plan_label_extraction: {
     functionName: "building-plan-process",
     promptVersion: "plan-spaces-v1",
@@ -181,25 +189,33 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   },
   content_seo_draft: {
     functionName: "content-generate",
-    promptVersion: "content-tree-v1",
+    promptVersion: "content-tree-claims-v1",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   content_brief_draft: {
     functionName: "content-generate",
-    promptVersion: "content-tree-v1",
+    promptVersion: "content-tree-claims-v1",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   content_output_draft: {
     functionName: "content-generate",
-    promptVersion: "content-tree-v1",
+    promptVersion: "content-tree-claims-v1",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
+  content_output_grounding: {
+    functionName: "content-generate",
+    promptVersion: "content-output-grounding-v1",
+    requires: { structuredJson: true },
+    // Prefer a distinct second opinion from the output draft primary when possible.
+    order: ["model:gpt-4o-mini", "model:gemini-2.0-flash"],
+    requireDistinctProvider: true,
+  },
   content_visual_brief: {
     functionName: "content-generate",
-    promptVersion: "content-tree-v1",
+    promptVersion: "content-tree-claims-v1",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },

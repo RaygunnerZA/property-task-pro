@@ -77,6 +77,20 @@ async function invokeKnowledgeCritic(knowledgeId: string) {
   if (error) throw error;
 }
 
+async function invokeKnowledgeExtractClaims(knowledgeId: string) {
+  const { data, error } = await supabase.functions.invoke("knowledge-extract-claims", {
+    body: { knowledge_id: knowledgeId },
+  });
+  if (error) throw error;
+  const payload = data as { ok?: boolean; error?: string; message?: string; inserted_count?: number };
+  if (payload && payload.ok === false) {
+    const err = new Error(payload.message || payload.error || "Claim extraction failed");
+    (err as Error & { code?: string }).code = payload.error;
+    throw err;
+  }
+  return payload;
+}
+
 async function invokeKnowledgeGenerateGuidance(
   knowledgeIds: string[],
   opts?: { mode?: "generate" | "improve"; persist?: boolean }
@@ -235,6 +249,18 @@ export function useAdminRunKnowledgeCritic() {
     mutationFn: async (knowledgeId: string) => {
       await invokeKnowledgeCritic(knowledgeId);
     },
+    onSuccess: (_data, knowledgeId) => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", knowledgeId] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+    },
+  });
+}
+
+export function useAdminExtractKnowledgeClaims() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (knowledgeId: string) => invokeKnowledgeExtractClaims(knowledgeId),
     onSuccess: (_data, knowledgeId) => {
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", knowledgeId] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
@@ -451,8 +477,14 @@ export function useAdminBulkCreateKnowledgeCandidates() {
       if (error) throw error;
 
       const result = data as { batch_id: string; created_count: number; knowledge_ids: string[] };
-      // Mandatory critic — sequential to avoid stampeding providers
+      // Extract atomic claims from linked sources when possible, then mandatory critic.
       for (const id of result.knowledge_ids ?? []) {
+        try {
+          await invokeKnowledgeExtractClaims(id);
+        } catch (err) {
+          // Spreadsheet rows may lack fetchable source text — attribute claims remain.
+          console.warn("knowledge-extract-claims skipped/failed for", id, err);
+        }
         try {
           await invokeKnowledgeCritic(id);
         } catch (err) {
@@ -659,7 +691,18 @@ export function useAdminImportKnowledgeProposals() {
       if (error) throw error;
 
       const result = data as { batch_id: string; created_count: number; knowledge_ids: string[] };
-      for (const id of result.knowledge_ids ?? []) {
+      const ids = result.knowledge_ids ?? [];
+      for (let i = 0; i < ids.length; i++) {
+        const id = ids[i];
+        const claimCount = selected[i]?.claims?.length ?? 0;
+        // Re-extract from source when intake claims are thin (e.g. attribute-only).
+        if (claimCount < 4) {
+          try {
+            await invokeKnowledgeExtractClaims(id);
+          } catch (err) {
+            console.warn("knowledge-extract-claims skipped/failed for", id, err);
+          }
+        }
         try {
           await invokeKnowledgeCritic(id);
         } catch (err) {

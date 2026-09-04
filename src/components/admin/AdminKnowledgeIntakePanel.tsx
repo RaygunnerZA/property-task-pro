@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, FileSpreadsheet, Link2, Loader2, PenLine, Upload } from "lucide-react";
+import { ChevronDown, ChevronRight, FileSpreadsheet, Loader2, PenLine, Upload } from "lucide-react";
 import {
   useAdminAnalyseKnowledgeDocument,
   useAdminAnalyseKnowledgeUrl,
@@ -540,6 +540,8 @@ export function AdminKnowledgeIntakePanel() {
   const upsert = useAdminUpsertPlatformKnowledge();
 
   const [intakeMode, setIntakeMode] = useState<IntakeMode>("upload");
+  const [dragOver, setDragOver] = useState(false);
+  const [pasteBuffer, setPasteBuffer] = useState("");
   const [workbook, setWorkbook] = useState<{
     kind: SpreadsheetWorkbook["kind"];
     sheets: SheetIntakeConfig[];
@@ -717,9 +719,11 @@ export function AdminKnowledgeIntakePanel() {
     }
   };
 
-  const handleUrlAnalyse = async () => {
+  const handleUrlAnalyse = async (overrideUrl?: string) => {
+    const target = (overrideUrl ?? urlInput).trim();
+    if (!target) return;
     try {
-      const result = await analyseUrl.mutateAsync(urlInput);
+      const result = await analyseUrl.mutateAsync(target);
       setWorkbook(null);
       setProposals(null);
       setStorage(result.storage);
@@ -867,98 +871,126 @@ export function AdminKnowledgeIntakePanel() {
     bulkCreate.isPending ||
     upsert.isPending;
 
-  const modeTabs: { id: IntakeMode; label: string; icon: typeof Upload }[] = [
-    { id: "upload", label: "Upload file", icon: Upload },
-    { id: "url", label: "Add URL", icon: Link2 },
-    { id: "manual", label: "Manual", icon: PenLine },
-  ];
+  const submitPasteOrUrl = () => {
+    const raw = pasteBuffer.trim() || urlInput.trim();
+    if (!raw) return;
+    if (/^https?:\/\//i.test(raw.split(/\s/)[0] ?? "")) {
+      setIntakeMode("url");
+      setUrlInput(raw.split(/\s/)[0] ?? raw);
+      void handleUrlAnalyse(raw.split(/\s/)[0] ?? raw);
+      return;
+    }
+    // Pasted prose → treat as a text document for claim extraction.
+    const blob = new Blob([raw], { type: "text/plain" });
+    const file = new File([blob], "pasted-source.txt", { type: "text/plain" });
+    setIntakeMode("upload");
+    void handleFile(file);
+  };
 
   return (
     <div className="space-y-8">
-      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <FileSpreadsheet className="h-4 w-4 text-primary" />
-          <h2 className="font-medium text-sm">Add Knowledge</h2>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Platform Knowledge intake. Spreadsheets use structured mapping; documents and URLs run
-          through ai-doc-analyse and propose separate candidates. Critic + human review always
-          required — never auto-publish.
-        </p>
-
-        <div className="flex flex-wrap gap-2">
-          {modeTabs.map((t) => (
-            <Button
-              key={t.id}
-              size="sm"
-              variant={intakeMode === t.id ? "default" : "outline"}
-              className={cn(
-                "border-0 h-8 text-xs",
-                intakeMode === t.id ? "shadow-primary-btn" : "btn-neomorphic"
-              )}
-              onClick={() => setIntakeMode(t.id)}
-            >
-              <t.icon className="h-3.5 w-3.5 mr-1.5" />
-              {t.label}
-            </Button>
-          ))}
+      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-4">
+        <div className="space-y-1">
+          <h2 className="font-medium text-sm">Add source</h2>
+          <p className="text-xs text-muted-foreground">
+            Drag a file here, choose a file, paste text, or add a URL. Pipeline: source → extract
+            claims → applicability → critic → Review. Never auto-publish.
+          </p>
         </div>
 
-        {intakeMode === "upload" && (
-          <>
-            <label className="inline-flex cursor-pointer">
-              <Button asChild size="sm" className="shadow-primary-btn border-0" disabled={busy}>
-                <span>
-                  {uploadFile.isPending || analyseDocument.isPending || interpretWorkbook.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  ) : (
-                    <Upload className="h-4 w-4 mr-2" />
-                  )}
-                  Choose file
-                </span>
-              </Button>
-              <input
-                type="file"
-                className="hidden"
-                accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp,.gif"
-                disabled={busy}
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) void handleFile(f);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <p className="text-[11px] text-muted-foreground">
-              CSV/XLSX → workbook importer · PDF/DOCX/images → document extraction
-            </p>
-          </>
-        )}
-
-        {intakeMode === "url" && (
-          <div className="flex flex-wrap gap-2 items-end">
-            <label className="flex-1 min-w-[16rem] text-xs space-y-1">
-              <span className="text-muted-foreground">Source URL (https)</span>
-              <Input
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://…"
-                disabled={busy}
-              />
-            </label>
-            <Button
-              size="sm"
-              className="shadow-primary-btn border-0"
-              disabled={busy || !urlInput.trim()}
-              onClick={() => void handleUrlAnalyse()}
-            >
-              {analyseUrl.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Fetch & analyse
+        <div
+          className={cn(
+            "rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
+            dragOver ? "border-primary bg-primary/5" : "border-border/60 bg-muted/20",
+            busy && "opacity-60 pointer-events-none"
+          )}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOver(true);
+          }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setDragOver(false);
+            const f = e.dataTransfer.files?.[0];
+            if (f) {
+              setIntakeMode("upload");
+              void handleFile(f);
+            }
+          }}
+        >
+          <Upload className="h-6 w-6 text-primary mx-auto mb-2" />
+          <p className="text-sm text-foreground">Drop a source file</p>
+          <p className="text-[11px] text-muted-foreground mt-1">
+            CSV/XLSX · PDF/DOCX/TXT · images
+          </p>
+          <label className="inline-flex cursor-pointer mt-3">
+            <Button asChild size="sm" className="shadow-primary-btn border-0" disabled={busy}>
+              <span>
+                {uploadFile.isPending ||
+                analyseDocument.isPending ||
+                interpretWorkbook.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Select file
+              </span>
             </Button>
-          </div>
-        )}
+            <input
+              type="file"
+              className="hidden"
+              accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.webp,.gif"
+              disabled={busy}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) {
+                  setIntakeMode("upload");
+                  void handleFile(f);
+                }
+                e.target.value = "";
+              }}
+            />
+          </label>
+        </div>
 
-        {proposals && proposals.length > 0 && (intakeMode === "upload" || intakeMode === "url") && (
+        <div className="flex flex-wrap gap-2 items-end">
+          <label className="flex-1 min-w-[16rem] text-xs space-y-1">
+            <span className="text-muted-foreground">Paste text or URL</span>
+            <Textarea
+              value={pasteBuffer || urlInput}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPasteBuffer(v);
+                if (/^https?:\/\//i.test(v.trim())) setUrlInput(v.trim());
+              }}
+              placeholder="https://… or paste source text"
+              rows={3}
+              disabled={busy}
+              className="text-sm"
+            />
+          </label>
+          <Button
+            size="sm"
+            className="shadow-primary-btn border-0"
+            disabled={busy || !(pasteBuffer.trim() || urlInput.trim())}
+            onClick={() => submitPasteOrUrl()}
+          >
+            {analyseUrl.isPending || analyseDocument.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />
+            ) : null}
+            Analyse
+          </Button>
+        </div>
+
+        <button
+          type="button"
+          className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          onClick={() => setIntakeMode((m) => (m === "manual" ? "upload" : "manual"))}
+        >
+          <PenLine className="h-3 w-3" />
+          {intakeMode === "manual" ? "Hide manual entry" : "Or create a candidate manually"}
+        </button>
+
+        {proposals && proposals.length > 0 && (
           <AdminKnowledgeProposalsReview
             proposals={proposals}
             onChange={setProposals}

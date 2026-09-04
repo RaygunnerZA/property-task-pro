@@ -2,11 +2,13 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import {
   useAdminGenerateKnowledgeGuidance,
+  useAdminExtractKnowledgeClaims,
   useAdminKnowledgeDetail,
   useAdminRunKnowledgeCritic,
   useAdminSetDraftGuidance,
   useAdminSetKnowledgeStatus,
 } from "@/hooks/admin/useAdminKnowledge";
+import { KnowledgeClaimsList } from "@/components/admin/KnowledgeClaimsList";
 import { needsGuidanceGeneration } from "@/lib/knowledge/knowledgeDraftGuidance";
 import {
   isEligibleForGuidanceImprovement,
@@ -169,6 +171,7 @@ export function AdminKnowledgeDetailSheet({
   const detail = useAdminKnowledgeDetail(open ? knowledgeId : null);
   const setStatus = useAdminSetKnowledgeStatus();
   const runCritic = useAdminRunKnowledgeCritic();
+  const extractClaims = useAdminExtractKnowledgeClaims();
   const generateGuidance = useAdminGenerateKnowledgeGuidance();
   const setDraft = useAdminSetDraftGuidance();
   const [techOpen, setTechOpen] = useState(false);
@@ -178,6 +181,14 @@ export function AdminKnowledgeDetailSheet({
   const row = detail.data?.knowledge ?? null;
   const sources = detail.data?.sources ?? [];
   const events = detail.data?.verification_events ?? [];
+  const claims = (detail.data?.claims ?? []) as Array<{
+    id?: string;
+    claim_text?: string;
+    category?: string;
+    verification_status?: string;
+    source_id?: string | null;
+    source_location?: string | null;
+  }>;
 
   const checks = useMemo(
     () =>
@@ -535,6 +546,58 @@ export function AdminKnowledgeDetailSheet({
                     )}
                   </div>
                 ))}
+              </Section>
+
+              <Section id="ko-claims" title="Claims">
+                <KnowledgeClaimsList
+                  showHeading={false}
+                  claims={claims
+                    .filter((c) => typeof c.claim_text === "string")
+                    .map((c) => ({
+                      id: c.id,
+                      claim_text: c.claim_text as string,
+                      category: c.category,
+                      verification_status: c.verification_status,
+                      source_id: c.source_id,
+                      source_location: c.source_location,
+                    }))}
+                  sources={sources.map((s) => ({
+                    id: s.id,
+                    label: s.label,
+                    url: s.url,
+                  }))}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  disabled={extractClaims.isPending || !row}
+                  onClick={() => {
+                    if (!row) return;
+                    void extractClaims
+                      .mutateAsync(row.id)
+                      .then((res) => {
+                        toast.success(
+                          `Extracted ${res?.inserted_count ?? 0} claims from sources`
+                        );
+                        return runCritic.mutateAsync(row.id);
+                      })
+                      .then(() => toast.success("Critic re-run on claims"))
+                      .catch((err: Error) =>
+                        toast.error(err.message || "Claim extraction failed")
+                      );
+                  }}
+                >
+                  {extractClaims.isPending ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      Extracting…
+                    </>
+                  ) : (
+                    "Extract claims from sources"
+                  )}
+                </Button>
               </Section>
 
               <Section id="ko-checks" title="Review checks">

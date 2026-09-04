@@ -449,6 +449,9 @@ verify_jwt = false
 [functions.knowledge-generate-guidance]
 verify_jwt = true
 
+[functions.knowledge-extract-claims]
+verify_jwt = true
+
 [functions.content-generate]
 verify_jwt = true
 

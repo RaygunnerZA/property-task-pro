@@ -28,7 +28,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * Canonical app URL for auth redirects. In production (Vercel), set VITE_APP_URL
  * so confirmation and recovery emails redirect to the deployed app, not localhost.
- * Production should be the product origin only (https://app.filla.app) — never the marketing host.
+ * Production should be the product origin only (https://filla.app) — never a marketing-only host.
  */
 export function getAppBaseUrl(): string {
   const env = import.meta.env.VITE_APP_URL;

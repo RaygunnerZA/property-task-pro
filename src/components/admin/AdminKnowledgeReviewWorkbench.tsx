@@ -2,15 +2,17 @@ import { Fragment, useMemo, useState } from "react";
 import { ChevronDown, Filter, Loader2, MoreHorizontal, Search, X } from "lucide-react";
 import {
   useAdminApplyDeterministicGuidance,
+  useAdminExtractKnowledgeClaims,
   useAdminGenerateKnowledgeGuidance,
+  useAdminKnowledgeDetail,
   useAdminRunKnowledgeCritic,
   useAdminSetDraftGuidance,
   useAdminSetKnowledgeStatus,
   type KnowledgeSourceRow,
 } from "@/hooks/admin/useAdminKnowledge";
+import { AdminKnowledgeReviewExpanded } from "@/components/admin/AdminKnowledgeReviewExpanded";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,10 +29,8 @@ import type { KnowledgeRow, KnowledgeStatus } from "@/types/knowledge";
 import {
   attrString,
   computeSourceHealth,
-  deriveOpportunities,
   legalClassificationLabel,
   parseCriticSummary,
-  statusLabel,
   triggerLabel,
   type TrustCheckStatus,
 } from "@/lib/knowledge/knowledgePresentation";
@@ -48,7 +48,6 @@ import {
   hasCanonicalGuidance,
   isEligibleForGuidanceGeneration,
   isEligibleForGuidanceImprovement,
-  isReadyForHumanVerify,
   matchesReviewFilter,
   matchesReviewQueue,
   prefersDeterministicGuidance,
@@ -121,11 +120,12 @@ export function AdminKnowledgeReviewWorkbench({
   const generateGuidance = useAdminGenerateKnowledgeGuidance();
   const applyDeterministic = useAdminApplyDeterministicGuidance();
   const runCritic = useAdminRunKnowledgeCritic();
+  const extractClaims = useAdminExtractKnowledgeClaims();
   const setDraft = useAdminSetDraftGuidance();
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [checksOpenId, setChecksOpenId] = useState<string | null>(null);
+  const expandedDetail = useAdminKnowledgeDetail(expandedId);
   const [queue, setQueue] = useState<ReviewQueueId>("needs_work");
   const [filter, setFilter] = useState<ReviewFilterId | null>(null);
   const [sort, setSort] = useState<ReviewSortId>("fewest_blockers");
@@ -426,10 +426,38 @@ export function AdminKnowledgeReviewWorkbench({
   };
 
   const th =
-    "px-2 py-2 text-left text-[10px] font-mono uppercase tracking-wider text-muted-foreground";
+    "px-2 py-2 text-left text-[10px] font-mono uppercase tracking-wider text-muted-foreground truncate";
   const td = "px-2 py-2.5 text-xs align-top";
   const perforated =
     "border-b border-dashed border-border/50 [border-image:repeating-linear-gradient(90deg,hsl(var(--border))_0_6px,transparent_6px_12px)_1]";
+
+  function stepsSummary(model: (typeof rowModels)[number]): {
+    line: string;
+    tone: TrustCheckStatus;
+  } {
+    const criticStatus = model.critic.status;
+    const criticBit =
+      criticStatus === "passed"
+        ? "Critic ok"
+        : criticStatus === "failed"
+          ? "Critic failed"
+          : criticStatus === "stale"
+            ? "Critic stale"
+            : "Critic not run";
+    if (model.blockerCount === 0 && criticStatus === "passed") {
+      return { line: `Ready · ${criticBit}`, tone: "passed" };
+    }
+    if (model.blockerCount === 0) {
+      return {
+        line: criticBit,
+        tone: criticStatus === "failed" ? "failed" : "not_run",
+      };
+    }
+    return {
+      line: `${model.blockerCount} open · ${criticBit}`,
+      tone: criticStatus === "failed" ? "failed" : "incomplete",
+    };
+  }
 
   const busy =
     generateGuidance.isPending ||
@@ -654,17 +682,16 @@ export function AdminKnowledgeReviewWorkbench({
       {!isLoading && filteredSorted.length > 0 && (
         <>
           <div className="hidden md:block overflow-x-auto rounded-xl bg-card/80 shadow-e1">
-            <table className="w-full text-left border-collapse table-fixed min-w-[1100px]">
+            <table className="w-full text-left border-collapse table-fixed min-w-[960px]">
               <colgroup>
                 <col className="w-8" />
-                <col className="w-[12%]" />
-                <col className="w-[7%]" />
                 <col className="w-[22%]" />
+                <col className="w-[11%]" />
                 <col className="w-[24%]" />
                 <col className="w-[7%]" />
-                <col className="w-[6%]" />
                 <col className="w-[12%]" />
-                <col className="w-[8%]" />
+                <col className="w-[14%]" />
+                <col className="w-[10%]" />
               </colgroup>
               <thead>
                 <tr className="border-b border-border/40">
@@ -678,27 +705,41 @@ export function AdminKnowledgeReviewWorkbench({
                     />
                   </th>
                   <th className={th}>Title</th>
-                  <th className={th}>Jurisdiction</th>
-                  <th className={th}>Applies when</th>
-                  <th className={th}>Guidance</th>
-                  <th className={th}>Class.</th>
-                  <th className={th}>Sources</th>
-                  <th className={th}>Checks</th>
-                  <th className={th}>Next action</th>
+                  <th className={th} title="Jurisdiction">
+                    Jurisdiction
+                  </th>
+                  <th className={th} title="Applies when">
+                    Applies when
+                  </th>
+                  <th className={th} title="Guidance">
+                    Guid.
+                  </th>
+                  <th className={th} title="Classification">
+                    Class.
+                  </th>
+                  <th className={th} title="Open steps and critic">
+                    Steps
+                  </th>
+                  <th className={th}>Next</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredSorted.map((model) => {
                   const { row } = model;
                   const expanded = expandedId === row.id;
-                  const checksOpen = checksOpenId === row.id;
                   const editValue =
                     draftEdits[row.id] ??
                     (row.summary?.trim() || row.body?.trim() || "");
+                  const steps = stepsSummary(model);
 
                   return (
                     <Fragment key={row.id}>
-                      <tr className={cn("hover:bg-muted/25", perforated)}>
+                      <tr
+                        className={cn(
+                          "hover:bg-muted/25",
+                          expanded ? "bg-muted/15 border-b-0" : perforated
+                        )}
+                      >
                         <td className={td}>
                           <input
                             type="checkbox"
@@ -711,7 +752,10 @@ export function AdminKnowledgeReviewWorkbench({
                         <td className={td}>
                           <button
                             type="button"
-                            className="text-left font-medium text-foreground hover:underline"
+                            className={cn(
+                              "text-left text-foreground hover:underline",
+                              expanded ? "font-semibold text-sm" : "font-medium"
+                            )}
                             onClick={() =>
                               setExpandedId((c) => (c === row.id ? null : row.id))
                             }
@@ -730,383 +774,199 @@ export function AdminKnowledgeReviewWorkbench({
                               : "text-muted-foreground"
                           )}
                         >
-                          {model.jurisdiction}
+                          <span className="line-clamp-2">{model.jurisdiction}</span>
                         </td>
                         <td className={cn(td, "text-muted-foreground whitespace-normal")}>
-                          {attrString(row.attributes, "applies_when") || "—"}
-                        </td>
-                        <td className={td}>
-                          <span className="text-[11px] font-medium text-foreground">
-                            {model.qualityLabel}
+                          <span className="line-clamp-3">
+                            {attrString(row.attributes, "applies_when") || "—"}
                           </span>
                         </td>
-                        <td className={cn(td, "text-muted-foreground")}>
-                          {model.classification}
-                          <p className="text-[10px] mt-0.5 opacity-80">{model.trigger}</p>
-                        </td>
-                        <td className={cn(td, "text-muted-foreground")}>
-                          {model.health.authoritative.length === 0 ? (
-                            <span className="text-amber-700 dark:text-amber-400">None</span>
-                          ) : (
-                            model.health.authoritative[0]?.publisher ||
-                            model.health.authoritative[0]?.title
-                          )}
-                        </td>
-                        <td className={td}>
-                          <button
-                            type="button"
-                            className="text-left w-full"
-                            onClick={() =>
-                              setChecksOpenId((c) => (c === row.id ? null : row.id))
-                            }
-                          >
-                            {model.blockerCount === 0 ? (
-                              <span className={checkTone("passed")}>0 blockers</span>
-                            ) : (
-                              <span className={checkTone("incomplete")}>
-                                {model.blockerCount} blocker
-                                {model.blockerCount === 1 ? "" : "s"}
+                        {expanded ? (
+                          <td className={td} colSpan={4} aria-hidden />
+                        ) : (
+                          <>
+                            <td className={td}>
+                              <span className="text-[11px] font-medium text-foreground">
+                                {model.qualityLabel}
                               </span>
-                            )}
-                          </button>
-                          {checksOpen && (
-                            <ul className="mt-2 space-y-1 border-t border-border/30 pt-2">
-                              {model.checks.map((c) => (
-                                <li key={c.id} className="flex gap-2">
-                                  <span
-                                    className={cn(
-                                      "w-16 shrink-0 text-[10px]",
-                                      checkTone(c.status)
-                                    )}
-                                  >
-                                    {statusLabel(c.status)}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {c.label}
-                                    {c.detail ? ` — ${c.detail}` : ""}
-                                  </span>
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </td>
-                        <td className={td}>
-                          <div className="flex items-start gap-1">
-                            <Button
-                              size="sm"
-                              className="shadow-primary-btn border-0 h-7 text-xs flex-1"
-                              disabled={busy}
-                              onClick={() => runPrimary(model)}
-                            >
-                              {model.primary.label}
-                            </Button>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="border-0 btn-neomorphic h-7 w-7 px-0"
-                                  aria-label="More actions"
-                                >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="min-w-[10rem]">
-                                {model.eligibleGenerate && (
-                                  <DropdownMenuItem
-                                    disabled={busy}
-                                    onClick={() =>
-                                      confirmGenerate([row.id], "generate", {
-                                        persist: false,
-                                        intoDraftField: true,
-                                      })
-                                    }
-                                  >
-                                    Generate guidance
-                                  </DropdownMenuItem>
-                                )}
-                                {model.eligibleImprove && (
-                                  <DropdownMenuItem
-                                    disabled={busy}
-                                    onClick={() =>
-                                      confirmGenerate([row.id], "improve", {
-                                        persist: false,
-                                        intoDraftField: true,
-                                      })
-                                    }
-                                  >
-                                    Improve guidance
-                                  </DropdownMenuItem>
-                                )}
-                                <DropdownMenuItem onClick={() => onOpen(row.id)}>
-                                  Open detail
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    setExpandedId((c) => (c === row.id ? null : row.id))
-                                  }
-                                >
-                                  {expanded ? "Collapse row" : "Expand row"}
-                                </DropdownMenuItem>
-                                {(row.status === "candidate" ||
-                                  row.status === "verified") && (
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() =>
-                                      handleStatus(
-                                        row.id,
-                                        row.status === "verified"
-                                          ? "candidate"
-                                          : "archived"
-                                      )
-                                    }
-                                  >
-                                    {row.status === "verified"
-                                      ? "Return to review"
-                                      : "Reject"}
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </td>
-                      </tr>
-                      {expanded && (
-                        <tr className={perforated}>
-                          <td colSpan={9} className="px-3 py-3 bg-muted/20">
-                            <div className="grid gap-3 md:grid-cols-2">
-                              <div className="space-y-2">
-                                <p className="text-[10px] font-mono uppercase text-muted-foreground">
-                                  Draft guidance
-                                  {model.provenanceChip
-                                    ? ` · ${model.provenanceChip}`
-                                    : ` · ${model.qualityLabel}`}
-                                </p>
-                                {draftEdits[row.id] != null &&
-                                  draftEdits[row.id] !==
-                                    (row.summary?.trim() || row.body?.trim() || "") && (
-                                  <p className="text-[11px] text-muted-foreground">
-                                    Saved: {displayCanonicalGuidance(row)}
+                            </td>
+                            <td className={cn(td, "text-muted-foreground")}>
+                              <span className="line-clamp-2">{model.classification}</span>
+                              <p className="text-[10px] mt-0.5 opacity-80 line-clamp-1">
+                                {model.trigger}
+                              </p>
+                            </td>
+                            <td className={td}>
+                              <button
+                                type="button"
+                                className="text-left w-full"
+                                onClick={() => setExpandedId(row.id)}
+                              >
+                                <span className={cn("text-[11px]", checkTone(steps.tone))}>
+                                  {steps.line}
+                                </span>
+                                {model.compact.length > 0 && (
+                                  <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                                    {model.compact.map((b) => b.shortName).join(" · ")}
                                   </p>
                                 )}
-                                <Textarea
-                                  value={editValue}
-                                  onChange={(e) =>
-                                    setDraftEdits((prev) => ({
-                                      ...prev,
-                                      [row.id]: e.target.value,
-                                    }))
-                                  }
-                                  rows={4}
-                                  className="text-sm"
-                                  placeholder="Homeowner-readable draft guidance…"
-                                />
-                                <div className="flex flex-wrap gap-2">
-                                  <Button
-                                    size="sm"
-                                    className="shadow-primary-btn border-0"
-                                    disabled={busy}
-                                    onClick={() => saveDraft(row.id)}
-                                  >
-                                    Save draft
-                                  </Button>
-                                  {model.eligibleGenerate && (
+                              </button>
+                            </td>
+                            <td className={td}>
+                              <div className="flex items-start gap-1">
+                                <Button
+                                  size="sm"
+                                  className="shadow-primary-btn border-0 h-7 text-xs flex-1"
+                                  disabled={busy}
+                                  onClick={() => runPrimary(model)}
+                                >
+                                  {model.primary.label}
+                                </Button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      className="border-0 btn-neomorphic"
-                                      disabled={busy}
-                                      onClick={() =>
-                                        confirmGenerate([row.id], "generate", {
-                                          persist: false,
-                                          intoDraftField: true,
-                                        })
-                                      }
+                                      className="border-0 btn-neomorphic h-7 w-7 px-0"
+                                      aria-label="More actions"
                                     >
-                                      Generate guidance
+                                      <MoreHorizontal className="h-3.5 w-3.5" />
                                     </Button>
-                                  )}
-                                  {model.eligibleImprove && (
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="border-0 btn-neomorphic"
-                                      disabled={busy}
-                                      onClick={() =>
-                                        confirmGenerate([row.id], "improve", {
-                                          persist: false,
-                                          intoDraftField: true,
-                                        })
-                                      }
-                                    >
-                                      Improve guidance
-                                    </Button>
-                                  )}
-                                  {(model.critic.status === "not_run" ||
-                                    model.critic.status === "stale" ||
-                                    model.critic.status === "failed") &&
-                                    hasCanonicalGuidance(row) && (
-                                      <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="border-0 btn-neomorphic"
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="min-w-[10rem]">
+                                    {model.eligibleGenerate && (
+                                      <DropdownMenuItem
                                         disabled={busy}
                                         onClick={() =>
-                                          runCritic.mutate(row.id, {
-                                            onSuccess: () =>
-                                              toast.success("Critic finished"),
-                                            onError: (e) =>
-                                              toast.error(
-                                                e instanceof Error
-                                                  ? e.message
-                                                  : "Critic failed"
-                                              ),
+                                          confirmGenerate([row.id], "generate", {
+                                            persist: false,
+                                            intoDraftField: true,
                                           })
                                         }
                                       >
-                                        {model.critic.status === "failed"
-                                          ? "Rerun critic"
-                                          : "Run critic"}
-                                      </Button>
+                                        Generate guidance
+                                      </DropdownMenuItem>
                                     )}
-                                  {isReadyForHumanVerify(row, model.checks) && (
-                                    <Button
-                                      size="sm"
-                                      className="shadow-primary-btn border-0"
-                                      disabled={busy}
+                                    {model.eligibleImprove && (
+                                      <DropdownMenuItem
+                                        disabled={busy}
+                                        onClick={() =>
+                                          confirmGenerate([row.id], "improve", {
+                                            persist: false,
+                                            intoDraftField: true,
+                                          })
+                                        }
+                                      >
+                                        Improve guidance
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => onOpen(row.id)}>
+                                      Open detail
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
                                       onClick={() =>
-                                        handleStatus(row.id, "verified")
+                                        setExpandedId((c) => (c === row.id ? null : row.id))
                                       }
                                     >
-                                      Verify
-                                    </Button>
-                                  )}
-                                </div>
-                                {model.critic.staleMessage && (
-                                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                                    {model.critic.staleMessage}
-                                  </p>
-                                )}
-                                {model.blockers.length > 0 && (
-                                  <p className="text-[11px] text-muted-foreground">
-                                    Blockers:{" "}
-                                    {model.blockers
-                                      .map((b) => b.label)
-                                      .join(" · ")}
-                                  </p>
-                                )}
-                                <p className="text-[10px] text-muted-foreground">
-                                  Saves as unverified draft. Critic and human verify still
-                                  required. AI proposals must be saved before running critic.
-                                </p>
-                              </div>
-                              <div className="space-y-3 text-xs">
-                                <div>
-                                  <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
-                                    Sources
-                                  </p>
-                                  {model.health.authoritative.length === 0 ? (
-                                    <p className="text-amber-700">No authoritative sources</p>
-                                  ) : (
-                                    model.health.authoritative.map((s) => (
-                                      <div key={s.url || s.title} className="mb-2">
-                                        <p className="font-medium">{s.title}</p>
-                                        <p className="text-muted-foreground">
-                                          {[s.publisher, s.authorityType]
-                                            .filter(Boolean)
-                                            .join(" · ")}
-                                        </p>
-                                        {s.url && (
-                                          <a
-                                            href={s.url}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="text-primary truncate block hover:underline"
-                                          >
-                                            {s.url}
-                                          </a>
-                                        )}
-                                      </div>
-                                    ))
-                                  )}
-                                  {model.health.intakeProvenance.length > 0 && (
-                                    <p className="text-muted-foreground mt-1">
-                                      Intake:{" "}
-                                      {model.health.intakeProvenance
-                                        .map((p) => p.title)
-                                        .join(", ")}
-                                    </p>
-                                  )}
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-mono uppercase text-muted-foreground mb-1">
-                                    Critic
-                                  </p>
-                                  <p
-                                    className={checkTone(
-                                      model.critic.status === "passed"
-                                        ? "passed"
-                                        : model.critic.status === "failed"
-                                          ? "failed"
-                                          : "not_run"
+                                      Expand row
+                                    </DropdownMenuItem>
+                                    {(row.status === "candidate" ||
+                                      row.status === "verified") && (
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() =>
+                                          handleStatus(
+                                            row.id,
+                                            row.status === "verified"
+                                              ? "candidate"
+                                              : "archived"
+                                          )
+                                        }
+                                      >
+                                        {row.status === "verified"
+                                          ? "Return to review"
+                                          : "Reject"}
+                                      </DropdownMenuItem>
                                     )}
-                                  >
-                                    {model.critic.resultLabel}
-                                    {model.critic.status === "stale"
-                                      ? " (stale)"
-                                      : ""}
-                                  </p>
-                                  {model.critic.staleMessage && (
-                                    <p className="text-amber-700 dark:text-amber-400 mt-0.5">
-                                      {model.critic.staleMessage}
-                                    </p>
-                                  )}
-                                  {model.critic.claimsChecked && (
-                                    <p className="text-muted-foreground mt-0.5">
-                                      Claims · {model.critic.claimsChecked}
-                                    </p>
-                                  )}
-                                  {model.critic.sourceAlignment && (
-                                    <p className="text-muted-foreground">
-                                      Source alignment · {model.critic.sourceAlignment}
-                                    </p>
-                                  )}
-                                  {model.critic.applicabilityConcerns && (
-                                    <p className="text-muted-foreground">
-                                      Applicability · {model.critic.applicabilityConcerns}
-                                    </p>
-                                  )}
-                                  {model.critic.contradictions && (
-                                    <p className="text-muted-foreground">
-                                      {model.critic.contradictions}
-                                    </p>
-                                  )}
-                                  {model.critic.requiredCorrections && (
-                                    <p className="text-amber-700 dark:text-amber-400">
-                                      Required · {model.critic.requiredCorrections}
-                                    </p>
-                                  )}
-                                </div>
-                                {isReadyForHumanVerify(row, model.checks) && (
-                                  <p className="text-emerald-700 dark:text-emerald-400">
-                                    Closest to verification — all automated blockers clear.
-                                  </p>
-                                )}
-                                {deriveOpportunities(row).slice(0, 3).map((o) => (
-                                  <p key={o.id} className="text-muted-foreground">
-                                    Opportunity · {o.label}
-                                  </p>
-                                ))}
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
-                            </div>
-                            <button
-                              type="button"
-                              className="mt-2 text-[10px] text-muted-foreground inline-flex items-center gap-1"
-                              onClick={() => setExpandedId(null)}
-                            >
-                              <ChevronDown className="h-3 w-3 rotate-180" />
-                              Collapse
-                            </button>
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                      {expanded && (
+                        <tr className={cn(perforated, "bg-transparent")}>
+                          <td colSpan={8} className="p-0">
+                            <AdminKnowledgeReviewExpanded
+                              model={model}
+                              editValue={editValue}
+                              onEditChange={(value) =>
+                                setDraftEdits((prev) => ({
+                                  ...prev,
+                                  [row.id]: value,
+                                }))
+                              }
+                              draftDirty={
+                                draftEdits[row.id] != null &&
+                                draftEdits[row.id] !==
+                                  (row.summary?.trim() || row.body?.trim() || "")
+                              }
+                              claims={
+                                (expandedDetail.data?.claims ?? []) as Array<{
+                                  id?: string;
+                                  claim_text?: string;
+                                  category?: string;
+                                  verification_status?: string;
+                                  source_id?: string | null;
+                                  source_location?: string | null;
+                                }>
+                              }
+                              claimsLoading={Boolean(
+                                expandedDetail.isLoading && expandedId === row.id
+                              )}
+                              detailSources={expandedDetail.data?.sources ?? model.sources}
+                              busy={busy}
+                              extractPending={extractClaims.isPending}
+                              onSaveDraft={() => saveDraft(row.id)}
+                              onGenerate={() =>
+                                confirmGenerate([row.id], "generate", {
+                                  persist: false,
+                                  intoDraftField: true,
+                                })
+                              }
+                              onImprove={() =>
+                                confirmGenerate([row.id], "improve", {
+                                  persist: false,
+                                  intoDraftField: true,
+                                })
+                              }
+                              onRunCritic={() =>
+                                runCritic.mutate(row.id, {
+                                  onSuccess: () => toast.success("Critic finished"),
+                                  onError: (e) =>
+                                    toast.error(
+                                      e instanceof Error ? e.message : "Critic failed"
+                                    ),
+                                })
+                              }
+                              onVerify={() => handleStatus(row.id, "verified")}
+                              onExtractClaims={() => {
+                                void extractClaims
+                                  .mutateAsync(row.id)
+                                  .then((res) => {
+                                    toast.success(
+                                      `Extracted ${res?.inserted_count ?? 0} claims from sources`
+                                    );
+                                    return runCritic.mutateAsync(row.id);
+                                  })
+                                  .then(() => toast.success("Critic re-run on claims"))
+                                  .catch((err: Error) =>
+                                    toast.error(err.message || "Claim extraction failed")
+                                  );
+                              }}
+                              onCollapse={() => setExpandedId(null)}
+                            />
                           </td>
                         </tr>
                       )}
@@ -1134,8 +994,7 @@ export function AdminKnowledgeReviewWorkbench({
                   <div className="flex-1 space-y-1">
                     <p className="font-medium text-sm">{model.row.title}</p>
                     <p className="text-xs text-muted-foreground">
-                      Guidance: {model.qualityLabel} · {model.blockerCount} blocker
-                      {model.blockerCount === 1 ? "" : "s"}
+                      Guidance: {model.qualityLabel} · {stepsSummary(model).line}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       {model.jurisdiction}

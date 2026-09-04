@@ -27,7 +27,7 @@
 
    - Staging Site URL: the staging app origin (Vercel preview or `https://staging.app.example`).
    - Redirect URLs: that origin’s `/login`, `/signup`, `/verify`, `/auth/callback`, `/reset-password`, `/accept-invitation`.
-   - Do **not** point staging Auth at `https://app.filla.app` if it would mix sessions with production.
+   - Do **not** point staging Auth at `https://filla.app` (or the Production vercel.app alias) if it would mix sessions with production.
 
 6. Smoke:
 

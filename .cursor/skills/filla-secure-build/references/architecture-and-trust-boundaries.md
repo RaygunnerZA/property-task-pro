@@ -13,13 +13,13 @@ Product app:
 - Auth session: `localStorage` on the product origin. Comment in the client: never set cookie `Domain=.filla.app`.
 - Org-scoped UI data: `useActiveOrg` / `ActiveOrgProvider`, membership-backed — not JWT `org_id` alone (`@Docs/02_Identity.md`, `src/hooks/useActiveOrg.ts`).
 - Routing: React Router in `src/App.tsx`. `src/app/page.tsx` is the workbench page, not a Next.js App Router entry.
-- Deployed as the product Vercel project on `app.filla.app` (`@Docs/31_Public_Site.md`).
+- Deployed as the product Vercel project on `filla.app` and `property-task-pro.vercel.app` (`@Docs/31_Public_Site.md`). `app.filla.app` is not live.
 
 Marketing:
 
 - Separate app in `marketing/`.
 - Must not load Supabase or `VITE_SUPABASE_*`.
-- Origin: `www.filla.app`.
+- Intended origin: `www.filla.app` (attach when ready; apex is product today).
 
 Inbound email:
 

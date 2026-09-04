@@ -62,7 +62,7 @@ export function HomePage() {
             </AppCta>
           </div>
           <p className="mt-4 text-sm text-muted">
-            Sign-in lives on app.filla.app. This site never holds a session.
+            Sign-in lives on filla.app. This site never holds a session.
           </p>
         </div>
         <WorkbenchStage />

@@ -166,6 +166,7 @@ Add to your JSON:
 ]
 Rules:
 - 1–8 proposals max; each must stand alone; split separate topics/requirements/actions.
+- Under each proposal, extract ALL materially useful atomic claims the source establishes (scope, duties, frequency, responsibility, standards, testing, replacement, evidence, exceptions, consequences, thresholds, deadlines). Do not aim for a fixed claim count; prefer completeness over a short summary.
 - Prefer many small claims under a topic over a long summary that discards detail.
 - Only include claims the source explicitly supports. Never invent legal duties, standards, deadlines, or penalties from general knowledge.
 - If an important detail is missing from the source, add a claim with established:false describing what is unknown (e.g. "Replacement interval not stated").

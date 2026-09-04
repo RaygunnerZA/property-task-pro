@@ -14,7 +14,7 @@ export function PrivacyPage() {
         </p>
         <p>
           Accounts, organisation data, evidence, and sessions live only on the product
-          origin (app.filla.app) and its backend. Signing in from a link on this site
+          origin (filla.app) and its backend. Signing in from a link on this site
           leaves this origin.
         </p>
         <p>
