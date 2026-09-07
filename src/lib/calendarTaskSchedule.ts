@@ -351,3 +351,57 @@ export function parseDropTargetId(id: string): { dateKey: string; period: "morni
 export function makeDropTargetId(dateKey: string, period: "morning" | "afternoon"): string {
   return `drop|${dateKey}|${period}`;
 }
+
+/** Week row needs both halves when morning and afternoon events both appear. */
+export function weekUsesBothPeriods(
+  weekDateKeys: string[],
+  placementsByDate: Map<string, CalendarTaskPlacement[]>
+): boolean {
+  let hasMorning = false;
+  let hasAfternoon = false;
+  for (const key of weekDateKeys) {
+    for (const placement of placementsByDate.get(key) ?? []) {
+      if (placement.period === "morning") hasMorning = true;
+      if (placement.period === "afternoon") hasAfternoon = true;
+      if (hasMorning && hasAfternoon) return true;
+    }
+  }
+  return false;
+}
+
+export function weekHasStackedDay(
+  weekDateKeys: string[],
+  placementsByDate: Map<string, CalendarTaskPlacement[]>
+): boolean {
+  return weekDateKeys.some((key) => (placementsByDate.get(key)?.length ?? 0) >= 2);
+}
+
+/**
+ * Expand the week when both morning and afternoon halves are needed, or when
+ * any day stacks 2+ events. Otherwise the week can minimise to a single half.
+ */
+export function weekNeedsExpandedHeight(
+  weekDateKeys: string[],
+  placementsByDate: Map<string, CalendarTaskPlacement[]>
+): boolean {
+  return (
+    weekUsesBothPeriods(weekDateKeys, placementsByDate) ||
+    weekHasStackedDay(weekDateKeys, placementsByDate)
+  );
+}
+
+/** True when every timed event in the week is afternoon (untimed ignored). */
+export function weekIsAfternoonOnly(
+  weekDateKeys: string[],
+  placementsByDate: Map<string, CalendarTaskPlacement[]>
+): boolean {
+  let sawAfternoon = false;
+  for (const key of weekDateKeys) {
+    for (const placement of placementsByDate.get(key) ?? []) {
+      if (placement.period === "morning") return false;
+      if (placement.period === "afternoon") sawAfternoon = true;
+    }
+  }
+  return sawAfternoon;
+}
+

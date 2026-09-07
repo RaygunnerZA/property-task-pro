@@ -112,7 +112,7 @@ export function CentreWorkbench({
 
           {/* Tablet/desktop below layout: CTAs beside tab strip. Phone uses FAB instead. */}
           {onOpenIntake ? (
-            <div className="hidden w-[148px] shrink-0 flex-col justify-center gap-1.5 self-center md:flex layout:hidden">
+            <div className="hidden w-[148px] shrink-0 flex-col justify-start gap-1.5 self-start md:flex layout:hidden">
               <IntakeActionButton
                 mode="report_issue"
                 variant="micro"
@@ -155,7 +155,9 @@ export function CentreWorkbench({
           key={activeTab}
           className={cn(
             // flex-col so panels can claim the full height and scroll their lists internally.
-            "panel-enter flex min-h-0 flex-1 flex-col",
+            "panel-enter flex min-h-0 flex-col",
+            // Inflow / Tasks fill the column; Calendar sizes to the month grid.
+            activeTab === "calendar" ? "flex-none" : "flex-1",
             // Inflow / Tasks / Calendar: 55px from tab border → first title.
             // Phone with week calendar above: tighter gap after the calendar.
             showMobileCalendar ? "pt-3 md:pt-[55px]" : PANEL_BELOW_TABS_GAP_CLASS

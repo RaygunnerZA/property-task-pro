@@ -10,11 +10,7 @@
  *   meaningless to the user. Returning 200 lets useAssistant display the actual message.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
 
 const intentToCalls: Record<string, string[]> = {
   summarise: ["tasks", "compliance", "assets", "knowledge"],
@@ -187,8 +183,13 @@ async function invokeFunction(
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return corsPreflightResponse();
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "POST only" }, 405);
+
+  const authHeader = req.headers.get("Authorization");
+  if (!authHeader?.startsWith("Bearer ")) {
+    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  }
 
   let body: ReasonerInput;
   try {
@@ -234,6 +235,22 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  const token = authHeader.slice("Bearer ".length).trim();
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userData.user) {
+    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  }
+
+  const { data: membership, error: membershipErr } = await supabase
+    .from("organisation_members")
+    .select("id")
+    .eq("organisation_id", orgId)
+    .eq("user_id", userData.user.id)
+    .maybeSingle();
+  if (membershipErr || !membership) {
+    return jsonResponse({ ok: false, error: "Forbidden" }, 403);
+  }
 
   // ── Immediate returns for action intents ──────────────────────────────────
 

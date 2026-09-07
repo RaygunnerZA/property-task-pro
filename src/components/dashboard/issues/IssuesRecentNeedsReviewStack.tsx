@@ -10,9 +10,10 @@ import type { IntakeMode } from "@/types/intake";
 /** Needs review queue — row cards via IssuesReviewSignalRow (through OperationalStreamCard). */
 export const ISSUES_NEEDS_REVIEW_SECTION = {
   title: "Needs review",
-  subtitle: "Items that need your judgement",
+  subtitle: "Items that need your judgement before they become work",
   emptyTitle: "Nothing in the decision queue",
-  emptyDescription: "When Filla needs your judgement before routing work, items appear here.",
+  emptyDescription:
+    "When Filla needs your judgement before routing work, items appear here — convert, classify, or dismiss.",
 } as const;
 
 /** Recent signals timeline — row cards via IssuesRecentSignalRow. */
@@ -20,15 +21,16 @@ export const ISSUES_RECENT_SIGNALS_SECTION = {
   title: "Recent signals",
   subtitle: "What just entered the system",
   emptyTitle: "Nothing new in the timeline",
-  emptyDescription: "When photos, messages, or uploads arrive, they show up here first.",
+  emptyDescription: "When photos, uploads, or system events arrive, they show up here first.",
 } as const;
 
 /** Home Attention centre — same rows, shorter section label. */
 export const ATTENTION_SIGNALS_SECTION = {
   title: "Signals",
-  subtitle: "New updates and information detected across the system",
-  emptyTitle: "No new signals",
-  emptyDescription: "When messages, uploads, or environmental scans arrive, they appear here.",
+  subtitle: "Uploads, emails, and system events that can become work",
+  emptyTitle: "Nothing new to triage",
+  emptyDescription:
+    "When uploads, emails, or environmental scans arrive, they appear here so you can convert or dismiss them.",
 } as const;
 
 export type IssuesRecentNeedsReviewStackProps = {

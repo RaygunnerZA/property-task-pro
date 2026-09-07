@@ -11,11 +11,11 @@ export function gradientHeaderControlClassName(className?: string) {
   );
 }
 
-/** Desktop gradient-header search field chrome. */
+/** Desktop gradient-header search field chrome — pressed well (not raised e1). */
 export function gradientHeaderSearchFieldClassName(className?: string) {
   return cn(
-    "flex min-w-0 flex-1 items-stretch overflow-hidden rounded-xl",
-    "bg-white/70 shadow-e1",
+    "flex min-w-0 flex-1 items-stretch overflow-hidden rounded-card",
+    "bg-white/70 shadow-search-pressed",
     className
   );
 }

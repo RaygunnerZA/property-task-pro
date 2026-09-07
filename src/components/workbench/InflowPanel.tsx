@@ -25,16 +25,17 @@ import {
 import { isPropertyProfileId } from "@/lib/propertyProfiles";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
-import { cn } from "@/lib/utils";
+import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 import type { RecordsView } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
 const FOUND_SIGNALS_SECTION = {
   title: "Found signals",
-  subtitle: "New updates and information detected across the system",
-  emptyTitle: "No new signals",
-  emptyDescription: "When messages, uploads, or environmental scans arrive, they appear here.",
+  subtitle: "Uploads, emails, and system events that can become work",
+  emptyTitle: "Nothing new to triage",
+  emptyDescription:
+    "When uploads, emails, or environmental scans arrive, they appear here so you can convert or dismiss them.",
 } as const;
 
 const SUGGESTED_TASKS_SECTION = {
@@ -44,9 +45,15 @@ const SUGGESTED_TASKS_SECTION = {
 
 const RECORDS_TO_ORGANISE_SECTION = {
   title: "Records to organise",
-  subtitle: "Documents and compliance items that need filing or review.",
+  subtitle: "Documents still waiting to be filed — open Records to finish them.",
   emptyTitle: "Nothing to organise",
   emptyDescription: "When uploads or missing records need sorting, they appear here.",
+  ctaLabel: "Organise in Records",
+} as const;
+
+const STAFF_INFLOW_EMPTY = {
+  title: "Nothing waiting for your decision",
+  description: "Open work lives on the Tasks tab. Managers triage signals and records here.",
 } as const;
 
 const NEEDS_ATTENTION_TITLES = new Set([
@@ -90,7 +97,8 @@ function filterTasksForInflow(
 export type InflowPanelProps = MyWorkPanelProps;
 
 /**
- * Inflow tab — Needs attention, Found signals, Suggested tasks, Records to organise.
+ * Inflow tab — short decision funnel into work (Needs review · Signals · Suggested · Records).
+ * Manager/owner-oriented triage; staff see a lighter empty pointing at Tasks.
  */
 export function InflowPanel({
   tasks: tasksProp,
@@ -111,6 +119,9 @@ export function InflowPanel({
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { mode: identityMode } = useIdentityMode();
+
+  /** Frontline users execute on Tasks; signal triage stays manager/owner-facing. */
+  const showManagerTriage = identityMode === "manager" || identityMode === "personal";
 
   const { data: tasksFromQuery = [], isLoading: tasksLoadingFromQuery } = useTasksQuery();
   const { data: propertiesFromQuery = [] } = usePropertiesQuery();
@@ -153,12 +164,23 @@ export function InflowPanel({
   );
 
   const suggestedTasks = useMemo(
-    () => filterTasksForInflow(displayTasks, selectedPropertyIds, properties, memberRole, "suggested"),
+    () =>
+      filterTasksForInflow(displayTasks, selectedPropertyIds, properties, memberRole, "suggested").slice(
+        0,
+        3
+      ),
     [displayTasks, selectedPropertyIds, properties, memberRole]
   );
 
   const needsAttentionTasks = useMemo(
-    () => filterTasksForInflow(displayTasks, selectedPropertyIds, properties, memberRole, "needs-attention"),
+    () =>
+      filterTasksForInflow(
+        displayTasks,
+        selectedPropertyIds,
+        properties,
+        memberRole,
+        "needs-attention"
+      ).slice(0, 3),
     [displayTasks, selectedPropertyIds, properties, memberRole]
   );
 
@@ -182,18 +204,21 @@ export function InflowPanel({
     [groupedAttentionItems.review]
   );
   const recentSignals = useMemo(
-    () => pickTopRecentSignals(groupedAttentionItems.recent),
+    () =>
+      pickTopRecentSignals(groupedAttentionItems.recent).filter(
+        (item) => item.id !== "recent-empty-seed"
+      ),
     [groupedAttentionItems.recent]
   );
 
-  const recordsToOrganise = useMemo(
+  const recordsToOrganiseCount = useMemo(
     () =>
       groupedAttentionItems.review.filter(
         (item) =>
           Boolean(item.complianceSeed) ||
           item.signalKind === "document" ||
           item.signalKind === "upload"
-      ),
+      ).length,
     [groupedAttentionItems.review]
   );
 
@@ -208,9 +233,18 @@ export function InflowPanel({
     onTabChange?.("records");
     if (!hideViewAllLinks) {
       const property = searchParams.get("property");
-      const suffix = property ? `?property=${encodeURIComponent(property)}&recordsView=missing` : "?recordsView=missing";
+      const suffix = property
+        ? `?property=${encodeURIComponent(property)}&recordsView=missing`
+        : "?recordsView=missing";
       navigate(`/records${suffix}`);
     }
+  };
+
+  const openTasksTab = () => {
+    const property = searchParams.get("property");
+    const params = new URLSearchParams();
+    if (property) params.set("property", property);
+    navigate(centreWorkbenchTasksPath("tasks", params));
   };
 
   if (tasksLoading) {
@@ -244,22 +278,76 @@ export function InflowPanel({
           onOpenIntake={onOpenIntake}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
-          reviewItems={groupedAttentionItems.review.filter((i) => i.isOnboardingExample !== false && !i.isUiFixture)}
+          reviewItems={groupedAttentionItems.review.filter(
+            (i) => i.isOnboardingExample !== false && !i.isUiFixture
+          )}
           recentItems={groupedAttentionItems.recent.filter((i) => !i.isUiFixture)}
           propertyId={focusedPropertyId}
         />
+      ) : !showManagerTriage ? (
+        <>
+          {suggestedTasks.length > 0 ? (
+            <section className="min-w-0 rounded-2xl bg-transparent py-1">
+              <IssuesWorkbenchSectionHeader
+                title={SUGGESTED_TASKS_SECTION.title}
+                subtitle={SUGGESTED_TASKS_SECTION.subtitle}
+                count={suggestedTasks.length}
+                countVariant="recent"
+                illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.openWork}
+              />
+              <div className="mt-3">
+                <TaskList
+                  tasks={suggestedTasks}
+                  properties={properties}
+                  tasksLoading={false}
+                  onTaskClick={onTaskClick}
+                  selectedTaskId={selectedTaskId}
+                  selectedPropertyIds={selectedPropertyIds}
+                  hidePrimaryUrgentChip
+                  embeddedInIssuesWorkbench
+                  embeddedSliderOnly
+                  compactTaskMeta
+                  hideDoneSection
+                />
+              </div>
+            </section>
+          ) : (
+            <div className="mt-1 space-y-2 rounded-xl bg-muted/20 px-3 py-3">
+              <p className="text-xs font-medium text-foreground/90">{STAFF_INFLOW_EMPTY.title}</p>
+              <p className="text-caption leading-relaxed text-muted-foreground">
+                {STAFF_INFLOW_EMPTY.description}
+              </p>
+              <button
+                type="button"
+                onClick={openTasksTab}
+                className="text-caption font-semibold text-primary hover:underline"
+              >
+                Go to Tasks
+              </button>
+            </div>
+          )}
+        </>
       ) : (
         <>
-          {(reviewItems.length > 0 || needsAttentionTasks.length > 0) && (
-            <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
-              <IssuesWorkbenchSectionHeader
-                title="Needs attention"
-                subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}
-                count={reviewItems.length + needsAttentionTasks.length}
-                countVariant="review"
-                illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
-                onViewAll={hideViewAllLinks ? undefined : handleViewAllInflow}
-              />
+          <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
+            <IssuesWorkbenchSectionHeader
+              title={ISSUES_NEEDS_REVIEW_SECTION.title}
+              subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}
+              count={reviewItems.length + needsAttentionTasks.length}
+              countVariant="review"
+              illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
+              onViewAll={hideViewAllLinks ? undefined : handleViewAllInflow}
+            />
+            {reviewItems.length === 0 && needsAttentionTasks.length === 0 ? (
+              <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
+                <p className="text-xs font-medium text-foreground/90">
+                  {ISSUES_NEEDS_REVIEW_SECTION.emptyTitle}
+                </p>
+                <p className="text-caption leading-relaxed text-muted-foreground">
+                  {ISSUES_NEEDS_REVIEW_SECTION.emptyDescription}
+                </p>
+              </div>
+            ) : (
               <div className="mt-3 space-y-2">
                 {needsAttentionTasks.length > 0 && (
                   <TaskList
@@ -282,6 +370,7 @@ export function InflowPanel({
                     item={item}
                     attentionCardRefs={attentionCardRefs}
                     resolveAttentionItem={resolveAttentionItem}
+                    handleSignalAction={handleSignalAction}
                     addAttentionItemToCompliance={addAttentionItemToCompliance}
                     onOpenIntake={onOpenIntake}
                     onMessageClick={onMessageClick}
@@ -289,8 +378,8 @@ export function InflowPanel({
                   />
                 ))}
               </div>
-            </section>
-          )}
+            )}
+          </section>
 
           <section className="min-w-0 rounded-2xl bg-transparent py-1">
             <IssuesWorkbenchSectionHeader
@@ -354,38 +443,31 @@ export function InflowPanel({
             </section>
           )}
 
-          <section className="min-w-0 rounded-2xl bg-transparent py-1">
-            <IssuesWorkbenchSectionHeader
-              title={RECORDS_TO_ORGANISE_SECTION.title}
-              subtitle={RECORDS_TO_ORGANISE_SECTION.subtitle}
-              count={recordsToOrganise.length}
-              countVariant="review"
-              onViewAll={hideViewAllLinks ? undefined : openRecordsOrganise}
-            />
-            {recordsToOrganise.length === 0 ? (
-              <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
-                <p className="text-xs font-medium text-foreground/90">{RECORDS_TO_ORGANISE_SECTION.emptyTitle}</p>
-                <p className="text-caption leading-relaxed text-muted-foreground">
-                  {RECORDS_TO_ORGANISE_SECTION.emptyDescription}
+          {recordsToOrganiseCount > 0 ? (
+            <section className="min-w-0 rounded-2xl bg-transparent py-1">
+              <IssuesWorkbenchSectionHeader
+                title={RECORDS_TO_ORGANISE_SECTION.title}
+                subtitle={RECORDS_TO_ORGANISE_SECTION.subtitle}
+                count={recordsToOrganiseCount}
+                countVariant="review"
+                onViewAll={hideViewAllLinks ? undefined : openRecordsOrganise}
+              />
+              <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl bg-muted/20 px-3 py-2.5">
+                <p className="min-w-0 flex-1 text-caption leading-relaxed text-muted-foreground">
+                  {recordsToOrganiseCount} document
+                  {recordsToOrganiseCount === 1 ? "" : "s"} still need filing — finish them in
+                  Records so they don’t sit in triage.
                 </p>
+                <button
+                  type="button"
+                  onClick={openRecordsOrganise}
+                  className="shrink-0 text-caption font-semibold text-primary hover:underline"
+                >
+                  {RECORDS_TO_ORGANISE_SECTION.ctaLabel}
+                </button>
               </div>
-            ) : (
-              <div className="mt-3 space-y-2">
-                {recordsToOrganise.map((item) => (
-                  <IssuesSignalCard
-                    key={item.id}
-                    item={item}
-                    attentionCardRefs={attentionCardRefs}
-                    resolveAttentionItem={resolveAttentionItem}
-                    addAttentionItemToCompliance={addAttentionItemToCompliance}
-                    onOpenIntake={onOpenIntake}
-                    onMessageClick={onMessageClick}
-                    onAttentionItemSelect={onAttentionItemSelect}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
+            </section>
+          ) : null}
         </>
       )}
     </div>

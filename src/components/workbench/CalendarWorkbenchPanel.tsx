@@ -225,7 +225,7 @@ export function CalendarWorkbenchPanel({
   );
 
   return (
-    <div className="min-w-0 flex min-h-0 flex-1 flex-col pt-0">
+    <div className="flex min-w-0 w-full flex-col pt-0">
       <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
         <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
           <div className="min-w-0 flex-1">
@@ -288,7 +288,7 @@ export function CalendarWorkbenchPanel({
       </section>
 
       {view === "calendar" ? (
-        <section className="flex min-h-0 flex-col gap-3 px-2">
+        <section className="flex w-full flex-col gap-3 px-2">
           <div
             className={cn(
               "flex flex-wrap items-center justify-between gap-2 rounded-xl",
@@ -322,7 +322,7 @@ export function CalendarWorkbenchPanel({
             </Button>
           </div>
 
-          <div className="min-h-[420px] overflow-hidden rounded-xl bg-card/60 p-1 shadow-sm sm:min-h-[520px]">
+          <div className="h-fit w-full rounded-xl bg-card/60 p-1 shadow-sm">
             {tasksLoading ? (
               <div className="space-y-3 p-4">
                 <div className="h-20 animate-pulse rounded-xl bg-muted/50" />

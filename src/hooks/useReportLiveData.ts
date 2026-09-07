@@ -35,22 +35,27 @@ export function useReportLiveData(input: {
   );
 
   const scopeLabel = useMemo(() => {
+    const labelFor = (id: string | undefined) => {
+      const p = properties.find((row) => row.id === id);
+      return p?.nickname?.trim() || p?.address?.trim() || "Property";
+    };
+
+    // Single-property orgs: never say "This property" — use the property name.
+    if (allPropertyIds.length === 1) {
+      return labelFor(allPropertyIds[0]);
+    }
+
     if (
       input.propertyIds.length === 0 ||
       input.propertyIds.length >= allPropertyIds.length
     ) {
-      return allPropertyIds.length <= 1 ? "This property" : "Portfolio";
+      return "Portfolio";
     }
     if (input.propertyIds.length === 1) {
-      const p = properties.find((row) => row.id === input.propertyIds[0]);
-      return (
-        p?.nickname?.trim() ||
-        p?.address?.trim() ||
-        "Property"
-      );
+      return labelFor(input.propertyIds[0]);
     }
     return `${input.propertyIds.length} properties`;
-  }, [input.propertyIds, allPropertyIds.length, properties]);
+  }, [input.propertyIds, allPropertyIds, properties]);
 
   const isSingleProperty =
     input.propertyIds.length === 1 || allPropertyIds.length === 1;

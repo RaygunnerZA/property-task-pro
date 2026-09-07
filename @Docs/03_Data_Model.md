@@ -97,7 +97,7 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 *   **Publish rules:** never auto-publish; community publish gated by `cohort_size >= 5` in RPC; Discovery may emit organisation `candidate` rows only; Community candidates extend Filla Brain (`filla_brain.*` patterns), never a second anonymization pipeline. `ai-doc-analyse` creates Knowledge candidates only when `create_knowledge: true` (default false).
 *   Knowledge does **not** replace Compliance, Records, Tasks, Signals, or Messages.
 *   **Knowledge metrics:** `knowledge_usage_events` — `reused` | `question_answered` | `automation_created` | `time_saved` with `estimated_minutes`. Defaults: answered 5m, reused 2m, automation 10m (`knowledge_metric_default_minutes`). Write via `record_knowledge_usage`. Snapshots: `admin_knowledge_metrics_snapshot`, `org_knowledge_metrics`. Counts: created = knowledge rows; verified = status in verified|published; reused/answered/automation/time saved from usage events.
-*   **Storage:** private bucket `knowledge-intake` (`platform/{user_id}/…`) — platform admin read/write only.
+*   **Storage:** private bucket `knowledge-intake` (`platform/{user_id}/…`) — platform admin read/write only. Public bucket `knowledge-content-images` (`content/{topic-slug}/…`) — editorial illustrations for Content Tree; public read, platform admin write only, image MIME only.
 
 **Filla Brain cohort floor:**
 *   `brain_infer_asset` / `brain_infer_compliance` return zero-sample fallbacks when aggregated `sample_count < 5` (`BRAIN_MIN_COHORT`). Same floor applies to Community Knowledge promotion. Threshold is SQL/code, never LLM judgement.

@@ -3,11 +3,7 @@
  * Executes approved actions only. Called after user confirms.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
 
 function jsonResponse(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -17,11 +13,13 @@ function jsonResponse(data: unknown, status = 200) {
 }
 
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") return corsPreflightResponse();
   if (req.method !== "POST") return jsonResponse({ ok: false, error: "POST only" }, 405);
 
   const authHeader = req.headers.get("Authorization");
-  if (!authHeader) return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  if (!authHeader?.startsWith("Bearer ")) {
+    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  }
 
   let body: { type: string; payload: unknown; org_id: string };
   try {
@@ -40,8 +38,25 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const { data: { user } } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
-  const userId = user?.id ?? null;
+  const token = authHeader.slice("Bearer ".length).trim();
+  const {
+    data: { user },
+    error: userErr,
+  } = await supabase.auth.getUser(token);
+  if (userErr || !user) {
+    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+  }
+  const userId = user.id;
+
+  const { data: membership, error: membershipErr } = await supabase
+    .from("organisation_members")
+    .select("id")
+    .eq("organisation_id", orgId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (membershipErr || !membership) {
+    return jsonResponse({ ok: false, error: "Forbidden" }, 403);
+  }
 
   try {
     if (type === "create_task") {

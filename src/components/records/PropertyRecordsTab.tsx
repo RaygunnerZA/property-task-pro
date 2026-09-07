@@ -8,7 +8,6 @@ import {
   ClipboardCheck,
   FileText,
   FolderOpen,
-  Search,
   Shield,
   ShieldCheck,
   Tag,
@@ -31,12 +30,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
-import { WorkspaceSectionHeading } from "@/components/property-workspace";
+import {
+  WorkspaceSectionHeading,
+  WorkspaceTabList,
+  WorkspaceTabTrigger,
+} from "@/components/property-workspace";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
-import { ComplianceCard } from "@/components/compliance/ComplianceCard";
 import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,11 @@ import {
   getComplianceStatusText,
   type ComplianceRecord,
 } from "./complianceRecordModel";
+import { RecordsContextSummary } from "./RecordsContextSummary";
+import { PropertyRecordGroupCarousel } from "./PropertyRecordGroupCarousel";
+import { PropertyRecentRecordsList } from "./PropertyRecentRecordsList";
+import { AllRecordsDirectory } from "./AllRecordsDirectory";
+import type { RecordGroupId } from "@/lib/records/recordGroups";
 
 const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
 
@@ -131,6 +138,8 @@ export function PropertyRecordsTab({
   const [hazards, setHazards] = useState(false);
   const [unlinked, setUnlinked] = useState(false);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
+  const [workTab, setWorkTab] = useState<"groups" | "attention">("groups");
+  const [selectedGroupId, setSelectedGroupId] = useState<RecordGroupId | null>(null);
 
   const panelRef = useRef<HTMLDivElement | null>(null);
   const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -256,7 +265,8 @@ export function PropertyRecordsTab({
   const mergedDocFilters = useMemo(() => {
     const tabUsesBroadFetch = recordsView === "compliance" || recordsView === "asset-docs";
     return {
-      category: category || undefined,
+      // Category is applied client-side so group carousel can count every bucket.
+      category: undefined,
       search: recordsSearch || undefined,
       expiringSoon: recordsView === "expiring",
       expired: recordsView === "overdue",
@@ -265,7 +275,7 @@ export function PropertyRecordsTab({
       hazards: legacyDocFilter === "hazards" || hazards,
       unlinked: !tabUsesBroadFetch && unlinked,
     };
-  }, [category, recordsSearch, recordsView, recentlyAdded, hazards, unlinked, legacyDocFilter]);
+  }, [recordsSearch, recordsView, recentlyAdded, hazards, unlinked, legacyDocFilter]);
 
   const { documents, isLoading: docsLoading } = usePropertyDocuments(scopedPropertyId || undefined, mergedDocFilters, {
     limit: 500,
@@ -280,11 +290,11 @@ export function PropertyRecordsTab({
   }));
 
   const documentsForWork = useMemo(() => {
+    let list = documents;
     if (recordsView === "compliance") {
-      return documents.filter((d) => COMPLIANCE_DOC_CATEGORIES.some((c) => c === d.category));
-    }
-    if (recordsView === "asset-docs") {
-      return documents.filter((d) => {
+      list = list.filter((d) => COMPLIANCE_DOC_CATEGORIES.some((c) => c === d.category));
+    } else if (recordsView === "asset-docs") {
+      list = list.filter((d) => {
         const meta = d.metadata as { detected_assets?: unknown[] } | null | undefined;
         const detected = meta?.detected_assets;
         return (
@@ -294,8 +304,25 @@ export function PropertyRecordsTab({
         );
       });
     }
-    return documents;
-  }, [documents, recordsView]);
+
+    const activeCategory =
+      selectedGroupId &&
+      selectedGroupId !== "compliance" &&
+      selectedGroupId !== "uncategorised"
+        ? selectedGroupId
+        : category;
+
+    if (selectedGroupId === "uncategorised") {
+      return list.filter((d) => !d.category);
+    }
+    if (selectedGroupId === "compliance") {
+      return list.filter((d) => COMPLIANCE_DOC_CATEGORIES.some((c) => c === d.category));
+    }
+    if (activeCategory) {
+      return list.filter((d) => d.category === activeCategory);
+    }
+    return list;
+  }, [documents, recordsView, selectedGroupId, category]);
 
   const filteredComplianceRecords = useMemo(() => {
     const query = recordsSearch.trim().toLowerCase();
@@ -323,6 +350,25 @@ export function PropertyRecordsTab({
     complianceTypeFilter,
     complianceExpiryRange,
   ]);
+
+  const attentionCompliance = useMemo(
+    () =>
+      filteredComplianceRecords.filter(
+        (r) => r.status === "overdue" || r.status === "expiring" || r.status === "missing"
+      ),
+    [filteredComplianceRecords]
+  );
+
+  const attentionDocs = useMemo(
+    () =>
+      documents.filter((d) => {
+        const state = docExpiryState(d);
+        return state === "overdue" || state === "expiring";
+      }),
+    [documents]
+  );
+
+  const attentionCount = attentionCompliance.length + attentionDocs.length;
 
   const complianceTypeOptions = useMemo(() => {
     const typeSet = new Set<string>();
@@ -439,6 +485,7 @@ export function PropertyRecordsTab({
   const resetRecordsFilters = useCallback(() => {
     onRecordsViewChange("all");
     setCategory(null);
+    setSelectedGroupId(null);
     setRecentlyAdded(false);
     setHazards(false);
     setUnlinked(false);
@@ -448,11 +495,20 @@ export function PropertyRecordsTab({
     setRecordsSearch("");
   }, [onRecordsViewChange]);
 
+  const handleSelectGroup = useCallback((groupId: RecordGroupId | null) => {
+    setSelectedGroupId(groupId);
+    setCategory(null);
+    setWorkTab("groups");
+  }, []);
+
   const handleRecordsFilterChange = useCallback(
     (filterId: string, selected: boolean) => {
       const status = RECORDS_STATUS_FILTERS.find((item) => item.id === filterId);
       if (status) {
         onRecordsViewChange(selected ? status.view : "all");
+        if (selected && (status.view === "expiring" || status.view === "overdue" || status.view === "missing")) {
+          setWorkTab("attention");
+        }
         return;
       }
       const kind = RECORDS_KIND_FILTERS.find((item) => item.id === filterId);
@@ -463,6 +519,7 @@ export function PropertyRecordsTab({
       if (filterId.startsWith("dcat-")) {
         const next = filterId.slice(5);
         setCategory(selected ? next : null);
+        setSelectedGroupId(null);
         return;
       }
       if (filterId === "dflag-recent") {
@@ -510,7 +567,6 @@ export function PropertyRecordsTab({
     setComplianceDrawerOpen(Boolean(selectedComplianceRecord));
   }, [selectedComplianceRecord]);
 
-  const showComplianceList = recordsView !== "documents" && recordsView !== "asset-docs";
   const showDocumentsPanel =
     !!scopedPropertyId &&
     (recordsView === "all" ||
@@ -611,7 +667,23 @@ export function PropertyRecordsTab({
         </p>
       )}
 
-      <div className="mb-3 space-y-2">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pb-4">
+        <RecordsContextSummary
+          complianceRecords={scopedComplianceRecords}
+          documentTotal={scopedPropertyId ? documents.length : undefined}
+        />
+
+        <div className="min-w-0">
+          <input
+            type="search"
+            value={recordsSearch}
+            onChange={(event) => setRecordsSearch(event.target.value)}
+            placeholder="Search records, certificates, or types"
+            className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
+            aria-label="Search records"
+          />
+        </div>
+
         <FilterBar
           primaryOptions={recordsPrimaryOptions}
           secondaryGroups={recordsSecondaryGroups}
@@ -625,158 +697,217 @@ export function PropertyRecordsTab({
           onClearAll={resetRecordsFilters}
         />
 
-        <div className="relative flex items-center gap-2 rounded-[10px] bg-background/80 px-3 py-2 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
-          <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
-          <input
-            type="search"
-            value={recordsSearch}
-            onChange={(event) => setRecordsSearch(event.target.value)}
-            placeholder="Search records, certificates, or types"
-            className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-            aria-label="Search records"
-          />
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pb-4">
         {!scopedPropertyId && (
           <p className="text-xs text-muted-foreground rounded-xl bg-card/70 shadow-e1 p-3">
-            Select a single property to upload documents, run asset-aware views, and manage rules. Portfolio slices above
-            still follow your scope chips.
+            Select a single property to upload documents and browse stored files by group. Portfolio compliance still
+            follows your scope chips.
           </p>
         )}
 
-        {recordsView === "compliance" && scopedPropertyId && (
-          <div className="rounded-xl bg-card/70 shadow-e1 px-3 py-2.5 flex items-center justify-between gap-3">
-            <div className="min-w-0 flex items-start gap-2">
-              <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {complianceRules.length === 0
-                    ? "No compliance rules yet"
-                    : `${complianceRules.length} compliance rule${complianceRules.length === 1 ? "" : "s"}`}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Set up recurring obligations and organisation automation.
-                </p>
-              </div>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="shrink-0 text-primary hover:text-primary/90 gap-1"
-              onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
+        <div>
+          <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+          <WorkspaceTabList>
+            <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
+              By group
+            </WorkspaceTabTrigger>
+            <WorkspaceTabTrigger
+              selected={workTab === "attention"}
+              onClick={() => setWorkTab("attention")}
             >
-              Manage
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              Needs attention ({attentionCount})
+            </WorkspaceTabTrigger>
+          </WorkspaceTabList>
+        </div>
+
+        {workTab === "groups" ? (
+          <div className="space-y-4">
+            <PropertyRecordGroupCarousel
+              documents={documents}
+              complianceRecords={filteredComplianceRecords}
+              selectedGroupId={selectedGroupId}
+              onSelectGroup={handleSelectGroup}
+              searchQuery={recordsSearch}
+            />
+
+            <div className="border-t border-border/30 pt-5 space-y-4">
+              <AllRecordsDirectory
+                documents={documentsForWork}
+                complianceRecords={
+                  selectedGroupId === "compliance" || !selectedGroupId
+                    ? filteredComplianceRecords
+                    : []
+                }
+                groupFilter={selectedGroupId}
+                searchQuery={recordsSearch}
+                onOpenDocument={(id) => setSelectedDocId(id)}
+                onOpenCompliance={(id) => setSelectedComplianceId(id)}
+              />
+
+              {scopedPropertyId && showDocumentsPanel && (
+                <section className="space-y-3">
+                  <WorkspaceSectionHeading>Stored documents</WorkspaceSectionHeading>
+                  <DocumentUploadZone
+                    propertyId={scopedPropertyId}
+                    onUploadComplete={handleRefresh}
+                    accept={RECORDS_FILE_ACCEPT}
+                  />
+                  {docsLoading ? (
+                    <p className="text-xs text-muted-foreground">Loading documents…</p>
+                  ) : documentsForWork.length === 0 ? (
+                    <div className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                      No documents match these filters. Upload above or switch group.
+                    </div>
+                  ) : (
+                    <DocumentGrid
+                      documents={documentsForWork}
+                      propertyId={scopedPropertyId}
+                      spaces={spaceOptions}
+                      assets={assetOptions}
+                      compliance={complianceOptions}
+                      onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+                      onOpen={(doc) => window.open(doc.file_url, "_blank")}
+                      onReplace={() => {}}
+                      onLinkItems={(doc) => setSelectedDocId(doc.id)}
+                      onLinkSpace={handleLinkSpace}
+                      onLinkAsset={handleLinkAsset}
+                      onLinkCompliance={handleLinkCompliance}
+                    />
+                  )}
+                </section>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Overdue, expiring, and missing obligations — plus documents nearing expiry.
+            </p>
+
+            {scopedPropertyId && (
+              <div className="rounded-xl bg-card/70 shadow-e1 px-3 py-2.5 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex items-start gap-2">
+                  <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {complianceRules.length === 0
+                        ? "No compliance rules yet"
+                        : `${complianceRules.length} compliance rule${complianceRules.length === 1 ? "" : "s"}`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Set up recurring obligations and organisation automation.
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 text-primary hover:text-primary/90 gap-1"
+                  onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
+                >
+                  Manage
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+
+            <section className="space-y-2">
+              <WorkspaceSectionHeading>Obligations</WorkspaceSectionHeading>
+              {attentionCompliance.length === 0 ? (
+                <p className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                  No obligations need attention right now.
+                </p>
+              ) : (
+                attentionCompliance.map((record) => (
+                  <OperationalStreamCard
+                    key={record.id}
+                    id={`compliance-card-${record.id}`}
+                    onClick={() => setSelectedComplianceId(record.id)}
+                    typeChip="COMPLIANCE"
+                    icon={
+                      record.status === "overdue" ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : record.status === "expiring" ? (
+                        <Waves className="h-4 w-4 text-warning-foreground" />
+                      ) : record.status === "missing" ? (
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ShieldCheck className="h-4 w-4 text-success-foreground" />
+                      )
+                    }
+                    title={record.title}
+                    context={`${record.propertyName} · ${record.complianceType}`}
+                    hint={`Expires: ${formatDueText(record.nextDueDate || record.expiryDate)}`}
+                    statusText={getComplianceStatusText(record)}
+                    accent={
+                      record.status === "overdue"
+                        ? "red"
+                        : record.status === "expiring"
+                          ? "amber"
+                          : record.status === "healthy"
+                            ? "green"
+                            : "slate"
+                    }
+                    actions={[
+                      {
+                        id: "create-inspection-task",
+                        label: "Create inspection task",
+                        onClick: () => onOpenIntake?.("report_issue"),
+                      },
+                      {
+                        id: "upload-certificate",
+                        label: "Upload document",
+                        onClick: () =>
+                          scopedPropertyId ? openRecordsFilePicker() : onOpenIntake?.("add_record"),
+                      },
+                      {
+                        id: "view-record",
+                        label: "View detail",
+                        onClick: () => setSelectedComplianceId(record.id),
+                      },
+                    ]}
+                    className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-primary")}
+                  />
+                ))
+              )}
+            </section>
+
+            {scopedPropertyId && (
+              <section className="space-y-2">
+                <WorkspaceSectionHeading>Documents</WorkspaceSectionHeading>
+                {attentionDocs.length === 0 ? (
+                  <p className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                    No documents need attention.
+                  </p>
+                ) : (
+                  <DocumentGrid
+                    documents={attentionDocs}
+                    propertyId={scopedPropertyId}
+                    spaces={spaceOptions}
+                    assets={assetOptions}
+                    compliance={complianceOptions}
+                    onDocumentClick={(doc) => setSelectedDocId(doc.id)}
+                    onOpen={(doc) => window.open(doc.file_url, "_blank")}
+                    onReplace={() => {}}
+                    onLinkItems={(doc) => setSelectedDocId(doc.id)}
+                    onLinkSpace={handleLinkSpace}
+                    onLinkAsset={handleLinkAsset}
+                    onLinkCompliance={handleLinkCompliance}
+                  />
+                )}
+              </section>
+            )}
           </div>
         )}
 
-        {showComplianceList && (
-          <section className="space-y-2">
-            <WorkspaceSectionHeading>Obligations & portfolio</WorkspaceSectionHeading>
-            {recordsView === "compliance" && scopedPropertyId && propertyCompliance.length > 0 && (
-              <div className="space-y-2 mb-3">
-                {(propertyCompliance as { id: string }[]).map((item) => (
-                  <ComplianceCard key={item.id} compliance={item as never} />
-                ))}
-              </div>
-            )}
-            <div className="space-y-2">
-              {filteredComplianceRecords.map((record) => (
-                <OperationalStreamCard
-                  key={record.id}
-                  id={`compliance-card-${record.id}`}
-                  onClick={() => setSelectedComplianceId(record.id)}
-                  typeChip="COMPLIANCE"
-                  icon={
-                    record.status === "overdue" ? (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    ) : record.status === "expiring" ? (
-                      <Waves className="h-4 w-4 text-warning-foreground" />
-                    ) : record.status === "missing" ? (
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ShieldCheck className="h-4 w-4 text-success-foreground" />
-                    )
-                  }
-                  title={record.title}
-                  context={`${record.propertyName} · ${record.complianceType}`}
-                  hint={`Expires: ${formatDueText(record.nextDueDate || record.expiryDate)}`}
-                  statusText={getComplianceStatusText(record)}
-                  accent={
-                    record.status === "overdue"
-                      ? "red"
-                      : record.status === "expiring"
-                        ? "amber"
-                        : record.status === "healthy"
-                          ? "green"
-                          : "slate"
-                  }
-                  actions={[
-                    {
-                      id: "create-inspection-task",
-                      label: "Create inspection task",
-                      onClick: () => onOpenIntake?.("report_issue"),
-                    },
-                    {
-                      id: "upload-certificate",
-                      label: "Upload document",
-                      onClick: () => (scopedPropertyId ? openRecordsFilePicker() : onOpenIntake?.("add_record")),
-                    },
-                    {
-                      id: "view-record",
-                      label: "View detail",
-                      onClick: () => setSelectedComplianceId(record.id),
-                    },
-                  ]}
-                  className={cn(selectedComplianceRecord?.id === record.id && "ring-1 ring-primary")}
-                />
-              ))}
-              {filteredComplianceRecords.length === 0 && (
-                <div className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
-                  No records match this view and filters. Add evidence from the right column or adjust filters.
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-
-        {showDocumentsPanel && (
-          <section className="space-y-3">
-            <WorkspaceSectionHeading>Stored documents</WorkspaceSectionHeading>
-            <DocumentUploadZone
-              propertyId={scopedPropertyId!}
-              onUploadComplete={handleRefresh}
-              accept={RECORDS_FILE_ACCEPT}
-            />
-            {docsLoading ? (
-              <p className="text-xs text-muted-foreground">Loading documents…</p>
-            ) : documentsForWork.length === 0 ? (
-              <div className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
-                No documents match these filters. Upload from the right column or switch view.
-              </div>
-            ) : (
-              <DocumentGrid
-                documents={documentsForWork}
-                propertyId={scopedPropertyId!}
-                spaces={spaceOptions}
-                assets={assetOptions}
-                compliance={complianceOptions}
-                onDocumentClick={(doc) => setSelectedDocId(doc.id)}
-                onOpen={(doc) => window.open(doc.file_url, "_blank")}
-                onReplace={() => {}}
-                onLinkItems={(doc) => setSelectedDocId(doc.id)}
-                onLinkSpace={handleLinkSpace}
-                onLinkAsset={handleLinkAsset}
-                onLinkCompliance={handleLinkCompliance}
-              />
-            )}
-          </section>
-        )}
-
+        <div className="border-t border-border/30 pt-5">
+          <PropertyRecentRecordsList
+            documents={documents}
+            complianceRecords={filteredComplianceRecords}
+            onOpenDocument={(id) => setSelectedDocId(id)}
+            onOpenCompliance={(id) => setSelectedComplianceId(id)}
+          />
+        </div>
       </div>
 
       <ComplianceDetailDrawer

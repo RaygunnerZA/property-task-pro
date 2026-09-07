@@ -21,12 +21,10 @@ import {
   type AttentionItem,
   type ComplianceRecord,
   daysUntil,
-  formatAuthorDisplayName,
   formatDueText,
   mapSignalFixtureToAttentionItem,
   normalizeComplianceStatus,
 } from "@/components/dashboard/issues/issuesAttentionItem";
-import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
   Calendar,
@@ -168,25 +166,6 @@ export function TaskPanel({
   pageTitle,
 }: TaskPanelProps = {}) {
 
-  const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
-    const n = properties.length;
-    if (n === 0) return undefined;
-    if (
-      !selectedPropertyIds ||
-      selectedPropertyIds.size === 0 ||
-      selectedPropertyIds.size >= n
-    ) {
-      return undefined;
-    }
-    return {
-      propertyScope: {
-        selectedIds: Array.from(selectedPropertyIds),
-        totalPropertyCount: n,
-      },
-    };
-  }, [properties.length, selectedPropertyIds]);
-
-  const { messages } = useMessages(messagesOptions);
   const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
 
@@ -350,6 +329,7 @@ export function TaskPanel({
       .map((record) => ({
         id: `urgent-${record.id}`,
         group: "urgent" as const,
+        signalKind: "document" as const,
         title: `Possible ${record.complianceType.toLowerCase()} risk`,
         context: `${record.propertyName} • ${formatDueText(record.nextDueDate || record.expiryDate)}`,
         footChipLabel: "COMPLIANCE RISK",
@@ -364,12 +344,26 @@ export function TaskPanel({
           record.status === "missing"
             ? "Not sure this belongs in compliance tracking yet."
             : "Expiry or renewal timing needs confirmation.";
+        const hasRealTitle =
+          Boolean(record.title) &&
+          record.title !== "Compliance Record" &&
+          record.title !== record.complianceType;
+        const titleBase = hasRealTitle
+          ? record.title
+          : record.complianceType !== "General"
+            ? record.complianceType
+            : record.title || "Document";
         return {
           id: `review-${record.id}`,
           group: "review" as const,
-          title: `${record.complianceType} — needs a decision`,
+          signalKind: "document" as const,
+          title:
+            record.status === "missing"
+              ? `${titleBase} — needs a decision`
+              : `${titleBase} — confirm renewal`,
           context: record.propertyName,
           whyHere,
+          footChipLabel: "DOCUMENT",
           description:
             record.status === "missing"
               ? "The system is not sure this belongs in compliance tracking yet. Classify it, assign an owner, or convert it into a stored record."
@@ -383,30 +377,10 @@ export function TaskPanel({
         };
       });
 
-    const recentFromData: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
-      const authorName = formatAuthorDisplayName(message.author_name);
-      const body = message.body ? String(message.body).replace(/\s+/g, " ").trim() : "";
-      const titleFromBody =
-        body.length > 0
-          ? body.slice(0, 72) + (body.length > 72 ? "…" : "")
-          : `Message from ${authorName}`;
-      return {
-        id: `recent-msg-${message.id}`,
-        group: "recent" as const,
-        signalKind: "message" as const,
-        messageId: message.id,
-        footChipLabel: "TENANT MESSAGE",
-        title: titleFromBody,
-        context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
-        description:
-          body.length > 120 ? `${body.slice(0, 120)}…` : body || "Something new arrived — open it when you are ready to triage.",
-        occurredAt: new Date(message.created_at).getTime(),
-      };
-    });
-
+    // Prefer fixtures + compliance triage — do not dump messages into Signals.
     const urgent = [...fixtureUrgent, ...urgentFromData];
     const review = [...fixtureReview, ...reviewFromData];
-    const recent = [...fixtureRecent, ...recentFromData];
+    const recent = [...fixtureRecent];
 
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
       return [
@@ -417,13 +391,13 @@ export function TaskPanel({
           context: "This is your inbox of “something happened”",
           footChipLabel: "GETTING STARTED",
           description:
-            "Uploads, messages, documents, and system events will appear here as a raw feed — before they become tasks or records. Use Report Issue or Add Record when you want to log something manually.",
+            "Uploads, emails, documents, and system events will appear here as a raw feed — before they become tasks or records. Use Report Issue or Add Record when you want to log something manually.",
         },
       ];
     }
 
     return [...urgent, ...review, ...recent];
-  }, [complianceRecords, messages, signalUiFixturesEnabled]);
+  }, [complianceRecords, signalUiFixturesEnabled]);
 
   const unresolvedAttentionItems = useMemo(() => {
     return attentionItems.filter((item) => !resolvedAttentionIds.has(item.id));

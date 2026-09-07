@@ -4127,7 +4127,7 @@ export function IntakeModal({
       className={cn(
         "flex w-full min-w-0 flex-nowrap gap-1",
         isColumnComposerOpen
-          ? "h-12 w-full items-end rounded-t-[23px] bg-[rgba(0,0,0,0.03)] px-0 pt-1.5 pb-0 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+          ? "h-14 w-full items-end overflow-visible rounded-t-[13px] rounded-b-[5px] bg-[rgba(0,0,0,0.03)] pl-3 pr-3 pt-3 pb-0 shadow-[0_-1px_1px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
           : "h-12 items-stretch rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
       )}
       role="tablist"
@@ -4144,22 +4144,16 @@ export function IntakeModal({
           aria-selected={selected}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 px-2.5 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
             isColumnComposerOpen
               ? cn(
-                  "py-2",
+                  "px-3 py-2",
                   selected
-                    ? cn(
-                        "relative z-10 mb-0 rounded-t-[12px] rounded-b-none py-2.5 font-semibold",
-                        "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.95),-2px_-2px_4px_rgba(255,255,255,0.88),2px_-2px_4px_rgba(255,255,255,0.88)]",
-                        isCreate
-                          ? "bg-background text-primary"
-                          : "bg-background text-[hsl(16_82%_56%)]"
-                      )
+                    ? "intake-folder-tab relative z-10 rounded-t-[9px] rounded-b-none bg-background py-2.5 font-bold text-foreground"
                     : "rounded-card text-muted-foreground hover:text-foreground/90"
                 )
               : cn(
-                  "rounded-card py-2",
+                  "rounded-card px-2.5 py-2",
                   selected
                     ? isCreate
                       ? "bg-primary text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
@@ -4167,21 +4161,18 @@ export function IntakeModal({
                     : "text-muted-foreground hover:text-foreground"
                 )
           )}
-          style={
-            isColumnComposerOpen && selected
-              ? {
-                  ...PAPER_TEXTURE_STYLE,
-                  backgroundColor: "hsl(var(--background))",
-                }
-              : undefined
-          }
         >
           <span
             data-intake-tab-icon
             className={cn(
               "inline-flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4",
               collapseIntakeTabIcons && "hidden",
-              isColumnComposerOpen && selected && (isCreate ? "text-primary" : "text-[hsl(16_82%_56%)]")
+              isColumnComposerOpen &&
+                selected &&
+                cn(
+                  "intake-folder-tab-label",
+                  isCreate ? "text-primary" : "text-[hsl(16_82%_56%)]"
+                )
             )}
             aria-hidden
           >
@@ -4190,7 +4181,8 @@ export function IntakeModal({
           <span
             className={cn(
               "min-w-0 whitespace-nowrap text-center",
-              truncateIntakeTabLabels && "truncate"
+              truncateIntakeTabLabels && "truncate",
+              isColumnComposerOpen && selected && "intake-folder-tab-label font-bold text-foreground"
             )}
           >
             {isCreate ? "Create Task" : "Add Record"}
@@ -4227,7 +4219,7 @@ export function IntakeModal({
     <div
       className={cn(
         "relative w-full min-w-0",
-        collapseComposer ? "h-9" : "h-12"
+        collapseComposer ? "h-9" : isColumnComposerOpen ? "h-14" : "h-12"
       )}
     >
       <div
@@ -4481,7 +4473,7 @@ export function IntakeModal({
         <div
           className={cn(
             "shrink-0",
-            isColumnComposerOpen ? "mx-2 mt-2 pb-0 pt-2" : "px-2 pt-2 pb-1"
+            isColumnComposerOpen ? "relative z-10 mx-2 mt-0 overflow-visible p-0" : "px-2 pt-2 pb-1"
           )}
         >
           {intakeModeSwitcher}
@@ -4496,11 +4488,10 @@ export function IntakeModal({
                 "overflow-visible",
                 isColumnComposerOpen
                   ? cn(
-                      "mx-2 px-2 py-3",
+                      "relative z-0 -mt-2 mx-2 bg-background px-2 py-3",
                       intakeMode === "report_issue"
-                        ? "rounded-b-[23px] rounded-tr-[23px]"
-                        : "rounded-b-[23px] rounded-tl-[23px]",
-                      "shadow-[3px_5px_8px_rgba(174,174,178,0.25),0px_-2px_1px_0px_rgb(255,255,255)]"
+                        ? "rounded-b-[23px] rounded-tr-[20px]"
+                        : "rounded-b-[23px] rounded-tl-[20px]"
                     )
                   : "px-2 rounded-[23px]"
               )
@@ -4514,32 +4505,21 @@ export function IntakeModal({
             !collapseComposer &&
             "transition-[max-height,opacity,padding] duration-300 ease-out"
         )}
-        style={
-          variant === "column" && headless && isColumnComposerOpen
-            ? {
-                ...PAPER_TEXTURE_STYLE,
-                backgroundColor: "hsl(var(--background))",
-              }
-            : variant === "column" && headless && !collapseComposer
-              ? {
-                  background:
-                    "linear-gradient(0deg, rgba(255, 255, 255, 0) 44%, rgba(255, 255, 255, 0.5) 100%)",
-                }
-              : undefined
-        }
         aria-hidden={variant === "column" && headless && collapseComposer}
       >
           {/* 1. Upload */}
-          <ImageUploadSection
-            images={images}
-            onImagesChange={setImages}
-            onPatchImage={patchImage}
-            onRunFullIntakeAnalysis={runFullIntakeAnalysis}
-            files={taskFiles}
-            onFilesChange={setTaskFiles}
-            taskId={undefined}
-            intakeMode={intakeMode}
-          />
+          <div className={cn(isColumnComposerOpen && "mt-[10px]")}>
+            <ImageUploadSection
+              images={images}
+              onImagesChange={setImages}
+              onPatchImage={patchImage}
+              onRunFullIntakeAnalysis={runFullIntakeAnalysis}
+              files={taskFiles}
+              onFilesChange={setTaskFiles}
+              taskId={undefined}
+              intakeMode={intakeMode}
+            />
+          </div>
 
           {/* 2. Composer: title (hidden until description; AI-generated) + main text */}
           <div className="space-y-2">

@@ -1,15 +1,12 @@
 import { useMemo, useRef, useState } from "react";
-import { format } from "date-fns";
 import {
   type AttentionItem,
   type ComplianceRecord,
   daysUntil,
-  formatAuthorDisplayName,
   formatDueText,
   mapSignalFixtureToAttentionItem,
   normalizeComplianceStatus,
 } from "@/components/dashboard/issues/issuesAttentionItem";
-import { useMessages, type UseMessagesOptions } from "@/hooks/useMessages";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
@@ -40,11 +37,70 @@ export type UseWorkbenchAttentionStreamOptions = {
 
 function propertyLabel(
   properties: { id: string; nickname?: string; address?: string }[],
-  propertyId: string | null
+  propertyId: string | null | undefined
 ): string | undefined {
   if (!propertyId) return undefined;
   const p = properties.find((x) => x.id === propertyId);
   return p?.nickname || p?.address;
+}
+
+/** Collapse identical review cards; surface a count when several share the same decision. */
+function collapseReviewAttentionItems(items: AttentionItem[]): AttentionItem[] {
+  const groups = new Map<string, AttentionItem[]>();
+  for (const item of items) {
+    const seed = item.complianceSeed;
+    const key = seed
+      ? `${seed.propertyId ?? "none"}|${seed.complianceType}|${seed.title}`
+      : item.id;
+    const list = groups.get(key) ?? [];
+    list.push(item);
+    groups.set(key, list);
+  }
+
+  return Array.from(groups.values()).map((group) => {
+    const first = group[0]!;
+    if (group.length === 1) return first;
+    const typeLabel =
+      first.complianceSeed?.complianceType && first.complianceSeed.complianceType !== "General"
+        ? first.complianceSeed.complianceType
+        : "documents";
+    return {
+      ...first,
+      id: `review-collapsed-${first.id}`,
+      title: `${group.length} ${typeLabel} need a decision`,
+      whyHere: `${group.length} related items need the same kind of decision.`,
+      description: `Open Issues or Records to work through all ${group.length}, or convert the first and continue from there.`,
+      fixtureActions: {
+        primary: { id: "signal-convert", label: "Convert to record" },
+        secondary: [{ id: "dismiss", label: "Dismiss" }],
+      },
+    };
+  });
+}
+
+function complianceNeedsDecision(record: ComplianceRecord): boolean {
+  if (record.status === "expiring") return true;
+  if (record.status !== "missing") return false;
+  // Explicit missing obligations only — not untyped undated noise.
+  const hasTypedDoc = record.complianceType !== "General";
+  const hasRealTitle =
+    Boolean(record.title) &&
+    record.title !== "Compliance Record" &&
+    record.title !== "General";
+  return hasTypedDoc || hasRealTitle;
+}
+
+function complianceReviewTitle(record: ComplianceRecord): string {
+  const hasRealTitle =
+    Boolean(record.title) &&
+    record.title !== "Compliance Record" &&
+    record.title !== record.complianceType;
+  const base = hasRealTitle
+    ? record.title
+    : record.complianceType !== "General"
+      ? record.complianceType
+      : record.title || "Document";
+  return record.status === "missing" ? `${base} — needs a decision` : `${base} — confirm renewal`;
 }
 
 export function useWorkbenchAttentionStream({
@@ -58,30 +114,11 @@ export function useWorkbenchAttentionStream({
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
   const propertySubsetSelected = isPropertySubsetSelected(selectedPropertyIds, allPropertyIds);
 
-  const messagesOptions = useMemo<UseMessagesOptions | undefined>(() => {
-    const n = properties.length;
-    if (n === 0) return undefined;
-    if (
-      !selectedPropertyIds ||
-      selectedPropertyIds.size === 0 ||
-      selectedPropertyIds.size >= n
-    ) {
-      return undefined;
-    }
-    return {
-      propertyScope: {
-        selectedIds: Array.from(selectedPropertyIds),
-        totalPropertyCount: n,
-      },
-    };
-  }, [properties.length, selectedPropertyIds]);
-
   const propertyIdsForSignals = useMemo(() => {
     if (!propertySubsetSelected || !selectedPropertyIds) return undefined;
     return Array.from(selectedPropertyIds).filter((id) => allPropertyIds.includes(id));
   }, [propertySubsetSelected, selectedPropertyIds, allPropertyIds]);
 
-  const { messages } = useMessages(messagesOptions);
   const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
   const { data: compliancePortfolio = [] } = useCompliancePortfolioQuery();
   const { data: platformSignals = [] } = useSignalsQuery({
@@ -103,7 +140,10 @@ export function useWorkbenchAttentionStream({
 
     const recordsFromView = portfolioRows.map((row) => {
       const title = row.title || row.document_type || "Compliance Record";
-      const propertyName = row.property_name || "Unassigned property";
+      const propertyName =
+        row.property_name ||
+        propertyLabel(properties, row.property_id) ||
+        "Unassigned property";
       const dueOrExpiry = row.next_due_date || row.expiry_date;
       const computedStatus = normalizeComplianceStatus(row.expiry_state || row.status);
       const dayDelta = daysUntil(dueOrExpiry);
@@ -151,6 +191,7 @@ export function useWorkbenchAttentionStream({
   }, [
     attentionComplianceDrafts,
     compliancePortfolio,
+    properties,
     propertySubsetSelected,
     selectedPropertyIds,
     allPropertyIds,
@@ -174,7 +215,10 @@ export function useWorkbenchAttentionStream({
 
     const urgentFromSignals = fromPlatformSignals.filter((i) => i.group === "urgent");
     const reviewFromSignals = fromPlatformSignals.filter((i) => i.group === "review");
-    const recentFromSignals = fromPlatformSignals.filter((i) => i.group === "recent");
+    // Recent = platform “something happened” — not a chat inbox (exclude bare message kind).
+    const recentFromSignals = fromPlatformSignals.filter(
+      (i) => i.group === "recent" && i.signalKind !== "message"
+    );
 
     const urgentFromData: AttentionItem[] = complianceRecords
       .filter((record) => record.status === "overdue")
@@ -182,85 +226,65 @@ export function useWorkbenchAttentionStream({
       .map((record) => ({
         id: `urgent-${record.id}`,
         group: "urgent" as const,
+        signalKind: "document" as const,
         title: `Possible ${record.complianceType.toLowerCase()} risk`,
         context: `${record.propertyName} • ${formatDueText(record.nextDueDate || record.expiryDate)}`,
         footChipLabel: "COMPLIANCE RISK",
         description: `${record.title} is overdue and may need immediate attention.`,
+        fixtureActions: {
+          primary: { id: "report-issue", label: "Create Task" },
+          secondary: [{ id: "dismiss", label: "Dismiss" }],
+        },
       }));
 
-    const reviewFromData: AttentionItem[] = complianceRecords
-      .filter((record) => record.status === "expiring" || record.status === "missing")
-      .slice(0, 8)
-      .map((record) => {
-        const whyHere =
-          record.status === "missing"
-            ? "Not sure this belongs in compliance tracking yet."
-            : "Expiry or renewal timing needs confirmation.";
-        return {
-          id: `review-${record.id}`,
-          group: "review" as const,
-          title: `${record.complianceType} — needs a decision`,
-          context: record.propertyName,
-          whyHere,
-          description:
+    const reviewFromData: AttentionItem[] = collapseReviewAttentionItems(
+      complianceRecords
+        .filter(complianceNeedsDecision)
+        .slice(0, 12)
+        .map((record) => {
+          const whyHere =
             record.status === "missing"
-              ? "The system is not sure this belongs in compliance tracking yet. Classify it, assign an owner, or convert it into a stored record."
-              : `Expiry or renewal timing may need confirmation before it becomes a tracked obligation. Decide how Filla should treat it.`,
-          complianceSeed: {
-            title: record.title,
-            propertyName: record.propertyName,
-            propertyId: record.propertyId,
-            complianceType: record.complianceType,
-          },
-        };
-      });
+              ? "Not sure this belongs in compliance tracking yet."
+              : "Expiry or renewal timing needs confirmation.";
+          return {
+            id: `review-${record.id}`,
+            group: "review" as const,
+            signalKind: "document" as const,
+            title: complianceReviewTitle(record),
+            context: record.propertyName,
+            whyHere,
+            footChipLabel: "DOCUMENT",
+            description:
+              record.status === "missing"
+                ? "Classify it, assign an owner, or convert it into a stored record."
+                : "Confirm how Filla should treat the renewal before it becomes overdue work.",
+            complianceSeed: {
+              title: record.title,
+              propertyName: record.propertyName,
+              propertyId: record.propertyId,
+              complianceType: record.complianceType,
+            },
+            fixtureActions: {
+              primary: { id: "signal-convert", label: "Convert to record" },
+              secondary: [{ id: "dismiss", label: "Dismiss" }],
+            },
+          };
+        })
+    );
 
-    const recentFromData: AttentionItem[] = messages.slice(0, 10).map((message: any) => {
-      const authorName = formatAuthorDisplayName(message.author_name);
-      const body = message.body ? String(message.body).replace(/\s+/g, " ").trim() : "";
-      const titleFromBody =
-        body.length > 0
-          ? body.slice(0, 72) + (body.length > 72 ? "…" : "")
-          : `Message from ${authorName}`;
-      return {
-        id: `recent-msg-${message.id}`,
-        group: "recent" as const,
-        signalKind: "message" as const,
-        messageId: message.id,
-        footChipLabel: "TENANT MESSAGE",
-        title: titleFromBody,
-        context: `${authorName} • ${format(new Date(message.created_at), "dd MMM, HH:mm")}`,
-        description:
-          body.length > 120 ? `${body.slice(0, 120)}…` : body || "Something new arrived — open it when you are ready to triage.",
-        occurredAt: new Date(message.created_at).getTime(),
-      };
-    });
-
+    // Signals = platform signal stream (uploads, email, weather, AI, …).
     const urgent = [...fixtureUrgent, ...urgentFromSignals, ...urgentFromData];
     const review = [...fixtureReview, ...reviewFromSignals, ...reviewFromData];
-    const recent = [...fixtureRecent, ...recentFromSignals, ...recentFromData];
+    const recent = [...fixtureRecent, ...recentFromSignals];
 
+    // Prefer a calm empty over a placeholder “signal” card in the feed.
     if (urgent.length === 0 && review.length === 0 && recent.length === 0) {
-      if (propertySubsetSelected) {
-        return [];
-      }
-      return [
-        {
-          id: "recent-empty-seed",
-          group: "recent" as const,
-          title: "No signals in your timeline yet",
-          context: "This is your inbox of “something happened”",
-          footChipLabel: "GETTING STARTED",
-          description:
-            "Uploads, messages, documents, and system events will appear here as a raw feed — before they become tasks or records. Use Report Issue or Add Record when you want to log something manually.",
-        },
-      ];
+      return [];
     }
 
     return [...urgent, ...review, ...recent];
   }, [
     complianceRecords,
-    messages,
     platformSignals,
     properties,
     propertySubsetSelected,

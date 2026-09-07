@@ -39,16 +39,19 @@ import {
   groupPlacementsByDate,
   parseDropTargetId,
   parsePlacementDragId,
+  weekIsAfternoonOnly,
+  weekNeedsExpandedHeight,
   type CalendarTaskPlacement,
 } from "@/lib/calendarTaskSchedule";
 
 const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
 /**
- * Week row: compact unless any day in that week has 2+ events.
- * Compact fits date numeral + one chip; expands so stacked chips can scroll.
+ * Week row: minimise when events sit in only morning or only afternoon.
+ * Expand when both halves are needed, or a day stacks 2+ events.
+ * Compact rows use minmax(auto) so a single short chip doesn't leave a tall empty half.
  */
-const CALENDAR_ROW_COMPACT_PX = 70;
+const CALENDAR_ROW_MINIMAL_PX = 48;
 const CALENDAR_ROW_EXPANDED_PX = 118;
 
 /** Fixed size for every task chip in the month grid (title + property rows). */
@@ -287,8 +290,10 @@ type CalendarDayCellProps = {
   propertyMap: Map<string, { nickname?: string; name?: string; address?: string }>;
   isDragging: boolean;
   isWeekendColumn?: boolean;
-  /** Half-height week (0–1 events/day); expands when the week has a 2+ event day. */
+  /** Half-height week (single period); expands when morning and afternoon both appear. */
   compact?: boolean;
+  /** Compact week whose timed events are afternoon-only — pin chips to the bottom half. */
+  afternoonOnly?: boolean;
 };
 
 function CalendarDayCell({
@@ -304,6 +309,7 @@ function CalendarDayCell({
   isDragging,
   isWeekendColumn = false,
   compact = false,
+  afternoonOnly = false,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
@@ -312,16 +318,17 @@ function CalendarDayCell({
   const [holding, setHolding] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
 
-  const rowMinHeight = compact ? CALENDAR_ROW_COMPACT_PX : CALENDAR_ROW_EXPANDED_PX;
+  const rowMinHeight = compact ? CALENDAR_ROW_MINIMAL_PX : CALENDAR_ROW_EXPANDED_PX;
   const singleEvent = placements.length === 1;
   const occupied = placements.length > 0;
   const stacked = placements.length > 1;
   const dateLabel = format(date, "MMMM d");
 
   /**
-   * Single-event days show the two-line chip at rest (compact weeks).
-   * Click-and-hold or active drag → single-line, pinned to its half, so the
-   * other morning/afternoon drop zone stays clear.
+   * Expanded weeks keep chips in their morning/afternoon half at rest.
+   * Compact afternoon-only weeks pin to the bottom so the unused morning
+   * half collapses with the shorter row. Click-and-hold / drag still
+   * collapses a single chip to one line so the other drop zone is reachable.
    */
   const collapseForPeriodMove =
     singleEvent && ((compact && holding) || isDragging);
@@ -357,16 +364,18 @@ function CalendarDayCell({
     onCreateForDate?.(date);
   }, [date, onCreateForDate]);
 
+  const fillRow = !compact || isDragging;
+
   return (
     <div
       className={cn(
-        "relative flex h-full flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left select-none",
-        compact ? "pb-0.5" : "pb-1.5",
+        "relative flex flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left select-none",
+        fillRow ? "h-full pb-1.5" : "h-auto pb-0.5",
         !inMonth && "bg-muted/10 text-muted-foreground/50",
         isDragging && "hover:bg-muted/20",
         isWeekendColumn && "opacity-50"
       )}
-      style={{ minHeight: rowMinHeight }}
+      style={{ minHeight: isDragging ? CALENDAR_ROW_EXPANDED_PX : rowMinHeight }}
       onDoubleClick={() => {
         if (!occupied) handleCreate();
       }}
@@ -409,17 +418,23 @@ function CalendarDayCell({
         </span>
       </button>
 
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div
+        className={cn(
+          "relative flex flex-col",
+          fillRow ? "min-h-0 flex-1" : "min-h-[22px]"
+        )}
+      >
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
         <div
           className={cn(
-            "relative z-[1] flex min-h-0 flex-1 flex-col gap-0.5",
+            "relative z-[1] flex flex-col gap-0.5",
+            fillRow ? "min-h-0 flex-1" : "min-h-0",
             // Scroll stacked days with the wheel; never while dragging so drop zones stay hittable.
             stacked && !isDragging
               ? "overflow-y-auto overscroll-contain scrollbar-vt-teal"
               : "overflow-hidden",
-            collapseForPeriodMove && "h-full",
+            collapseForPeriodMove && fillRow && "h-full",
             // Source chips must not steal the drop target under the pointer.
             isDragging && "pointer-events-none"
           )}
@@ -431,15 +446,22 @@ function CalendarDayCell({
         >
           {placements.map((placement) => {
             const period = placement.period;
-            const pinToHalf =
+            const pinExpanded =
+              !compact && (period === "morning" || period === "afternoon");
+            const pinHold =
               collapseForPeriodMove && (period === "morning" || period === "afternoon");
+            const pinAfternoonCompact =
+              compact && afternoonOnly && period === "afternoon" && !collapseForPeriodMove;
+            const pinAbsolute = pinExpanded || pinHold;
             return (
               <div
                 key={placement.id}
                 className={cn(
-                  pinToHalf && "absolute inset-x-0 z-[1]",
-                  pinToHalf && period === "morning" && "top-0",
-                  pinToHalf && period === "afternoon" && "bottom-0"
+                  pinAbsolute && "absolute inset-x-0 z-[1]",
+                  pinAbsolute && period === "morning" && "top-0",
+                  pinAbsolute && period === "afternoon" && "bottom-0",
+                  // Keep the chip in normal flow so auto-height weeks still measure it.
+                  pinAfternoonCompact && "mt-auto"
                 )}
               >
                 <CalendarTaskChip
@@ -460,14 +482,8 @@ function CalendarDayCell({
   );
 }
 
-function weekNeedsExpandedHeight(
-  week: Date[],
-  placementsByDate: Map<string, CalendarTaskPlacement[]>
-): boolean {
-  return week.some((date) => {
-    const key = format(date, "yyyy-MM-dd");
-    return (placementsByDate.get(key)?.length ?? 0) >= 2;
-  });
+function weekDateKeys(week: Date[]): string[] {
+  return week.map((date) => format(date, "yyyy-MM-dd"));
 }
 
 export function CalendarMonthGrid({
@@ -511,14 +527,16 @@ export function CalendarMonthGrid({
     return groupPlacementsByDate(buildCalendarPlacements(tasks));
   }, [tasks]);
 
-  /** Per-week row height: compact unless any day that week has 2+ events. */
-  const weekRowHeights = useMemo(
+  /** Per-week row height: minimise unless morning and afternoon both appear. */
+  const weekExpanded = useMemo(
     () =>
-      weeks.map((week) =>
-        weekNeedsExpandedHeight(week, placementsByDate)
-          ? CALENDAR_ROW_EXPANDED_PX
-          : CALENDAR_ROW_COMPACT_PX
-      ),
+      weeks.map((week) => weekNeedsExpandedHeight(weekDateKeys(week), placementsByDate)),
+    [weeks, placementsByDate]
+  );
+
+  const weekAfternoonOnly = useMemo(
+    () =>
+      weeks.map((week) => weekIsAfternoonOnly(weekDateKeys(week), placementsByDate)),
     [weeks, placementsByDate]
   );
 
@@ -529,8 +547,14 @@ export function CalendarMonthGrid({
     if (isDraggingAny) {
       return weeks.map(() => `${CALENDAR_ROW_EXPANDED_PX}px`).join(" ");
     }
-    return weekRowHeights.map((h) => `${h}px`).join(" ");
-  }, [isDraggingAny, weeks, weekRowHeights]);
+    return weekExpanded
+      .map((expanded) =>
+        expanded
+          ? `${CALENDAR_ROW_EXPANDED_PX}px`
+          : `minmax(${CALENDAR_ROW_MINIMAL_PX}px, auto)`
+      )
+      .join(" ");
+  }, [isDraggingAny, weeks, weekExpanded]);
 
   const flatDays = useMemo(() => weeks.flat(), [weeks]);
 
@@ -588,7 +612,7 @@ export function CalendarMonthGrid({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex min-h-0 max-h-[718px] flex-1 flex-col rounded-xl border border-white/60 shadow-e1">
+      <div className="flex w-full flex-col rounded-xl border border-white/60 shadow-e1">
         <div className="grid shrink-0 grid-cols-7 border-b border-white/60 px-2 py-2">
           {WEEKDAY_LABELS.map((label, index) => (
             <div
@@ -609,7 +633,7 @@ export function CalendarMonthGrid({
           {flatDays.map((date, index) => {
             const key = format(date, "yyyy-MM-dd");
             const weekIndex = Math.floor(index / 7);
-            const compact = weekRowHeights[weekIndex] === CALENDAR_ROW_COMPACT_PX;
+            const compact = !weekExpanded[weekIndex];
             const isWeekendColumn = index % 7 >= 5;
             return (
               <CalendarDayCell
@@ -626,6 +650,7 @@ export function CalendarMonthGrid({
                 isDragging={isDraggingAny}
                 isWeekendColumn={isWeekendColumn}
                 compact={compact}
+                afternoonOnly={compact && weekAfternoonOnly[weekIndex]}
               />
             );
           })}

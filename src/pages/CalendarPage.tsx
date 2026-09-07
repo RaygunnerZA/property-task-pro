@@ -284,7 +284,7 @@ function CalendarPageContent() {
               onTaskScopeChange={setTaskScope}
             />
             {viewMode === "month" ? (
-              <div className="flex min-h-0 max-h-[777px] flex-1 flex-col overflow-hidden">
+              <div className="flex min-h-0 max-h-[777px] flex-1 flex-col overflow-y-auto">
                 <CalendarMonthGrid
                   month={currentMonth}
                   tasks={displayTasks}

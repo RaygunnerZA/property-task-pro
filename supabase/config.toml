@@ -493,3 +493,9 @@ verify_jwt = true
 
 [functions.graph-sync]
 verify_jwt = true
+
+[functions.assistant-reasoner]
+verify_jwt = true
+
+[functions.assistant-action-executor]
+verify_jwt = true

@@ -406,6 +406,15 @@
   .shadow-engraved {
     box-shadow: 3px 4px 3px -3px rgba(255, 255, 255, 1), -2px -2px 5px -3px rgba(0, 0, 0, 0.05), inset -3px -3px 2px 0px rgba(0, 0, 0, 0.01), inset 1px 2px 2px 0px rgba(0, 0, 0, 0.08);
   }
+
+  /* Header search well — pressed: shadow TL, highlight BR (search field only). */
+  .shadow-search-pressed {
+    box-shadow:
+      -1px -1px 1px 0px rgba(0, 0, 0, 0.14),
+      1px 1px 1px 0px rgba(255, 255, 255, 0.9),
+      inset 1px 2px 3px 0px rgba(0, 0, 0, 0.12),
+      inset -1px -1px 1px 0px rgba(255, 255, 255, 0.7);
+  }
   
   .shadow-paper-edge {
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
@@ -832,6 +841,36 @@
     background-image: var(--paper-texture);
     background-size: 100%;
     background-blend-mode: soft-light;
+  }
+
+  /*
+   * Column intake: active folder tab sitting in the recessed well.
+   * Soft outer highlight on top/left; light right lip; no bottom shadow so it joins the paper.
+   * Same paper fill as the panel below (.intake-paper-surface).
+   */
+  .intake-folder-tab {
+    box-shadow:
+      -1.5px -1.5px 2px 0px rgba(255, 255, 255, 0.92),
+      -1px 0 1px 0px rgba(255, 255, 255, 0.7),
+      0 -1px 1px 0px rgba(255, 255, 255, 0.78),
+      2px 0 4px -2px rgba(0, 0, 0, 0.16);
+  }
+
+  .intake-folder-tab:focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Shared paper fill for active folder tab + composer panel (matched colour + grain). */
+  .intake-paper-surface {
+    background-color: hsl(var(--background));
+    background-image: var(--paper-texture);
+    background-size: 200px;
+    background-repeat: repeat;
+  }
+
+  .intake-folder-tab-label {
+    transform: translate(-2px, 2px);
   }
   
   /* Neumorphic Text Shadows for headings */

@@ -88,6 +88,12 @@ function runFixtureAction(
     return;
   }
 
+  // Local resolve for non-platform rows (compliance review, collapsed groups).
+  if (actionId === "dismiss" || actionId === "ignore") {
+    resolveAttentionItem(item.id);
+    return;
+  }
+
   performOnboardingFixtureAction(actionId, { navigate, propertyId, onOpenIntake });
   // Quick wins stay visible until the real action completes (save / upload / create).
   if (!quickWinIdFromAttentionId(item.id)) {
@@ -218,7 +224,7 @@ export function IssuesSignalCard({
         }
       : {
           id: primaryId,
-          label: "Review",
+          label: item.fixtureActions?.primary.label ?? "Review",
           onClick: () => runFixtureAction(primaryId, item, ctx),
         };
     const overflowActions = isSample

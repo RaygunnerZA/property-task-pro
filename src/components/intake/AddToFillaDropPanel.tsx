@@ -9,7 +9,7 @@ import {
   uploadIntakeFile,
 } from "@/services/intake/intakeUpload";
 import { cn } from "@/lib/utils";
-import addToFillaIllustration from "@/assets/add-to-filla-drop.png";
+import addToFillaIllustration from "@/assets/add-to-filla-drop.gif";
 
 const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
 

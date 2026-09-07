@@ -57,7 +57,7 @@ Ch 3 says there is **no** `ai_models` registry; live still has the table. Keep t
 
 ## Storage
 
-Live buckets: `inbox` (private), `property-images` (public), `property-plan-pages`, `property-plans`, `task-images` (public), `user-avatars` (public).
+Live buckets: `inbox` (private), `knowledge-intake` (private), `knowledge-content-images` (public), `property-images` (public), `property-plan-pages`, `property-plans`, `task-images` (public), `user-avatars` (public).
 
 **keep live.** Public buckets: anyone with the URL can read; RLS does not restore confidentiality of leaked URLs.
 

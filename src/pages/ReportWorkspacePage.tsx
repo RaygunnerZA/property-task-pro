@@ -1,10 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FileDown, Lock, Trash2 } from "lucide-react";
+import { BarChart3, FileDown, Lock, Trash2 } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { EmptyState } from "@/components/design-system/EmptyState";
 import { Button } from "@/components/ui/button";
+import {
+  PropertyWorkspaceLayout,
+  WorkspaceSurfaceCard,
+} from "@/components/property-workspace";
 import { ReportAiSummary } from "@/components/reports/ReportAiSummary";
 import { ReportKpiRow } from "@/components/reports/ReportKpiRow";
 import { ReportTrendChart } from "@/components/reports/ReportTrendChart";
@@ -29,7 +33,6 @@ import type {
   ReportInstance,
   ReportSnapshot,
 } from "@/lib/reports/types";
-import { BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ReportWorkspacePage() {
@@ -145,38 +148,151 @@ export default function ReportWorkspacePage() {
     });
   };
 
+  const pageShell = (body: ReactNode) => (
+    <StandardPageWithBack
+      title="Report"
+      backTo="/reports"
+      maxWidth="full"
+      contentClassName="w-full max-w-[1480px]"
+    >
+      {body}
+    </StandardPageWithBack>
+  );
+
   if (!id) {
-    return (
-      <StandardPageWithBack title="Report" backTo="/reports">
-        <EmptyState
-          icon={BarChart3}
-          title="Missing report"
-          description="No report id in the URL."
-          action={{ label: "Back to Reports", onClick: () => navigate("/reports") }}
-        />
-      </StandardPageWithBack>
+    return pageShell(
+      <EmptyState
+        icon={BarChart3}
+        title="Missing report"
+        description="No report id in the URL."
+        action={{ label: "Back to Reports", onClick: () => navigate("/reports") }}
+      />
     );
   }
 
   if (!draft) {
     if (live.isLoading) {
-      return (
-        <StandardPageWithBack title="Report" backTo="/reports">
-          <LoadingState message="Opening workspace…" />
-        </StandardPageWithBack>
-      );
+      return pageShell(<LoadingState message="Opening workspace…" />);
     }
-    return (
-      <StandardPageWithBack title="Report" backTo="/reports">
-        <EmptyState
-          icon={BarChart3}
-          title="Report not found"
-          description="This workspace may have been deleted or belongs to another organisation."
-          action={{ label: "Back to Reports", onClick: () => navigate("/reports") }}
-        />
-      </StandardPageWithBack>
+    return pageShell(
+      <EmptyState
+        icon={BarChart3}
+        title="Report not found"
+        description="This workspace may have been deleted or belongs to another organisation."
+        action={{ label: "Back to Reports", onClick: () => navigate("/reports") }}
+      />
     );
   }
+
+  const contextColumn = (
+    <div className="space-y-4">
+      <div className="rounded-xl bg-card/70 p-4 shadow-e1">
+        <p className="text-caption font-mono uppercase tracking-wider text-muted-foreground">
+          Template
+        </p>
+        <p className="mt-1 text-sm font-medium text-foreground">
+          {template?.title ?? "Report"}
+        </p>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {isFinalized ? "Finalized" : "Draft · live data"}
+        </p>
+      </div>
+      {display ? (
+        <ReportKpiRow
+          className="sm:grid-cols-2"
+          kpis={display.kpis}
+          previousKpis={display.previousKpis}
+        />
+      ) : null}
+    </div>
+  );
+
+  const workColumn = (
+    <div className="space-y-5 pb-8">
+      {sections.includes("ai_summary") && (
+        <ReportAiSummary
+          text={draft.aiSummary}
+          editable={!isFinalized}
+          onChange={(aiSummary) => persist({ ...draft, aiSummary })}
+        />
+      )}
+
+      {sections.includes("trend") && display && (
+        <ReportTrendChart
+          trend={display.trend}
+          annotations={draft.annotations}
+          canAnnotate={!isFinalized}
+          onAddAnnotation={handleAddAnnotation}
+        />
+      )}
+
+      {sections.includes("attention") && display && (
+        <ReportAttentionList items={display.attention} />
+      )}
+
+      {sections.includes("tasks") && display && (
+        <ReportTasksSection rows={display.taskRows} />
+      )}
+
+      {sections.includes("compliance") && display && (
+        <ReportComplianceSection rows={display.complianceRows} />
+      )}
+
+      {sections.includes("spaces") && display && (
+        <ReportSpacesSection rows={display.spaceRows} />
+      )}
+
+      {sections.includes("evidence") && <ReportEvidenceSection />}
+
+      {sections.includes("notes") && (
+        <ReportNotesSection
+          notes={draft.notes}
+          readOnly={isFinalized}
+          onChange={(notes) => persist({ ...draft, notes })}
+        />
+      )}
+
+      <p className="text-xs text-muted-foreground">
+        {isFinalized
+          ? `Frozen ${draft.finalizedAt ? new Date(draft.finalizedAt).toLocaleString() : ""}`
+          : "Draft updates as live data changes until you finalize."}
+      </p>
+    </div>
+  );
+
+  const actionColumn = (
+    <div className="flex flex-col gap-4">
+      <WorkspaceSurfaceCard title="Primary" description="Save or export this workspace">
+        <div className="flex flex-col gap-2">
+          {!isFinalized && (
+            <Button type="button" variant="outline" className="w-full" onClick={handleFinalize}>
+              <Lock className="mr-1.5 h-3.5 w-3.5" />
+              Finalize
+            </Button>
+          )}
+          <Button type="button" className="w-full" onClick={handleExport}>
+            <FileDown className="mr-1.5 h-3.5 w-3.5" />
+            Export PDF
+          </Button>
+        </div>
+      </WorkspaceSurfaceCard>
+      <WorkspaceSurfaceCard title="Danger zone" description="Remove this workspace">
+        <Button
+          type="button"
+          variant="ghost"
+          className="w-full text-[#EB6834] hover:text-[#EB6834]"
+          onClick={() => {
+            remove(draft.id);
+            toast.message("Report deleted");
+            navigate("/reports");
+          }}
+        >
+          <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+          Delete
+        </Button>
+      </WorkspaceSurfaceCard>
+    </div>
+  );
 
   return (
     <StandardPageWithBack
@@ -185,93 +301,15 @@ export default function ReportWorkspacePage() {
         isFinalized ? "Finalized" : "Draft · live data"
       }`}
       backTo="/reports"
-      maxWidth="lg"
+      maxWidth="full"
+      contentClassName="w-full max-w-[1480px]"
       icon={<BarChart3 className="h-6 w-6" />}
-      action={
-        <div className="flex items-center gap-2">
-          {!isFinalized && (
-            <Button type="button" variant="outline" size="sm" onClick={handleFinalize}>
-              <Lock className="mr-1.5 h-3.5 w-3.5" />
-              Finalize
-            </Button>
-          )}
-          <Button type="button" size="sm" onClick={handleExport}>
-            <FileDown className="mr-1.5 h-3.5 w-3.5" />
-            Export PDF
-          </Button>
-        </div>
-      }
     >
-      <div className="space-y-5 pb-16">
-        {display && (
-          <ReportKpiRow kpis={display.kpis} previousKpis={display.previousKpis} />
-        )}
-
-        {sections.includes("ai_summary") && (
-          <ReportAiSummary
-            text={draft.aiSummary}
-            editable={!isFinalized}
-            onChange={(aiSummary) => persist({ ...draft, aiSummary })}
-          />
-        )}
-
-        {sections.includes("trend") && display && (
-          <ReportTrendChart
-            trend={display.trend}
-            annotations={draft.annotations}
-            canAnnotate={!isFinalized}
-            onAddAnnotation={handleAddAnnotation}
-          />
-        )}
-
-        {sections.includes("attention") && display && (
-          <ReportAttentionList items={display.attention} />
-        )}
-
-        {sections.includes("tasks") && display && (
-          <ReportTasksSection rows={display.taskRows} />
-        )}
-
-        {sections.includes("compliance") && display && (
-          <ReportComplianceSection rows={display.complianceRows} />
-        )}
-
-        {sections.includes("spaces") && display && (
-          <ReportSpacesSection rows={display.spaceRows} />
-        )}
-
-        {sections.includes("evidence") && <ReportEvidenceSection />}
-
-        {sections.includes("notes") && (
-          <ReportNotesSection
-            notes={draft.notes}
-            readOnly={isFinalized}
-            onChange={(notes) => persist({ ...draft, notes })}
-          />
-        )}
-
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/40 pt-4">
-          <p className="text-xs text-muted-foreground">
-            {isFinalized
-              ? `Frozen ${draft.finalizedAt ? new Date(draft.finalizedAt).toLocaleString() : ""}`
-              : "Draft updates as live data changes until you finalize."}
-          </p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-[#EB6834] hover:text-[#EB6834]"
-            onClick={() => {
-              remove(draft.id);
-              toast.message("Report deleted");
-              navigate("/reports");
-            }}
-          >
-            <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-            Delete
-          </Button>
-        </div>
-      </div>
+      <PropertyWorkspaceLayout
+        contextColumn={contextColumn}
+        workColumn={workColumn}
+        actionColumn={actionColumn}
+      />
     </StandardPageWithBack>
   );
 }

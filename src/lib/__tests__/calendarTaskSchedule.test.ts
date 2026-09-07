@@ -9,6 +9,9 @@ import {
   hasAssigneeDefinedScheduleTime,
   parseDropTargetId,
   parsePlacementDragId,
+  weekIsAfternoonOnly,
+  weekNeedsExpandedHeight,
+  type CalendarTaskPlacement,
 } from "../calendarTaskSchedule";
 
 describe("calendarTaskSchedule", () => {
@@ -155,5 +158,62 @@ describe("calendarTaskSchedule", () => {
       { fromDate: from, includeOverdue: false }
     );
     expect(result.map((t) => t.id)).toEqual(["today"]);
+  });
+});
+
+describe("week row period layout", () => {
+  const morning = (id: string): CalendarTaskPlacement => ({
+    id,
+    task: { id },
+    dateKey: "2026-09-07",
+    period: "morning",
+    source: "due",
+  });
+  const afternoon = (id: string, dateKey = "2026-09-08"): CalendarTaskPlacement => ({
+    id,
+    task: { id },
+    dateKey,
+    period: "afternoon",
+    source: "due",
+  });
+
+  it("minimises weeks that only have morning or only afternoon events", () => {
+    const map = new Map([
+      ["2026-09-07", [morning("a")]],
+      ["2026-09-08", [morning("b")]],
+    ]);
+    expect(weekNeedsExpandedHeight(["2026-09-07", "2026-09-08"], map)).toBe(false);
+    expect(weekNeedsExpandedHeight(["2026-09-07"], new Map([["2026-09-07", [afternoon("c", "2026-09-07")]]]))).toBe(
+      false
+    );
+  });
+
+  it("expands when a week needs both morning and afternoon halves", () => {
+    const map = new Map([
+      ["2026-09-07", [morning("a")]],
+      ["2026-09-08", [afternoon("b")]],
+    ]);
+    expect(weekNeedsExpandedHeight(["2026-09-07", "2026-09-08"], map)).toBe(true);
+  });
+
+  it("expands when any day stacks two events", () => {
+    const map = new Map([
+      ["2026-09-07", [morning("a"), morning("b")]],
+    ]);
+    expect(weekNeedsExpandedHeight(["2026-09-07"], map)).toBe(true);
+  });
+
+  it("detects afternoon-only weeks for compact pinning", () => {
+    const map = new Map([
+      ["2026-09-07", [afternoon("a", "2026-09-07")]],
+      ["2026-09-08", [{ ...afternoon("b"), period: "untimed" as const }]],
+    ]);
+    expect(weekIsAfternoonOnly(["2026-09-07", "2026-09-08"], map)).toBe(true);
+    expect(
+      weekIsAfternoonOnly(
+        ["2026-09-07"],
+        new Map([["2026-09-07", [morning("a")]]])
+      )
+    ).toBe(false);
   });
 });
