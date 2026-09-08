@@ -21,6 +21,25 @@ export type ReportSectionId =
   | "evidence"
   | "notes";
 
+/** DB task_status values users can include in a report. */
+export type ReportTaskStatusFilter =
+  | "open"
+  | "in_progress"
+  | "waiting_review"
+  | "completed"
+  | "archived";
+
+/**
+ * User-designed scope for a report workspace.
+ * Empty `spaceIds` = all spaces. Empty `taskStatuses` = no status filter.
+ * `sectionIds: null` = use the template’s default section recipe.
+ */
+export type ReportDesignFilters = {
+  spaceIds: string[];
+  taskStatuses: ReportTaskStatusFilter[];
+  sectionIds: ReportSectionId[] | null;
+};
+
 export type ChartAnnotation = {
   id: string;
   /** Bucket key, e.g. `2026-07` or ISO week label shown on the chart. */
@@ -93,6 +112,8 @@ export type ReportInstance = {
   /** Empty / all properties in org = portfolio scope. */
   propertyIds: string[];
   dateRangePreset: ReportDateRangePreset;
+  /** Design filters — spaces, task statuses, section recipe. */
+  filters: ReportDesignFilters;
   status: ReportInstanceStatus;
   /** Editable consultant-style summary; seeded from rule-based brief. */
   aiSummary: string;

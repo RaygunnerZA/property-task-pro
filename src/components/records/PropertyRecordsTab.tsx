@@ -50,9 +50,7 @@ import {
   getComplianceStatusText,
   type ComplianceRecord,
 } from "./complianceRecordModel";
-import { RecordsContextSummary } from "./RecordsContextSummary";
 import { PropertyRecordGroupCarousel } from "./PropertyRecordGroupCarousel";
-import { PropertyRecentRecordsList } from "./PropertyRecentRecordsList";
 import { AllRecordsDirectory } from "./AllRecordsDirectory";
 import type { RecordGroupId } from "@/lib/records/recordGroups";
 
@@ -660,19 +658,17 @@ export function PropertyRecordsTab({
   }));
 
   return (
-    <div ref={panelRef} className="h-full min-h-0 flex flex-col px-[10px] max-sm:px-0 pt-[8px] pb-[11px] max-pane:px-2">
+    <div
+      ref={panelRef}
+      className="flex h-full min-h-0 flex-col px-[10px] pb-[11px] pt-[8px] max-sm:px-0 max-pane:px-2"
+    >
       {recordsUploading && (
-        <p className="text-xs text-muted-foreground mb-2" aria-live="polite">
+        <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
           Uploading…
         </p>
       )}
 
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-5 pb-4">
-        <RecordsContextSummary
-          complianceRecords={scopedComplianceRecords}
-          documentTotal={scopedPropertyId ? documents.length : undefined}
-        />
-
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-4">
         <div className="min-w-0">
           <input
             type="search"
@@ -698,9 +694,9 @@ export function PropertyRecordsTab({
         />
 
         {!scopedPropertyId && (
-          <p className="text-xs text-muted-foreground rounded-xl bg-card/70 shadow-e1 p-3">
-            Select a single property to upload documents and browse stored files by group. Portfolio compliance still
-            follows your scope chips.
+          <p className="rounded-xl bg-card/70 p-3 text-xs text-muted-foreground shadow-e1">
+            Select a single property to upload documents and browse stored files by group. Portfolio
+            compliance still follows your scope chips.
           </p>
         )}
 
@@ -729,7 +725,7 @@ export function PropertyRecordsTab({
               searchQuery={recordsSearch}
             />
 
-            <div className="border-t border-border/30 pt-5 space-y-4">
+            <div className="space-y-4 border-t border-border/30 pt-5">
               <AllRecordsDirectory
                 documents={documentsForWork}
                 complianceRecords={
@@ -754,7 +750,7 @@ export function PropertyRecordsTab({
                   {docsLoading ? (
                     <p className="text-xs text-muted-foreground">Loading documents…</p>
                   ) : documentsForWork.length === 0 ? (
-                    <div className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                    <div className="rounded-xl bg-card/70 p-3 text-xs text-muted-foreground shadow-e1">
                       No documents match these filters. Upload above or switch group.
                     </div>
                   ) : (
@@ -784,11 +780,11 @@ export function PropertyRecordsTab({
             </p>
 
             {scopedPropertyId && (
-              <div className="rounded-xl bg-card/70 shadow-e1 px-3 py-2.5 flex items-center justify-between gap-3">
-                <div className="min-w-0 flex items-start gap-2">
-                  <Shield className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-card/70 px-3 py-2.5 shadow-e1">
+                <div className="flex min-w-0 items-start gap-2">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">
+                    <p className="truncate text-sm font-medium text-foreground">
                       {complianceRules.length === 0
                         ? "No compliance rules yet"
                         : `${complianceRules.length} compliance rule${complianceRules.length === 1 ? "" : "s"}`}
@@ -802,7 +798,7 @@ export function PropertyRecordsTab({
                   type="button"
                   variant="ghost"
                   size="sm"
-                  className="shrink-0 text-primary hover:text-primary/90 gap-1"
+                  className="shrink-0 gap-1 text-primary hover:text-primary/90"
                   onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
                 >
                   Manage
@@ -814,7 +810,7 @@ export function PropertyRecordsTab({
             <section className="space-y-2">
               <WorkspaceSectionHeading>Obligations</WorkspaceSectionHeading>
               {attentionCompliance.length === 0 ? (
-                <p className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                <p className="rounded-xl bg-card/70 p-3 text-xs text-muted-foreground shadow-e1">
                   No obligations need attention right now.
                 </p>
               ) : (
@@ -876,7 +872,7 @@ export function PropertyRecordsTab({
               <section className="space-y-2">
                 <WorkspaceSectionHeading>Documents</WorkspaceSectionHeading>
                 {attentionDocs.length === 0 ? (
-                  <p className="rounded-xl bg-card/70 shadow-e1 p-3 text-xs text-muted-foreground">
+                  <p className="rounded-xl bg-card/70 p-3 text-xs text-muted-foreground shadow-e1">
                     No documents need attention.
                   </p>
                 ) : (
@@ -899,15 +895,6 @@ export function PropertyRecordsTab({
             )}
           </div>
         )}
-
-        <div className="border-t border-border/30 pt-5">
-          <PropertyRecentRecordsList
-            documents={documents}
-            complianceRecords={filteredComplianceRecords}
-            onOpenDocument={(id) => setSelectedDocId(id)}
-            onOpenCompliance={(id) => setSelectedComplianceId(id)}
-          />
-        </div>
       </div>
 
       <ComplianceDetailDrawer
@@ -955,8 +942,6 @@ export function PropertyRecordsTab({
         onChange={(e) => {
           const files = e.target.files;
           void runRecordsFileUpload(files);
-          // Defer reset so the browser fully closes the sheet before we clear the value (avoids
-          // some WebKit builds immediately re-focusing / re-querying the picker).
           window.requestAnimationFrame(() => {
             e.target.value = "";
           });

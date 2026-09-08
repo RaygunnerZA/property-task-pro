@@ -102,6 +102,7 @@ export function useReportInstances() {
       dateRangePreset: ReportDateRangePreset;
       scopeLabel: string;
       aiSummary: string;
+      filters?: ReportInstance["filters"];
     }) => {
       if (!orgId) throw new Error("No active organisation");
       const template = getReportTemplate(input.templateId);
@@ -116,6 +117,11 @@ export function useReportInstances() {
         title: template.defaultTitle(input.scopeLabel, period),
         propertyIds: input.propertyIds,
         dateRangePreset: input.dateRangePreset,
+        filters: input.filters ?? {
+          spaceIds: [],
+          taskStatuses: ["open", "in_progress", "waiting_review"],
+          sectionIds: [...template.sections],
+        },
         status: "draft",
         aiSummary: input.aiSummary,
         notes: "",

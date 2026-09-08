@@ -1,4 +1,3 @@
-import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { cn } from "@/lib/utils";
 import type { ComplianceRecord } from "./complianceRecordModel";
 
@@ -7,11 +6,14 @@ export function RecordsContextSummary({
   documentTotal,
   docUnlinked,
   className,
+  /** Tighter type/padding for narrow rails. */
+  dense = false,
 }: {
   complianceRecords: ComplianceRecord[];
   documentTotal?: number;
   docUnlinked?: number;
   className?: string;
+  dense?: boolean;
 }) {
   const healthy = complianceRecords.filter((r) => r.status === "healthy").length;
   const expiring = complianceRecords.filter((r) => r.status === "expiring").length;
@@ -27,37 +29,38 @@ export function RecordsContextSummary({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <PanelSectionTitle as="h3" className="ml-0.5">
-        Records at a glance
-      </PanelSectionTitle>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-4 gap-1">
         {cells.map((metric) => (
           <div
             key={metric.label}
             className={cn(
-              "flex min-w-0 flex-col items-center justify-center text-center rounded-xl bg-transparent py-2.5 px-0.5",
+              "flex min-w-0 flex-col items-center justify-center rounded-xl bg-transparent text-center",
+              dense ? "px-0.5 py-1.5" : "px-0.5 py-2",
               "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
             )}
           >
             <p
-              className="inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu tabular-nums text-[26px] font-medium"
+              className={cn(
+                "inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu font-medium tabular-nums",
+                dense ? "text-[18px]" : "text-[22px]"
+              )}
               style={{ color: metric.color, fontFamily: '"Inter Tight"' }}
             >
               {metric.value}
             </p>
-            <p className="mt-0.5 text-2xs sm:text-caption text-muted-foreground leading-tight">
+            <p className="mt-0.5 max-w-full truncate text-2xs leading-tight text-muted-foreground">
               {metric.label}
             </p>
           </div>
         ))}
       </div>
       {documentTotal != null && (
-        <p className="text-caption text-muted-foreground px-0.5">
+        <p className="px-0.5 text-caption text-muted-foreground">
           <span className="font-medium text-foreground">{documentTotal}</span> stored documents
           {docUnlinked != null && docUnlinked > 0 ? (
             <>
               {" "}
-              · <span className="text-warning-foreground font-medium">{docUnlinked}</span> unlinked
+              · <span className="font-medium text-warning-foreground">{docUnlinked}</span> unlinked
             </>
           ) : null}
         </p>

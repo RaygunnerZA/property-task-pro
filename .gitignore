@@ -39,3 +39,4 @@ env.local.html
 
 # Supabase CLI local cache (not portable)
 supabase/.temp/
+supabase/.branches/

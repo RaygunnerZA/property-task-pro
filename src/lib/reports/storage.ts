@@ -1,4 +1,5 @@
 import type { ReportInstance, ReportSnapshot } from "./types";
+import { normalizeReportDesignFilters } from "./designFilters";
 
 const STORAGE_KEY = "filla_report_instances";
 
@@ -24,9 +25,21 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
+function normalizeInstance(raw: ReportInstance): ReportInstance {
+  return {
+    ...raw,
+    filters: normalizeReportDesignFilters(
+      (raw as { filters?: ReportInstance["filters"] }).filters,
+      raw.templateId
+    ),
+  };
+}
+
 export function listReportInstances(orgId: string): ReportInstance[] {
   const list = readJson<ReportInstance[]>(scopedKey(orgId), []);
-  return [...list].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  return list
+    .map(normalizeInstance)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export function getReportInstance(
@@ -37,12 +50,15 @@ export function getReportInstance(
 }
 
 export function upsertReportInstance(instance: ReportInstance): ReportInstance {
-  const list = listReportInstances(instance.orgId);
-  const idx = list.findIndex((r) => r.id === instance.id);
-  const next = { ...instance, updatedAt: new Date().toISOString() };
-  if (idx >= 0) list[idx] = next;
-  else list.unshift(next);
-  writeJson(scopedKey(instance.orgId), list);
+  const rawList = readJson<ReportInstance[]>(scopedKey(instance.orgId), []);
+  const idx = rawList.findIndex((r) => r.id === instance.id);
+  const next = normalizeInstance({
+    ...instance,
+    updatedAt: new Date().toISOString(),
+  });
+  if (idx >= 0) rawList[idx] = next;
+  else rawList.unshift(next);
+  writeJson(scopedKey(instance.orgId), rawList);
   return next;
 }
 

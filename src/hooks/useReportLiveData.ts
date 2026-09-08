@@ -12,6 +12,8 @@ export function useReportLiveData(input: {
   propertyIds: string[];
   dateRangePreset: ReportDateRangePreset;
   templateId?: ReportTemplateId;
+  spaceIds?: string[];
+  taskStatuses?: string[];
 }) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const { data: properties = [], isLoading: propsLoading } = usePropertiesQuery();
@@ -69,6 +71,8 @@ export function useReportLiveData(input: {
         propertyIds: input.propertyIds,
         allPropertyIds,
         preset: input.dateRangePreset,
+        spaceIds: input.spaceIds,
+        taskStatuses: input.taskStatuses,
       }),
     [
       tasks,
@@ -77,6 +81,8 @@ export function useReportLiveData(input: {
       input.propertyIds,
       allPropertyIds,
       input.dateRangePreset,
+      input.spaceIds,
+      input.taskStatuses,
     ]
   );
 

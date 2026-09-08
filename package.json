@@ -73,6 +73,7 @@
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.6.0",
     "input-otp": "^1.4.2",
+    "jspdf": "^4.2.1",
     "ldrs": "^1.1.9",
     "lucide-react": "^0.462.0",
     "motion": "^12.38.0",

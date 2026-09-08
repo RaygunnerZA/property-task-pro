@@ -73,6 +73,26 @@ export function filterTasksByPropertyScope(
   return tasks.filter((t) => t.property_id && set.has(t.property_id));
 }
 
+export function filterTasksBySpaces(
+  tasks: ReportTaskLike[],
+  spaceIds: string[]
+): ReportTaskLike[] {
+  if (!spaceIds.length) return tasks;
+  const set = new Set(spaceIds);
+  return tasks.filter((t) =>
+    parseSpaces(t.spaces).some((s) => s.id && set.has(s.id))
+  );
+}
+
+export function filterTasksByStatuses(
+  tasks: ReportTaskLike[],
+  taskStatuses: string[]
+): ReportTaskLike[] {
+  if (!taskStatuses.length) return tasks;
+  const set = new Set(taskStatuses.map((s) => s.toLowerCase()));
+  return tasks.filter((t) => set.has((t.status ?? "open").toLowerCase()));
+}
+
 export function filterComplianceByPropertyScope(
   items: ReportComplianceLike[],
   propertyIds: string[],
@@ -258,10 +278,14 @@ export function computeAttentionItems(
 
 export function computeTaskRows(
   tasks: ReportTaskLike[],
-  limit = 12
+  limit = 12,
+  statusFilter: string[] = []
 ): ReportTaskRow[] {
-  const open = tasks.filter(isOpen);
-  const ranked = [...open].sort((a, b) => {
+  const pool =
+    statusFilter.length > 0
+      ? filterTasksByStatuses(tasks, statusFilter)
+      : tasks.filter(isOpen);
+  const ranked = [...pool].sort((a, b) => {
     const ua = getTaskDueUrgency(a) === "overdue" ? 0 : getTaskDueUrgency(a) === "due_soon" ? 1 : 2;
     const ub = getTaskDueUrgency(b) === "overdue" ? 0 : getTaskDueUrgency(b) === "due_soon" ? 1 : 2;
     return ua - ub;
@@ -330,13 +354,18 @@ export function buildLiveReportData(input: {
   propertyIds: string[];
   allPropertyIds: string[];
   preset: ReportDateRangePreset;
+  spaceIds?: string[];
+  taskStatuses?: string[];
 }) {
   const range = resolveDateRange(input.preset);
-  const tasks = filterTasksByPropertyScope(
+  let tasks = filterTasksByPropertyScope(
     input.tasks,
     input.propertyIds,
     input.allPropertyIds
   );
+  tasks = filterTasksBySpaces(tasks, input.spaceIds ?? []);
+  tasks = filterTasksByStatuses(tasks, input.taskStatuses ?? []);
+
   const compliance = filterComplianceByPropertyScope(
     input.compliance,
     input.propertyIds,
@@ -360,15 +389,30 @@ export function buildLiveReportData(input: {
     }
   );
 
+  let spaceRows = computeActiveSpaces(tasks);
+  if (input.spaceIds && input.spaceIds.length > 0) {
+    // Keep space rollup aligned with selected space names when possible.
+    spaceRows = spaceRows.filter((row) =>
+      tasks.some((t) =>
+        parseSpaces(t.spaces).some(
+          (s) =>
+            s.id &&
+            input.spaceIds!.includes(s.id) &&
+            (s.name ?? "").trim() === row.name
+        )
+      )
+    );
+  }
+
   return {
     range,
     kpis,
     previousKpis,
     trend: computeReportTrend(tasks, input.preset, range),
     attention: computeAttentionItems(tasks, compliance, signals),
-    taskRows: computeTaskRows(tasks),
+    taskRows: computeTaskRows(tasks, 12, input.taskStatuses ?? []),
     complianceRows: computeComplianceRows(compliance),
-    spaceRows: computeActiveSpaces(tasks),
+    spaceRows,
     scopedTaskCount: tasks.length,
   };
 }

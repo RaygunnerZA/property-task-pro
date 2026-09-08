@@ -83,11 +83,9 @@ export function getReportTemplate(id: ReportTemplateId): ReportTemplateDef {
 
 export function resolveReportSections(
   templateId: ReportTemplateId,
-  isSingleProperty: boolean
+  isSingleProperty: boolean,
+  sectionOverride?: ReportSectionId[] | null
 ): ReportSectionId[] {
-  const template = getReportTemplate(templateId);
-  const extras = isSingleProperty ? template.propertyScopedExtras : [];
-  const set = new Set<ReportSectionId>([...template.sections, ...extras]);
   const order: ReportSectionId[] = [
     "ai_summary",
     "trend",
@@ -98,5 +96,14 @@ export function resolveReportSections(
     "evidence",
     "notes",
   ];
+
+  if (sectionOverride && sectionOverride.length > 0) {
+    const set = new Set(sectionOverride);
+    return order.filter((s) => set.has(s));
+  }
+
+  const template = getReportTemplate(templateId);
+  const extras = isSingleProperty ? template.propertyScopedExtras : [];
+  const set = new Set<ReportSectionId>([...template.sections, ...extras]);
   return order.filter((s) => set.has(s));
 }

@@ -75,6 +75,8 @@ interface PropertyIdentityStripProps {
   onOpenTasksClick?: () => void;
   onFilterClick?: (filterId: string) => void;
   externalDashboard?: boolean;
+  /** When true, omit PropertySummaryPanel (e.g. Records replaces it with context + recent). */
+  hideSummaryDashboard?: boolean;
   /** Rendered between the summary panel and hub nav cards (e.g. mini calendar). */
   betweenSummaryAndNav?: ReactNode;
   centreWorkbenchTab?: CentreWorkbenchTab;
@@ -94,6 +96,7 @@ export function PropertyIdentityStrip({
   onOpenTasksClick,
   onFilterClick,
   externalDashboard = false,
+  hideSummaryDashboard = false,
   betweenSummaryAndNav,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
@@ -268,6 +271,7 @@ export function PropertyIdentityStrip({
         />
 
         <div className="px-[10px] py-0">
+          {hideSummaryDashboard ? null : (
           <PropertySummaryPanel
             property={property}
             tasks={propertyTasksView}
@@ -308,6 +312,7 @@ export function PropertyIdentityStrip({
             showCentreNavBelowPhone={showCentreNavBelowPhone}
             routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
           />
+          )}
         </div>
       </div>
 

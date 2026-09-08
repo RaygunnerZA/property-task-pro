@@ -1,5 +1,12 @@
-import { useMemo, useState } from "react";
-import { WorkspaceSectionHeading } from "@/components/property-workspace";
+import { useMemo, useState, type CSSProperties } from "react";
+import { List } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { ComplianceRecord } from "@/components/records/complianceRecordModel";
 import type { RecordGroupId } from "@/lib/records/recordGroups";
@@ -26,10 +33,15 @@ type DirectoryRow = {
 type SortId = "name" | "recent" | "group";
 
 const SORT_OPTIONS: { id: SortId; label: string }[] = [
-  { id: "name", label: "Name" },
-  { id: "recent", label: "Recent" },
-  { id: "group", label: "Group" },
+  { id: "name", label: "A–Z" },
+  { id: "recent", label: "Recently updated" },
+  { id: "group", label: "By group" },
 ];
+
+const COLUMN_STYLE: CSSProperties = {
+  columnGap: "2.75rem",
+  columnRule: "1px solid hsl(var(--border) / 0.35)",
+};
 
 export function AllRecordsDirectory({
   documents,
@@ -97,35 +109,55 @@ export function AllRecordsDirectory({
   }, [documents, complianceRecords, groupFilter, q, sort]);
 
   return (
-    <section className={cn("space-y-2", className)}>
-      <div className="flex items-center justify-between gap-2">
-        <WorkspaceSectionHeading className="mb-0">All records</WorkspaceSectionHeading>
-        <div className="flex gap-1">
-          {SORT_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setSort(opt.id)}
-              className={cn(
-                "rounded-lg px-2 py-1 text-2xs font-medium transition-colors",
-                sort === opt.id
-                  ? "bg-card text-foreground shadow-e1"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
+    <section className={cn("space-y-3", className)} aria-labelledby="all-records-heading">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div
+            className="rounded-xl bg-primary p-2.5"
+            style={{
+              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
+            }}
+          >
+            <List className="h-5 w-5 text-white" aria-hidden />
+          </div>
+          <h2 id="all-records-heading" className="text-lg font-semibold text-foreground">
+            All records
+          </h2>
+          <span
+            className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-white px-1.5 text-caption font-medium tabular-nums text-muted-foreground shadow-e1"
+            aria-label={`${rows.length} records`}
+          >
+            {rows.length}
+          </span>
+        </div>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className="text-2xs font-mono uppercase text-muted-foreground">Sort</span>
+          <Select value={sort} onValueChange={(v) => setSort(v as SortId)}>
+            <SelectTrigger
+              className="h-7 w-[148px] border-0 bg-background/80 text-xs shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus:ring-1 focus:ring-primary/40 focus:ring-offset-0"
+              aria-label="Sort records"
             >
-              {opt.label}
-            </button>
-          ))}
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((opt) => (
+                <SelectItem key={opt.id} value={opt.id} className="text-xs">
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
+
       {rows.length === 0 ? (
         <p className="py-4 text-xs text-muted-foreground">
           {q ? "No records match your search." : "No records in this group yet."}
         </p>
       ) : (
-        <ul className="columns-1 gap-x-4 sm:columns-2 [column-fill:_balance]">
+        <ul className="columns-2 list-none sm:columns-3" style={COLUMN_STYLE}>
           {rows.map((row) => (
-            <li key={`${row.kind}-${row.id}`} className="mb-1 break-inside-avoid">
+            <li key={`${row.kind}-${row.id}`} className="mb-0.5 break-inside-avoid">
               <button
                 type="button"
                 onClick={() =>
@@ -133,10 +165,14 @@ export function AllRecordsDirectory({
                     ? onOpenDocument?.(row.id)
                     : onOpenCompliance?.(row.id)
                 }
-                className="flex w-full items-baseline justify-between gap-2 rounded-lg px-1.5 py-1 text-left hover:bg-muted/40"
+                className={cn(
+                  "flex w-full items-baseline gap-2 py-0.5 text-left text-xs leading-snug text-foreground/90",
+                  "transition-colors hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+                )}
+                title={`${row.label} · ${row.meta}`}
               >
-                <span className="min-w-0 truncate text-sm text-foreground">{row.label}</span>
-                <span className="shrink-0 text-2xs text-muted-foreground">{row.meta}</span>
+                <span className="min-w-0 flex-1 truncate">{row.label}</span>
+                <span className="shrink-0 text-caption text-muted-foreground">{row.meta}</span>
               </button>
             </li>
           ))}
