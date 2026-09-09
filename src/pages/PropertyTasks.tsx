@@ -10,7 +10,6 @@ import { StandardPageWithBack } from '@/components/design-system/StandardPageWit
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { EmptyState } from '@/components/design-system/EmptyState';
 import { NeomorphicButton } from '@/components/design-system/NeomorphicButton';
-import { PropertyPageScopeBar } from '@/components/properties/PropertyPageScopeBar';
 
 export default function PropertyTasks() {
   const { id } = useParams<{ id: string }>();
@@ -44,16 +43,6 @@ export default function PropertyTasks() {
       headerAccentColor={id ? headerAccentColor : undefined}
       icon={<CheckSquare className="h-6 w-6" />}
       hideHeaderBack
-      belowGradientRow={
-        id ? (
-          <PropertyPageScopeBar
-            propertyId={id}
-            hrefForProperty={(pid) => `/properties/${pid}/tasks`}
-            hrefForAll="/tasks"
-            backHref={id ? propertyHubPath(id) : "/"}
-          />
-        ) : null
-      }
       action={
         <NeomorphicButton size="sm" onClick={() => navigate(`/add-task?propertyId=${id}`)}>
           <Plus className="w-4 h-4 mr-2" />

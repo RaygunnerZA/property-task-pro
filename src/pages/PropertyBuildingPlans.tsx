@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { propertyHubPath, propertySubPath } from "@/lib/propertyRoutes";
+import { propertyHubPath } from "@/lib/propertyRoutes";
 import {
   Building2,
   CheckCircle2,
@@ -28,7 +28,6 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
-import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 
 function statusVariant(status: string): "warning" | "success" | "danger" | "neutral" {
   if (status === "ready_for_review" || status === "partially_reviewed" || status === "imported") {
@@ -73,12 +72,6 @@ export default function PropertyBuildingPlans() {
     | { name?: string; icon_color_hex?: string | null }
     | undefined;
   const headerAccent = property?.icon_color_hex?.trim() || "#8EC9CE";
-  const plansScopeBelowRow = propertyId ? (
-    <PropertyPageScopeBar
-      propertyId={propertyId}
-      hrefForProperty={(pid) => propertySubPath(pid, "plans")}
-    />
-  ) : null;
 
   const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const [uploadFiles, setUploadFiles] = useState<FileList | null>(null);
@@ -215,7 +208,6 @@ export default function PropertyBuildingPlans() {
         icon={<Building2 className="h-6 w-6" />}
         headerAccentColor={headerAccent}
         hideHeaderBack
-        belowGradientRow={plansScopeBelowRow}
       >
         <LoadingState message="Loading plan sheets…" />
       </StandardPageWithBack>
@@ -238,7 +230,6 @@ export default function PropertyBuildingPlans() {
       icon={<Building2 className="h-6 w-6" />}
       headerAccentColor={headerAccent}
       hideHeaderBack
-      belowGradientRow={plansScopeBelowRow}
     >
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[260px_1fr_280px]">
         <Card className="shadow-e1 p-3 space-y-3">

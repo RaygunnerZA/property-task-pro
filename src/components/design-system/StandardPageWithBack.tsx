@@ -4,9 +4,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { WorkspaceScopeStrip } from "@/components/property-workspace";
-import { Button } from "@/components/ui/button";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
-import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface StandardPageWithBackProps {
@@ -16,7 +14,7 @@ interface StandardPageWithBackProps {
   action?: ReactNode;
   backTo?: string;
   onBack?: () => void;
-  /** Hide the in-content “Back” control (e.g. when using property scope row below). */
+  /** @deprecated Back now lives in the gradient header (activity variant); kept for call-site compat. */
   hideHeaderBack?: boolean;
   /** Row directly under the gradient strip, left-aligned (matches workbench scope bar). */
   belowGradientRow?: ReactNode;
@@ -31,12 +29,15 @@ interface StandardPageWithBackProps {
   headerAccentColor?: string;
   /** Omit in-content title when the page renders its own heading. */
   hideTitleInHeader?: boolean;
+  /** Hide gradient-header search (centre-column search on activity areas). */
+  hideHeaderSearch?: boolean;
 }
 
 /**
  * StandardPageWithBack - StandardPage variant with back button
  *
- * Uses the shared logo / gradient / search chrome; title + Back live in the main column.
+ * Secondary-screen chrome: [< Back] replaces the logo in the gradient header
+ * (property selector to its right); title lives in the main column.
  */
 export function StandardPageWithBack({
   title,
@@ -54,6 +55,7 @@ export function StandardPageWithBack({
   contentClassName,
   headerAccentColor,
   hideTitleInHeader = false,
+  hideHeaderSearch = false,
 }: StandardPageWithBackProps) {
   const navigate = useNavigate();
   const accent = headerAccentColor?.trim() || FILLA_TURQUOISE;
@@ -93,7 +95,12 @@ export function StandardPageWithBack({
         className
       )}
     >
-      <GlobalAppHeader accentColor={accent} />
+      <GlobalAppHeader
+        accentColor={accent}
+        hideSearch
+        variant="activity"
+        onBack={handleBack}
+      />
 
       {belowGradientRow != null && (
         <WorkspaceScopeStrip containerMaxWidthClass={maxWidthClasses[maxWidth]}>
@@ -102,17 +109,6 @@ export function StandardPageWithBack({
       )}
 
       <div className={cn("mx-auto px-gutter-page py-6", maxWidthClasses[maxWidth], contentClassName)}>
-        {showTitle && !hideHeaderBack ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleBack}
-            className="mb-3 -ml-2 shrink-0"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-        ) : null}
         {showTitle ? (
           <PageContentTitle
             title={title}

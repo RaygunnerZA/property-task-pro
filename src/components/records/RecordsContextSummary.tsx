@@ -41,10 +41,10 @@ export function RecordsContextSummary({
           >
             <p
               className={cn(
-                "inline-block bg-paper bg-paper-texture bg-clip-text leading-none text-shadow-neu font-medium tabular-nums",
+                "font-display font-medium leading-none tabular-nums text-shadow-neu-pressed",
                 dense ? "text-[18px]" : "text-[22px]"
               )}
-              style={{ color: metric.color, fontFamily: '"Inter Tight"' }}
+              style={{ color: metric.color }}
             >
               {metric.value}
             </p>

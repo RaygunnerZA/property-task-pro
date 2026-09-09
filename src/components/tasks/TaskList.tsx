@@ -661,7 +661,7 @@ export function TaskList({
     if (onTaskClick) {
       onTaskClick(taskId);
     } else {
-      navigate(`/task/${taskId}`);
+      navigate("/tasks", { state: { openTaskId: taskId } });
     }
   }, [onTaskClick, navigate]);
   

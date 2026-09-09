@@ -88,6 +88,8 @@
     /* Special Tokens */
     --concrete: 40 12% 88%;          /* Border gray */
     --ink: 248 15% 18%;              /* Text color */
+    /* Dusty ink cardstock — hover fills that still read as paper, not wet ink. */
+    --ink-paper: 248 12% 34%;
     /* Modal/sheet wash — Filla ink (purple), both themes. Not --ink in dark (that flips to cream). */
     --modal-scrim: 248 32% 11%;
 
@@ -236,6 +238,7 @@
 
     --concrete: 248 10% 25%;
     --ink: 40 20% 94%;
+    --ink-paper: 248 12% 28%;
     /* Sidebar - Deep Ink dark mode */
     --sidebar-background: 248 15% 12%;
     --sidebar-foreground: 0 0% 95%;
@@ -781,6 +784,52 @@
   .bg-paper-texture {
     background-image: var(--paper-texture);
     background-size: 100%;
+  }
+
+  /*
+   * Ink-paper hover — property / asset summary tabs.
+   * Mid dusty cardstock (not wet ink) so fibre grain can read; overlay blend
+   * matches modal-scrim / page paper rather than film-grain on charcoal.
+   */
+  .hover-ink-noise {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .hover-ink-noise:hover,
+  .hover-ink-noise:focus-visible {
+    background-color: hsl(var(--ink-paper)) !important;
+    background-image: var(--paper-texture) !important;
+    background-size: 88px 88px !important;
+    background-blend-mode: overlay;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      inset 0 -1px 1px rgba(0, 0, 0, 0.2);
+  }
+
+  .hover-ink-noise::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 150ms ease-out;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='paper-hover-noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62' numOctaves='3' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix type='saturate' values='0'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='1.35' intercept='-0.18'%3E%3C/feFuncR%3E%3CfeFuncG type='linear' slope='1.35' intercept='-0.18'%3E%3C/feFuncG%3E%3CfeFuncB type='linear' slope='1.35' intercept='-0.18'%3E%3C/feFuncB%3E%3CfeFuncA type='linear' slope='0.55'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper-hover-noise)'%3E%3C/rect%3E%3C/svg%3E");
+    background-size: 80px 80px;
+    mix-blend-mode: overlay;
+  }
+
+  .hover-ink-noise:hover::after,
+  .hover-ink-noise:focus-visible::after {
+    opacity: 0.55;
+  }
+
+  .hover-ink-noise > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* Translucent Filla-purple modal wash + film grain (replaces black/80).

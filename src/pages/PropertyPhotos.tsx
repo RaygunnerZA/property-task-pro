@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { propertyHubPath, propertySubPath } from '@/lib/propertyRoutes';
+import { propertyHubPath } from '@/lib/propertyRoutes';
 import { Image } from 'lucide-react';
 import MediaSection from '@/components/property/media/MediaSection';
 import PropertyPhotoGallery from '@/components/property/media/PropertyPhotoGallery';
@@ -8,7 +8,6 @@ import { usePropertyPhotos } from '@/hooks/property/usePropertyPhotos';
 import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';
 import { LoadingState } from '@/components/design-system/LoadingState';
 import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
-import { PropertyPageScopeBar } from '@/components/properties/PropertyPageScopeBar';
 
 export default function PropertyPhotos() {
   const { id } = useParams<{ id: string }>();
@@ -32,14 +31,6 @@ export default function PropertyPhotos() {
       maxWidth="xl"
       headerAccentColor={headerAccent}
       hideHeaderBack
-      belowGradientRow={
-        propertyId ? (
-          <PropertyPageScopeBar
-            propertyId={propertyId}
-            hrefForProperty={(pid) => propertySubPath(pid, 'photos')}
-          />
-        ) : null
-      }
     >
       <MediaSection
         title="Photo Gallery"

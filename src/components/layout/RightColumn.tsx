@@ -156,6 +156,10 @@ export function RightColumn({
         onRecordsViewChange={onRecordsViewChange}
         hideTabs
         pageTitle={dedicatedTitle}
+        pageTitleClassName={
+          /* Records: left column owns the title on desktop (mobile hides the rail). */
+          workbenchPanel === "records" ? "lg:hidden" : undefined
+        }
       />
     );
   };

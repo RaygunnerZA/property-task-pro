@@ -406,6 +406,7 @@ export default function ReportWorkspacePage() {
     <>
       <div className="hidden workspace:block">
         <PropertyWorkspaceLayout
+          embedMobileStack={false}
           contextColumn={contextColumn}
           workColumn={workColumn}
           actionColumn={actionColumn}

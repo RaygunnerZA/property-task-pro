@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
-import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import {
+  workbenchPageTitleClassName,
+  workbenchSectionSubtitleClassName,
+} from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
 
 export type PageContentTitleProps = {
@@ -13,7 +16,7 @@ export type PageContentTitleProps = {
 };
 
 /**
- * In-content page title for StandardPage routes — uses workbench section title styles
+ * In-content page H1 for StandardPage routes — uses workbench page title styles
  * so titles sit in the main column instead of the gradient header chrome.
  */
 export function PageContentTitle({
@@ -30,14 +33,14 @@ export function PageContentTitle({
         <div className="flex min-w-0 items-start gap-3">
           {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
           {icon ? (
-            <span className="icon-primary mt-0.5 shrink-0 [&_svg]:h-6 [&_svg]:w-6">
+            <span className="icon-primary mt-1 shrink-0 [&_svg]:h-6 [&_svg]:w-6">
               {icon}
             </span>
           ) : null}
           <div className="min-w-0">
-            <h1 className={workbenchSectionTitleClassName}>{title}</h1>
+            <h1 className={workbenchPageTitleClassName}>{title}</h1>
             {subtitle ? (
-              <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
+              <p className={cn("mt-1", workbenchSectionSubtitleClassName)}>{subtitle}</p>
             ) : null}
           </div>
         </div>

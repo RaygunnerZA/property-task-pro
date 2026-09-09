@@ -53,7 +53,8 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 *   `compliance_recommendations` (AI-style suggested actions per document)
 
 **Onboarding demo (new properties):**
-*   `seed_onboarding_demo_for_property(property_id)` runs in the same trigger as `seed_property_defaults` after each `properties` INSERT. Seeds sample tasks, assets, compliance documents, one compliance rule, one `compliance_recommendations` row, and an org-level checklist template (once per org). Demo copy includes `[onboarding_demo]` for UI detection; placeholder images use `/onboarding/*.svg`.
+*   `seed_onboarding_demo_for_property(property_id)` runs in the same trigger as `seed_property_defaults` after each `properties` INSERT. Seeds sample tasks, assets, compliance documents, one compliance rule, one `compliance_recommendations` row, and an org-level checklist template (once per org). Demo copy includes `[onboarding_demo]` for UI detection; titles often include `(sample)`; placeholder images use `/onboarding/*.svg`.
+*   **Sample content phase-out (product rule):** Samples teach how a section works. They are always labelled `DEMO CONTENT` / SAMPLE. Clicking a sample opens an instructive lesson (`SampleContentLessonDialog`) — purpose of the section, that the item is only a sample, and that confirming permanently hides it. Per-item dismiss is stored client-side (`onboarding-samples-dismissed:{propertyId}`). Once a section has ≥1 real (non-sample) item, remaining samples auto-hide for that surface. `clear_onboarding_demo_for_property` removes seeded DB rows when a full wipe is required.
 
 **Media:**
 *   `attachments` (file_url, parent_type, parent_id, ocr_text, metadata jsonb). Add Record writes reviewed scan interpretation under `metadata.intake_scan` (dates, findings, outcome, confirmed action ids, linked asset ids) so facts stay source-backed without a new table.

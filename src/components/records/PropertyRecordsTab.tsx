@@ -35,13 +35,14 @@ import {
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
+import fillaAiIcon from "@/assets/filla-ai.svg";
+import { cn } from "@/lib/utils";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { DocumentUploadZone } from "@/components/properties/DocumentUploadZone";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
 import { propertyComplianceSetupPath, type RecordsView } from "@/lib/propertyRoutes";
 import type { IntakeMode } from "@/types/intake";
 import {
@@ -367,6 +368,9 @@ export function PropertyRecordsTab({
   );
 
   const attentionCount = attentionCompliance.length + attentionDocs.length;
+  const attentionRequested =
+    recordsView === "expiring" || recordsView === "overdue" || recordsView === "missing";
+  const showRecordsOperationalView = attentionCount > 0 || attentionRequested;
 
   const complianceTypeOptions = useMemo(() => {
     const typeSet = new Set<string>();
@@ -492,6 +496,16 @@ export function PropertyRecordsTab({
     setComplianceExpiryRange("all");
     setRecordsSearch("");
   }, [onRecordsViewChange]);
+
+  useEffect(() => {
+    if (attentionRequested) {
+      setWorkTab("attention");
+      return;
+    }
+    if (attentionCount === 0) {
+      setWorkTab("groups");
+    }
+  }, [attentionRequested, attentionCount]);
 
   const handleSelectGroup = useCallback((groupId: RecordGroupId | null) => {
     setSelectedGroupId(groupId);
@@ -670,14 +684,24 @@ export function PropertyRecordsTab({
 
       <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-4">
         <div className="min-w-0">
-          <input
-            type="search"
-            value={recordsSearch}
-            onChange={(event) => setRecordsSearch(event.target.value)}
-            placeholder="Search records, certificates, or types"
-            className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
-            aria-label="Search records"
-          />
+          <div className="flex min-w-0 w-full items-center gap-2 overflow-hidden rounded-card bg-card/70 px-3 shadow-search-pressed">
+            <img
+              src={fillaAiIcon}
+              alt=""
+              aria-hidden
+              className="h-4 w-4 shrink-0 object-contain opacity-80"
+              width={16}
+              height={16}
+            />
+            <input
+              type="search"
+              value={recordsSearch}
+              onChange={(event) => setRecordsSearch(event.target.value)}
+              placeholder="Search records, certificates, or types"
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground/70"
+              aria-label="Search records"
+            />
+          </div>
         </div>
 
         <FilterBar
@@ -700,22 +724,24 @@ export function PropertyRecordsTab({
           </p>
         )}
 
-        <div>
-          <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-          <WorkspaceTabList>
-            <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
-              By group
-            </WorkspaceTabTrigger>
-            <WorkspaceTabTrigger
-              selected={workTab === "attention"}
-              onClick={() => setWorkTab("attention")}
-            >
-              Needs attention ({attentionCount})
-            </WorkspaceTabTrigger>
-          </WorkspaceTabList>
-        </div>
+        {showRecordsOperationalView ? (
+          <div>
+            <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+            <WorkspaceTabList>
+              <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
+                By group
+              </WorkspaceTabTrigger>
+              <WorkspaceTabTrigger
+                selected={workTab === "attention"}
+                onClick={() => setWorkTab("attention")}
+              >
+                Needs attention ({attentionCount})
+              </WorkspaceTabTrigger>
+            </WorkspaceTabList>
+          </div>
+        ) : null}
 
-        {workTab === "groups" ? (
+        {!(showRecordsOperationalView && workTab === "attention") ? (
           <div className="space-y-4">
             <PropertyRecordGroupCarousel
               documents={documents}

@@ -22,7 +22,7 @@ import {
 import { filterTasksForScheduleAgenda } from "@/lib/calendarTaskSchedule";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
 import {
-  workbenchSectionTitleClassName,
+  workbenchPageTitleClassName,
   workbenchSectionTitleInactiveClassName,
 } from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
@@ -246,7 +246,7 @@ export function CalendarWorkbenchPanel({
                   >
                     {index > 0 ? (
                       <span
-                        className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                        className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
                         aria-hidden
                       >
                         |
@@ -258,12 +258,9 @@ export function CalendarWorkbenchPanel({
                       aria-selected={selected}
                       onClick={() => setView(tab.id)}
                       className={cn(
-                        "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                        "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
-                          ? cn(
-                              workbenchSectionTitleClassName,
-                              "text-lg text-foreground md:text-xl"
-                            )
+                          ? workbenchPageTitleClassName
                           : workbenchSectionTitleInactiveClassName
                       )}
                     >

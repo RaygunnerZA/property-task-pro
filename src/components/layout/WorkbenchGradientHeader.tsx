@@ -1,7 +1,9 @@
 import { useState, type CSSProperties } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
+import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 import {
   MobileWorkbenchHeaderRow,
   MobileWorkbenchHeaderSearchTrigger,
@@ -32,6 +34,16 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
+  /** Activity-area screens move search into the centre column. */
+  hideSearch?: boolean;
+  /**
+   * `workbench` (Home / Inflow / Tasks / Calendar): Filla logo + header search.
+   * `activity` (Spaces / Assets / Reports / Records / Tags / Settings / Knowledge):
+   * no logo, no header search — [< Back] top-left with the property selector to its right.
+   */
+  variant?: "workbench" | "activity";
+  /** Back handler for the activity variant. Defaults to history back (fallback `/`). */
+  onBack?: () => void;
 };
 
 export function WorkbenchGradientHeader({
@@ -43,18 +55,57 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
+  hideSearch = false,
+  variant = "workbench",
+  onBack,
 }: WorkbenchGradientHeaderProps) {
+  const navigate = useNavigate();
   const showPropertySelector = properties.length > 1;
+  const isActivity = variant === "activity";
+  const showSearch = !hideSearch && !isActivity;
 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+      return;
+    }
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate("/");
+    }
+  };
+
+  const backButton = (
+    <button
+      type="button"
+      onClick={handleBack}
+      className={cn(
+        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-white/70 px-3",
+        "text-sm font-medium text-foreground shadow-e1",
+        "outline-none transition-shadow hover:shadow-md",
+        "focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-1"
+      )}
+      aria-label="Go back"
+    >
+      <ArrowLeft className="h-4 w-4" />
+      Back
+    </button>
+  );
+
   const mobileLeftContent = (
     <div className="flex min-w-0 flex-1 items-center gap-2.5">
-      <img
-        src={fillaDarkLogo}
-        alt="Filla"
-        className="ml-1.5 h-[28px] w-auto shrink-0"
-      />
+      {isActivity ? (
+        <span className="ml-1.5 shrink-0">{backButton}</span>
+      ) : (
+        <img
+          src={fillaDarkLogo}
+          alt="Filla"
+          className="ml-1.5 h-[28px] w-auto shrink-0"
+        />
+      )}
       {showPropertySelector ? (
         <PropertySelectorStack
           variant="gradientHeader"
@@ -74,27 +125,30 @@ export function WorkbenchGradientHeader({
     <>
       <PageHeader
         showAccountMenu
-        showSearch
+        showSearch={showSearch}
         showFilter={false}
         style={headerStyle}
         accentColor={accentColor}
         className="page-header--workbench-mobile lg:hidden"
         toolbarClassName="!top-[calc(env(safe-area-inset-top,0px)+35px)]"
         mobileSearchSlot={
-          <MobileWorkbenchHeaderSearchTrigger
-            searchOpen={mobileSearchOpen}
-            onSearchOpenChange={setMobileSearchOpen}
-            variant="onGradient"
-            accentColor={accentColor}
-          />
+          !showSearch ? undefined : (
+            <MobileWorkbenchHeaderSearchTrigger
+              searchOpen={mobileSearchOpen}
+              onSearchOpenChange={setMobileSearchOpen}
+              variant="onGradient"
+              accentColor={accentColor}
+            />
+          )
         }
       >
         <MobileWorkbenchHeaderRow
-          searchOpen={mobileSearchOpen}
+          searchOpen={!showSearch ? false : mobileSearchOpen}
           onSearchOpenChange={setMobileSearchOpen}
           showPropertySelector={showPropertySelector}
           leftContent={mobileLeftContent}
           accentColor={accentColor}
+          hideSearch={!showSearch}
         />
       </PageHeader>
 
@@ -111,17 +165,29 @@ export function WorkbenchGradientHeader({
         className="fixed top-0 z-[56] hidden items-center lg:flex"
         style={{ height: DESKTOP_HEADER_BAND_PX, left: 0 }}
       >
-        <Link
-          to="/"
-          className="flex shrink-0 items-center rounded-md pl-5 outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
-          aria-label="Go to home"
-        >
-          <img
-            src={fillaDarkLogo}
-            alt="Filla"
-            className="h-[28px] w-auto"
-          />
-        </Link>
+        {isActivity ? (
+          <span className="pl-5">{backButton}</span>
+        ) : (
+          <Link
+            to="/"
+            className="flex shrink-0 items-center rounded-md pl-5 outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
+            aria-label="Go to home"
+          >
+            <img
+              src={fillaDarkLogo}
+              alt="Filla"
+              className="h-[28px] w-auto"
+            />
+          </Link>
+        )}
+      </div>
+
+      {/* Desktop: account avatar (settings / profile) top-right of the gradient band. */}
+      <div
+        className="fixed right-4 top-0 z-[56] hidden items-center lg:flex"
+        style={{ height: DESKTOP_HEADER_BAND_PX }}
+      >
+        <HeaderAccountMenu variant="onGradient" accentColor={accentColor} />
       </div>
 
       <PageHeader
@@ -159,13 +225,15 @@ export function WorkbenchGradientHeader({
               "layout:max-w-[700px]"
             )}
           >
-            <WorkbenchHeaderToolbar
-              variant="gradient"
-              className="w-full min-w-0"
-              properties={properties}
-              onAskFilla={onAskFilla}
-              accentColor={accentColor}
-            />
+            {!showSearch ? null : (
+              <WorkbenchHeaderToolbar
+                variant="gradient"
+                className="w-full min-w-0"
+                properties={properties}
+                onAskFilla={onAskFilla}
+                accentColor={accentColor}
+              />
+            )}
           </div>
 
           {/* Spacer aligns with the third workbench column (intake / details live in-column). */}

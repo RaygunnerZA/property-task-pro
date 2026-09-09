@@ -198,6 +198,17 @@ export function TaskDetailPanel({
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  /** Ignore Dialog dismiss for one tick after the portaled editor unmounts. */
+  const suppressTaskDismissRef = useRef(false);
+
+  const closeAnnotationEditor = useCallback(() => {
+    suppressTaskDismissRef.current = true;
+    setShowAnnotationEditor(false);
+    setEditingImageId(null);
+    window.setTimeout(() => {
+      suppressTaskDismissRef.current = false;
+    }, 400);
+  }, []);
   const openAdjacentTask = useCallback(
     (id: string) => {
       setShowAnnotationEditor(false);
@@ -263,6 +274,9 @@ export function TaskDetailPanel({
     baselineCommentCountRef.current = null;
     setProgressUpdateOpen(false);
     setChecklistCollapsed(initialChecklistCollapsed);
+    setShowAnnotationEditor(false);
+    setEditingImageId(null);
+    setLightboxOpen(false);
   }, [taskId, initialChecklistCollapsed]);
 
   const markChecklistSessionDirty = useCallback(() => {
@@ -1655,7 +1669,7 @@ export function TaskDetailPanel({
         // non-modal while they are open so Radix does not swallow their pointer events.
         modal={!showAnnotationEditor && !lightboxOpen}
         onOpenChange={(open) => {
-          if (!open && showAnnotationEditor) return;
+          if (!open && (showAnnotationEditor || suppressTaskDismissRef.current)) return;
           if (!open && lightboxOpen) {
             setLightboxOpen(false);
             return;
@@ -2315,10 +2329,7 @@ export function TaskDetailPanel({
               ""
             }
             detectionOverlays={[]}
-            onClose={() => {
-              setShowAnnotationEditor(false);
-              setEditingImageId(null);
-            }}
+            onClose={closeAnnotationEditor}
           />,
       document.body
     )}

@@ -843,7 +843,7 @@ export function AdminKnowledgeReviewWorkbench({
 
       {!isLoading && filteredSorted.length > 0 && (
         <>
-          <div className="hidden md:block overflow-x-auto rounded-xl bg-card/80 shadow-e1">
+          <div className="hidden md:block min-w-0 overflow-x-auto rounded-xl bg-card/80 shadow-e1">
             <table className="w-full text-left border-collapse table-fixed min-w-[960px]">
               <colgroup>
                 <col className="w-8" />

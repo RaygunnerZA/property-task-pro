@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BookOpen, Loader2 } from "lucide-react";
 import {
   useAdminKnowledgeMetrics,
@@ -24,6 +24,7 @@ import {
   type TrustCheckStatus,
 } from "@/lib/knowledge/knowledgePresentation";
 import { toast } from "sonner";
+import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
 
 type AdminKnowledgeTab = "add" | "review" | "publishing" | "content" | "metrics";
 type AddSubTab = "add" | "gaps" | "update";
@@ -209,7 +210,8 @@ function MetricChip({
 }
 
 export default function AdminKnowledgeQueue() {
-  const [tab, setTab] = useState<AdminKnowledgeTab>("add");
+  const isDesktopRail = useMinLayoutBreakpoint();
+  const [tab, setTab] = useState<AdminKnowledgeTab>("review");
   const [addSubTab, setAddSubTab] = useState<AddSubTab>("add");
   const [detailId, setDetailId] = useState<string | null>(null);
   const { data, isLoading, error } = useAdminKnowledgeQueue([
@@ -294,13 +296,26 @@ export default function AdminKnowledgeQueue() {
     );
   };
 
-  const tabs: { id: AdminKnowledgeTab; label: string }[] = [
-    { id: "add", label: "Add Knowledge" },
+  useEffect(() => {
+    if (isDesktopRail && tab === "add") setTab("review");
+  }, [isDesktopRail, tab]);
+
+  const workTabs: { id: Exclude<AdminKnowledgeTab, "add">; label: string }[] = [
     { id: "review", label: "Review" },
     { id: "publishing", label: "Ready to publish" },
     { id: "content", label: "Outputs" },
     { id: "metrics", label: "Overview" },
   ];
+
+  const tabs: { id: AdminKnowledgeTab; label: string }[] = isDesktopRail
+    ? workTabs
+    : [
+        { id: "review", label: "Review" },
+        { id: "publishing", label: "Ready to publish" },
+        { id: "add", label: "Add knowledge" },
+        { id: "content", label: "Outputs" },
+        { id: "metrics", label: "Overview" },
+      ];
 
   const addSubs: { id: AddSubTab; label: string }[] = [
     { id: "add", label: "Add" },
@@ -308,70 +323,55 @@ export default function AdminKnowledgeQueue() {
     { id: "update", label: "Update" },
   ];
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            Knowledge
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Add what Filla should know, close gaps, watch for change — then review, publish, and
-            use it.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {tabs.map((t) => (
-            <Button
-              key={t.id}
-              size="sm"
-              variant={tab === t.id ? "default" : "outline"}
-              className={cn("border-0", tab === t.id ? "shadow-primary-btn" : "btn-neomorphic")}
-              onClick={() => setTab(t.id)}
-            >
-              {t.label}
-            </Button>
-          ))}
-        </div>
+  const selectWorkTab = (id: AdminKnowledgeTab) => {
+    setTab(id);
+    if (id !== "add") setAddSubTab("add");
+  };
+
+  const centreShowsGaps = isDesktopRail && addSubTab === "gaps";
+  const centreShowsUpdate = isDesktopRail && addSubTab === "update";
+  const centreShowsReview = tab === "review" && !centreShowsGaps && !centreShowsUpdate;
+
+  const addSection = (compact: boolean) => (
+    <div className="space-y-4">
+      <div>
+        <h2 className="font-medium text-sm">Add knowledge</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Drop a source here. It lands in Review after critic — never auto-published.
+        </p>
       </div>
-
-      <AdminAiBatchJobsBanner />
-
-      {tab === "add" && (
-        <div className="space-y-5">
-          <div className="flex flex-wrap gap-2">
-            {addSubs.map((s) => (
-              <Button
-                key={s.id}
-                size="sm"
-                variant={addSubTab === s.id ? "default" : "outline"}
-                className={cn(
-                  "border-0 h-8 text-xs",
-                  addSubTab === s.id ? "shadow-primary-btn" : "btn-neomorphic"
-                )}
-                onClick={() => setAddSubTab(s.id)}
-              >
-                {s.label}
-              </Button>
-            ))}
-          </div>
-          {addSubTab === "add" && <AdminKnowledgeIntakePanel />}
-          {addSubTab === "gaps" && (
-            <AdminKnowledgeGapsPanel rows={(data ?? []) as KnowledgeRow[]} />
-          )}
-          {addSubTab === "update" && (
-            <AdminKnowledgeUpdatesPanel
-              rows={(data ?? []) as KnowledgeRow[]}
-              sourcesByKnowledge={sourcesByKnowledge}
-            />
-          )}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {addSubs.map((s) => (
+          <Button
+            key={s.id}
+            size="sm"
+            variant={addSubTab === s.id ? "default" : "outline"}
+            className={cn(
+              "border-0 h-8 text-xs",
+              addSubTab === s.id ? "shadow-primary-btn" : "btn-neomorphic"
+            )}
+            onClick={() => setAddSubTab(s.id)}
+          >
+            {s.label}
+          </Button>
+        ))}
+      </div>
+      {(addSubTab === "add" || isDesktopRail) && (
+        <AdminKnowledgeIntakePanel compact={compact} />
       )}
+      {!isDesktopRail && addSubTab === "gaps" && (
+        <AdminKnowledgeGapsPanel rows={(data ?? []) as KnowledgeRow[]} />
+      )}
+      {!isDesktopRail && addSubTab === "update" && (
+        <AdminKnowledgeUpdatesPanel
+          rows={(data ?? []) as KnowledgeRow[]}
+          sourcesByKnowledge={sourcesByKnowledge}
+        />
+      )}
+    </div>
+  );
 
-      {tab === "content" && <AdminContentTreePanel />}
-
-      {tab === "metrics" && (
+  const metricsSection = (
         <div className="space-y-4">
           <div className="flex flex-wrap gap-2">
             <MetricChip
@@ -423,37 +423,9 @@ export default function AdminKnowledgeQueue() {
             </table>
           </div>
         </div>
-      )}
+  );
 
-      <div
-        className="space-y-8"
-        hidden={tab !== "review"}
-        ref={(node) => {
-          if (node) node.inert = tab !== "review";
-        }}
-      >
-        <section className="space-y-3">
-          <div>
-            <h2 className="font-medium text-sm">Review</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Guidance, claims, critic, and human verification. Newly added candidates appear here.
-            </p>
-          </div>
-          {error && (
-            <p className="text-sm text-destructive">
-              {error instanceof Error ? error.message : "Failed to load queue"}
-            </p>
-          )}
-          <AdminKnowledgeReviewWorkbench
-            rows={reviewRows}
-            sourcesByKnowledge={sourcesByKnowledge}
-            isLoading={isLoading}
-            onOpen={(id) => setDetailId(id)}
-          />
-        </section>
-      </div>
-
-      {tab === "publishing" && (
+  const publishingSection = (
         <div className="space-y-3">
           {isLoading && (
             <div className="flex justify-center py-12">
@@ -483,7 +455,114 @@ export default function AdminKnowledgeQueue() {
             />
           ))}
         </div>
+  );
+
+  const reviewSection = (
+      <div
+        className="space-y-8"
+        hidden={!centreShowsReview}
+        ref={(node) => {
+          if (node) node.inert = !centreShowsReview;
+        }}
+      >
+        <section className="space-y-3">
+          <div>
+            <h2 className="font-medium text-sm">Review</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Guidance, claims, critic, and human verification. Newly added candidates appear here.
+            </p>
+          </div>
+          {error && (
+            <p className="text-sm text-destructive">
+              {error instanceof Error ? error.message : "Failed to load queue"}
+            </p>
+          )}
+          <AdminKnowledgeReviewWorkbench
+            rows={reviewRows}
+            sourcesByKnowledge={sourcesByKnowledge}
+            isLoading={isLoading}
+            onOpen={(id) => setDetailId(id)}
+          />
+        </section>
+      </div>
+  );
+
+  const workSurface = (
+    <>
+      {centreShowsGaps && (
+        <AdminKnowledgeGapsPanel rows={(data ?? []) as KnowledgeRow[]} />
       )}
+      {centreShowsUpdate && (
+        <AdminKnowledgeUpdatesPanel
+          rows={(data ?? []) as KnowledgeRow[]}
+          sourcesByKnowledge={sourcesByKnowledge}
+        />
+      )}
+      {!centreShowsGaps && !centreShowsUpdate && tab === "content" && <AdminContentTreePanel />}
+      {!centreShowsGaps && !centreShowsUpdate && tab === "metrics" && metricsSection}
+      {reviewSection}
+      {!centreShowsGaps && !centreShowsUpdate && tab === "publishing" && publishingSection}
+      {!isDesktopRail && tab === "add" && addSection(false)}
+    </>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-xl font-semibold flex items-center gap-2">
+            <BookOpen className="h-5 w-5 text-primary" />
+            Knowledge
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            {isDesktopRail
+              ? "Review what Filla should know — add sources from the right, then publish."
+              : "Review what Filla should know — add sources, then publish."}
+          </p>
+        </div>
+        <div className="flex max-w-full gap-2 overflow-x-auto pb-0.5">
+          {tabs.map((t) => {
+            const selected =
+              t.id === "review"
+                ? centreShowsReview
+                : tab === t.id && !centreShowsGaps && !centreShowsUpdate;
+            return (
+              <Button
+                key={t.id}
+                size="sm"
+                variant={selected ? "default" : "outline"}
+                aria-pressed={selected}
+                className={cn(
+                  "shrink-0 border-0",
+                  selected ? "shadow-primary-btn" : "btn-neomorphic"
+                )}
+                onClick={() => selectWorkTab(t.id)}
+              >
+                {t.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      <AdminAiBatchJobsBanner />
+
+      <div
+        className={cn(
+          isDesktopRail &&
+            "grid w-full min-w-0 isolate grid-cols-[minmax(0,1fr)_330px] items-start gap-x-gutter-rail"
+        )}
+      >
+        <div className="min-w-0 max-w-full overflow-x-clip space-y-6">{workSurface}</div>
+        {isDesktopRail ? (
+          <aside
+            aria-label="Add knowledge"
+            className="min-h-0 min-w-0 w-[330px] max-w-workbench-side-rail justify-self-stretch self-start sticky top-[calc(3rem+12px)] z-[1] max-h-[calc(100dvh-5rem)] overflow-x-clip overflow-y-auto bg-paper px-2 pb-3 [overflow-anchor:none]"
+          >
+            {addSection(true)}
+          </aside>
+        ) : null}
+      </div>
 
       <AdminKnowledgeDetailSheet
         knowledgeId={detailId}

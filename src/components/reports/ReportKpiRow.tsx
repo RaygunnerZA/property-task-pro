@@ -68,8 +68,8 @@ export function ReportKpiRow({
                 )}
               >
                 <p
-                  className="inline-block bg-paper bg-paper-texture bg-clip-text text-[18px] font-medium leading-none tabular-nums text-shadow-neu"
-                  style={{ color, fontFamily: '"Inter Tight"' }}
+                  className="font-display text-[18px] font-medium leading-none tabular-nums text-shadow-neu-pressed"
+                  style={{ color }}
                 >
                   {value}
                 </p>
@@ -115,8 +115,8 @@ export function ReportKpiRow({
             )}
           >
             <div
-              className="text-3xl font-semibold tracking-tight tabular-nums"
-              style={{ color, fontFamily: '"Inter Tight"' }}
+              className="font-display text-3xl font-semibold tracking-tight tabular-nums text-shadow-neu-pressed"
+              style={{ color }}
             >
               {value}
             </div>

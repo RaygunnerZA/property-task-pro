@@ -4,7 +4,6 @@ import { formatDistanceToNow } from "date-fns";
 import { ArrowRight, BarChart3, Building2, Calendar, Plus } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { LoadingState } from "@/components/design-system/LoadingState";
-import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { Button } from "@/components/ui/button";
 import {
   FilterBar,
@@ -18,6 +17,7 @@ import {
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
+import { workbenchAskPlaceholder } from "@/components/workbench/WorkbenchCentreSearch";
 import { PropertyAvatarChip } from "@/components/reports/PropertyAvatarChip";
 import { ReportAiSummary } from "@/components/reports/ReportAiSummary";
 import { ReportGroupCarousel } from "@/components/reports/ReportGroupCarousel";
@@ -187,8 +187,19 @@ export default function Reports() {
         icon={<BarChart3 className="h-6 w-6" />}
         maxWidth="full"
         contentClassName="w-full max-w-[1480px]"
+        hideTitle
+        hideHeaderSearch
+        headerVariant="activity"
       >
-        <LoadingState message="Loading reports…" />
+        <PropertyWorkspaceLayout
+          pageTitle="Reports"
+          pageSubtitle="Browse packs — open a workspace, then download"
+          pageIcon={<BarChart3 />}
+          searchPlaceholder={workbenchAskPlaceholder("Reports")}
+          contextColumn={null}
+          workColumn={<LoadingState message="Loading reports…" />}
+          actionColumn={null}
+        />
       </StandardPage>
     );
   }
@@ -196,7 +207,7 @@ export default function Reports() {
   const contextColumn = (
     <div className="space-y-4">
       <WorkspaceSurfaceCard
-        title="Context"
+        title="Overview"
         description="What this portfolio looks like right now"
       >
         <ul className="space-y-2 text-xs text-muted-foreground">
@@ -242,6 +253,29 @@ export default function Reports() {
           }}
         />
       </WorkspaceSurfaceCard>
+
+      <div className="overflow-hidden rounded-xl bg-card/60 p-3 shadow-e1">
+        <WorkspaceSectionHeading>Recent workspaces</WorkspaceSectionHeading>
+        {instances.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Saved report workspaces appear here.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {instances.slice(0, 5).map((instance) => (
+              <li key={instance.id}>
+                <button
+                  type="button"
+                  onClick={() => navigate(`/reports/${instance.id}`)}
+                  className="w-full truncate rounded-lg px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted/40"
+                >
+                  {instance.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 
@@ -405,22 +439,6 @@ export default function Reports() {
 
   const workColumn = (
     <div ref={panelRef} className="space-y-5">
-      <PageContentTitle
-        title="Reports"
-        subtitle={`${live.scopeLabel} · browse packs, open a workspace`}
-      />
-
-      <div className="min-w-0">
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search templates or recent reports"
-          className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label="Search reports"
-        />
-      </div>
-
       <FilterBar
         primaryOptions={primaryOptions}
         secondaryGroups={secondaryGroups}
@@ -494,20 +512,17 @@ export default function Reports() {
   );
 
   const workspace = (
-    <>
-      <div className="hidden workspace:block">
-        <PropertyWorkspaceLayout
-          contextColumn={contextColumn}
-          workColumn={workColumn}
-          actionColumn={actionColumn}
-        />
-      </div>
-      <div className="flex flex-col gap-6 workspace:hidden">
-        {actionColumn}
-        {workColumn}
-        {contextColumn}
-      </div>
-    </>
+    <PropertyWorkspaceLayout
+      pageTitle="Reports"
+      pageSubtitle={`${live.scopeLabel} · browse packs, open a workspace`}
+      pageIcon={<BarChart3 />}
+      searchPlaceholder={workbenchAskPlaceholder("Reports")}
+      searchValue={searchQuery}
+      onSearchChange={setSearchQuery}
+      contextColumn={contextColumn}
+      workColumn={workColumn}
+      actionColumn={actionColumn}
+    />
   );
 
   return (
@@ -517,6 +532,9 @@ export default function Reports() {
       icon={<BarChart3 className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="w-full max-w-[1480px]"
+      hideTitle
+      hideHeaderSearch
+      headerVariant="activity"
     >
       {workspace}
     </StandardPage>

@@ -25,16 +25,16 @@ import {
 } from "@/lib/centreWorkbenchTabs";
 
 const statNumberClass =
-  "self-start pl-1.5 pb-1 text-[32px] font-medium tabular-nums leading-none text-primary-deep transition-colors group-hover:text-white sm:pb-[3px] sm:text-2xl";
+  "self-start pl-1.5 pb-1 font-display text-[32px] font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white sm:pb-[3px] sm:text-2xl";
 
 const statNumberInlineClass =
-  "shrink-0 text-[28px] font-medium tabular-nums leading-none text-primary-deep transition-colors group-hover:text-white";
+  "shrink-0 font-display text-[28px] font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white";
 
 const statWordClass =
   "font-mono text-caption font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
 const statCellClass =
-  "group flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out hover:bg-ink hover:shadow-none active:scale-[0.98] sm:px-1.5 sm:pb-3";
+  "group hover-ink-noise flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.98] sm:px-1.5 sm:pb-3";
 
 /** Staggered section reveal on mount — fade + 2px rise, honours reduced motion. */
 const sectionRevealClass = "motion-safe:animate-fade-slide-in";

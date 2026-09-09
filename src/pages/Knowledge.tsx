@@ -1,7 +1,6 @@
-import { useState, type ReactNode } from "react";
-import { BookOpen, Loader2, Plus, Search, X } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, Loader2, Plus } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -13,9 +12,13 @@ import {
 } from "@/components/ui/sheet";
 import {
   PropertyWorkspaceLayout,
+  WorkspaceHealthGrid,
   WorkspaceSectionHeading,
   WorkspaceSurfaceCard,
 } from "@/components/property-workspace";
+import {
+  workbenchAskPlaceholder,
+} from "@/components/workbench/WorkbenchCentreSearch";
 import { usePublishedKnowledge } from "@/hooks/usePublishedKnowledge";
 import {
   useOrgKnowledgeMetrics,
@@ -67,33 +70,6 @@ function KnowledgeCard({
   );
 }
 
-function WorkspaceStack({
-  contextColumn,
-  workColumn,
-  actionColumn,
-}: {
-  contextColumn: ReactNode;
-  workColumn: ReactNode;
-  actionColumn: ReactNode;
-}) {
-  return (
-    <>
-      <div className="hidden workspace:block">
-        <PropertyWorkspaceLayout
-          contextColumn={contextColumn}
-          workColumn={workColumn}
-          actionColumn={actionColumn}
-        />
-      </div>
-      <div className="flex flex-col gap-6 workspace:hidden">
-        {actionColumn}
-        {workColumn}
-        {contextColumn}
-      </div>
-    </>
-  );
-}
-
 export default function Knowledge() {
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
@@ -112,6 +88,11 @@ export default function Knowledge() {
   const clearSearch = () => {
     setSearch("");
     setQuery("");
+  };
+
+  const submitSearch = (q: string) => {
+    setSearch(q);
+    setQuery(q.trim());
   };
 
   const submitGuidance = () => {
@@ -140,70 +121,94 @@ export default function Knowledge() {
     );
   };
 
+  const recentEntries = (data ?? []).slice(0, 5);
+
   const contextColumn = (
     <div className="space-y-4">
-      <WorkspaceSectionHeading>At a glance</WorkspaceSectionHeading>
-      {metrics ? (
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              ["Created", metrics.knowledge_created],
-              ["Verified", metrics.knowledge_verified],
-              ["Reused", metrics.knowledge_reused],
-              ["Answered", metrics.questions_answered],
-              ["Automation", metrics.automation_created],
-              [
-                "Time saved",
-                `${Math.round(Number(metrics.time_saved_minutes || 0))}m`,
-              ],
-            ] as const
-          ).map(([label, value]) => (
-            <div key={label} className="rounded-xl bg-card/80 px-3 py-2 shadow-e1">
-              <p className="text-caption font-mono uppercase tracking-wider text-muted-foreground">
-                {label}
-              </p>
-              <p className="mt-0.5 text-base font-semibold tabular-nums">{value}</p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className="text-sm text-muted-foreground">Metrics load with your org.</p>
-      )}
+      <WorkspaceSurfaceCard
+        title="Overview"
+        description="How knowledge works in your organisation"
+      >
+        <ul className="space-y-2 text-xs text-muted-foreground">
+          <li>
+            <span className="font-semibold text-foreground">
+              {data?.length ?? "—"}
+            </span>{" "}
+            published guidance entries
+          </li>
+          <li>
+            <span className="font-semibold text-foreground">
+              {reviewQueue?.length ?? 0}
+            </span>{" "}
+            awaiting review
+          </li>
+          <li>
+            Verified policies and playbooks feed answers across tasks, records,
+            and the assistant.
+          </li>
+        </ul>
+      </WorkspaceSurfaceCard>
+
+      <WorkspaceSurfaceCard
+        title="Knowledge Health"
+        description="Organisation knowledge at a glance"
+      >
+        {metrics ? (
+          <WorkspaceHealthGrid
+            stats={[
+              { label: "Created", value: metrics.knowledge_created },
+              {
+                label: "Verified",
+                value: metrics.knowledge_verified,
+                color: "rgba(16, 185, 129, 1)",
+              },
+              { label: "Reused", value: metrics.knowledge_reused },
+              { label: "Answered", value: metrics.questions_answered },
+            ]}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">Metrics load with your org.</p>
+        )}
+      </WorkspaceSurfaceCard>
+
+      <div className="overflow-hidden rounded-xl bg-card/60 p-3 shadow-e1">
+        <WorkspaceSectionHeading>Recent guidance</WorkspaceSectionHeading>
+        {recentEntries.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Published guidance appears here.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {recentEntries.map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  onClick={() => setDetail(row)}
+                  className="w-full truncate rounded-lg px-2 py-1.5 text-left text-xs text-foreground transition-colors hover:bg-muted/40"
+                >
+                  {row.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 
   const workColumn = (
     <div className="space-y-6">
-      <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[12rem] flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setQuery(search.trim());
-            }}
-            placeholder="Search published knowledge…"
-            className="border-0 bg-input pl-9 shadow-engraved"
-          />
-        </div>
-        <Button
-          className="border-0 shadow-primary-btn"
-          onClick={() => setQuery(search.trim())}
-        >
-          Search
-        </Button>
-        {query ? (
+      {query ? (
+        <div className="flex justify-end">
           <Button
             variant="outline"
             className="border-0 btn-neomorphic"
             onClick={clearSearch}
           >
-            <X className="mr-1 h-4 w-4" />
-            Clear
+            Clear search
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       {canReview ? (
         <section className="space-y-3">
@@ -403,8 +408,18 @@ export default function Knowledge() {
       subtitle="Verified policies, playbooks, and guidance for your organisation."
       maxWidth="full"
       contentClassName="max-w-[1480px]"
+      hideTitle
+      hideHeaderSearch
+      headerVariant="activity"
     >
-      <WorkspaceStack
+      <PropertyWorkspaceLayout
+        pageTitle="Knowledge"
+        pageSubtitle="Verified policies, playbooks, and guidance for your organisation."
+        pageIcon={<BookOpen />}
+        searchPlaceholder={workbenchAskPlaceholder("Knowledge")}
+        searchValue={search}
+        onSearchChange={setSearch}
+        onSearchSubmit={submitSearch}
         contextColumn={contextColumn}
         workColumn={workColumn}
         actionColumn={actionColumn}

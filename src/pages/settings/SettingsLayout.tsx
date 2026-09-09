@@ -3,6 +3,7 @@ import { Settings, Users, CreditCard, Zap, UserCircle, Plug, LogOut, Trash2 } fr
 import { cn } from "@/lib/utils";
 import { useCurrentUserRole } from "@/hooks/useCurrentUserRole";
 import { StandardPage } from "@/components/design-system/StandardPage";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import {
   SettingsWorkbenchProvider,
   useSettingsWorkbench,
@@ -150,6 +151,12 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
   return (
     <>
       <div className="mb-4 workspace:hidden">
+        <PageContentTitle
+          title="Settings"
+          subtitle="Manage your organisation"
+          icon={<Settings />}
+          className="mb-4"
+        />
         <SettingsNavLinks
           items={navItemsVisible}
           orientation="horizontal"
@@ -159,6 +166,10 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
 
       <div className="hidden workspace:block">
         <PropertyWorkspaceLayout
+          embedMobileStack={false}
+          pageTitle="Settings"
+          pageSubtitle="Manage your organisation"
+          pageIcon={<Settings />}
           contextColumn={contextColumn}
           workColumn={workColumn}
           actionColumn={actionColumn}
@@ -198,6 +209,9 @@ export function SettingsLayout() {
       icon={<Settings className="h-6 w-6" />}
       maxWidth="full"
       contentClassName="max-w-[1480px] overflow-x-hidden py-4 sm:py-6"
+      hideHeaderSearch
+      headerVariant="activity"
+      hideTitle
     >
       <SettingsWorkbenchProvider>
         <SettingsThreeColumnFrame navItemsVisible={visibleNavItems} />

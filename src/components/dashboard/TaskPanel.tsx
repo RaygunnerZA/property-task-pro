@@ -43,7 +43,7 @@ import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
 import { cn } from "@/lib/utils";
-import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import { workbenchPageTitleClassName } from "@/lib/workbenchSectionTitle";
 import { isPropertySubsetSelected, recordMatchesPropertyScope } from "@/utils/propertyFilter";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import type { IntakeMode } from "@/types/intake";
@@ -80,6 +80,8 @@ interface TaskPanelProps {
   hideTabs?: boolean;
   /** Optional heading when tabs are hidden (e.g. dedicated /issues route). */
   pageTitle?: string;
+  /** Extra classes for the pageTitle H1 (e.g. `lg:hidden` when the left column owns the title). */
+  pageTitleClassName?: string;
 }
 
 type TabBarDensity = "comfortable" | "compact" | "iconOnly";
@@ -164,6 +166,7 @@ export function TaskPanel({
   onRecordsViewChange,
   hideTabs = false,
   pageTitle,
+  pageTitleClassName,
 }: TaskPanelProps = {}) {
 
   const signalUiFixturesEnabled = useSignalUiFixturesEnabled();
@@ -665,7 +668,7 @@ export function TaskPanel({
         >
           <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
             {hideTabs && pageTitle ? (
-              <h2 className={cn("px-0", workbenchSectionTitleClassName)}>{pageTitle}</h2>
+              <h1 className={cn("px-0", workbenchPageTitleClassName, pageTitleClassName)}>{pageTitle}</h1>
             ) : null}
             {!hideTabs ? (
             <div

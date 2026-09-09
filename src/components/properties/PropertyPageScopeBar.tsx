@@ -11,7 +11,8 @@ type PropertyPageScopeBarProps = {
 };
 
 /**
- * Secondary property scope strip + Back for property sub-pages (loads org properties for chips).
+ * Secondary property scope strip for property sub-pages (loads org properties for chips).
+ * Back navigation lives in the activity gradient header — this strip is property switching only.
  */
 export function PropertyPageScopeBar({
   propertyId,

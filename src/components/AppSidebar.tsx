@@ -7,13 +7,13 @@ import {
   Camera,
   FileCheck,
   Plus,
-  Settings,
   CheckSquare,
   BookOpen,
 } from 'lucide-react';
 import { FillaIcon } from '@/components/filla/FillaIcon';
 import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
+import { centreWorkbenchTasksPath } from '@/lib/centreWorkbenchTabs';
 import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
 import { useIsPlatformAdmin } from '@/hooks/admin/useIsPlatformAdmin';
 import fillaLogo from '@/assets/filla-logo.svg';
@@ -23,8 +23,6 @@ import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGrou
 import { cn } from '@/lib/utils';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { APP_VERSION } from '@/config/version';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-
 /** Asset context items (Appendix A: Overview, Tasks, Maintenance, History, Documents, Photos, Warranty) */
 const assetContextItems = [
   {
@@ -96,13 +94,22 @@ export function AppSidebar() {
       return url;
     };
 
+    /**
+     * On property home, switch the centre Tab-Calendar in place.
+     * Elsewhere deep-link the work-surface calendar (`/tasks?panelTab=calendar`).
+     */
+    const calendarUrl =
+      currentPath === "/home"
+        ? "/home?panelTab=calendar"
+        : centreWorkbenchTasksPath("calendar");
+
     return MAIN_NAV_ITEMS.filter(
       (item) => item.title !== "Properties" || isMultiProperty
     ).map((item) => ({
       ...item,
-      url: withProperty(item.url),
+      url: withProperty(item.title === "Calendar" ? calendarUrl : item.url),
     }));
-  }, [isMultiProperty, searchParams]);
+  }, [isMultiProperty, searchParams, currentPath]);
 
   const entityContext = useMemo(() => {
     const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
@@ -170,38 +177,31 @@ export function AppSidebar() {
 
     const IconComponent = item.icon;
 
-    const link = (
-      <Link to={url} className={navLinkClass(isActive)} aria-label={item.title}>
-        <IconComponent className={iconClass} />
-        <span
-          className={cn(
-            "whitespace-nowrap text-sm font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
-            open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
-          )}
-        >
-          {item.title}
-        </span>
-      </Link>
-    );
-    
+    /**
+     * Keep Link mounted across hover-expand. Toggling an outer Tooltip when
+     * `open` flips remounts the anchor mid-click and drops navigation
+     * (especially Calendar / Tags further down the rail).
+     * SidebarMenuButton's `tooltip` keeps a stable trigger tree; content hides when expanded.
+     */
     return (
       <SidebarMenuItem key={item.title}>
-        {!open && !isMobile ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
-                {link}
-              </SidebarMenuButton>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={8}>
+        <SidebarMenuButton
+          asChild
+          tooltip={isMobile ? undefined : item.title}
+          className="group relative !bg-transparent hover:!bg-transparent"
+        >
+          <Link to={url} className={navLinkClass(isActive)} aria-label={item.title}>
+            <IconComponent className={iconClass} />
+            <span
+              className={cn(
+                "whitespace-nowrap text-sm font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
+                open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+              )}
+            >
               {item.title}
-            </TooltipContent>
-          </Tooltip>
-        ) : (
-          <SidebarMenuButton asChild className="group relative !bg-transparent hover:!bg-transparent">
-            {link}
-          </SidebarMenuButton>
-        )}
+            </span>
+          </Link>
+        </SidebarMenuButton>
       </SidebarMenuItem>
     );
   };
@@ -341,29 +341,7 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
-                  <Link
-                    to="/settings"
-                    className={cn(
-                      "no-underline",
-                      navLinkClass(currentPath.startsWith("/settings"))
-                    )}
-                    aria-label="Settings"
-                  >
-                    <Settings className={cn(iconClass, "shrink-0")} />
-                    <span
-                      className={cn(
-                        "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
-                        open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
-                      )}
-                    >
-                      Settings
-                    </span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
+              {/* Settings moved to the account avatar menu in the gradient header (top right). */}
               {isPlatformAdmin === true && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">

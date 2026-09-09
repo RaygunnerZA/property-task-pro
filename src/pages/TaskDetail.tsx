@@ -1,37 +1,24 @@
-import { useNavigate, useParams } from "react-router-dom";
-import { CheckSquare } from "lucide-react";
-import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { Navigate, useParams, useSearchParams } from "react-router-dom";
 
 /**
- * Full-screen task detail route (`/task/:id`).
- * Reuses TaskDetailPanel with the same V2.1 contexts as desktop context panels.
+ * Shareable task URL (`/task/:id`).
+ * Desktop task detail lives in the workbench right column (@Docs/04_UI_System.md),
+ * not a full-width page — send the deep link there.
  */
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   if (!id) {
-    navigate("/tasks", { replace: true });
-    return null;
+    return <Navigate to="/tasks" replace />;
   }
 
   return (
-    <StandardPageWithBack
-      title="Task"
-      backTo="/tasks"
-      icon={<CheckSquare className="h-5 w-5" />}
-      maxWidth="full"
-      contentClassName="flex flex-col min-h-0 p-0 md:p-0"
-    >
-      <div className="flex flex-1 flex-col min-h-[calc(100dvh-8rem)] md:min-h-[70vh]">
-        <TaskDetailPanel
-          taskId={id}
-          onClose={() => navigate("/tasks")}
-          variant="column"
-        />
-      </div>
-    </StandardPageWithBack>
+    <Navigate
+      to={{ pathname: "/tasks", search: searchParams.toString() }}
+      replace
+      state={{ openTaskId: id }}
+    />
   );
 };
 

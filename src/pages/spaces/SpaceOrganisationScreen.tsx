@@ -9,20 +9,18 @@ import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
 import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { Button } from "@/components/ui/button";
-import { FileUp, Plus } from "lucide-react";
-import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
+import { FileUp, LayoutGrid, Plus } from "lucide-react";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
-  WorkspaceScopeStrip,
   WorkspaceSurfaceCard,
   WorkspaceSectionHeading,
   WorkspaceTabList,
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
+import { workbenchAskPlaceholder } from "@/components/workbench/WorkbenchCentreSearch";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
 
 type SpacesWorkTab = "groups" | "issues";
@@ -43,12 +41,6 @@ export default function SpaceOrganisationScreen() {
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [spaceSearchQuery, setSpaceSearchQuery] = useState("");
-
-  useEffect(() => {
-    if (searchParams.get("workTab") === "issues" || searchParams.get("urgent") === "1") {
-      setWorkTab("issues");
-    }
-  }, [searchParams]);
 
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
@@ -100,6 +92,8 @@ export default function SpaceOrganisationScreen() {
   }, [tasks]);
 
   const urgentOnly = searchParams.get("urgent") === "1";
+  const issuesRequested =
+    searchParams.get("workTab") === "issues" || urgentOnly;
 
   const spacesForIssuesList = useMemo(() => {
     const q = spaceSearchQuery.trim().toLowerCase();
@@ -116,6 +110,19 @@ export default function SpaceOrganisationScreen() {
     [spaces, openTaskSpaceIds]
   );
 
+  /** Operational chrome only when a space actually needs work (or a deep link asks for it). */
+  const showOperationalView = spacesWithIssuesCount > 0 || issuesRequested;
+
+  useEffect(() => {
+    if (issuesRequested) {
+      setWorkTab("issues");
+      return;
+    }
+    if (spacesWithIssuesCount === 0) {
+      setWorkTab("groups");
+    }
+  }, [issuesRequested, spacesWithIssuesCount]);
+
   const headerAccent =
     (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
     FILLA_TURQUOISE;
@@ -125,20 +132,12 @@ export default function SpaceOrganisationScreen() {
   }
 
   const header = (
-    <>
-      <GlobalAppHeader accentColor={headerAccent} />
-      <WorkspaceScopeStrip>
-        <PropertyPageScopeBar
-          propertyId={propertyId}
-          hrefForProperty={(pid) => propertySubPath(pid, "spaces-organise")}
-        />
-      </WorkspaceScopeStrip>
-    </>
+    <GlobalAppHeader accentColor={headerAccent} hideSearch variant="activity" />
   );
 
   const contextColumn = (
     <div className="space-y-4">
-      <WorkspaceSurfaceCard title="Context" description="How this property is organised">
+      <WorkspaceSurfaceCard title="Overview" description="How this property is organised">
         <ul className="text-xs text-muted-foreground space-y-2">
           <li>
             <span className="font-semibold text-foreground">{spaces.length}</span> spaces
@@ -190,49 +189,21 @@ export default function SpaceOrganisationScreen() {
 
   const workColumn = (
     <div className="space-y-5">
-      <PageContentTitle
-        title="Spaces"
-        subtitle={
-          property
-            ? `${property.nickname || property.address}`
-            : "Organise your spaces"
-        }
-      />
-      <div className="min-w-0">
-        <input
-          type="search"
-          value={spaceSearchQuery}
-          onChange={(e) => setSpaceSearchQuery(e.target.value)}
-          placeholder="Search spaces"
-          className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
-          aria-label="Search spaces"
-        />
-      </div>
-      <div>
-        <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-        <WorkspaceTabList>
-          <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
-            By group
-          </WorkspaceTabTrigger>
-          <WorkspaceTabTrigger selected={workTab === "issues"} onClick={() => setWorkTab("issues")}>
-            With issues ({spacesWithIssuesCount})
-          </WorkspaceTabTrigger>
-        </WorkspaceTabList>
-      </div>
-
-      {workTab === "groups" ? (
-        <div className="space-y-4">
-          <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
-          <div className="border-t border-border/30 pt-5">
-            <AllSpacesDirectory
-              propertyId={propertyId}
-              spaceFilter={spaceSearchQuery}
-              openTaskSpaceIds={openTaskSpaceIds}
-              openTaskCountsBySpaceId={openTaskCountsBySpaceId}
-            />
-          </div>
+      {showOperationalView ? (
+        <div>
+          <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+          <WorkspaceTabList>
+            <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
+              By group
+            </WorkspaceTabTrigger>
+            <WorkspaceTabTrigger selected={workTab === "issues"} onClick={() => setWorkTab("issues")}>
+              With issues ({spacesWithIssuesCount})
+            </WorkspaceTabTrigger>
+          </WorkspaceTabList>
         </div>
-      ) : (
+      ) : null}
+
+      {showOperationalView && workTab === "issues" ? (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
             {urgentOnly
@@ -261,6 +232,18 @@ export default function SpaceOrganisationScreen() {
               </p>
             )}
           </ul>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
+          <div className="border-t border-border/30 pt-5">
+            <AllSpacesDirectory
+              propertyId={propertyId}
+              spaceFilter={spaceSearchQuery}
+              openTaskSpaceIds={openTaskSpaceIds}
+              openTaskCountsBySpaceId={openTaskCountsBySpaceId}
+            />
+          </div>
         </div>
       )}
     </div>
@@ -309,24 +292,26 @@ export default function SpaceOrganisationScreen() {
   );
 
   const workspace = (
-    <>
-      <div className="hidden workspace:block">
-        <PropertyWorkspaceLayout
-          contextColumn={contextColumn}
-          workColumn={workColumn}
-          actionColumn={actionColumn}
-        />
-      </div>
-      <div className="workspace:hidden flex flex-col gap-6">
-        {actionColumn}
-        {workColumn}
-        {contextColumn}
-      </div>
-    </>
+    <PropertyWorkspaceLayout
+      pageTitle="Spaces"
+      pageSubtitle={
+        property
+          ? `${property.nickname || property.address}`
+          : "Organise your spaces"
+      }
+      pageIcon={<LayoutGrid />}
+      searchPlaceholder={workbenchAskPlaceholder("Spaces")}
+      searchValue={spaceSearchQuery}
+      onSearchChange={setSpaceSearchQuery}
+      searchAccentColor={headerAccent}
+      contextColumn={contextColumn}
+      workColumn={workColumn}
+      actionColumn={actionColumn}
+    />
   );
 
   return (
-    <div className="dashboard-workbench property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
       {showAddSpace && (

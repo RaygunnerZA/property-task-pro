@@ -33,15 +33,14 @@ import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { FilterChip } from "@/components/chips/filter";
-import { PropertyWorkspaceLayout, WorkspaceSurfaceCard, WorkspaceSectionHeading, WorkspaceTabList, WorkspaceTabTrigger } from "@/components/property-workspace";
-import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
+import { PropertyWorkspaceLayout, WorkspaceHealthGrid, WorkspaceSurfaceCard, WorkspaceSectionHeading, WorkspaceTabList, WorkspaceTabTrigger } from "@/components/property-workspace";
 import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
 import { PropertyAssetGroupCarousel } from "@/components/assets/PropertyAssetGroupCarousel";
 import { AllAssetsDirectory } from "@/components/assets/AllAssetsDirectory";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
-import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import { workbenchAskPlaceholder, WorkbenchCentreSearch } from "@/components/workbench/WorkbenchCentreSearch";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { defaultColorForAssetType } from "@/lib/assetIconDefaults";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -49,17 +48,7 @@ import type { Json, Tables } from "@/integrations/supabase/types";
 type AssetViewRow = Tables<"assets_view">;
 
 function PropertyAssetsWorkColumnHeading({ subtitle }: { subtitle: string }) {
-  return (
-    <header className="mb-5 min-w-0 border-b border-border/15 pb-4">
-      <div className="flex items-start gap-3">
-        <Package className="h-8 w-8 shrink-0 text-primary mt-0.5" />
-        <div className="min-w-0">
-          <h1 className={workbenchSectionTitleClassName}>Property Assets</h1>
-          <p className="text-sm mt-1 text-muted-foreground">{subtitle}</p>
-        </div>
-      </div>
-    </header>
-  );
+  return <PageContentTitle title="Property Assets" subtitle={subtitle} icon={<Package />} />;
 }
 
 const STATUS_FILTERS = [
@@ -120,16 +109,6 @@ const Assets = () => {
     (scopedPropertyForChrome as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
     "#8EC9CE";
 
-  const propertyScopeBar =
-    isPropertyScoped && effectiveScopeId ? (
-      <PropertyPageScopeBar
-        propertyId={effectiveScopeId}
-        hrefForProperty={(pid) => `/assets?property=${encodeURIComponent(pid)}`}
-        hrefForAll="/assets"
-      />
-    ) : null;
-  /** Wide workspace: scope row lives in column 1; narrow: full-width strip under gradient. */
-  const scopeBarBelowHeader = propertyScopeBar != null && !isWide ? propertyScopeBar : null;
   const propertyScopedShellClass = cn(
     isPropertyScoped && isWide && "[--header-height:60px]"
   );
@@ -428,6 +407,16 @@ const Assets = () => {
     }).length;
   }, [contextAssets]);
 
+  useEffect(() => {
+    if (searchParams.get("attention") === "1") return;
+    if (assetsWithIssuesCount === 0) {
+      setAssetsWorkTab("groups");
+    }
+  }, [searchParams, assetsWithIssuesCount]);
+
+  const assetsIssuesRequested = searchParams.get("attention") === "1";
+  const showAssetsOperationalView = assetsWithIssuesCount > 0 || assetsIssuesRequested;
+
   const assetsForIssuesList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return contextAssets.filter((a) => {
@@ -440,6 +429,20 @@ const Assets = () => {
       return true;
     });
   }, [contextAssets, searchQuery]);
+
+  /** Standard 4-cell activity-area health stats (Overview formula). */
+  const assetsHealthCounts = useMemo(() => {
+    const active = contextAssets.filter(
+      (a) => (a.status || "active") === "active"
+    ).length;
+    const needsInspection = contextAssets.filter(
+      (a) => (a.condition_score ?? 100) < 60 && (a.status || "active") === "active"
+    ).length;
+    const nonCompliant = contextAssets.filter(
+      (a) => a.compliance_required && (a.condition_score ?? 100) < 60
+    ).length;
+    return { total: contextAssets.length, active, needsInspection, nonCompliant };
+  }, [contextAssets]);
 
   /** Matches left-column metric tile to current filters (same grammar as attention chips). */
   const assetsSummaryHighlightedFilter = useMemo(():
@@ -540,6 +543,34 @@ const Assets = () => {
     }
   }, []);
 
+  const assetsHealthStats = useMemo(
+    () => [
+      { label: "Total", value: assetsHealthCounts.total },
+      {
+        label: "Active",
+        value: assetsHealthCounts.active,
+        color: "rgba(16, 185, 129, 1)",
+        onClick: () => applyAssetMetricFilter("active"),
+        selected: assetsSummaryHighlightedFilter === "active",
+      },
+      {
+        label: "Inspect",
+        value: assetsHealthCounts.needsInspection,
+        color: "rgba(255, 184, 77, 1)",
+        onClick: () => applyAssetMetricFilter("needsInspection"),
+        selected: assetsSummaryHighlightedFilter === "needsInspection",
+      },
+      {
+        label: "Non-comp",
+        value: assetsHealthCounts.nonCompliant,
+        color: "rgba(235, 104, 52, 1)",
+        onClick: () => applyAssetMetricFilter("nonCompliant"),
+        selected: assetsSummaryHighlightedFilter === "nonCompliant",
+      },
+    ],
+    [assetsHealthCounts, applyAssetMetricFilter, assetsSummaryHighlightedFilter]
+  );
+
   const scopedSubtitleLine =
     (scopedPropertyForChrome as { nickname?: string | null; address?: string } | undefined)?.nickname ||
     (scopedPropertyForChrome as { address?: string } | undefined)?.address;
@@ -583,8 +614,8 @@ const Assets = () => {
           contentClassName="max-w-[1480px]"
           hideHeaderBack
           hideTitleInHeader
+          hideHeaderSearch
           className={propertyScopedShellClass}
-          belowGradientRow={scopeBarBelowHeader}
         >
           <div className="max-w-[700px] w-full min-w-0">
             <PropertyAssetsWorkColumnHeading subtitle={wideScopedLoadingSubtitle} />
@@ -594,7 +625,13 @@ const Assets = () => {
       );
     }
     return (
-      <StandardPage title="Assets" icon={<Package className="h-6 w-6" />} maxWidth="md">
+      <StandardPage
+        title="Assets"
+        icon={<Package className="h-6 w-6" />}
+        maxWidth="md"
+        hideHeaderSearch
+        headerVariant="activity"
+      >
         <LoadingState message="Loading assets…" />
       </StandardPage>
     );
@@ -613,8 +650,8 @@ const Assets = () => {
           contentClassName="max-w-[1480px]"
           hideHeaderBack
           hideTitleInHeader
+          hideHeaderSearch
           className={propertyScopedShellClass}
-          belowGradientRow={scopeBarBelowHeader}
         >
           <div className="max-w-[700px] w-full min-w-0">
             <PropertyAssetsWorkColumnHeading
@@ -629,7 +666,13 @@ const Assets = () => {
       );
     }
     return (
-      <StandardPage title="Assets" icon={<Package className="h-6 w-6" />} maxWidth="md">
+      <StandardPage
+        title="Assets"
+        icon={<Package className="h-6 w-6" />}
+        maxWidth="md"
+        hideHeaderSearch
+        headerVariant="activity"
+      >
         <ErrorState
           message={error?.message || String(error)}
           onRetry={() => queryClient.invalidateQueries({ queryKey: ["assets"] })}
@@ -660,20 +703,29 @@ const Assets = () => {
 
       {isWide ? (
         <PropertyWorkspaceLayout
+          pageTitle={isPropertyScoped ? "Assets" : "Property Assets"}
+          pageSubtitle={
+            isPropertyScoped
+              ? scopedPropertyForChrome
+                ? `${(scopedPropertyForChrome as { nickname?: string | null; address?: string }).nickname || (scopedPropertyForChrome as { address?: string }).address}`
+                : "Organise your assets"
+              : wideWorkColumnSubtitle
+          }
+          pageIcon={<Package />}
+          searchPlaceholder={workbenchAskPlaceholder("Assets")}
+          searchValue={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchAccentColor={isPropertyScoped ? propertyHeaderAccent : undefined}
           contextColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-4">
-                {propertyScopeBar != null ? (
-                  <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
-                    {propertyScopeBar}
-                  </div>
-                ) : null}
                 <AssetsContextIntro scoped />
-                <AssetsSummaryRow
-                  assets={contextAssets}
-                  highlightedFilter={assetsSummaryHighlightedFilter}
-                  onFilterClick={applyAssetMetricFilter}
-                />
+                <WorkspaceSurfaceCard
+                  title="Asset Health"
+                  description="Equipment on this property at a glance"
+                >
+                  <WorkspaceHealthGrid stats={assetsHealthStats} />
+                </WorkspaceSurfaceCard>
                 <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
                   <PropertyRecentAssetsList
                     propertyId={effectiveScopeId}
@@ -683,75 +735,40 @@ const Assets = () => {
               </div>
             ) : (
               <>
-                {propertyScopeBar != null ? (
-                  <div className="w-full min-w-0 border-b border-border/20 pb-2 mb-1 -mt-1">
-                    {propertyScopeBar}
-                  </div>
-                ) : null}
                 <AssetsContextIntro scoped={false} />
-                <AssetsSummaryRow
-                  assets={contextAssets}
-                  highlightedFilter={assetsSummaryHighlightedFilter}
-                  onFilterClick={applyAssetMetricFilter}
-                />
+                <WorkspaceSurfaceCard
+                  title="Asset Health"
+                  description="Equipment across your properties at a glance"
+                >
+                  <WorkspaceHealthGrid stats={assetsHealthStats} />
+                </WorkspaceSurfaceCard>
               </>
             )
           }
           workColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-5">
-                <PageContentTitle
-                  title="Assets"
-                  subtitle={
-                    scopedPropertyForChrome
-                      ? `${(scopedPropertyForChrome as { nickname?: string | null; address?: string }).nickname || (scopedPropertyForChrome as { address?: string }).address}`
-                      : "Organise your assets"
-                  }
-                />
-                <div className="min-w-0">
-                  <input
-                    type="search"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search assets"
-                    className="w-full rounded-[10px] border-0 bg-card/60 px-3 py-2.5 text-sm shadow-e1 outline-none placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/30"
-                    aria-label="Search assets"
-                  />
-                </div>
-                <div>
-                  <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-                  <WorkspaceTabList>
-                    <WorkspaceTabTrigger
-                      selected={assetsWorkTab === "groups"}
-                      onClick={() => setAssetsWorkTab("groups")}
-                    >
-                      By group
-                    </WorkspaceTabTrigger>
-                    <WorkspaceTabTrigger
-                      selected={assetsWorkTab === "issues"}
-                      onClick={() => setAssetsWorkTab("issues")}
-                    >
-                      With issues ({assetsWithIssuesCount})
-                    </WorkspaceTabTrigger>
-                  </WorkspaceTabList>
-                </div>
-
-                {assetsWorkTab === "groups" ? (
-                  <div className="space-y-4">
-                    <PropertyAssetGroupCarousel
-                      propertyId={effectiveScopeId}
-                      assetFilter={searchQuery}
-                      onViewAsset={setSelectedAssetId}
-                    />
-                    <div className="border-t border-border/30 pt-5">
-                      <AllAssetsDirectory
-                        propertyId={effectiveScopeId}
-                        assetFilter={searchQuery}
-                        onAssetClick={setSelectedAssetId}
-                      />
-                    </div>
+                {showAssetsOperationalView ? (
+                  <div>
+                    <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
+                    <WorkspaceTabList>
+                      <WorkspaceTabTrigger
+                        selected={assetsWorkTab === "groups"}
+                        onClick={() => setAssetsWorkTab("groups")}
+                      >
+                        By group
+                      </WorkspaceTabTrigger>
+                      <WorkspaceTabTrigger
+                        selected={assetsWorkTab === "issues"}
+                        onClick={() => setAssetsWorkTab("issues")}
+                      >
+                        With issues ({assetsWithIssuesCount})
+                      </WorkspaceTabTrigger>
+                    </WorkspaceTabList>
                   </div>
-                ) : (
+                ) : null}
+
+                {showAssetsOperationalView && assetsWorkTab === "issues" ? (
                   <div className="space-y-3">
                     <p className="text-sm text-muted-foreground">
                       Active assets with poor condition or open tasks — open an asset to work it in detail.
@@ -777,22 +794,27 @@ const Assets = () => {
                       )}
                     </ul>
                   </div>
+                ) : (
+                  <div className="space-y-4">
+                    <PropertyAssetGroupCarousel
+                      propertyId={effectiveScopeId}
+                      assetFilter={searchQuery}
+                      onViewAsset={setSelectedAssetId}
+                    />
+                    <div className="border-t border-border/30 pt-5">
+                      <AllAssetsDirectory
+                        propertyId={effectiveScopeId}
+                        assetFilter={searchQuery}
+                        onAssetClick={setSelectedAssetId}
+                      />
+                    </div>
+                  </div>
                 )}
               </div>
             ) : (
               <>
-                <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
                 <div className="space-y-4 mb-6">
                   <div className="flex flex-wrap gap-3 items-center">
-                    <div className="relative flex-1 min-w-[200px]">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <NeomorphicInput
-                        placeholder="Search name, serial, manufacturer, model..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9"
-                      />
-                    </div>
                     <Select
                       value={filterPropertyId || "all"}
                       onValueChange={(v) => {
@@ -922,18 +944,18 @@ const Assets = () => {
         <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
       ) : null}
 
+      <div className="mb-4 min-w-0">
+        <WorkbenchCentreSearch
+          placeholder={workbenchAskPlaceholder("Assets")}
+          value={searchQuery}
+          onChange={setSearchQuery}
+          accentColor={isPropertyScoped ? propertyHeaderAccent : undefined}
+        />
+      </div>
+
       {/* Filters row */}
-      <div className="space-y-4 mb-6 pt-5">
-        <div className="flex flex-wrap gap-3 items-center">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <NeomorphicInput
-              placeholder="Search name, serial, manufacturer, model..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-            />
-          </div>
+      <div className="mb-6 space-y-4 pt-1">
+        <div className="flex flex-wrap items-center gap-3">
           <Select value={filterPropertyId || "all"} onValueChange={(v) => (setFilterPropertyId(v === "all" ? "" : v), setFilterSpaceId(""))}>
             <SelectTrigger className="input-neomorphic w-[180px]">
               <SelectValue placeholder="Property" />
@@ -1039,8 +1061,8 @@ const Assets = () => {
         contentClassName="max-w-[1480px]"
         hideHeaderBack
         hideTitleInHeader
+        hideHeaderSearch
         className={propertyScopedShellClass}
-        belowGradientRow={scopeBarBelowHeader}
       >
         {mainInner}
       </StandardPageWithBack>
@@ -1055,6 +1077,9 @@ const Assets = () => {
       action={addAction}
       maxWidth="full"
       contentClassName="max-w-[1480px]"
+      hideTitle
+      hideHeaderSearch
+      headerVariant="activity"
     >
       {mainInner}
     </StandardPage>

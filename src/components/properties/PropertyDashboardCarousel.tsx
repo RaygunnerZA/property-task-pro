@@ -393,7 +393,7 @@ function PropertyCarouselSlide({
               aria-hidden
             />
             <div className="min-w-0 flex-1">
-              <p className="truncate font-display text-lg font-semibold leading-tight text-white drop-shadow-sm">
+              <p className="truncate font-display text-lg font-semibold leading-tight text-white text-shadow-neu-pressed">
                 {displayName}
               </p>
               {property.address ? (

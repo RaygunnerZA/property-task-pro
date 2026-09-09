@@ -7,7 +7,7 @@ import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import { useAllTasksIllustrationSrc } from "@/hooks/useAllTasksIllustration";
 import {
-  workbenchSectionTitleClassName,
+  workbenchPageTitleClassName,
   workbenchSectionTitleInactiveClassName,
 } from "@/lib/workbenchSectionTitle";
 import { useDataContext } from "@/contexts/DataContext";
@@ -363,7 +363,7 @@ export function TasksWorkbenchPanel({
                   >
                     {index > 0 ? (
                       <span
-                        className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                        className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
                         aria-hidden
                       >
                         |
@@ -375,12 +375,9 @@ export function TasksWorkbenchPanel({
                       aria-selected={selected}
                       onClick={() => setListTab(tab.id)}
                       className={cn(
-                        "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                        "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
-                          ? cn(
-                              workbenchSectionTitleClassName,
-                              "text-lg text-foreground md:text-xl"
-                            )
+                          ? workbenchPageTitleClassName
                           : workbenchSectionTitleInactiveClassName
                       )}
                     >
@@ -400,7 +397,7 @@ export function TasksWorkbenchPanel({
 
               <div className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2">
                 <span
-                  className="text-lg font-normal leading-tight text-muted-foreground/35 md:text-xl"
+                  className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
                   aria-hidden
                 >
                   |
@@ -416,12 +413,9 @@ export function TasksWorkbenchPanel({
                   }
                   onClick={() => setListTab("messages")}
                   className={cn(
-                    "inline-flex items-center gap-1 whitespace-nowrap text-lg leading-tight tracking-tight transition-colors md:gap-1.5 md:text-xl",
+                    "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                     listTab === "messages"
-                      ? cn(
-                          workbenchSectionTitleClassName,
-                          "text-lg text-foreground md:text-xl"
-                        )
+                      ? workbenchPageTitleClassName
                       : workbenchSectionTitleInactiveClassName
                   )}
                 >

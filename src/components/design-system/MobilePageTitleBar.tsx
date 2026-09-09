@@ -1,4 +1,8 @@
-import { ReactNode } from "react";
+import type { ReactNode } from "react";
+import {
+  workbenchPageTitleClassName,
+  workbenchSectionSubtitleClassName,
+} from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
 
 export type MobilePageTitleBarProps = {
@@ -29,13 +33,13 @@ export function MobilePageTitleBar({
     >
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-2.5">
-          {icon ? <span className="icon-primary mt-0.5 shrink-0">{icon}</span> : null}
+          {icon ? (
+            <span className="icon-primary mt-1 shrink-0 [&_svg]:h-6 [&_svg]:w-6">{icon}</span>
+          ) : null}
           <div className="min-w-0">
-            <h1 className="text-xl font-semibold leading-tight tracking-tight text-foreground">
-              {title}
-            </h1>
+            <h1 className={workbenchPageTitleClassName}>{title}</h1>
             {subtitle ? (
-              <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
+              <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
             ) : null}
           </div>
         </div>

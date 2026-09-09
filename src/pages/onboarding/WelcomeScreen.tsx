@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { getMarketingBaseUrl } from "@/lib/utils";
+import { getMarketingBaseUrl, cn } from "@/lib/utils";
+import { workbenchPageTitleClassName } from "@/lib/workbenchSectionTitle";
 import welcomeRadar from "@/assets/onboarding/welcome-radar.gif";
 
 export default function WelcomeScreen() {
@@ -21,9 +22,7 @@ export default function WelcomeScreen() {
           />
         </div>
 
-        <h1 className="heading-xl mb-4 text-4xl font-semibold text-foreground">
-          Welcome to Filla
-        </h1>
+        <h1 className={cn(workbenchPageTitleClassName, "mb-4")}>Welcome to Filla</h1>
 
         <p className="mb-10 px-2 text-lg leading-relaxed text-muted-foreground">
           AI-powered property management for homes, buildings and portfolios.

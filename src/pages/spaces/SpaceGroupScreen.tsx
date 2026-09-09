@@ -19,8 +19,6 @@ import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
-import { WorkspaceScopeStrip } from "@/components/property-workspace";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { toast } from "sonner";
 import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
@@ -94,18 +92,11 @@ export default function SpaceGroupScreen() {
   }
 
   const header = (
-    <>
-      <GlobalAppHeader accentColor={group.color || FILLA_TURQUOISE} />
-      {propertyId && groupSlug && (
-        <WorkspaceScopeStrip>
-          <PropertyPageScopeBar
-            propertyId={propertyId}
-            hrefForProperty={(pid) => `/properties/${pid}/spaces/organise/${groupSlug}`}
-            backHref={`/properties/${propertyId}/spaces/organise`}
-          />
-        </WorkspaceScopeStrip>
-      )}
-    </>
+    <GlobalAppHeader
+      accentColor={group.color || FILLA_TURQUOISE}
+      hideSearch
+      variant="activity"
+    />
   );
 
   const thirdColumnContent = propertyId && groupSlug ? (
@@ -199,7 +190,7 @@ export default function SpaceGroupScreen() {
   ) : undefined;
 
   return (
-    <div className="dashboard-workbench property-workbench-scope-header min-h-screen w-full max-w-full overflow-x-hidden bg-background">
+    <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       <DualPaneLayout
         header={header}
         leftColumn={

@@ -1,5 +1,5 @@
 import { ReactNode, useEffect } from "react";
-import { useNavigate, NavLink, Outlet } from "react-router-dom";
+import { useNavigate, NavLink, Outlet, useLocation } from "react-router-dom";
 import { Building2, Shield, BarChart3, BookOpen, Cpu } from "lucide-react";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { useQueryClient } from "@tanstack/react-query";
@@ -12,8 +12,10 @@ interface AdminLayoutProps {
 
 export default function AdminLayout({ children }: AdminLayoutProps) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const { data: isAdmin, isLoading, isError, error, refetch } = useIsPlatformAdmin();
+  const knowledgeOps = pathname.startsWith("/admin/knowledge");
 
   useEffect(() => {
     // Only bounce confirmed non-admins — never on load/error (that looked like “reverts to home”).
@@ -59,7 +61,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     <div className="min-h-screen bg-paper flex flex-col">
       {/* Admin top bar with teal accent */}
       <header className="border-b-2 border-primary bg-background/90 backdrop-blur-sm sticky top-0 z-40">
-        <div className="max-w-screen-xl mx-auto px-4 h-12 flex items-center gap-3">
+        <div
+          className={cn(
+            "mx-auto px-4 h-12 flex items-center gap-3 w-full",
+            knowledgeOps ? "max-w-none" : "max-w-screen-xl"
+          )}
+        >
           <Shield className="w-4 h-4 text-primary shrink-0" />
           <span className="text-xs font-mono text-muted-foreground uppercase tracking-widest">
             Internal
@@ -118,7 +125,12 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         </div>
       </header>
 
-      <main className="flex-1 max-w-screen-xl mx-auto w-full px-4 py-6">
+      <main
+        className={cn(
+          "flex-1 w-full px-4 py-6",
+          knowledgeOps ? "max-w-none" : "mx-auto max-w-screen-xl"
+        )}
+      >
         <ErrorBoundary
           regionTitle="Admin panel"
           onRetryReset={() => {

@@ -243,6 +243,32 @@ All design tokens are defined in:
 - **`.btn-accent-vibrant`** - Vibrant accent button
 - **`.icon-primary`** - Primary color for icons
 
+**4.3b — ACTIVITY-AREA CHROME & LEFT-COLUMN FORMULA (desktop workbench)**
+
+Applies to Spaces, Assets, Reports, Records, Tags, Settings, and Knowledge — **not** Home / Inflow / Tasks / Calendar.
+
+**Gradient header (activity variant):**
+
+| Element | Placement |
+|---------|-----------|
+| **[< Back]** | Top-left — replaces the Filla logo (frosted `bg-white/70` pill) |
+| Property selector | To the **right** of [< Back] (multi-property orgs only) |
+| Account avatar | Top-right of the gradient band (`HeaderAccountMenu`) — opens Profile / Settings / Trash / Sign out. Settings is **not** in the left nav rail. |
+| Search | **None** in the header — pressed search lives in the centre column |
+
+**Left (context) column — consistent formula, top to bottom:**
+
+1. Screen **H1** (`font-display` / Fraunces) + description — one title only, always in the left column
+2. **Overview** card (`WorkspaceSurfaceCard title="Overview"`) — what exists here, counts + orientation copy
+3. **Health** 4-cell dashboard (`WorkspaceHealthGrid`, or `ReportKpiRow` / `RecordsContextSummary` which share the grammar) — e.g. “Property Health”, “Asset Health”
+4. **Recent items** list — last-touched entities for the area
+
+**Home / primary-workbench exception:** Filla logo top-left, search stays on the gradient header, centre tabs (**Inflow · Tasks · Calendar**) are the titles.
+
+Placeholder pattern: `Ask about {Topic} or anything else.` (opens Ask Filla on submit; `onChange` may also filter the page). Pressed search fields carry the Filla AI icon on the left.
+
+Use `PropertyWorkspaceLayout` `pageTitle` / `searchPlaceholder` props + `StandardPage` `hideTitle` + `hideHeaderSearch` + `headerVariant="activity"` (or `StandardPageWithBack`, which applies the activity header automatically).
+
 **4.4 — REUSABLE COMPONENTS**
 
 All reusable components are in **`src/components/design-system/`**:

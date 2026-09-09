@@ -128,7 +128,8 @@ export default function Dashboard({
   defaultCentreTab = "inflow",
 }: DashboardProps) {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const { pathname } = location;
   const isMobile = useIsMobile();
   const isDedicatedWorkbench = workbenchPanel !== "home";
   const workbenchLayout = useMemo(
@@ -594,7 +595,7 @@ export default function Dashboard({
     return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
   }, [isLargeScreen, handleWorkbenchTabChange, pinThirdColumnTop]);
 
-  const handleTaskClick = (taskId: string) => {
+  const handleTaskClick = useCallback((taskId: string) => {
     setOpenTaskChecklistCollapsed(false);
     if (isLargeScreen) {
       setExpandedSection("details");
@@ -602,7 +603,15 @@ export default function Dashboard({
       pinThirdColumnTop();
     }
     setSelectedItem({ type: "task", id: taskId });
-  };
+  }, [isLargeScreen, pinThirdColumnTop]);
+
+  // `/task/:id` deep links land here so the task opens in the context column.
+  useEffect(() => {
+    const openTaskId = (location.state as { openTaskId?: string } | null)?.openTaskId;
+    if (!openTaskId) return;
+    handleTaskClick(openTaskId);
+    navigate({ pathname, search: location.search }, { replace: true, state: {} });
+  }, [handleTaskClick, location.search, location.state, navigate, pathname]);
 
   const handleAttentionItemSelect = useCallback(
     (payload: WorkbenchAttentionSelectPayload) => {
@@ -1153,6 +1162,8 @@ export default function Dashboard({
               onPropertySelectionChange={handlePropertySelectionChange}
               onFilterClick={handleFilterClick}
               onAskFilla={handleAskFilla}
+              variant={workbenchPanel === "records" ? "activity" : "workbench"}
+              hideSearch={workbenchPanel === "records"}
             />
           }
         leftColumn={

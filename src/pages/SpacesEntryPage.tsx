@@ -31,6 +31,8 @@ export default function SpacesEntryPage() {
         title="Spaces"
         icon={<Layers className="h-6 w-6" />}
         maxWidth="md"
+        hideHeaderSearch
+        headerVariant="activity"
       >
         <LoadingState message="Loading spaces…" />
       </StandardPage>

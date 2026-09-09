@@ -69,7 +69,7 @@ export function RecordsContextColumn({
   return (
     <div className={cn("space-y-4 px-[3px] [overflow-anchor:none]", className)}>
       <WorkspaceSurfaceCard
-        title="Context"
+        title="Overview"
         description="How evidence is organised on this property"
       >
         <ul className="space-y-2 text-xs text-muted-foreground">
@@ -109,6 +109,7 @@ export function RecordsContextColumn({
           complianceRecords={scopedComplianceRecords}
           onOpenDocument={(id) => setSelectedDocId(id)}
           onOpenCompliance={(id) => setSelectedComplianceId(id)}
+          propertyId={scopedPropertyId}
         />
       </div>
 

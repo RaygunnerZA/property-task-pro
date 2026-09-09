@@ -214,16 +214,15 @@ export function RadialProgress({
         }}
       />
 
-      {/* Percentage — geometrically + optically centered in the inner disc */}
+      {/* Percentage — Fraunces + pressed neu; geometrically centered in the inner disc */}
       <span
-        className={cn(!softVisual && "text-shadow-neu-pressed")}
+        className={cn("font-display", !softVisual && "text-shadow-neu-pressed")}
         style={{
           ...CENTERED,
           zIndex: 5,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontFamily: "'Inter Tight', system-ui, -apple-system, sans-serif",
           letterSpacing: softSummaryLabel ? "-0.8px" : "-0.9px",
           lineHeight: 1,
           userSelect: "none",
@@ -237,7 +236,7 @@ export function RadialProgress({
         <span
           style={{
             fontSize: labelNumberFontSize,
-            fontWeight: softVisual ? 400 : 300,
+            fontWeight: 500,
             color: softVisual ? "rgba(82, 82, 90, 1)" : "rgba(102, 102, 102, 1)",
             lineHeight: 1,
           }}
@@ -245,6 +244,7 @@ export function RadialProgress({
           {Math.round(displayValue)}
         </span>
         <span
+          className="font-sans"
           style={{
             fontSize: labelPercentFontSize,
             fontWeight: 700,

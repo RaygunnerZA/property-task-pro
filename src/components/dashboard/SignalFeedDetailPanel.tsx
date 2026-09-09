@@ -22,6 +22,7 @@ import {
 } from "@/lib/onboardingFixtureActions";
 import {
   dismissOnboardingSample,
+  getSampleContentLesson,
   isOnboardingSampleNotification,
 } from "@/lib/onboardingEducation";
 
@@ -178,6 +179,16 @@ export function SignalFeedDetailPanel({
             <p className="mt-1 text-sm leading-relaxed text-foreground">{snapshot.whyHere.trim()}</p>
           </div>
         ) : null}
+        {isOnboardingSampleNotification({ id: snapshot.id }) ? (
+          <div className="rounded-xl bg-card/80 px-3.5 py-3 shadow-e1">
+            <p className="font-mono text-caption font-semibold uppercase tracking-wider text-primary-deep">
+              Phase-out
+            </p>
+            <p className="mt-1.5 text-sm leading-relaxed text-foreground/90">
+              {getSampleContentLesson("signals").phaseOut}
+            </p>
+          </div>
+        ) : null}
         {snapshot.description?.trim() ? (
           <div>
             <p className="font-mono text-caption uppercase tracking-wide text-muted-foreground">
@@ -293,7 +304,9 @@ export function SignalFeedDetailPanel({
               className="w-full flex-1"
               onClick={() => runFixtureCta(fixturePrimary.id)}
             >
-              {fixturePrimary.label}
+              {fixturePrimary.id === "delete-sample"
+                ? "Got it — hide this sample"
+                : fixturePrimary.label}
             </IntakeActionButton>
             {fixtureSecondary.map((action) => (
               <IntakeActionButton

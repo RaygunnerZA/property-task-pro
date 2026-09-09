@@ -224,7 +224,7 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
           {progress && (
             <p className="text-xs text-muted-foreground text-right">{progressLabel(progress)}</p>
           )}
-          <div className="overflow-x-auto rounded-xl bg-card/80 shadow-e1">
+          <div className="min-w-0 overflow-x-auto rounded-xl bg-card/80 shadow-e1">
             <table className="w-full text-left text-xs border-collapse min-w-[640px]">
               <thead>
                 <tr className="border-b border-border/40">

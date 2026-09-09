@@ -7,6 +7,8 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { supabase } from "@/integrations/supabase/client";
 import { Users } from "lucide-react";
+import { workbenchPageTitleClassName } from "@/lib/workbenchSectionTitle";
+import { cn } from "@/lib/utils";
 
 /**
  * Staff onboarding: orientation only. For invited users (staff/contractors).
@@ -76,7 +78,7 @@ export default function StaffOnboardingScreen() {
           </div>
         </div>
 
-        <h1 className="text-4xl font-semibold text-foreground mb-4 heading-xl">
+        <h1 className={cn(workbenchPageTitleClassName, "mb-4")}>
           You&apos;ve been invited
         </h1>
 

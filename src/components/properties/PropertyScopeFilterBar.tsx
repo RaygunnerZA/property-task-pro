@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Check, ChevronLeft, Plus } from "lucide-react";
+import { Check, Plus } from "lucide-react";
 import { getPropertyChipIcon } from "@/lib/propertyChipIcons";
 import { isAllPropertiesActive, togglePropertyFilter } from "@/utils/propertyFilter";
 import { cn } from "@/lib/utils";
@@ -35,8 +35,8 @@ type SecondaryProps = {
   hrefForAll: string;
   /** Property workbench hub — property icon (and chip when collapsed) navigate here. */
   propertyHubHref: string;
-  /** “Back” row — may differ from hub (e.g. space group → organise). */
-  backHref: string;
+  /** @deprecated Back lives in the activity gradient header; kept for call-site compat. */
+  backHref?: string;
 };
 
 export type PropertyScopeFilterBarProps = PrimaryProps | SecondaryProps;
@@ -406,7 +406,6 @@ function PropertyScopeFilterBarSecondary({
   hrefForProperty,
   hrefForAll,
   propertyHubHref,
-  backHref,
 }: SecondaryProps) {
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
@@ -508,12 +507,6 @@ function PropertyScopeFilterBarSecondary({
         >
           <ActiveIcon className="h-[18px] w-[16px] text-white" />
         </Link>
-        <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-px text-foreground" asChild>
-          <Link to={backHref}>
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
       </div>
     );
   }
@@ -650,15 +643,6 @@ function PropertyScopeFilterBarSecondary({
           )}
         </div>
       </div>
-
-      {!expanded && (
-        <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0 gap-1 px-px text-foreground" asChild>
-          <Link to={backHref}>
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </Link>
-        </Button>
-      )}
     </div>
   );
 }

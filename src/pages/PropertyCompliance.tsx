@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { Bot, Shield } from "lucide-react";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
-import { PropertyPageScopeBar } from "@/components/properties/PropertyPageScopeBar";
 import { ComplianceRulesSection } from "@/components/compliance/ComplianceRulesSection";
 import { ComplianceRuleModal } from "@/components/compliance/ComplianceRuleModal";
 import { ComplianceRulesContext } from "@/components/compliance/ComplianceRuleTemplates";
@@ -76,13 +75,6 @@ export default function PropertyCompliance() {
       maxWidth="md"
       headerAccentColor={headerAccent}
       hideHeaderBack
-      belowGradientRow={
-        <PropertyPageScopeBar
-          propertyId={propertyId}
-          hrefForProperty={(pid) => propertyComplianceSetupPath(pid)}
-          backHref={propertyHubRecordsPath(propertyId, "compliance")}
-        />
-      }
     >
       <div className="space-y-6">
         <ComplianceRulesContext />

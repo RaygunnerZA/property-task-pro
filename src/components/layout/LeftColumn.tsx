@@ -22,6 +22,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
 import { isHomeHubPath } from "@/lib/workbenchLayoutMode";
 import { RecordsContextColumn } from "@/components/records/RecordsContextColumn";
+import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 
 const WORKBENCH_OVERVIEW_TIP_ID = "workbench-overview";
 
@@ -201,11 +202,18 @@ export function LeftColumn({
   const calendarAboveNavCards = Boolean(focusedProperty) && !isScheduleMobile && !isRecordsWorkbench;
 
   const recordsContext = isRecordsWorkbench ? (
-    <RecordsContextColumn
-      properties={properties}
-      selectedPropertyIds={selectedPropertyIds}
-      className="pt-3"
-    />
+    <>
+      <PageContentTitle
+        title="Records"
+        subtitle="Certificates, documents, and evidence for your properties."
+        className="mb-0 border-b-0 px-1 pb-0 pt-2"
+      />
+      <RecordsContextColumn
+        properties={properties}
+        selectedPropertyIds={selectedPropertyIds}
+        className="pt-3"
+      />
+    </>
   ) : null;
 
   const miniCalendar = showLeftColumnCalendar ? (
@@ -258,6 +266,11 @@ export function LeftColumn({
             <div className="text-center py-8">
               <p className="text-sm text-muted-foreground">No properties yet</p>
             </div>
+          ) : isRecordsWorkbench ? (
+            /* Records: title + context column — no PropertyIdentityStrip (activity-area formula). */
+            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
+              {recordsContext}
+            </div>
           ) : isHubHome ? (
             <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
               <PropertyDashboardCarousel
@@ -287,13 +300,8 @@ export function LeftColumn({
                   key={focusedProperty.id}
                   property={focusedProperty}
                   externalDashboard
-                  hideSummaryDashboard={isRecordsWorkbench}
                   betweenSummaryAndNav={
-                    isRecordsWorkbench
-                      ? recordsContext
-                      : calendarAboveNavCards
-                        ? miniCalendar
-                        : undefined
+                    calendarAboveNavCards ? miniCalendar : undefined
                   }
                   onAddTaskClick={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
                   urgentOpenTaskCount={urgentTaskCounts[focusedProperty.id] ?? 0}
@@ -311,10 +319,6 @@ export function LeftColumn({
                   routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
                 />
               </div>
-            </div>
-          ) : isRecordsWorkbench ? (
-            <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
-              {recordsContext}
             </div>
           ) : null}
         </div>

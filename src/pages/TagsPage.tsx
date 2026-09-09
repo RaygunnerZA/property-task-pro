@@ -6,6 +6,15 @@ import { EmptyState } from "@/components/design-system/EmptyState";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import {
+  workbenchAskPlaceholder,
+} from "@/components/workbench/WorkbenchCentreSearch";
+import {
+  PropertyWorkspaceLayout,
+  WorkspaceHealthGrid,
+  WorkspaceSectionHeading,
+  WorkspaceSurfaceCard,
+} from "@/components/property-workspace";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -32,12 +41,19 @@ export default function TagsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const tags = useMemo(
     () =>
       themes.filter((t) => t.type === "category" || t.type === "tag"),
     [themes]
   );
+
+  const filteredTags = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return tags;
+    return tags.filter((t) => (t.name ?? "").toLowerCase().includes(q));
+  }, [tags, searchQuery]);
 
   const handleCreate = async () => {
     const trimmed = name.trim();
@@ -64,23 +80,85 @@ export default function TagsPage() {
     }
   };
 
-  return (
-    <StandardPage
-      title="Tags"
-      subtitle="Labels for organising tasks across your properties"
-      icon={<TagsIcon className="h-6 w-6" />}
-      maxWidth="md"
-      action={
-        <NeomorphicButton
-          type="button"
-          onClick={() => setShowCreate(true)}
-          className="gap-1.5"
-        >
-          <Plus className="h-4 w-4" />
-          New tag
-        </NeomorphicButton>
-      }
-    >
+  const categoryCount = tags.filter((t) => t.type === "category").length;
+  const plainTagCount = tags.filter((t) => t.type === "tag").length;
+  const newThisMonth = tags.filter((t) => {
+    if (!t.created_at) return false;
+    return Date.now() - new Date(t.created_at).getTime() < 30 * 24 * 60 * 60 * 1000;
+  }).length;
+  const recentTags = [...tags]
+    .sort(
+      (a, b) =>
+        new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+    )
+    .slice(0, 5);
+
+  const contextColumn = (
+    <div className="space-y-4">
+      <WorkspaceSurfaceCard
+        title="Overview"
+        description="How tags organise work across your properties"
+      >
+        <ul className="space-y-2 text-xs text-muted-foreground">
+          <li>
+            <span className="font-semibold text-foreground">{tags.length}</span>{" "}
+            tag{tags.length === 1 ? "" : "s"} in your organisation
+          </li>
+          <li>
+            Attach tags when creating or editing tasks to group related work.
+          </li>
+        </ul>
+      </WorkspaceSurfaceCard>
+
+      <WorkspaceSurfaceCard
+        title="Tag Health"
+        description="Your labels at a glance"
+      >
+        <WorkspaceHealthGrid
+          stats={[
+            { label: "Total", value: tags.length },
+            { label: "Categories", value: categoryCount },
+            { label: "Tags", value: plainTagCount },
+            {
+              label: "New 30d",
+              value: newThisMonth,
+              color: "rgba(16, 185, 129, 1)",
+            },
+          ]}
+        />
+      </WorkspaceSurfaceCard>
+
+      <div className="overflow-hidden rounded-xl bg-card/60 p-3 shadow-e1">
+        <WorkspaceSectionHeading>Recent tags</WorkspaceSectionHeading>
+        {recentTags.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            New tags appear here.
+          </p>
+        ) : (
+          <ul className="mt-2 space-y-1">
+            {recentTags.map((tag) => (
+              <li
+                key={tag.id}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+              >
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: tag.color || "#8EC9CE" }}
+                  aria-hidden
+                />
+                <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                  {tag.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+
+  const workColumn = (
+    <>
       <Dialog
         open={showCreate}
         onOpenChange={(open) => {
@@ -142,9 +220,13 @@ export default function TagsPage() {
             icon: Plus,
           }}
         />
+      ) : filteredTags.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          No tags match your search.
+        </p>
       ) : (
         <ul className="space-y-2">
-          {tags.map((tag) => (
+          {filteredTags.map((tag) => (
             <li
               key={tag.id}
               className={cn(
@@ -165,6 +247,41 @@ export default function TagsPage() {
           ))}
         </ul>
       )}
+    </>
+  );
+
+  return (
+    <StandardPage
+      title="Tags"
+      subtitle="Labels for organising tasks across your properties"
+      icon={<TagsIcon className="h-6 w-6" />}
+      maxWidth="full"
+      contentClassName="max-w-[1480px]"
+      hideTitle
+      hideHeaderSearch
+      headerVariant="activity"
+    >
+      <PropertyWorkspaceLayout
+        pageTitle="Tags"
+        pageSubtitle="Labels for organising tasks across your properties"
+        pageIcon={<TagsIcon />}
+        pageTitleAction={
+          <NeomorphicButton
+            type="button"
+            onClick={() => setShowCreate(true)}
+            className="gap-1.5"
+          >
+            <Plus className="h-4 w-4" />
+            New tag
+          </NeomorphicButton>
+        }
+        searchPlaceholder={workbenchAskPlaceholder("Tags")}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
+        contextColumn={contextColumn}
+        workColumn={workColumn}
+        actionColumn={null}
+      />
     </StandardPage>
   );
 }

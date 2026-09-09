@@ -7,9 +7,13 @@ import {
 } from "@/fixtures/onboardingAttentionSamples";
 import {
   dismissOnboardingSample,
+  getSampleContentLesson,
   isOnboardingSampleNotification,
+  isSeededSampleContent,
   ONBOARDING_SAMPLE_LABEL,
   readDismissedOnboardingSampleIds,
+  seededSampleDismissId,
+  shouldAutoHideSeededSamples,
 } from "@/lib/onboardingEducation";
 
 const memory = new Map<string, string>();
@@ -64,5 +68,36 @@ describe("onboarding sample notifications", () => {
     dismissOnboardingSample("prop-1", id);
     expect(readDismissedOnboardingSampleIds("prop-1").has(id)).toBe(true);
     expect(readDismissedOnboardingSampleIds("prop-2").has(id)).toBe(false);
+  });
+});
+
+describe("seeded sample content lifecycle", () => {
+  it("detects (sample) titles and onboarding_demo markers", () => {
+    expect(
+      isSeededSampleContent({ title: "Gas Safety Certificate (sample)" })
+    ).toBe(true);
+    expect(
+      isSeededSampleContent({
+        title: "EICR (sample - due soon)",
+        notes: "Shows the renewal state. [onboarding_demo]",
+      })
+    ).toBe(true);
+    expect(isSeededSampleContent({ title: "Real Gas Safety 2026" })).toBe(false);
+    expect(
+      isSeededSampleContent({ metadata: { onboarding_demo: true } })
+    ).toBe(true);
+  });
+
+  it("auto-hides samples once real content exists", () => {
+    expect(shouldAutoHideSeededSamples({ realItemCount: 0 })).toBe(false);
+    expect(shouldAutoHideSeededSamples({ realItemCount: 1 })).toBe(true);
+  });
+
+  it("builds stable dismiss ids and section lessons with a phase-out promise", () => {
+    expect(seededSampleDismissId("compliance", "abc")).toBe("seeded:compliance:abc");
+    const lesson = getSampleContentLesson("records");
+    expect(lesson.purpose.length).toBeGreaterThan(20);
+    expect(lesson.sampleExplanation.toLowerCase()).toMatch(/sample/);
+    expect(lesson.phaseOut.toLowerCase()).toMatch(/disappear|hide|not come back/);
   });
 });

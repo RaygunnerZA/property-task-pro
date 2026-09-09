@@ -530,7 +530,7 @@ function ApplicabilityFields({
 
 type IntakeMode = "upload" | "url" | "manual";
 
-export function AdminKnowledgeIntakePanel() {
+export function AdminKnowledgeIntakePanel({ compact = false }: { compact?: boolean }) {
   const uploadFile = useAdminUploadKnowledgeIntakeFile();
   const analyseDocument = useAdminAnalyseKnowledgeDocument();
   const analyseUrl = useAdminAnalyseKnowledgeUrl();
@@ -888,8 +888,8 @@ export function AdminKnowledgeIntakePanel() {
   };
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-4">
+    <div className={cn(compact ? "space-y-4" : "space-y-8")}>
+      <section className={cn("rounded-xl bg-card/80 shadow-e1 space-y-4", compact ? "p-3" : "p-4")}>
         <div className="space-y-1">
           <h2 className="font-medium text-sm">Add source</h2>
           <p className="text-xs text-muted-foreground">
@@ -900,7 +900,8 @@ export function AdminKnowledgeIntakePanel() {
 
         <div
           className={cn(
-            "rounded-xl border border-dashed px-4 py-8 text-center transition-colors",
+            "rounded-xl border border-dashed text-center transition-colors",
+            compact ? "px-3 py-5" : "px-4 py-8",
             dragOver ? "border-primary bg-primary/5" : "border-border/60 bg-muted/20",
             busy && "opacity-60 pointer-events-none"
           )}
@@ -953,7 +954,7 @@ export function AdminKnowledgeIntakePanel() {
         </div>
 
         <div className="flex flex-wrap gap-2 items-end">
-          <label className="flex-1 min-w-[16rem] text-xs space-y-1">
+          <label className="flex-1 min-w-0 text-xs space-y-1">
             <span className="text-muted-foreground">Paste text or URL</span>
             <Textarea
               value={pasteBuffer || urlInput}
