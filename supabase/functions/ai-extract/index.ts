@@ -384,7 +384,17 @@ function matchWithAuthority(list: any[] = [], existing: any[] = []) {
 
 function ruleBased(text: string) {
   const lower = text.toLowerCase();
-  const priority = lower.includes("leak") ? "urgent" : "medium";
+  const urgentHints = [
+    "urgent",
+    "asap",
+    "emergency",
+    "leak",
+    "immediately",
+    "critical",
+    "flooding",
+    "hazard",
+  ];
+  const priority = urgentHints.some((k) => lower.includes(k)) ? "urgent" : "medium";
 
   return {
     title: text.slice(0, 50),

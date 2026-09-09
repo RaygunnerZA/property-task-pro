@@ -9,6 +9,7 @@ Operational data is org-scoped. Identity ≠ Permissions. Media is first-class. 
 **Organisations:**
 *   `organisations` (id, org_type: `personal` | `business` | `contractor`)
 *   `organisation_members` (role, assigned_properties, `is_primary_owner`, `membership_status`) — canonical roles: `owner` | `manager` | `staff`. Legacy `member`/`admin` normalize to Staff/Manager (`02_Identity`). Exactly one Primary Owner per org. External access is link/token scoped (`revoke_invitation` / contractor tokens), not a durable membership role by default.
+*   `org_settings` — one row per org (`org_id` PK). Automation/AI preferences plus **task capture requirements**: `require_task_photo`, `require_task_location`, `require_task_category` (all default false). SELECT: any org member. INSERT/UPDATE: `is_org_owner_or_manager(org_id)` (Owner, Manager, legacy `admin`). Completing a task is blocked by `enforce_task_capture_requirements` when a required field is missing (photo = non-signature image attachment or `image_url`; location = `property_id` plus `space_ids` or `task_spaces`; category = at least one `task_themes` row).
 *   `contractor_tokens` (task_id, token)
 *   Billing/plan state and entitlements: see `@Docs/20_Billing.md` (do not invent plan columns without that chapter + schema migration).
 

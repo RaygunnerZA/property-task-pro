@@ -343,9 +343,10 @@ export function TasksWorkbenchPanel({
           <div
             className={cn(
               "min-w-0 flex-1",
+              // Reserve space for the illustration only from md up (hidden on mobile).
               listTab === "all"
-                ? "pr-[min(6.6rem,28%)] md:pr-[min(7.8rem,33%)]"
-                : "pr-[min(5.5rem,24%)] md:pr-[min(6.5rem,28%)]"
+                ? "md:pr-[min(7.8rem,33%)]"
+                : "md:pr-[min(6.5rem,28%)]"
             )}
           >
             <div
@@ -445,11 +446,11 @@ export function TasksWorkbenchPanel({
 
           <div
             className={cn(
-              "pointer-events-none absolute right-2 top-0 flex aspect-square items-start justify-end",
+              "pointer-events-none absolute right-2 top-0 hidden aspect-square items-start justify-end md:flex",
               // All-tasks art: +20% vs other tab illustrations (grows upward from the header).
               listTab === "all"
-                ? "mt-[-6px] w-[min(6.3rem,26%)] max-h-[6.3rem] md:w-[min(7.5rem,31%)] md:max-h-[7.5rem]"
-                : "w-[min(5.25rem,22%)] max-h-[5.25rem] md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
+                ? "mt-[-6px] md:w-[min(7.5rem,31%)] md:max-h-[7.5rem]"
+                : "md:w-[min(6.25rem,26%)] md:max-h-[6.25rem]"
             )}
             aria-hidden
           >

@@ -1,4 +1,4 @@
-import { AlertTriangle, Minus, ArrowDown } from "lucide-react";
+import { AlertTriangle, ArrowDown } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import type { TaskPriority } from "@/types/database";
 import { cn } from "@/lib/utils";
@@ -10,18 +10,11 @@ interface PriorityTabProps {
 
 const priorities: { value: TaskPriority; label: string; icon: React.ReactNode; color: string; bgClass: string }[] = [
   { 
-    value: "low", 
-    label: "LOW", 
-    icon: <ArrowDown className="h-4 w-4" />,
-    color: "text-foreground",
-    bgClass: "bg-card"
-  },
-  { 
-    value: "medium", 
-    label: "MEDIUM", 
-    icon: <Minus className="h-4 w-4" />,
-    color: "text-primary",
-    bgClass: "bg-primary/10 border-primary/30"
+    value: "urgent", 
+    label: "URGENT", 
+    icon: <AlertTriangle className="h-4 w-4" />,
+    color: "text-accent",
+    bgClass: "bg-accent/10 border-accent/30"
   },
   { 
     value: "high", 
@@ -31,11 +24,11 @@ const priorities: { value: TaskPriority; label: string; icon: React.ReactNode; c
     bgClass: "bg-warning/10 border-warning/30"
   },
   { 
-    value: "urgent", 
-    label: "URGENT", 
-    icon: <AlertTriangle className="h-4 w-4" />,
-    color: "text-accent",
-    bgClass: "bg-accent/10 border-accent/30"
+    value: "low", 
+    label: "LOW", 
+    icon: <ArrowDown className="h-4 w-4" />,
+    color: "text-foreground",
+    bgClass: "bg-card"
   },
 ];
 

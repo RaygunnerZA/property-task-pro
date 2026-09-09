@@ -56,6 +56,8 @@ export type AnnotationEditSession = {
   persistId?: string;
 };
 
+type ToolType = "select" | "arrow" | "rect" | "circle" | "text" | "freedraw";
+
 interface ImageAnnotationEditorProps {
   imageUrl: string;
   imageId: string;
@@ -63,14 +65,14 @@ interface ImageAnnotationEditorProps {
   initialAnnotations?: Annotation[];
   editSessions?: AnnotationEditSession[];
   detectionOverlays?: DetectionOverlay[];
+  /** Tool active on open. Text so a click on the photo can comment immediately. */
+  initialTool?: ToolType;
   onSave: (
     annotations: Annotation[],
     options?: boolean | SaveAnnotationsOptions
   ) => Promise<void>;
   onCancel: () => void;
 }
-
-type ToolType = "select" | "arrow" | "rect" | "circle" | "text" | "freedraw";
 type ShapeHandle = "from" | "to" | "nw" | "ne" | "se" | "sw";
 
 // Default sizes (relative 0-1)
@@ -89,6 +91,7 @@ export function ImageAnnotationEditor({
   initialAnnotations = [],
   editSessions = [],
   detectionOverlays = [],
+  initialTool = "text",
   onSave,
   onCancel,
 }: ImageAnnotationEditorProps) {
@@ -100,7 +103,7 @@ export function ImageAnnotationEditor({
   const { toast } = useToast();
   const currentUserId = user?.id ?? null;
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
-  const [currentTool, setCurrentTool] = useState<ToolType>("select");
+  const [currentTool, setCurrentTool] = useState<ToolType>(initialTool);
   const [imageSize, setImageSize] = useState<{ width: number; height: number; naturalWidth: number; naturalHeight: number } | null>(null);
   const [selectedColor, setSelectedColor] = useState<AnnotationColor>("charcoal");
   const [selectedStrokeWidth, setSelectedStrokeWidth] = useState<AnnotationStrokeWidth>("medium");
@@ -1682,7 +1685,7 @@ export function ImageAnnotationEditor({
           }}
           className={cn(
             "max-h-full max-w-full rounded-md shadow-lg",
-            inlineTextEditor
+            inlineTextEditor || currentTool === "text"
               ? "cursor-text"
               : currentTool === "select"
                 ? "cursor-default"

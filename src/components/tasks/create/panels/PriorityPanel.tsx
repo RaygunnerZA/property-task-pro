@@ -14,10 +14,9 @@ interface PriorityPanelProps {
 }
 
 const priorities: Array<{ value: TaskPriority; label: string }> = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
   { value: 'urgent', label: 'Urgent' },
+  { value: 'high', label: 'High' },
+  { value: 'low', label: 'Low' },
 ];
 
 export function PriorityPanel({

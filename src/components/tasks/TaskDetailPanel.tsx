@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Shield, AlertTriangle, CircleDot, X, ChevronDown, FileText, Pencil, Repeat } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, ChevronDown, FileText, Repeat } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -34,7 +34,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +71,6 @@ import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
 import { taskPriorityLabel, toTaskPriorityDb } from "@/lib/taskPriority";
 import type { RepeatRule } from "@/types/database";
 import type { SuggestedChip } from "@/types/chip-suggestions";
-import type { Annotation } from "@/types/image-annotations";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskDetails } from "@/hooks/use-task-details";
@@ -106,7 +104,7 @@ import {
   clearTaskCompletionMotion,
   playTaskCompletionMotion,
 } from "@/lib/taskCompletionMotion";
-import { patchTasksCacheStatus } from "@/lib/completeTask";
+import { patchTasksCacheStatus, assertTaskReadyToComplete } from "@/lib/completeTask";
 import { resolveTaskAssignerUser } from "@/lib/userDisplayHelpers";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
@@ -197,7 +195,6 @@ export function TaskDetailPanel({
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const [showAnnotationEditor, setShowAnnotationEditor] = useState(false);
   const [editingImageId, setEditingImageId] = useState<string | null>(null);
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   /** Ignore Dialog dismiss for one tick after the portaled editor unmounts. */
   const suppressTaskDismissRef = useRef(false);
 
@@ -212,7 +209,6 @@ export function TaskDetailPanel({
   const openAdjacentTask = useCallback(
     (id: string) => {
       setShowAnnotationEditor(false);
-      setLightboxOpen(false);
       onOpenTask?.(id);
     },
     [onOpenTask]
@@ -221,8 +217,7 @@ export function TaskDetailPanel({
     enabled:
       variant === "modal" &&
       Boolean(onOpenTask) &&
-      !showAnnotationEditor &&
-      !lightboxOpen,
+      !showAnnotationEditor,
     onSwipeLeft: nextTaskId ? () => openAdjacentTask(nextTaskId) : undefined,
     onSwipeRight: prevTaskId ? () => openAdjacentTask(prevTaskId) : undefined,
   });
@@ -276,7 +271,6 @@ export function TaskDetailPanel({
     setChecklistCollapsed(initialChecklistCollapsed);
     setShowAnnotationEditor(false);
     setEditingImageId(null);
-    setLightboxOpen(false);
   }, [taskId, initialChecklistCollapsed]);
 
   const markChecklistSessionDirty = useCallback(() => {
@@ -739,6 +733,18 @@ export function TaskDetailPanel({
 
   const handleStatusChange = async (next: TaskStatus) => {
     if (isUpdating || next === status) return;
+    if (next === "completed") {
+      try {
+        await assertTaskReadyToComplete(taskId);
+      } catch (err: any) {
+        toast({
+          title: "Add required information",
+          description: err?.message || "This task is missing required information.",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
     setIsUpdating(true);
     const prev = status;
     setStatus(next);
@@ -1287,10 +1293,9 @@ export function TaskDetailPanel({
                 onActivate={() => setOpenChipSlot("priority")}
                 factChips={priorityFactChips}
                 hoverChips={[
-                  { id: "low", label: "LOW", onPress: () => void handlePriorityChange("low") },
-                  { id: "medium", label: "NORMAL", onPress: () => void handlePriorityChange("medium") },
-                  { id: "high", label: "HIGH", onPress: () => void handlePriorityChange("high") },
                   { id: "urgent", label: "URGENT", onPress: () => void handlePriorityChange("urgent") },
+                  { id: "high", label: "HIGH", onPress: () => void handlePriorityChange("high") },
+                  { id: "low", label: "LOW", onPress: () => void handlePriorityChange("low") },
                 ]}
               />
             ),
@@ -1648,7 +1653,7 @@ export function TaskDetailPanel({
 
     const handleModalKeyDown = (event: React.KeyboardEvent) => {
       if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
-      if (showAnnotationEditor || lightboxOpen) return;
+      if (showAnnotationEditor) return;
       const target = event.target as HTMLElement | null;
       const tag = target?.tagName;
       if (tag === "TEXTAREA" || tag === "INPUT" || target?.isContentEditable) return;
@@ -1665,26 +1670,23 @@ export function TaskDetailPanel({
     return (
       <Dialog
         open={true}
-        // Annotation / lightbox are portaled to document.body. Keep the task dialog
-        // non-modal while they are open so Radix does not swallow their pointer events.
-        modal={!showAnnotationEditor && !lightboxOpen}
+        // Annotation editor is portaled to document.body. Keep the task dialog
+        // non-modal while it is open so Radix does not swallow pointer events.
+        modal={!showAnnotationEditor}
         onOpenChange={(open) => {
           if (!open && (showAnnotationEditor || suppressTaskDismissRef.current)) return;
-          if (!open && lightboxOpen) {
-            setLightboxOpen(false);
-            return;
-          }
           if (!open) onClose();
         }}
       >
         <DialogContent
-          className="max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0 min-w-0"
+          className="flex max-h-[calc(100dvh-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0"
           aria-describedby="task-detail-panel-desc"
-          // When true, Close is rendered in the hero toolbar beside edit-image.
+          // Modal keeps Dialog chrome close outside the scroll body so it stays
+          // reachable when messages/compose push the hero off-screen.
           hideCloseButton={options?.hideCloseButton}
           onKeyDown={handleModalKeyDown}
           onPointerDownOutside={(event) => {
-            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            if (showAnnotationEditor) event.preventDefault();
             // Portaled menus (checklist •••, overflow) render outside DialogContent;
             // without this, Radix treats the click as dismiss and the menu never works.
             const t = event.target;
@@ -1702,7 +1704,7 @@ export function TaskDetailPanel({
             }
           }}
           onInteractOutside={(event) => {
-            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            if (showAnnotationEditor) event.preventDefault();
             const t = event.target;
             if (
               t instanceof Element &&
@@ -1718,7 +1720,7 @@ export function TaskDetailPanel({
             }
           }}
           onFocusOutside={(event) => {
-            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            if (showAnnotationEditor) event.preventDefault();
             const t = event.target;
             if (
               t instanceof Element &&
@@ -1734,10 +1736,10 @@ export function TaskDetailPanel({
             }
           }}
           onOpenAutoFocus={(event) => {
-            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            if (showAnnotationEditor) event.preventDefault();
           }}
           onEscapeKeyDown={(event) => {
-            if (showAnnotationEditor || lightboxOpen) event.preventDefault();
+            if (showAnnotationEditor) event.preventDefault();
           }}
         >
           <DialogHeader className="sr-only absolute">
@@ -1746,7 +1748,7 @@ export function TaskDetailPanel({
             Task detail: description, checklist, evidence, and timeline.
             </DialogDescription>
           </DialogHeader>
-          {onOpenTask && !showAnnotationEditor && !lightboxOpen ? (
+          {onOpenTask && !showAnnotationEditor ? (
             <TaskModalNavChevrons
               prevId={prevTaskId}
               nextId={nextTaskId}
@@ -1756,7 +1758,7 @@ export function TaskDetailPanel({
             />
           ) : null}
           <div
-            className="flex max-h-[90vh] min-h-0 w-full flex-col overflow-hidden rounded-xl lg:rounded-lg"
+            className="flex max-h-[calc(100dvh-2rem)] min-h-0 w-full flex-col overflow-hidden rounded-xl lg:rounded-lg"
             {...swipeNav}
           >
             {content}
@@ -1899,9 +1901,11 @@ export function TaskDetailPanel({
             onSelectImage={setSelectedImageIndex}
             onOpenImage={(index) => {
               setSelectedImageIndex(index);
-              setLightboxOpen(true);
+              const img = imageAttachments[index];
+              if (!img?.id) return;
+              setEditingImageId(img.id);
+              setShowAnnotationEditor(true);
             }}
-            onClose={variant === "modal" ? onClose : undefined}
             statusLabel={statusChipLabel}
             statusTone={statusTone}
             signalChip={signalChip}
@@ -1912,7 +1916,7 @@ export function TaskDetailPanel({
               checklist: checklistItemCount,
               comments: commentCount,
             }}
-            imageOpen={lightboxOpen || showAnnotationEditor}
+            imageOpen={showAnnotationEditor}
             metaRow={
               <IntakeChipRow
                 layout="interleaved"
@@ -2100,11 +2104,27 @@ export function TaskDetailPanel({
     </div>
   );
 
-  // Single-scroll detail body (hero → checklist → messages → actions → activity)
+  // Single-scroll detail body (hero → checklist → messages → actions → activity).
+  // Modal: pin Close outside the scroll region so compose/keyboard can't push it away.
   return (
     <>
     {panelWrapper(
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          {variant === "modal" ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className={cn(
+                "absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-md",
+                "bg-background/90 text-foreground shadow-sm ring-1 ring-border/40 backdrop-blur-sm",
+                "transition-colors hover:bg-muted/80",
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+              aria-label="Close task"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
           {panelContent}
         </div>,
       "Task Details",
@@ -2270,51 +2290,6 @@ export function TaskDetailPanel({
       </DialogContent>
     </Dialog>
 
-    {/* Image lightbox modal — in-app preview; Annotate opens the editor */}
-    <ImageLightbox
-      open={lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null}
-      images={imageAttachments.map((img: any) => {
-        const anns = Array.isArray(img.annotation_json) ? img.annotation_json : [];
-        return {
-          src: img.file_url || img.optimized_url || "",
-          fallbackSrc: img.optimized_url || img.thumbnail_url || undefined,
-          alt: img.file_name || "Task image",
-          overlay:
-            anns.length > 0
-              ? ({ aspectRatio }) => (
-                  <TaskImageAnnotationOverlay
-                    annotations={anns}
-                    aspectRatio={aspectRatio}
-                  />
-                )
-              : undefined,
-        };
-      })}
-      index={selectedImageIndex ?? 0}
-      onIndexChange={setSelectedImageIndex}
-      title="Evidence"
-      onClose={() => setLightboxOpen(false)}
-      headerAction={
-        imageAttachments[selectedImageIndex ?? -1]?.id ? (
-          <button
-            type="button"
-            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-medium text-white transition-colors hover:bg-white/25"
-            onClick={(e) => {
-              e.stopPropagation();
-              const img = imageAttachments[selectedImageIndex ?? 0];
-              if (!img?.id) return;
-              setLightboxOpen(false);
-              setEditingImageId(img.id);
-              setShowAnnotationEditor(true);
-            }}
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Annotate
-          </button>
-        ) : null
-      }
-    />
-
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {/* detectionOverlays={[]}: ai-image-analyse does not return bounding boxes (x,y,width,height).
         Overlays disabled until true bounding box support is implemented. */}
@@ -2334,160 +2309,6 @@ export function TaskDetailPanel({
       document.body
     )}
     </>
-  );
-}
-
-const OVERLAY_COLOR_MAP: Record<string, string> = {
-  charcoal: "#1f2937",
-  white: "#ffffff",
-  "warning-orange": "#f59e0b",
-  "danger-red": "#ef4444",
-  "calm-blue": "#3b82f6",
-  "success-green": "#22c55e",
-};
-
-function TaskImageAnnotationOverlay({
-  annotations,
-  compact = false,
-  /** Natural width / height of the image. Required to avoid non-uniform SVG stretch warping text. */
-  aspectRatio = 1,
-}: {
-  annotations?: Annotation[];
-  compact?: boolean;
-  aspectRatio?: number;
-}) {
-  if (!Array.isArray(annotations) || annotations.length === 0) return null;
-  const strokeScale = compact ? 0.7 : 1;
-  const ratio = Number.isFinite(aspectRatio) && aspectRatio > 0.05 ? aspectRatio : 1;
-  // Match image aspect so preserveAspectRatio="none" still scales X/Y uniformly
-  // when the SVG box matches the photo — text/circles stay undistorted.
-  const vbH = 100;
-  const vbW = 100 * ratio;
-  const minDim = Math.min(vbW, vbH);
-  const sx = (x: number) => x * vbW;
-  const sy = (y: number) => y * vbH;
-
-  return (
-    <svg
-      viewBox={`0 0 ${vbW} ${vbH}`}
-      preserveAspectRatio="none"
-      className="pointer-events-none absolute inset-0 h-full w-full"
-    >
-      {annotations.map((annotation) => {
-        const color = OVERLAY_COLOR_MAP[annotation.strokeColor] || "#1f2937";
-        const strokeWidth =
-          (annotation.strokeWidth === "bold" ? 0.8 : annotation.strokeWidth === "thin" ? 0.3 : 0.5) *
-          strokeScale *
-          (minDim / 100);
-
-        if (annotation.type === "pin") {
-          return (
-            <circle
-              key={annotation.annotationId}
-              cx={sx(annotation.x)}
-              cy={sy(annotation.y)}
-              r={1.1 * (minDim / 100)}
-              fill={color}
-            />
-          );
-        }
-
-        if (annotation.type === "arrow") {
-          return (
-            <g key={annotation.annotationId}>
-              <line
-                x1={sx(annotation.from.x)}
-                y1={sy(annotation.from.y)}
-                x2={sx(annotation.to.x)}
-                y2={sy(annotation.to.y)}
-                stroke={color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
-              />
-            </g>
-          );
-        }
-
-        if (annotation.type === "rect") {
-          return (
-            <rect
-              key={annotation.annotationId}
-              x={sx(annotation.x)}
-              y={sy(annotation.y)}
-              width={annotation.width * vbW}
-              height={annotation.height * vbH}
-              fill="none"
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
-            />
-          );
-        }
-
-        if (annotation.type === "circle") {
-          return (
-            <circle
-              key={annotation.annotationId}
-              cx={sx(annotation.x)}
-              cy={sy(annotation.y)}
-              r={annotation.radius * minDim}
-              fill="none"
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
-            />
-          );
-        }
-
-        if (annotation.type === "text") {
-          const fontSize = compact
-            ? Math.max(2, (annotation.fontSizePt ?? 16) * 0.14) * (minDim / 100)
-            : Math.max(2.4, (annotation.fontSizePt ?? 16) * 0.18) * (minDim / 100);
-          const fill = OVERLAY_COLOR_MAP[annotation.textColor] || color;
-          const highlight = annotation.textColor === "white" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)";
-          return (
-            <g key={annotation.annotationId}>
-              <rect
-                x={sx(annotation.x) - 0.4 * (minDim / 100)}
-                y={sy(annotation.y) - 0.4 * (minDim / 100)}
-                width={annotation.width * vbW + 0.8 * (minDim / 100)}
-                height={Math.max(fontSize * 1.3, (annotation.height ?? 0) * vbH)}
-                fill={highlight}
-              />
-              <text
-                x={sx(annotation.x)}
-                y={sy(annotation.y) + fontSize}
-                fill={fill}
-                fontSize={fontSize}
-              >
-                {annotation.text}
-              </text>
-            </g>
-          );
-        }
-
-        if (annotation.type === "freedraw" && annotation.points.length > 1) {
-          const polylinePoints = annotation.points
-            .map((point) => `${sx(point.x)},${sy(point.y)}`)
-            .join(" ");
-          return (
-            <polyline
-              key={annotation.annotationId}
-              points={polylinePoints}
-              fill="none"
-              stroke={color}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
-            />
-          );
-        }
-
-        return null;
-      })}
-    </svg>
   );
 }
 

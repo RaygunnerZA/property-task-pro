@@ -9,6 +9,7 @@ import { Loader2, Zap, ChevronDown, ChevronUp, HelpCircle, Brain, Shield, Sparkl
 import { useQueryClient } from "@tanstack/react-query";
 import { useOrgSettings, type AutomationMode, type AutoTaskLevel } from "@/hooks/useOrgSettings";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -48,6 +49,8 @@ export default function SettingsAutomationPanel() {
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
   const { settings, updateSettings, isUpdating } = useOrgSettings();
+  const { isCoordinating } = useEffectiveAccess();
+  const settingsWriteLocked = isUpdating || !isCoordinating;
   const [runningAutomation, setRunningAutomation] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [backfillingIcons, setBackfillingIcons] = useState(false);
@@ -101,6 +104,11 @@ export default function SettingsAutomationPanel() {
   return (
     <TooltipProvider>
       <div className="space-y-6">
+        {!isCoordinating ? (
+          <p className="text-sm text-muted-foreground">
+            Only Owners and Managers can change automation settings.
+          </p>
+        ) : null}
         {/* Master Automation Mode Dial */}
         <Card className="shadow-e1">
           <CardHeader>
@@ -116,7 +124,7 @@ export default function SettingsAutomationPanel() {
                   key={m}
                   type="button"
                   onClick={() => handleModeChange(m)}
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                   className={cn(
                     "min-h-[44px] w-full min-w-0 flex-1 py-3 px-3 rounded-[6px] text-sm font-medium transition-all capitalize sm:px-4",
                     mode === m
@@ -151,7 +159,7 @@ export default function SettingsAutomationPanel() {
                   <Label>Auto-create tasks</Label>
                   <Switch
                     checked={settings?.auto_task_generation ?? settings?.auto_task_creation ?? false}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     onCheckedChange={async (c) => {
                       await updateSettings({ auto_task_generation: c, auto_task_creation: c });
                     }}
@@ -168,7 +176,7 @@ export default function SettingsAutomationPanel() {
                         <Checkbox
                           checked={autoTaskLevels.includes(value)}
                           onCheckedChange={(c) => toggleTaskLevel(value, !!c)}
-                          disabled={isUpdating}
+                          disabled={settingsWriteLocked}
                         />
                         <span className="text-sm">{label}</span>
                       </label>
@@ -191,7 +199,7 @@ export default function SettingsAutomationPanel() {
                   <Label>Assign contractors automatically</Label>
                   <Switch
                     checked={settings?.auto_assign_contractors ?? settings?.auto_assignment ?? false}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     onCheckedChange={async (c) => {
                       await updateSettings({ auto_assign_contractors: c, auto_assignment: c });
                     }}
@@ -216,7 +224,7 @@ export default function SettingsAutomationPanel() {
                       onValueChange={async ([v]) => {
                         await updateSettings({ auto_assign_confidence: v / 100 });
                       }}
-                      disabled={isUpdating}
+                      disabled={settingsWriteLocked}
                       className="flex-1"
                     />
                     <span className="text-sm w-12">{(settings?.auto_assign_confidence ?? 0.8) * 100}%</span>
@@ -238,7 +246,7 @@ export default function SettingsAutomationPanel() {
                   <Label>Allow AI to update expiry and next due date</Label>
                   <Switch
                     checked={settings?.auto_expiry_update ?? false}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     onCheckedChange={async (c) => updateSettings({ auto_expiry_update: c })}
                   />
                 </div>
@@ -259,7 +267,7 @@ export default function SettingsAutomationPanel() {
                       max={95}
                       step={5}
                       onValueChange={async ([v]) => updateSettings({ auto_expiry_confidence: v / 100 })}
-                      disabled={isUpdating}
+                      disabled={settingsWriteLocked}
                       className="flex-1"
                     />
                     <span className="text-sm w-12">{(settings?.auto_expiry_confidence ?? 0.85) * 100}%</span>
@@ -296,7 +304,7 @@ export default function SettingsAutomationPanel() {
                   <Label>Auto-link to assets when confidence ≥ threshold</Label>
                   <Switch
                     checked={settings?.auto_link_assets ?? false}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     onCheckedChange={async (c) => updateSettings({ auto_link_assets: c })}
                   />
                 </div>
@@ -307,7 +315,7 @@ export default function SettingsAutomationPanel() {
                     max={95}
                     step={5}
                     onValueChange={async ([v]) => updateSettings({ auto_link_asset_confidence: v / 100 })}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     className="flex-1"
                   />
                   <span className="text-sm w-12">{(settings?.auto_link_asset_confidence ?? 0.75) * 100}%</span>
@@ -316,7 +324,7 @@ export default function SettingsAutomationPanel() {
                   <Label>Auto-link to spaces when confidence ≥ threshold</Label>
                   <Switch
                     checked={settings?.auto_link_spaces ?? false}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     onCheckedChange={async (c) => updateSettings({ auto_link_spaces: c })}
                   />
                 </div>
@@ -327,7 +335,7 @@ export default function SettingsAutomationPanel() {
                     max={95}
                     step={5}
                     onValueChange={async ([v]) => updateSettings({ auto_link_space_confidence: v / 100 })}
-                    disabled={isUpdating}
+                    disabled={settingsWriteLocked}
                     className="flex-1"
                   />
                   <span className="text-sm w-12">{(settings?.auto_link_space_confidence ?? 0.7) * 100}%</span>
@@ -359,7 +367,7 @@ export default function SettingsAutomationPanel() {
                 onValueChange={async (v: "off" | "suggestions_only" | "auto_draft" | "auto_create" | "full_automation") =>
                   updateSettings({ automated_intelligence: v })
                 }
-                disabled={isUpdating}
+                disabled={settingsWriteLocked}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -380,7 +388,7 @@ export default function SettingsAutomationPanel() {
                 onValueChange={async (v: "conservative" | "recommended" | "aggressive") =>
                   updateSettings({ prediction_aggressiveness: v })
                 }
-                disabled={isUpdating}
+                disabled={settingsWriteLocked}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -399,7 +407,7 @@ export default function SettingsAutomationPanel() {
                 onValueChange={async (v: "low" | "medium" | "high") =>
                   updateSettings({ hazard_sensitivity: v })
                 }
-                disabled={isUpdating}
+                disabled={settingsWriteLocked}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -418,7 +426,7 @@ export default function SettingsAutomationPanel() {
                 onValueChange={async (v: "minimal" | "standard" | "full_anonymised") =>
                   updateSettings({ data_sharing_level: v })
                 }
-                disabled={isUpdating}
+                disabled={settingsWriteLocked}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -442,7 +450,7 @@ export default function SettingsAutomationPanel() {
                 <Label>Enable AI icon suggestions</Label>
                 <Switch
                   checked={settings?.ai_icon_suggestions ?? true}
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                   onCheckedChange={async (c) => updateSettings({ ai_icon_suggestions: c })}
                 />
               </div>
@@ -450,7 +458,7 @@ export default function SettingsAutomationPanel() {
                 <Label>Allow AI to override icons</Label>
                 <Switch
                   checked={settings?.ai_icon_override ?? false}
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                   onCheckedChange={async (c) => updateSettings({ ai_icon_override: c })}
                 />
               </div>
@@ -461,7 +469,7 @@ export default function SettingsAutomationPanel() {
                   onValueChange={async (v: "conservative" | "recommended" | "aggressive") =>
                     updateSettings({ ai_icon_mode: v })
                   }
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -480,7 +488,7 @@ export default function SettingsAutomationPanel() {
                   onValueChange={async (v: "global" | "local" | "fallback") =>
                     updateSettings({ ai_icon_prefer: v })
                   }
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -499,7 +507,7 @@ export default function SettingsAutomationPanel() {
                   onValueChange={async (v: "wrench" | "file-text" | "circle" | "empty") =>
                     updateSettings({ ai_icon_fallback: v })
                   }
-                  disabled={isUpdating}
+                  disabled={settingsWriteLocked}
                 >
                   <SelectTrigger>
                     <SelectValue />

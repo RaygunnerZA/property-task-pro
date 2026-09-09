@@ -4910,14 +4910,6 @@ export function IntakeModal({
                   },
                 },
                 {
-                  id: "pri-normal",
-                  label: "NORMAL",
-                  onPress: () => {
-                    setPriority("medium");
-                    setPriorityDefined(true);
-                  },
-                },
-                {
                   id: "pri-low",
                   label: "LOW",
                   onPress: () => {

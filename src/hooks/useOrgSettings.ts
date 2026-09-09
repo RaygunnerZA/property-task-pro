@@ -37,6 +37,9 @@ export interface OrgSettings {
   ai_icon_mode?: "conservative" | "recommended" | "aggressive";
   ai_icon_prefer?: "global" | "local" | "fallback";
   ai_icon_fallback?: "wrench" | "file-text" | "circle" | "empty";
+  require_task_photo?: boolean;
+  require_task_location?: boolean;
+  require_task_category?: boolean;
 }
 
 export function useOrgSettings() {
@@ -59,6 +62,9 @@ export function useOrgSettings() {
 
   const updateMutation = useMutation({
     mutationFn: async (payload: Partial<Omit<OrgSettings, "org_id" | "updated_at">>) => {
+      if (!orgId) {
+        throw new Error("No organisation selected.");
+      }
       const { org_id: _o, updated_at: _u, ...rest } = payload as OrgSettings;
       const { data, error } = await supabase
         .from("org_settings")

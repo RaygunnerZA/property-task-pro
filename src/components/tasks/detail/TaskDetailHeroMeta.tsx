@@ -223,7 +223,7 @@ export function TaskDetailHeroMeta({
             type="button"
             onClick={() => onOpenImage?.(activeIndex)}
             className="block w-full text-left"
-            aria-label={hero?.alt || "Task evidence"}
+            aria-label={hero?.alt ? `Annotate ${hero.alt}` : "Annotate task evidence"}
           >
             <img
               src={heroSrc}
@@ -282,7 +282,7 @@ export function TaskDetailHeroMeta({
                 "opacity-0 focus-visible:opacity-100 group-hover:opacity-100 hover:bg-black/50",
                 "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               )}
-              aria-label="Edit image and annotations"
+              aria-label="Annotate image"
             >
               <Edit2 className="h-3.5 w-3.5" />
             </button>

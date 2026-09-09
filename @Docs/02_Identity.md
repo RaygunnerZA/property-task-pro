@@ -248,6 +248,7 @@ UI visibility and API/RLS enforcement must use the same rules. Never check plan 
 | Manage roles | Yes | No | No | No |
 | View operational reports | Yes | Yes | Limited (own work) | No |
 | Manage compliance | Yes | Yes (if entitlement + scope) | No | No |
+| Set required task fields | Yes | Yes | No | No |
 | Manage billing | Primary Owner (default) | No | No | No |
 | Transfer ownership | Primary Owner | No | No | No |
 | Delete organisation | Primary Owner | No | No | No |

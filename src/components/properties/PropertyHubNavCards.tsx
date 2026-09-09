@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { paperTexturedColorStyle } from "@/lib/paperTexture";
+import { paperTexturedDiagonalFadeStyle } from "@/lib/paperTexture";
 import {
   PropertyHubTab,
   scaleTabWidthsToContainer,
@@ -337,7 +337,7 @@ export function PropertyHubNavCards({
             "shadow-[inset_1px_1px_1px_0px_rgba(255,255,255,1),2px_2px_2px_-1px_rgba(0,0,0,0.15),0px_2px_4px_-2px_rgba(0,0,0,0.1)]",
             "transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           )}
-          style={paperTexturedColorStyle(activeCard.fill)}
+          style={paperTexturedDiagonalFadeStyle(activeCard.fill)}
         >
           <div className="flex h-[100px] flex-row items-start justify-start gap-2">
             <img

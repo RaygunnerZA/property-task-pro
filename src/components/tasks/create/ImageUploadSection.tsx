@@ -358,7 +358,11 @@ export function ImageUploadSection({
                   <img
                     src={image.thumbnail_url}
                     alt={image.display_name}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover cursor-pointer"
+                    onClick={() => {
+                      setEditingImageIndex(idx);
+                      setShowAnnotationEditor(true);
+                    }}
                   />
                   <button
                     type="button"

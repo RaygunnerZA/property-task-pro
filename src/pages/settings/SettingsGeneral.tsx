@@ -10,6 +10,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Save, Plus, User as UserIcon, Edit, Upload, X, Shield, Calendar } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useOrgSettings } from "@/hooks/useOrgSettings";
+import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
+import { TaskCaptureRequirementsCard } from "@/components/settings/TaskCaptureRequirementsCard";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -32,6 +34,8 @@ export default function SettingsGeneral() {
   const { orgId, isLoading: orgLoading, error: orgError } = useActiveOrg();
   const refreshActiveOrg = () => { /* refresh handled via query invalidation */ };
   const { settings: orgSettings, updateSettings: updateOrgSettings, isUpdating: orgSettingsUpdating } = useOrgSettings();
+  const { isCoordinating } = useEffectiveAccess();
+  const orgSettingsLocked = orgSettingsUpdating || !isCoordinating;
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -643,12 +647,17 @@ export default function SettingsGeneral() {
               <p className="text-xs text-muted-foreground">
                 When enabled, the daily scheduler will create tasks for compliance items with auto_schedule on.
               </p>
+              {!isCoordinating ? (
+                <p className="text-xs text-muted-foreground">
+                  Only Owners and Managers can change this setting.
+                </p>
+              ) : null}
             </div>
             <Switch
               id="auto-schedule"
               className="shrink-0 sm:mt-0"
               checked={orgSettings?.auto_schedule_compliance ?? false}
-              disabled={orgSettingsUpdating}
+              disabled={orgSettingsLocked}
               onCheckedChange={async (checked) => {
                 try {
                   await updateOrgSettings({ auto_schedule_compliance: checked });
@@ -671,6 +680,8 @@ export default function SettingsGeneral() {
           </div>
         </CardContent>
       </Card>
+
+      <TaskCaptureRequirementsCard />
       </div>
 
       {/* Edit Profile Dialog */}

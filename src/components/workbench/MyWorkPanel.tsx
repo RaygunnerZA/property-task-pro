@@ -63,11 +63,11 @@ function AttentionPanelHeader() {
           Everything that needs your attention, in one place.
         </p>
       </div>
-      <div className="flex shrink-0 items-end justify-end self-stretch">
+      <div className="hidden shrink-0 items-end justify-end self-stretch md:flex">
         <img
           src={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
           alt=""
-          className="h-16 w-16 object-contain object-right drop-shadow-sm sm:h-20 sm:w-20"
+          className="h-16 w-16 object-contain object-right drop-shadow-sm md:h-20 md:w-20"
           decoding="async"
         />
       </div>

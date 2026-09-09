@@ -254,10 +254,9 @@ export function CreateTaskSections({
             hoverChips={
               id === "priority"
                 ? [
-                    { id: "low", label: "LOW", onPress: () => { setPriorityTouched(true); setPriority("low"); } },
-                    { id: "medium", label: "NORMAL", onPress: () => { setPriorityTouched(true); setPriority("medium"); } },
-                    { id: "high", label: "HIGH", onPress: () => { setPriorityTouched(true); setPriority("high"); } },
                     { id: "urgent", label: "URGENT", onPress: () => { setPriorityTouched(true); setPriority("urgent"); } },
+                    { id: "high", label: "HIGH", onPress: () => { setPriorityTouched(true); setPriority("high"); } },
+                    { id: "low", label: "LOW", onPress: () => { setPriorityTouched(true); setPriority("low"); } },
                   ]
                 : undefined
             }

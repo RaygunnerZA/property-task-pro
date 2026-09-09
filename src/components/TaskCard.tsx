@@ -25,7 +25,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { markTaskCompleted, patchTasksCacheStatus } from "@/lib/completeTask";
+import { markTaskCompleted, patchTasksCacheStatus, assertTaskReadyToComplete } from "@/lib/completeTask";
 import { archiveTask } from "@/services/tasks/taskMutations";
 import { useDeleteTaskMutation } from "@/hooks/mutations/useDeleteTaskMutation";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
@@ -35,6 +35,7 @@ import type { TaskStatus } from "@/types/database";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { toErrorMessage } from "@/lib/error";
 import { useState, useMemo, useCallback, memo, type MouseEvent, type ReactNode } from "react";
 import { formatTaskDate } from "@/utils/formatTaskDate";
 import { formatMessageDayLabel } from "@/lib/formatMessageDayLabel";
@@ -363,6 +364,17 @@ function TaskCardComponent({
   const handleDone = useCallback(async () => {
     if (!task?.id || isCompleting) return;
 
+    try {
+      await assertTaskReadyToComplete(task.id);
+    } catch (error: unknown) {
+      toast({
+        title: "Add required information",
+        description: toErrorMessage(error, "This task is missing required information."),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCompleting(true);
     // Run the mutation in parallel with the confirm/settle motion. Capture the
     // outcome instead of awaiting immediately so an early rejection can't
@@ -372,6 +384,7 @@ function TaskCardComponent({
       // Keep the card in the list; All shows a Done section for completed work.
       optimistic: false,
       skipCachePatch: true,
+      skipCaptureCheck: true,
     }).then(
       () => ({ ok: true as const }),
       (error: unknown) => ({ ok: false as const, error })
@@ -393,8 +406,8 @@ function TaskCardComponent({
       }
     } else {
       toast({
-        title: "Error",
-        description: "Failed to complete task. Please try again.",
+        title: "Couldn't complete task",
+        description: toErrorMessage(result.error, "Failed to complete task. Please try again."),
         variant: "destructive",
       });
     }

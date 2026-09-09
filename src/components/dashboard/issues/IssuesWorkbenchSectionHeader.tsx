@@ -47,14 +47,14 @@ export function IssuesWorkbenchSectionHeader({
           className
         )}
       >
-        <div className="min-w-0 flex-1 pr-[min(6.5rem,28%)]">
+        <div className="min-w-0 flex-1 md:pr-[min(6.5rem,28%)]">
           <h2 className={workbenchSectionTitleClassName}>{title}</h2>
           {subtitle ? (
             <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
           ) : null}
         </div>
         <div
-          className="pointer-events-none absolute right-2 top-0 flex aspect-square w-[min(6.25rem,26%)] max-h-[6.25rem] items-start justify-end"
+          className="pointer-events-none absolute right-2 top-0 hidden aspect-square w-[min(6.25rem,26%)] max-h-[6.25rem] items-start justify-end md:flex"
           aria-hidden
         >
           <img

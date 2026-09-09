@@ -33,6 +33,12 @@ import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
 import { isWeekendDueDate } from "@/lib/repeatWeekendPush";
 import { markQuickWinComplete } from "@/lib/quickWins";
+import { useOrgSettings } from "@/hooks/useOrgSettings";
+import {
+  missingTaskCaptureFields,
+  parseTaskCaptureRequirements,
+  taskCaptureRequiredMessage,
+} from "@/lib/taskCaptureRequirements";
 
 export interface UseCreateTaskSubmitProps {
   // Auth
@@ -105,6 +111,7 @@ export function useCreateTaskSubmit({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const createTaskMutation = useCreateTaskMutation();
+  const { settings: orgSettings, isLoading: orgSettingsLoading } = useOrgSettings();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = useCallback(async () => {
@@ -171,6 +178,32 @@ export function useCreateTaskSubmit({
       return;
     }
 
+    if (orgSettingsLoading) {
+      toast({ title: "Loading", description: "Please wait while organisation settings load.", variant: "default" });
+      return;
+    }
+
+    const captureRequirements = parseTaskCaptureRequirements(orgSettings);
+    const pendingPhotoCount =
+      images.length +
+      taskFiles.filter((file) => {
+        const type = (file.file_type || file.file?.type || "").toLowerCase();
+        return type.startsWith("image/");
+      }).length;
+    const captureMissing = missingTaskCaptureFields(captureRequirements, {
+      hasPhoto: pendingPhotoCount > 0,
+      hasLocation: Boolean(propertyId || selectedPropertyIds[0]) && selectedSpaceIds.length > 0,
+      hasCategory: selectedThemeIds.length > 0,
+    });
+    if (captureMissing.length > 0) {
+      toast({
+        title: "Required information missing",
+        description: taskCaptureRequiredMessage(captureMissing, "create"),
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // ── JIT ghost entity materialisation ─────────────────────────────────
@@ -225,7 +258,8 @@ export function useCreateTaskSubmit({
         insert: {
           org_id: orgId,
           title: finalTitle,
-          property_id: propertyId || null,
+          property_id: propertyId || selectedPropertyIds[0] || null,
+          space_ids: resolvedSpaceIds,
           priority,
           due_at: dueDateValue,
           milestones: milestones.length > 0 ? milestones : [],
@@ -488,6 +522,7 @@ export function useCreateTaskSubmit({
     milestones, repeatRule, assignedUserId, assignedTeamIds, followerUserIds, pendingInvitations,
     images, taskFiles, subtasks, appliedChips, aiTitleGenerated, chipSuggestedIcon,
     generateVerbLabel, prefill, taskCreatedSource, resetForm, onOpenChange, onTaskCreated,
+    orgSettings, orgSettingsLoading,
   ]);
 
   return { handleSubmit, isSubmitting };

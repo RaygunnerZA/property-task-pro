@@ -6,6 +6,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { assertTaskReadyToComplete } from "@/lib/completeTask";
 
 type TaskStatus = Database["public"]["Enums"]["task_status"];
 type TaskPriority = Database["public"]["Tables"]["tasks"]["Row"]["priority"];
@@ -39,6 +40,9 @@ export function useUpdateTaskMutation() {
 
   return useMutation({
     mutationFn: async ({ taskId, updates }: UpdateTaskVariables) => {
+      if (updates.status === "completed") {
+        await assertTaskReadyToComplete(taskId);
+      }
       const tableUpdates = mapUpdatesToTasksTable(updates);
       const { data, error } = await supabase
         .from("tasks")

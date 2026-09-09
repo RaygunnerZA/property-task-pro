@@ -212,6 +212,29 @@ export function useCreateTaskAIPipeline({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chipSuggestions]);
 
+  // ─── Auto-apply priority chips from rule-based extractor (instant) ───────
+  // Same contract as IntakeModal: keyword hits like "urgent" / "asap" apply
+  // immediately. Do not wait for remote ai-extract.
+
+  useEffect(() => {
+    if (priorityTouched) return;
+    const priorityChip = chipSuggestions.find((c) => c.type === "priority");
+    if (!priorityChip) return;
+    const raw = String(priorityChip.value ?? priorityChip.label ?? "").toLowerCase();
+    if (raw.includes("urgent")) {
+      setPriority("urgent");
+      setPriorityTouched(true);
+    } else if (raw.includes("high")) {
+      setPriority("high");
+      setPriorityTouched(true);
+    } else if (raw.includes("low")) {
+      setPriority("low");
+      setPriorityTouched(true);
+    }
+    // "medium" / "normal" is the form default — leave untouched until user/AI acts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chipSuggestions, priorityTouched]);
+
   // ─── Derived chip arrays ──────────────────────────────────────────────────
 
   const factChips = useMemo(() => {
@@ -267,7 +290,7 @@ export function useCreateTaskAIPipeline({
       const section = CHIP_TYPE_TO_SECTION[chip.type];
       if (section && bySection[section]) bySection[section].push(chip);
     });
-    if (priorityTouched) {
+    if (priorityTouched && priority !== "medium") {
       const priorityLabel = { low: "LOW", medium: "NORMAL", high: "HIGH", urgent: "URGENT" }[priority];
       bySection["priority"] = [
         { id: `priority-${priority}`, type: "priority", value: priority, label: priorityLabel, score: 1, source: "rule", resolvedEntityId: priority },
@@ -357,15 +380,17 @@ export function useCreateTaskAIPipeline({
 
   useEffect(() => {
     if (!aiResult) return;
+    // Preserve rule-based / manual priority (e.g. "urgent" keyword already applied).
+    if (priorityTouched) return;
+
     if (aiResult.priority === "HIGH" || aiResult.priority === "high") {
       setPriority("high"); setPriorityTouched(true);
     } else if (aiResult.priority === "URGENT" || aiResult.priority === "urgent") {
       setPriority("urgent"); setPriorityTouched(true);
-    } else if (aiResult.priority === "MEDIUM" || aiResult.priority === "medium") {
-      setPriority("medium"); setPriorityTouched(false);
     } else if (aiResult.priority === "LOW" || aiResult.priority === "low") {
       setPriority("low"); setPriorityTouched(true);
     }
+    // medium / null = no signal — do not overwrite form default or clear urgency.
 
     if (aiResult.date) {
       const today = new Date();
@@ -393,7 +418,7 @@ export function useCreateTaskAIPipeline({
       setShowAdvanced(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiResult]);
+  }, [aiResult, priorityTouched]);
 
   useEffect(() => {
     if (!description.trim()) {

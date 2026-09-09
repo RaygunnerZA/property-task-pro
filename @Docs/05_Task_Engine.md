@@ -69,6 +69,16 @@ Examples:
 - Cleaning
 - Maintenance
 
+### Capture requirements (org settings)
+
+Owners and Managers set required fields in organisation Settings → General (`org_settings`):
+
+- Photo — a non-signature image must be attached
+- Location — property and at least one space
+- Category — at least one theme/group (electrical, plumbing, and so on)
+
+Create-task and complete-task are blocked until the required fields are present. Completion is also enforced in the database so reports can filter on evidence, place, and trade. Defaults are off.
+
 ---
 
 ## 5.3 — CHECKLISTS (FIRST-CLASS OBJECTS)

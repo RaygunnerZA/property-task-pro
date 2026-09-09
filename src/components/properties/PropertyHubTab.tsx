@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { paperTexturedColorStyle } from "@/lib/paperTexture";
+import { paperTexturedColorStyle, paperTexturedDiagonalFadeStyle } from "@/lib/paperTexture";
 
 export type PropertyHubNavCardId = "spaces" | "assets" | "people" | "records";
 
@@ -246,7 +246,7 @@ export function PropertyHubTab({
           ...TAB_SHAPE_MASK_STYLE,
           ...(isActive
             ? {
-                ...paperTexturedColorStyle(fill),
+                ...paperTexturedDiagonalFadeStyle(fill),
                 boxShadow: ACTIVE_FILL_SHADOW,
               }
             : {

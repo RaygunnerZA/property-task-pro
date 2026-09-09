@@ -3920,6 +3920,9 @@ export type Database = {
           intake_email_token: string | null
           org_id: string
           prediction_aggressiveness: string | null
+          require_task_category: boolean
+          require_task_location: boolean
+          require_task_photo: boolean
           updated_at: string
         }
         Insert: {
@@ -3949,6 +3952,9 @@ export type Database = {
           intake_email_token?: string | null
           org_id: string
           prediction_aggressiveness?: string | null
+          require_task_category?: boolean
+          require_task_location?: boolean
+          require_task_photo?: boolean
           updated_at?: string
         }
         Update: {
@@ -3978,6 +3984,9 @@ export type Database = {
           intake_email_token?: string | null
           org_id?: string
           prediction_aggressiveness?: string | null
+          require_task_category?: boolean
+          require_task_location?: boolean
+          require_task_photo?: boolean
           updated_at?: string
         }
         Relationships: [
