@@ -16,6 +16,10 @@ import type {
 } from "@/types/image-annotations";
 import type { SaveAnnotationsOptions } from "@/hooks/useImageAnnotations";
 import {
+  isPersistedAnnotationLayerId,
+  winningSessionIdByAnnotation,
+} from "@/lib/annotations/annotationEditSessions";
+import {
   getColorHex,
   getStrokeWidthPx,
   getLineDash,
@@ -48,6 +52,8 @@ export type AnnotationEditSession = {
   label: string;
   annotations: Annotation[];
   isEnabled?: boolean;
+  /** Real version row id when this card is one persisted layer. */
+  persistId?: string;
 };
 
 interface ImageAnnotationEditorProps {
@@ -190,10 +196,12 @@ export function ImageAnnotationEditor({
     (annotation: Annotation) => {
       if (!canEditAnnotation(annotation)) return false;
       const layerId = annotationLayerId.get(annotation.annotationId);
-      if (layerId && layerId !== "baseline") {
-        pulledFromLayerRef.current.set(annotation.annotationId, layerId);
+      const session = layerId ? editSessions.find((s) => s.id === layerId) : undefined;
+      const persistId = session?.persistId ?? layerId;
+      if (persistId && isPersistedAnnotationLayerId(persistId)) {
+        pulledFromLayerRef.current.set(annotation.annotationId, persistId);
         setSupersedeLayerIds((prev) =>
-          prev.includes(layerId) ? prev : [...prev, layerId]
+          prev.includes(persistId) ? prev : [...prev, persistId]
         );
       }
       // Sync so the same pointer gesture can drag immediately.
@@ -205,7 +213,7 @@ export function ImageAnnotationEditor({
       });
       return true;
     },
-    [annotationLayerId, canEditAnnotation]
+    [annotationLayerId, canEditAnnotation, editSessions]
   );
 
   const getFrameCorners = (annotation: Annotation): Array<{ handle: ShapeHandle; x: number; y: number }> => {
@@ -415,6 +423,10 @@ export function ImageAnnotationEditor({
     if (!imageSize) return;
     try {
       // 1) Saved layers (enabled by default; superseded only when previewed)
+      const winnerByAnnotation = winningSessionIdByAnnotation(editSessions, {
+        previewLayerIds,
+        draftIds,
+      });
       for (const session of editSessions) {
         const isEnabled = session.isEnabled !== false;
         const previewing = previewLayerIds.includes(session.id);
@@ -426,6 +438,8 @@ export function ImageAnnotationEditor({
         for (const annotation of session.annotations) {
           // Pulled into draft — draft draws the live copy.
           if (draftIds.has(annotation.annotationId)) continue;
+          // Same shape in a later layer — only the latest copy draws.
+          if (winnerByAnnotation.get(annotation.annotationId) !== session.id) continue;
           drawOneAnnotation(ctx, annotation);
         }
         ctx.restore();
@@ -1368,17 +1382,28 @@ export function ImageAnnotationEditor({
         return "unchanged";
       }
 
-      // Baseline-only (attachment JSON, no version rows): migrate full composite as layer 1.
+      // Legacy JSON / mixed blob: migrate *this user's* marks into layer 1.
+      // Other authors stay in leftover JSON until they save their own layer.
       let payload = annotationsForSave;
-      if (
+      const migratingLegacy =
         isLayeredMode &&
-        editSessions.length === 1 &&
-        editSessions[0]?.id === "baseline"
-      ) {
-        const baselineRemaining = editSessions[0].annotations.filter(
-          (a) => !annotationsForSave.some((d) => d.annotationId === a.annotationId)
+        editSessions.length > 0 &&
+        editSessions.every(
+          (session) => !isPersistedAnnotationLayerId(session.persistId ?? session.id),
         );
-        payload = [...baselineRemaining, ...annotationsForSave];
+      if (migratingLegacy) {
+        const seen = new Set(annotationsForSave.map((ann) => ann.annotationId));
+        const ownRemaining: Annotation[] = [];
+        for (const session of editSessions) {
+          for (const annotation of session.annotations) {
+            const owner = annotation.createdBy ?? currentUserId;
+            if (owner !== currentUserId) continue;
+            if (seen.has(annotation.annotationId)) continue;
+            seen.add(annotation.annotationId);
+            ownRemaining.push(annotation);
+          }
+        }
+        payload = [...ownRemaining, ...annotationsForSave];
       }
 
       if (payload.length === 0 && supersedeLayerIds.length === 0) {
@@ -1389,7 +1414,9 @@ export function ImageAnnotationEditor({
 
       await onSave(payload, {
         isAutosave: false,
-        supersedeLayerIds: supersedeLayerIds.filter((id) => id !== "baseline"),
+        supersedeLayerIds: supersedeLayerIds.filter((id) =>
+          isPersistedAnnotationLayerId(id),
+        ),
       });
       setAnnotations([]);
       setLastSavedAnnotations([]);
@@ -1880,7 +1907,11 @@ export function ImageAnnotationEditor({
       ) : null}
 
       {editSessions.length > 0 ? (
-        <div className="absolute bottom-24 right-3 z-20 flex max-h-[40vh] w-[min(16rem,calc(100vw-1.5rem))] flex-col gap-1 overflow-y-auto sm:bottom-28 sm:right-4">
+        <div
+          className="absolute bottom-24 right-3 z-20 flex max-h-[40vh] w-[min(17rem,calc(100vw-1.5rem))] flex-col gap-1.5 overflow-y-auto sm:bottom-28 sm:right-4"
+          role="list"
+          aria-label="Annotation edits"
+        >
           {[...editSessions].reverse().map((session) => {
             const opacity = layerOpacityById[session.id] ?? 1;
             const isDimmed = opacity <= 0.15;
@@ -1891,14 +1922,15 @@ export function ImageAnnotationEditor({
               <button
                 key={session.id}
                 type="button"
+                role="listitem"
                 onClick={() => toggleLayerFocus(session.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left shadow-sm backdrop-blur-md transition-colors",
+                  "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-left shadow-md backdrop-blur-md transition-colors",
                   isDimmed
                     ? "bg-black/35 ring-1 ring-white/20"
                     : isSuperseded && !isPreviewing
                       ? "bg-black/40 opacity-70"
-                      : "bg-black/70 ring-1 ring-white/10 hover:bg-black/80"
+                      : "bg-black/75 ring-1 ring-white/10 hover:bg-black/85"
                 )}
                 title={
                   isSuperseded

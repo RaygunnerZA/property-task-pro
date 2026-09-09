@@ -13,6 +13,10 @@ describe("mapIntakeDocumentType", () => {
     expect(mapIntakeDocumentType("Gas Safe")?.isOther).toBe(false);
     expect(mapIntakeDocumentType("CP12")?.type).toBe("Gas Safety Certificate");
     expect(mapIntakeDocumentType("portable appliance test")?.type).toBe("PAT Test");
+    expect(mapIntakeDocumentType("EPC")?.type).toBe("Energy Performance Certificate");
+    expect(mapIntakeDocumentType("legionella")?.type).toBe("Legionella Risk Assessment");
+    expect(mapIntakeDocumentType("FRA")?.type).toBe("Fire Risk Assessment");
+    expect(isIntakeCompliancePreset("Emergency Lighting Test")).toBe(true);
   });
 
   it("keeps unknown meaningful types as custom Other text", () => {

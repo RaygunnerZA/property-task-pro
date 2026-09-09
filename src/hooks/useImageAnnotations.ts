@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import type { Annotation } from "@/types/image-annotations";
+import { isPersistedAnnotationLayerId } from "@/lib/annotations/annotationEditSessions";
 
 export interface AnnotationVersionEntry {
   id: string;
@@ -52,10 +53,19 @@ export function compositeAnnotations(layers: AnnotationVersionEntry[]): Annotati
   return Array.from(byId.values());
 }
 
+const LEGACY_JSON_LAYER_ID = "legacy-json";
+
+function versionsTable() {
+  // Table is ahead of generated Database types.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase as any).from("task_image_annotation_versions");
+}
+
 export function useImageAnnotations(taskId: string, imageId: string) {
   const { orgId } = useActiveOrg();
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationVersions, setAnnotationVersions] = useState<AnnotationVersionEntry[]>([]);
+  const [sourceUpdatedAt, setSourceUpdatedAt] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,6 +77,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
       if (!orgId || !taskId || !imageId) {
         setAnnotations([]);
         setAnnotationVersions([]);
+        setSourceUpdatedAt(null);
         setLoading(false);
         return;
       }
@@ -76,8 +87,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
       setError(null);
 
       try {
-        const { data: versionRows, error: versionsError } = await supabase
-          .from("task_image_annotation_versions")
+        const { data: versionRows, error: versionsError } = await versionsTable()
           .select("id, annotations, created_at, created_by, version_number, label, is_enabled")
           .eq("task_id", taskId)
           .eq("image_id", imageId)
@@ -85,6 +95,15 @@ export function useImageAnnotations(taskId: string, imageId: string) {
           .limit(100);
 
         if (versionsError && !isMissingRelationError(versionsError)) throw versionsError;
+
+        const { data: attachment } = await supabase
+          .from("attachments")
+          .select("annotation_json, updated_at")
+          .eq("id", imageId)
+          .maybeSingle();
+        const jsonAnnotations = asAnnotationArray((attachment as any)?.annotation_json);
+        const attachmentUpdatedAt = ((attachment as any)?.updated_at as string | undefined) ?? null;
+        setSourceUpdatedAt(attachmentUpdatedAt);
 
         if (!versionsError && Array.isArray(versionRows) && versionRows.length > 0) {
           const mappedVersions: AnnotationVersionEntry[] = (versionRows as any[]).map((row) => ({
@@ -96,17 +115,30 @@ export function useImageAnnotations(taskId: string, imageId: string) {
             annotations: asAnnotationArray(row.annotations),
             is_enabled: row.is_enabled !== false,
           }));
-          setAnnotationVersions(mappedVersions);
-          setAnnotations(compositeAnnotations(mappedVersions));
+          const idsInVersions = new Set(
+            mappedVersions.flatMap((layer) => layer.annotations.map((ann) => ann.annotationId)),
+          );
+          const leftovers = jsonAnnotations.filter((ann) => !idsInVersions.has(ann.annotationId));
+          const withLeftovers =
+            leftovers.length > 0
+              ? [
+                  {
+                    id: LEGACY_JSON_LAYER_ID,
+                    created_at: attachmentUpdatedAt ?? mappedVersions[0]?.created_at,
+                    created_by: leftovers.find((ann) => ann.createdBy)?.createdBy ?? null,
+                    version_number: 0,
+                    label: "Earlier edits",
+                    annotations: leftovers,
+                    is_enabled: true,
+                  },
+                  ...mappedVersions,
+                ]
+              : mappedVersions;
+          setAnnotationVersions(withLeftovers);
+          setAnnotations(compositeAnnotations(withLeftovers));
         } else {
-          const { data: attachment } = await supabase
-            .from("attachments")
-            .select("annotation_json")
-            .eq("id", imageId)
-            .maybeSingle();
-          const fallbackAnnotations = asAnnotationArray((attachment as any)?.annotation_json);
           setAnnotationVersions([]);
-          setAnnotations(fallbackAnnotations);
+          setAnnotations(jsonAnnotations);
         }
       } catch (err: any) {
         if (err.code === "PGRST116" || err.status === 404 || err.message?.includes("404")) {
@@ -146,8 +178,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
       if (!user) throw new Error("Not authenticated");
 
       // Append-only layer insert (never rewrite another user's layer payload).
-      const { data: latestVersionRows, error: latestVersionFetchError } = await supabase
-        .from("task_image_annotation_versions")
+      const { data: latestVersionRows, error: latestVersionFetchError } = await versionsTable()
         .select("id, version_number")
         .eq("task_id", taskId)
         .eq("image_id", imageId)
@@ -158,24 +189,36 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         throw latestVersionFetchError;
       }
 
-      let layerPersisted = false;
-      const nextLayersPreview: AnnotationVersionEntry[] = annotationVersions.map((v) =>
-        supersedeLayerIds.includes(v.id) ? { ...v, is_enabled: false } : v
+      const persistedSupersedeIds = supersedeLayerIds.filter((id) =>
+        isPersistedAnnotationLayerId(id)
       );
+
+      let layerPersisted = false;
+      const nextLayersPreview: AnnotationVersionEntry[] = annotationVersions
+        .filter((v) => v.id !== LEGACY_JSON_LAYER_ID)
+        .map((v) =>
+          persistedSupersedeIds.includes(v.id) ? { ...v, is_enabled: false } : v
+        );
 
       const stampedDelta = layerDelta.map((ann) =>
         ann.createdBy ? ann : { ...ann, createdBy: user.id }
       );
+
+      const { data: attachment } = await supabase
+        .from("attachments")
+        .select("annotation_json")
+        .eq("id", imageId)
+        .maybeSingle();
+      const previousJson = asAnnotationArray((attachment as any)?.annotation_json);
 
       if (!latestVersionFetchError) {
         const latest = latestVersionRows?.[0] as
           | { id: string; version_number: number }
           | undefined;
         const nextVersionNumber = (latest?.version_number ?? 0) + 1;
-        const primarySupersede = supersedeLayerIds[0] ?? null;
+        const primarySupersede = persistedSupersedeIds[0] ?? null;
 
-        const { data: inserted, error: insertError } = await supabase
-          .from("task_image_annotation_versions")
+        const { data: inserted, error: insertError } = await versionsTable()
           .insert({
             org_id: orgId,
             task_id: taskId,
@@ -183,7 +226,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
             created_by: user.id,
             version_number: nextVersionNumber,
             label: `Edit ${nextVersionNumber}`,
-            annotations: stampedDelta as any,
+            annotations: stampedDelta,
             is_enabled: true,
             supersedes_id: primarySupersede,
           })
@@ -208,11 +251,10 @@ export function useImageAnnotations(taskId: string, imageId: string) {
           });
         }
 
-        if (supersedeLayerIds.length > 0) {
-          const { error: disableError } = await supabase
-            .from("task_image_annotation_versions")
+        if (persistedSupersedeIds.length > 0) {
+          const { error: disableError } = await versionsTable()
             .update({ is_enabled: false })
-            .in("id", supersedeLayerIds)
+            .in("id", persistedSupersedeIds)
             .eq("task_id", taskId)
             .eq("image_id", imageId);
           if (disableError) {
@@ -221,9 +263,13 @@ export function useImageAnnotations(taskId: string, imageId: string) {
         }
       }
 
+      const idsInLayers = new Set(
+        nextLayersPreview.flatMap((layer) => layer.annotations.map((ann) => ann.annotationId)),
+      );
+      const leftovers = previousJson.filter((ann) => !idsInLayers.has(ann.annotationId));
       const composite = layerPersisted
-        ? compositeAnnotations(nextLayersPreview)
-        : stampedDelta;
+        ? [...leftovers, ...compositeAnnotations(nextLayersPreview)]
+        : [...leftovers.filter((ann) => !stampedDelta.some((d) => d.annotationId === ann.annotationId)), ...stampedDelta];
 
       const { error: attachmentUpdateError } = await supabase
         .from("attachments")
@@ -264,6 +310,7 @@ export function useImageAnnotations(taskId: string, imageId: string) {
   return {
     annotations,
     annotationVersions,
+    sourceUpdatedAt,
     loading,
     error,
     saveAnnotations,

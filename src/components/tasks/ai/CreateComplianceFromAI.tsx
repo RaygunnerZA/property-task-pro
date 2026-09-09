@@ -20,21 +20,15 @@ import { createComplianceDocument } from "@/services/compliance/createCompliance
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 
+import { INTAKE_COMPLIANCE_PRESETS } from "@/lib/mapIntakeDocumentType";
+
 export interface CreateComplianceFromAIPayload {
   title: string;
   compliance_type?: string;
   expiry_date?: string;
 }
 
-const COMPLIANCE_TYPES = [
-  "Fire Certificate",
-  "Fire Extinguisher Certificate",
-  "PAT Test",
-  "Gas Safety Certificate",
-  "Electrical Certificate",
-  "EICR",
-  "Other",
-];
+const COMPLIANCE_TYPES = [...INTAKE_COMPLIANCE_PRESETS, "Other"] as const;
 
 interface CreateComplianceFromAIProps {
   open: boolean;

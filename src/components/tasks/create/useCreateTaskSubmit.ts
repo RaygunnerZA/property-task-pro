@@ -319,12 +319,21 @@ export function useCreateTaskSubmit({
               const { data: { user } } = await supabase.auth.getUser();
               if (user) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                await (supabase as any).from("task_image_annotations").insert({
-                  task_id: taskId,
-                  image_id: attachment.id,
-                  created_by: user.id,
-                  annotations: tempImage.annotation_json,
-                });
+                const { error: layerError } = await (supabase as any)
+                  .from("task_image_annotation_versions")
+                  .insert({
+                    org_id: orgId,
+                    task_id: taskId,
+                    image_id: attachment.id,
+                    created_by: user.id,
+                    version_number: 1,
+                    label: "Edit 1",
+                    annotations: tempImage.annotation_json,
+                    is_enabled: true,
+                  });
+                if (layerError) {
+                  console.warn("[useCreateTaskSubmit] Annotation layer insert failed:", layerError);
+                }
               }
             }
 

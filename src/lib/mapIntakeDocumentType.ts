@@ -1,32 +1,143 @@
 import { isMeaningfulSuggestedType } from "@/lib/intakeWorkflowSignals";
 
-/** Preset values in the Add Record document-type select (excluding Other). */
+/**
+ * Preset values in the Add Record document-type select (excluding Other).
+ * Ordered by common property ops groups — fire → electrical → gas/mech →
+ * water → asbestos → energy → building fabric.
+ */
 export const INTAKE_COMPLIANCE_PRESETS = [
+  // Fire & life safety
   "Fire Certificate",
-  "Gas Safety Certificate",
+  "Fire Risk Assessment",
+  "Fire Alarm Servicing",
+  "Fire Extinguisher Service",
+  "Fire Door Inspection",
+  "Emergency Lighting Test",
+  "Sprinkler System Servicing",
+  "Smoke Vent Servicing",
+  "Dry Riser Test",
+  "Wet Riser Test",
+  // Electrical
   "Electrical Certificate",
   "EICR",
   "PAT Test",
+  "Lightning Protection Test",
+  // Gas / mechanical
+  "Gas Safety Certificate",
+  "Boiler Service",
+  "HVAC Servicing",
+  "F-Gas Checks",
+  "Air Conditioning Inspection",
+  "Pressure Vessel Inspection",
+  "Kitchen Extract Cleaning",
+  // Lifts / access equipment
+  "LOLER Inspection",
+  "UPS Service",
+  // Water hygiene
+  "Legionella Risk Assessment",
+  "Water Temperature Checks",
+  "Tank Inspection",
+  "Water Hygiene Certificate",
+  // Asbestos
+  "Asbestos Management Survey",
+  "Asbestos Reinspection",
+  // Energy & building
+  "Energy Performance Certificate",
+  "Accessibility Audit",
+  "Building Insurance Policy",
+  "Insurance Schedule",
+  "Listed Building Consent Review",
 ] as const;
 
-const ALIASES: Record<string, (typeof INTAKE_COMPLIANCE_PRESETS)[number]> = {
+export type IntakeCompliancePreset = (typeof INTAKE_COMPLIANCE_PRESETS)[number];
+
+const ALIASES: Record<string, IntakeCompliancePreset> = {
+  // Fire
   "fire certificate": "Fire Certificate",
   "fire safety certificate": "Fire Certificate",
   "fire safety": "Fire Certificate",
+  "fire risk assessment": "Fire Risk Assessment",
+  fra: "Fire Risk Assessment",
+  "fire alarm": "Fire Alarm Servicing",
+  "fire alarm service": "Fire Alarm Servicing",
+  "fire alarm servicing": "Fire Alarm Servicing",
+  "fire extinguisher": "Fire Extinguisher Service",
+  "fire extinguisher service": "Fire Extinguisher Service",
+  "fire extinguisher certificate": "Fire Extinguisher Service",
+  "fire door": "Fire Door Inspection",
+  "fire door inspection": "Fire Door Inspection",
+  "emergency lighting": "Emergency Lighting Test",
+  "emergency lighting test": "Emergency Lighting Test",
+  "emergency lights": "Emergency Lighting Test",
+  sprinkler: "Sprinkler System Servicing",
+  "sprinkler service": "Sprinkler System Servicing",
+  "smoke vent": "Smoke Vent Servicing",
+  "aov service": "Smoke Vent Servicing",
+  "dry riser": "Dry Riser Test",
+  "wet riser": "Wet Riser Test",
+  // Electrical
+  "electrical certificate": "Electrical Certificate",
+  eic: "Electrical Certificate",
+  "electrical installation certificate": "Electrical Certificate",
+  "electrical installation condition report": "EICR",
+  "pat test": "PAT Test",
+  pat: "PAT Test",
+  "pat testing": "PAT Test",
+  "portable appliance test": "PAT Test",
+  "portable appliance testing": "PAT Test",
+  "lightning protection": "Lightning Protection Test",
+  // Gas / mechanical
   "gas safety certificate": "Gas Safety Certificate",
   "gas safety": "Gas Safety Certificate",
   "gas safe": "Gas Safety Certificate",
   cp12: "Gas Safety Certificate",
-  "electrical certificate": "Electrical Certificate",
-  eic: "Electrical Certificate",
-  "electrical installation certificate": "Electrical Certificate",
-  epc: "EPC",
-  "energy performance certificate": "EPC",
-  "energy performance": "EPC",
-  "electrical installation condition report": "EICR",
-  "pat test": "PAT Test",
-  pat: "PAT Test",
-  "portable appliance test": "PAT Test",
+  "boiler service": "Boiler Service",
+  "boiler servicing": "Boiler Service",
+  hvac: "HVAC Servicing",
+  "hvac service": "HVAC Servicing",
+  "hvac servicing": "HVAC Servicing",
+  "f-gas": "F-Gas Checks",
+  fgas: "F-Gas Checks",
+  "f gas": "F-Gas Checks",
+  tm44: "Air Conditioning Inspection",
+  "air conditioning inspection": "Air Conditioning Inspection",
+  "ac inspection": "Air Conditioning Inspection",
+  "pressure vessel": "Pressure Vessel Inspection",
+  "kitchen extract": "Kitchen Extract Cleaning",
+  "canopy clean": "Kitchen Extract Cleaning",
+  // Lifts
+  loler: "LOLER Inspection",
+  "lift inspection": "LOLER Inspection",
+  "thorough examination": "LOLER Inspection",
+  ups: "UPS Service",
+  "ups service": "UPS Service",
+  // Water
+  legionella: "Legionella Risk Assessment",
+  "legionella risk assessment": "Legionella Risk Assessment",
+  "legionella l8 risk assessment": "Legionella Risk Assessment",
+  l8: "Legionella Risk Assessment",
+  "water temperature": "Water Temperature Checks",
+  "monthly water temperature checks": "Water Temperature Checks",
+  "tank inspection": "Tank Inspection",
+  "quarterly tank inspection": "Tank Inspection",
+  "water hygiene": "Water Hygiene Certificate",
+  // Asbestos
+  asbestos: "Asbestos Management Survey",
+  "asbestos survey": "Asbestos Management Survey",
+  "asbestos management survey": "Asbestos Management Survey",
+  "asbestos reinspection": "Asbestos Reinspection",
+  // Energy & building
+  epc: "Energy Performance Certificate",
+  "energy performance certificate": "Energy Performance Certificate",
+  "energy performance": "Energy Performance Certificate",
+  "accessibility audit": "Accessibility Audit",
+  "access audit": "Accessibility Audit",
+  "building insurance": "Building Insurance Policy",
+  "buildings insurance": "Building Insurance Policy",
+  "insurance policy": "Building Insurance Policy",
+  "insurance schedule": "Insurance Schedule",
+  "listed building": "Listed Building Consent Review",
+  "listed building consent": "Listed Building Consent Review",
 };
 
 export function isIntakeCompliancePreset(type: string): boolean {
@@ -188,18 +299,31 @@ export function naturalLanguageRecordTitle(rawType?: string | null): string | nu
   if (!type) return null;
 
   if (/\brecord\b/i.test(type)) return type.slice(0, 120);
-  if (type === "Fire Certificate") return "Fire Safety Record";
-  if (type === "Electrical Certificate") return "Electrical Safety Record";
-  if (type === "Gas Safety Certificate") return "Gas Safety Record";
-  if (type === "EICR") return "EICR Record";
-  if (type === "PAT Test") return "PAT Test Record";
-  if (type === "EPC") return "EPC Record";
+
+  const TITLE_OVERRIDES: Partial<Record<IntakeCompliancePreset, string>> = {
+    "Fire Certificate": "Fire Safety Record",
+    "Electrical Certificate": "Electrical Safety Record",
+    "Gas Safety Certificate": "Gas Safety Record",
+    EICR: "EICR Record",
+    "PAT Test": "PAT Test Record",
+    "Energy Performance Certificate": "EPC Record",
+    "Fire Risk Assessment": "Fire Risk Assessment Record",
+    "Legionella Risk Assessment": "Legionella Risk Assessment Record",
+    "Asbestos Management Survey": "Asbestos Survey Record",
+    "Building Insurance Policy": "Building Insurance Record",
+  };
+  const override = TITLE_OVERRIDES[type as IntakeCompliancePreset];
+  if (override) return override;
 
   if (/\bcertificate\b/i.test(type)) {
     return type.replace(/\bcertificate\b/i, "Record").replace(/\s+/g, " ").trim().slice(0, 120);
   }
 
-  if (/\b(test|assessment|report|invoice|receipt|quote)\b/i.test(type)) {
+  if (
+    /\b(test|assessment|report|inspection|survey|service|servicing|checks|review|policy|schedule|cleaning)\b/i.test(
+      type
+    )
+  ) {
     return type.slice(0, 120);
   }
 

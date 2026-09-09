@@ -8,6 +8,10 @@ import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
 import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
+import {
+  isPersistedAnnotationLayerId,
+  splitEditSessionsByAuthor,
+} from "@/lib/annotations/annotationEditSessions";
 import { ImageAiActions } from "./ai/ImageAiActions";
 import { useImageAnnotations } from "@/hooks/useImageAnnotations";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -2491,7 +2495,8 @@ function ImageAnnotationEditorWrapper({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const { annotations, annotationVersions, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
+  const { annotations, annotationVersions, loading, saveAnnotations, sourceUpdatedAt } =
+    useImageAnnotations(taskId, imageId);
   const { members } = useOrgMembers();
   const { user } = useAuth();
   const hasShownEditorRef = useRef(false);
@@ -2519,6 +2524,7 @@ function ImageAnnotationEditorWrapper({
         : null);
     return {
       id: version.id,
+      persistId: isPersistedAnnotationLayerId(version.id) ? version.id : undefined,
       createdAt: version.created_at,
       userId: version.created_by,
       versionNumber: version.version_number,
@@ -2549,14 +2555,14 @@ function ImageAnnotationEditorWrapper({
       ? ((user?.user_metadata?.avatar_url as string | undefined) ?? null)
       : null);
 
-  const editSessions =
+  const rawEditSessions =
     versionSessions.length > 0
       ? versionSessions
       : annotations.length > 0
         ? [
             {
               id: "baseline",
-              createdAt: new Date().toISOString(),
+              createdAt: sourceUpdatedAt || new Date().toISOString(),
               userId: baselineOwnerId,
               versionNumber: 0,
               label: `Edit by ${baselineDisplayName}`,
@@ -2567,6 +2573,26 @@ function ImageAnnotationEditorWrapper({
             },
           ]
         : [];
+
+  const resolveSessionDisplay = (userId: string | null) => {
+    const member = resolveMember(userId);
+    const isMe = Boolean(user?.id && userId === user.id);
+    return {
+      name:
+        member?.display_name ||
+        (isMe
+          ? ((user?.user_metadata?.display_name as string | undefined) ||
+              user?.email ||
+              "You")
+          : null) ||
+        "Teammate",
+      avatarUrl:
+        member?.avatar_url ??
+        (isMe ? ((user?.user_metadata?.avatar_url as string | undefined) ?? null) : null),
+    };
+  };
+
+  const editSessions = splitEditSessionsByAuthor(rawEditSessions, resolveSessionDisplay);
 
   if (!loading) hasShownEditorRef.current = true;
 
