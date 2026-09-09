@@ -14,6 +14,7 @@ export const AI_CAPABILITY_IDS = [
   "knowledge_critique",
   "knowledge_guidance_draft",
   "knowledge_claim_extract",
+  "knowledge_gap_research",
   "plan_label_extraction",
   "content_seo_draft",
   "content_brief_draft",
@@ -77,6 +78,11 @@ export const AI_CAPABILITY_META: Record<
     label: "Knowledge claim extraction",
     compiledPrimary: "model:gemini-2.0-flash",
     functionName: "knowledge-extract-claims",
+  },
+  knowledge_gap_research: {
+    label: "Knowledge gap source research",
+    compiledPrimary: "model:gemini-2.0-flash",
+    functionName: "knowledge-gap-research",
   },
   plan_label_extraction: {
     label: "Plan label extraction",

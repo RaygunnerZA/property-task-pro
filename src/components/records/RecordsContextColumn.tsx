@@ -67,7 +67,7 @@ export function RecordsContextColumn({
   );
 
   return (
-    <div className={cn("space-y-4 px-[3px]", className)}>
+    <div className={cn("space-y-4 px-[3px] [overflow-anchor:none]", className)}>
       <WorkspaceSurfaceCard
         title="Context"
         description="How evidence is organised on this property"

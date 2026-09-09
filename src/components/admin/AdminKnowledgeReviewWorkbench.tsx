@@ -10,6 +10,11 @@ import {
   useAdminSetKnowledgeStatus,
   type KnowledgeSourceRow,
 } from "@/hooks/admin/useAdminKnowledge";
+import {
+  overnightBatchConfirm,
+  useAdminSubmitAiBatch,
+} from "@/hooks/admin/useAdminAiBatch";
+import { MAX_GUIDANCE_BATCH_ITEMS } from "@/lib/ai/aiBatch";
 import { AdminKnowledgeReviewExpanded } from "@/components/admin/AdminKnowledgeReviewExpanded";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,6 +44,8 @@ import {
   buildReviewTrustChecks,
   compactBlockers,
   computeReviewToolbarCounts,
+  chunkIds,
+  GUIDANCE_AI_BATCH_SIZE,
   displayCanonicalGuidance,
   displayJurisdiction,
   deriveClassificationLabel,
@@ -54,6 +61,7 @@ import {
   primaryActionForRow,
   reviewBlockingChecks,
   sortReviewRows,
+  type PrimaryActionKind,
   type ReviewFilterId,
   type ReviewQueueId,
   type ReviewSortId,
@@ -98,10 +106,75 @@ const ADVANCED_FILTERS: { id: ReviewFilterId; label: string; group: string }[] =
 ];
 
 const QUEUES: { id: ReviewQueueId; label: string }[] = [
+  { id: "all", label: "All" },
   { id: "needs_work", label: "Needs work" },
   { id: "awaiting_critic", label: "Awaiting critic" },
   { id: "ready_to_verify", label: "Ready to verify" },
 ];
+
+function queueChipClass(id: ReviewQueueId, active: boolean): string {
+  const base = "px-2.5 py-1.5 rounded-[12px] text-xs border-0 font-medium";
+  if (id === "all") {
+    return cn(
+      base,
+      active
+        ? "bg-primary text-primary-foreground shadow-primary-btn"
+        : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
+    );
+  }
+  if (id === "needs_work") {
+    return cn(
+      base,
+      active
+        ? "bg-amber-600 text-white shadow-sm"
+        : "bg-amber-500/15 text-amber-800 hover:bg-amber-500/25 dark:text-amber-300"
+    );
+  }
+  if (id === "awaiting_critic") {
+    return cn(
+      base,
+      active
+        ? "bg-slate-600 text-white shadow-sm"
+        : "bg-slate-500/15 text-slate-700 hover:bg-slate-500/25 dark:text-slate-300"
+    );
+  }
+  return cn(
+    base,
+    active
+      ? "bg-emerald-700 text-white shadow-sm"
+      : "bg-emerald-500/15 text-emerald-800 hover:bg-emerald-500/25 dark:text-emerald-300"
+  );
+}
+
+function primaryActionButton(kind: PrimaryActionKind): {
+  variant: "default" | "outline";
+  className: string;
+} {
+  const base = "border-0 h-7 text-xs";
+  switch (kind) {
+    case "generate":
+      return { variant: "default", className: cn(base, "flex-1 shadow-primary-btn") };
+    case "improve":
+      return {
+        variant: "default",
+        className: cn(base, "flex-1 bg-amber-600 text-white hover:bg-amber-600/90 shadow-sm"),
+      };
+    case "verify":
+      return {
+        variant: "default",
+        className: cn(base, "flex-1 bg-emerald-700 text-white hover:bg-emerald-700/90 shadow-sm"),
+      };
+    default:
+      return { variant: "outline", className: cn(base, "flex-1 btn-neomorphic") };
+  }
+}
+
+function queueCount(id: ReviewQueueId, counts: ReturnType<typeof computeReviewToolbarCounts>): number {
+  if (id === "all") return counts.all;
+  if (id === "needs_work") return counts.needsWork;
+  if (id === "awaiting_critic") return counts.awaitingCritic;
+  return counts.readyForVerification;
+}
 
 type Props = {
   rows: KnowledgeRow[];
@@ -118,6 +191,7 @@ export function AdminKnowledgeReviewWorkbench({
 }: Props) {
   const setStatus = useAdminSetKnowledgeStatus();
   const generateGuidance = useAdminGenerateKnowledgeGuidance();
+  const submitBatch = useAdminSubmitAiBatch();
   const applyDeterministic = useAdminApplyDeterministicGuidance();
   const runCritic = useAdminRunKnowledgeCritic();
   const extractClaims = useAdminExtractKnowledgeClaims();
@@ -126,11 +200,13 @@ export function AdminKnowledgeReviewWorkbench({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const expandedDetail = useAdminKnowledgeDetail(expandedId);
-  const [queue, setQueue] = useState<ReviewQueueId>("needs_work");
+  const [queue, setQueue] = useState<ReviewQueueId>("all");
   const [filter, setFilter] = useState<ReviewFilterId | null>(null);
   const [sort, setSort] = useState<ReviewSortId>("fewest_blockers");
   const [search, setSearch] = useState("");
   const [draftEdits, setDraftEdits] = useState<Record<string, string>>({});
+  const [guidanceBusy, setGuidanceBusy] = useState(false);
+  const [guidanceProgress, setGuidanceProgress] = useState<string | null>(null);
 
   const rowModels = useMemo(() => {
     return rows.map((row) => {
@@ -207,6 +283,13 @@ export function AdminKnowledgeReviewWorkbench({
     return sortReviewRows(list, sort);
   }, [rowModels, queue, filter, sort, search]);
 
+  const viewGenerateIds = filteredSorted
+    .filter((m) => m.eligibleGenerate)
+    .map((m) => m.row.id);
+  const viewImproveIds = filteredSorted
+    .filter((m) => m.eligibleImprove)
+    .map((m) => m.row.id);
+
   const allSelected =
     filteredSorted.length > 0 &&
     filteredSorted.every((m) => selected.has(m.row.id));
@@ -268,6 +351,8 @@ export function AdminKnowledgeReviewWorkbench({
       return;
     }
     const persist = opts?.persist !== false;
+    const intoDraft = opts?.intoDraftField === true;
+    const queueOvernight = persist && !intoDraft;
     const deterministic =
       mode === "generate"
         ? ids.filter((id) => {
@@ -276,57 +361,113 @@ export function AdminKnowledgeReviewWorkbench({
           })
         : [];
     const aiCount = ids.length - deterministic.length;
-    const confirmed = window.confirm(
-      [
-        mode === "improve"
-          ? `Improve guidance for ${ids.length} candidate${ids.length === 1 ? "" : "s"}?`
-          : `Generate guidance for ${ids.length} candidate${ids.length === 1 ? "" : "s"}?`,
-        deterministic.length
-          ? `· ${deterministic.length} can use deterministic imported text (no AI)`
-          : null,
-        aiCount > 0 ? `· Estimated AI operations: ${aiCount}` : "· Estimated AI operations: 0",
-        "",
-        persist
-          ? "Drafts remain unverified. Nothing will be verified or published."
-          : "Proposed text will be placed in the draft field — save to keep it.",
-      ]
-        .filter((line) => line !== null)
-        .join("\n")
-    );
+    const confirmed = queueOvernight
+      ? aiCount === 0 || overnightBatchConfirm(mode, aiCount)
+      : window.confirm(
+          [
+            mode === "improve"
+              ? `Improve guidance for ${ids.length} candidate${ids.length === 1 ? "" : "s"}?`
+              : `Generate guidance for ${ids.length} candidate${ids.length === 1 ? "" : "s"}?`,
+            deterministic.length
+              ? `· ${deterministic.length} can use deterministic imported text (no AI)`
+              : null,
+            aiCount > 0 ? `· Estimated AI operations: ${aiCount}` : "· Estimated AI operations: 0",
+            "",
+            persist
+              ? "Drafts remain unverified. Nothing will be verified or published."
+              : "Proposed text will be placed in the draft field — save to keep it.",
+          ]
+            .filter((line) => line !== null)
+            .join("\n")
+        );
     if (!confirmed) return;
 
-    const runAi = (remaining: string[]) => {
+    const runAi = async (remaining: string[]) => {
       if (remaining.length === 0) {
         toast.success("Draft guidance applied (unverified)");
         return;
       }
-      generateGuidance.mutate(
-        {
-          knowledgeIds: remaining,
-          mode,
-          persist,
-        },
-        {
-          onSuccess: (res) => {
-            if (!persist || opts?.intoDraftField) {
-              for (const r of res.results) {
-                if (r.ok && r.summary) {
-                  setDraftEdits((prev) => ({ ...prev, [r.id]: r.summary! }));
-                }
-              }
-              toast.success(
-                "AI-proposed draft placed in the editor — save to keep it (still unverified)"
-              );
-              return;
-            }
-            toast.success(
-              `${mode === "improve" ? "Improved" : "Generated"} draft guidance for ${res.generated} of ${remaining.length} (still unverified)`
-            );
-          },
-          onError: (e) =>
-            toast.error(e instanceof Error ? e.message : "Guidance generation failed"),
+      if (queueOvernight) {
+        setGuidanceBusy(true);
+        setGuidanceProgress("Queueing overnight Gemini Batch…");
+        try {
+          let itemCount = 0;
+          let jobCount = 0;
+          for (let i = 0; i < remaining.length; i += MAX_GUIDANCE_BATCH_ITEMS) {
+            const chunk = remaining.slice(i, i + MAX_GUIDANCE_BATCH_ITEMS);
+            await submitBatch.mutateAsync({
+              capability: "knowledge_guidance_draft",
+              mode,
+              knowledgeIds: chunk,
+            });
+            jobCount += 1;
+            itemCount += chunk.length;
+          }
+          toast.success(
+            `Queued ${itemCount} ${mode === "improve" ? "improvements" : "generations"} on overnight Gemini Batch` +
+              (jobCount > 1 ? ` (${jobCount} jobs)` : "") +
+              ". Drafts stay unverified."
+          );
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Could not queue overnight job");
+        } finally {
+          setGuidanceBusy(false);
+          setGuidanceProgress(null);
         }
-      );
+        return;
+      }
+      const batches = chunkIds(remaining);
+      setGuidanceBusy(true);
+      let generated = 0;
+      let failed = 0;
+      try {
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          const from = i * GUIDANCE_AI_BATCH_SIZE + 1;
+          const to = from + batch.length - 1;
+          setGuidanceProgress(
+            batches.length > 1
+              ? `${mode === "improve" ? "Improving" : "Generating"} ${from}–${to} of ${remaining.length}…`
+              : `${mode === "improve" ? "Improving" : "Generating"} guidance…`
+          );
+          try {
+            const res = await generateGuidance.mutateAsync({
+              knowledgeIds: batch,
+              mode,
+              persist,
+            });
+            generated += res.generated;
+            failed += res.results.filter((r) => !r.ok).length;
+            if (!persist || opts?.intoDraftField) {
+              setDraftEdits((prev) => {
+                const next = { ...prev };
+                for (const r of res.results) {
+                  if (r.ok && r.summary) next[r.id] = r.summary;
+                }
+                return next;
+              });
+            }
+          } catch (e) {
+            failed += batch.length;
+            toast.error(e instanceof Error ? e.message : "Guidance generation failed");
+          }
+        }
+        if (generated > 0 && (!persist || opts?.intoDraftField)) {
+          toast.success(
+            "AI-proposed draft placed in the editor — save to keep it (still unverified)"
+          );
+        } else if (generated > 0) {
+          toast.success(
+            `${mode === "improve" ? "Improved" : "Generated"} draft guidance for ${generated} of ${remaining.length} (still unverified)` +
+              (failed ? ` · ${failed} failed` : "")
+          );
+        } else if (failed > 0) {
+          toast.error(`Guidance ${mode === "improve" ? "improve" : "generate"} failed`);
+        }
+      } finally {
+        setGuidanceBusy(false);
+        setGuidanceProgress(null);
+      }
     };
 
     if (deterministic.length > 0 && persist) {
@@ -460,7 +601,9 @@ export function AdminKnowledgeReviewWorkbench({
   }
 
   const busy =
+    guidanceBusy ||
     generateGuidance.isPending ||
+    submitBatch.isPending ||
     applyDeterministic.isPending ||
     runCritic.isPending ||
     setStatus.isPending ||
@@ -471,23 +614,13 @@ export function AdminKnowledgeReviewWorkbench({
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex flex-wrap gap-1.5">
           {QUEUES.map((q) => {
-            const count =
-              q.id === "needs_work"
-                ? toolbarCounts.needsWork
-                : q.id === "awaiting_critic"
-                  ? toolbarCounts.awaitingCritic
-                  : toolbarCounts.readyForVerification;
+            const count = queueCount(q.id, toolbarCounts);
             return (
               <button
                 key={q.id}
                 type="button"
                 onClick={() => setQueue(q.id)}
-                className={cn(
-                  "px-2.5 py-1.5 rounded-md text-xs border-0",
-                  queue === q.id
-                    ? "bg-primary/20 text-foreground shadow-sm font-medium"
-                    : "bg-muted/40 text-muted-foreground hover:bg-muted/70"
-                )}
+                className={queueChipClass(q.id, queue === q.id)}
               >
                 {q.label} ({count})
               </button>
@@ -566,6 +699,35 @@ export function AdminKnowledgeReviewWorkbench({
             </select>
           </label>
         </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-end gap-2">
+        {guidanceProgress && (
+          <span className="text-xs text-muted-foreground mr-auto">{guidanceProgress}</span>
+        )}
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-0 h-8 text-xs bg-amber-500/15 text-amber-900 hover:bg-amber-500/25 dark:text-amber-200"
+          disabled={busy || viewImproveIds.length === 0}
+          onClick={() =>
+            confirmGenerate(viewImproveIds, "improve", { persist: true })
+          }
+        >
+          Improve guidance
+          {viewImproveIds.length > 0 ? ` (${viewImproveIds.length})` : ""}
+        </Button>
+        <Button
+          size="sm"
+          className="h-8 text-xs border-0 shadow-primary-btn"
+          disabled={busy || viewGenerateIds.length === 0}
+          onClick={() =>
+            confirmGenerate(viewGenerateIds, "generate", { persist: true })
+          }
+        >
+          Generate all
+          {viewGenerateIds.length > 0 ? ` (${viewGenerateIds.length})` : ""}
+        </Button>
       </div>
 
       {selected.size > 0 && (
@@ -816,7 +978,8 @@ export function AdminKnowledgeReviewWorkbench({
                               <div className="flex items-start gap-1">
                                 <Button
                                   size="sm"
-                                  className="shadow-primary-btn border-0 h-7 text-xs flex-1"
+                                  variant={primaryActionButton(model.primary.kind).variant}
+                                  className={primaryActionButton(model.primary.kind).className}
                                   disabled={busy}
                                   onClick={() => runPrimary(model)}
                                 >
@@ -1004,7 +1167,8 @@ export function AdminKnowledgeReviewWorkbench({
                     </p>
                     <Button
                       size="sm"
-                      className="shadow-primary-btn border-0 h-7 text-xs"
+                      variant={primaryActionButton(model.primary.kind).variant}
+                      className={primaryActionButton(model.primary.kind).className}
                       disabled={busy}
                       onClick={() => runPrimary(model)}
                     >

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Shield, AlertTriangle, CircleDot, X, ChevronLeft, ChevronRight, ChevronDown, FileText, Pencil, Repeat } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, ChevronDown, FileText, Pencil, Repeat } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -30,12 +30,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { columnShellClass, dialogContentWideClass } from "@/lib/layoutClasses";
 import { useDataContext } from "@/contexts/DataContext";
+import { useAuth } from "@/hooks/useAuth";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useCategories } from "@/hooks/useCategories";
@@ -215,6 +217,8 @@ export function TaskDetailPanel({
   const [nextTaskOfferId, setNextTaskOfferId] = useState<string | null>(null);
   const [checklistSessionDirty, setChecklistSessionDirty] = useState(false);
   const [messageDraftPending, setMessageDraftPending] = useState(false);
+  const [sessionEngaged, setSessionEngaged] = useState(false);
+  const baselineCommentCountRef = useRef<number | null>(null);
   const [checklistCollapsed, setChecklistCollapsed] = useState(initialChecklistCollapsed);
   const [openChipSlot, setOpenChipSlot] = useState<IntakeChipSlotId | null>(null);
   const [evidenceSlideIndex, setEvidenceSlideIndex] = useState(0);
@@ -251,16 +255,20 @@ export function TaskDetailPanel({
     setOpenChipSlot(null);
     setChecklistSessionDirty(false);
     setMessageDraftPending(false);
+    setSessionEngaged(false);
+    baselineCommentCountRef.current = null;
     setProgressUpdateOpen(false);
     setChecklistCollapsed(initialChecklistCollapsed);
   }, [taskId, initialChecklistCollapsed]);
 
   const markChecklistSessionDirty = useCallback(() => {
     setChecklistSessionDirty(true);
+    setSessionEngaged(true);
   }, []);
 
   const handleMessageDraftChange = useCallback((hasDraft: boolean) => {
     setMessageDraftPending(hasDraft);
+    if (hasDraft) setSessionEngaged(true);
   }, []);
 
   // Opening detail clears the “new comment” bubble on task cards
@@ -448,12 +456,16 @@ export function TaskDetailPanel({
         const {
           data: { user: actor },
         } = await supabase.auth.getUser();
-        if (!orgId || !actor?.id) throw new Error("Not signed in");
+        const taskOrgId =
+          (typeof (task as { org_id?: string } | null)?.org_id === "string"
+            ? (task as { org_id: string }).org_id
+            : null) || orgId;
+        if (!taskOrgId || !actor?.id) throw new Error("Not signed in");
         const { error: insertError } = await supabase.from("task_followers").insert(
           toAdd.map((user_id) => ({
             task_id: taskId,
             user_id,
-            org_id: orgId,
+            org_id: taskOrgId,
             created_by: actor.id,
           }))
         );
@@ -464,7 +476,12 @@ export function TaskDetailPanel({
       await refreshTask();
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Something didn't work. Try again.";
+      const message =
+        err && typeof err === "object" && "message" in err && typeof (err as { message: unknown }).message === "string"
+          ? (err as { message: string }).message
+          : err instanceof Error
+            ? err.message
+            : "Something didn't work. Try again.";
       console.error("Error updating followers:", err);
       toast({
         title: "Couldn't update followers",
@@ -1436,7 +1453,7 @@ export function TaskDetailPanel({
     },
   });
 
-  const { data: commentCount = 0 } = useQuery({
+  const { data: commentCount = 0, isFetched: commentCountFetched } = useQuery({
     queryKey: ["task-comment-count", orgId, taskId],
     enabled: Boolean(orgId && taskId),
     queryFn: async () => {
@@ -1545,6 +1562,31 @@ export function TaskDetailPanel({
       JSON.stringify(milestones) !== origMsJson
     );
   }, [task, title, descriptionDraft, status, priority, dueDate, milestones]);
+
+  useEffect(() => {
+    if (hasEdits || checklistSessionDirty || messageDraftPending) {
+      setSessionEngaged(true);
+    }
+  }, [hasEdits, checklistSessionDirty, messageDraftPending]);
+
+  useEffect(() => {
+    if (!commentCountFetched) return;
+    if (baselineCommentCountRef.current === null) {
+      baselineCommentCountRef.current = commentCount;
+      return;
+    }
+    if (commentCount > baselineCommentCountRef.current) {
+      setSessionEngaged(true);
+    }
+  }, [commentCount, commentCountFetched]);
+
+  const isAssignee =
+    Boolean(userId) &&
+    (selectedUserId ?? assignedUserId) === userId;
+  const beginPrompt =
+    String(status ?? "open").toLowerCase() === "open" &&
+    sessionEngaged &&
+    (isAssignee || canManageTask);
 
   /** Activity = audit edits + messages as compact recorded line items (not the chat UI).
    * Must run before loading/error early returns to keep hook order stable. */
@@ -1839,12 +1881,6 @@ export function TaskDetailPanel({
             onSelectImage={setSelectedImageIndex}
             onOpenImage={(index) => {
               setSelectedImageIndex(index);
-              const selectedImage = imageAttachments[index] as any;
-              if (selectedImage?.id) {
-                setEditingImageId(selectedImage.id);
-                setShowAnnotationEditor(true);
-                return;
-              }
               setLightboxOpen(true);
             }}
             onClose={variant === "modal" ? onClose : undefined}
@@ -1936,6 +1972,7 @@ export function TaskDetailPanel({
           taskEditOpen={taskEditOpen}
           hasEdits={hasEdits || checklistSessionDirty}
           showUpdate={taskEditOpen || hasEdits || checklistSessionDirty}
+          beginPrompt={beginPrompt}
           taskId={taskId}
           canManageTemplates={canManageTemplates}
           onAddUpdate={() => setProgressUpdateOpen(true)}
@@ -2215,102 +2252,50 @@ export function TaskDetailPanel({
       </DialogContent>
     </Dialog>
 
-    {/* Image lightbox modal */}
-    {lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null && createPortal(
-      <div
-        className="modal-scrim fixed inset-0 z-[9999] flex flex-col"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Image preview"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setLightboxOpen(false);
-        }}
-      >
-        <header className="relative z-20 flex shrink-0 items-center gap-2 border-b border-white/10 bg-black/50 px-3 py-2.5 backdrop-blur-md">
+    {/* Image lightbox modal — in-app preview; Annotate opens the editor */}
+    <ImageLightbox
+      open={lightboxOpen && imageAttachments.length > 0 && selectedImageIndex !== null}
+      images={imageAttachments.map((img: any) => {
+        const anns = Array.isArray(img.annotation_json) ? img.annotation_json : [];
+        return {
+          src: img.file_url || img.optimized_url || "",
+          fallbackSrc: img.optimized_url || img.thumbnail_url || undefined,
+          alt: img.file_name || "Task image",
+          overlay:
+            anns.length > 0
+              ? ({ aspectRatio }) => (
+                  <TaskImageAnnotationOverlay
+                    annotations={anns}
+                    aspectRatio={aspectRatio}
+                  />
+                )
+              : undefined,
+        };
+      })}
+      index={selectedImageIndex ?? 0}
+      onIndexChange={setSelectedImageIndex}
+      title="Evidence"
+      onClose={() => setLightboxOpen(false)}
+      headerAction={
+        imageAttachments[selectedImageIndex ?? -1]?.id ? (
           <button
             type="button"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            onClick={() => setLightboxOpen(false)}
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-white">Evidence</p>
-            <p className="truncate text-xs text-white/55">
-              {selectedImageIndex + 1} / {imageAttachments.length} · Esc to close
-            </p>
-          </div>
-          {imageAttachments[selectedImageIndex]?.id ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                const img = imageAttachments[selectedImageIndex];
-                if (!img?.id) return;
-                setLightboxOpen(false);
-                setEditingImageId(img.id);
-                setShowAnnotationEditor(true);
-              }}
-            >
-              <Pencil className="mr-1.5 h-3.5 w-3.5" />
-              Annotate
-            </Button>
-          ) : null}
-        </header>
-
-        <div
-          className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setLightboxOpen(false);
-          }}
-        >
-          {imageAttachments.length > 1 && (
-            <>
-              <button
-                type="button"
-                className="absolute left-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:left-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedImageIndex((selectedImageIndex - 1 + imageAttachments.length) % imageAttachments.length);
-                }}
-                aria-label="Previous image"
-              >
-                <ChevronLeft className="h-6 w-6" />
-              </button>
-              <button
-                type="button"
-                className="absolute right-3 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 sm:right-4"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedImageIndex((selectedImageIndex + 1) % imageAttachments.length);
-                }}
-                aria-label="Next image"
-              >
-                <ChevronRight className="h-6 w-6" />
-              </button>
-            </>
-          )}
-
-          <img
-            src={imageAttachments[selectedImageIndex].file_url || imageAttachments[selectedImageIndex].optimized_url}
-            alt={imageAttachments[selectedImageIndex].file_name || "Task image"}
-            className="max-h-full max-w-full rounded-md object-contain shadow-lg"
-            onClick={(e) => e.stopPropagation()}
-            onError={(e) => {
-              const img = imageAttachments[selectedImageIndex];
-              if (img.optimized_url && (e.target as HTMLImageElement).src !== img.optimized_url) {
-                (e.target as HTMLImageElement).src = img.optimized_url;
-              }
+            className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-white/40 bg-white/15 px-3 text-sm font-medium text-white transition-colors hover:bg-white/25"
+            onClick={(e) => {
+              e.stopPropagation();
+              const img = imageAttachments[selectedImageIndex ?? 0];
+              if (!img?.id) return;
+              setLightboxOpen(false);
+              setEditingImageId(img.id);
+              setShowAnnotationEditor(true);
             }}
-          />
-        </div>
-      </div>,
-      document.body
-    )}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Annotate
+          </button>
+        ) : null
+      }
+    />
 
     {/* Image Annotation Editor - Render in Portal to ensure proper z-index above Dialog */}
     {/* detectionOverlays={[]}: ai-image-analyse does not return bounding boxes (x,y,width,height).
@@ -2349,37 +2334,59 @@ const OVERLAY_COLOR_MAP: Record<string, string> = {
 function TaskImageAnnotationOverlay({
   annotations,
   compact = false,
+  /** Natural width / height of the image. Required to avoid non-uniform SVG stretch warping text. */
+  aspectRatio = 1,
 }: {
   annotations?: Annotation[];
   compact?: boolean;
+  aspectRatio?: number;
 }) {
   if (!Array.isArray(annotations) || annotations.length === 0) return null;
   const strokeScale = compact ? 0.7 : 1;
+  const ratio = Number.isFinite(aspectRatio) && aspectRatio > 0.05 ? aspectRatio : 1;
+  // Match image aspect so preserveAspectRatio="none" still scales X/Y uniformly
+  // when the SVG box matches the photo — text/circles stay undistorted.
+  const vbH = 100;
+  const vbW = 100 * ratio;
+  const minDim = Math.min(vbW, vbH);
+  const sx = (x: number) => x * vbW;
+  const sy = (y: number) => y * vbH;
 
   return (
     <svg
-      viewBox="0 0 100 100"
+      viewBox={`0 0 ${vbW} ${vbH}`}
       preserveAspectRatio="none"
       className="pointer-events-none absolute inset-0 h-full w-full"
     >
       {annotations.map((annotation) => {
         const color = OVERLAY_COLOR_MAP[annotation.strokeColor] || "#1f2937";
-        const strokeWidth = annotation.strokeWidth === "bold" ? 0.8 : annotation.strokeWidth === "thin" ? 0.3 : 0.5;
+        const strokeWidth =
+          (annotation.strokeWidth === "bold" ? 0.8 : annotation.strokeWidth === "thin" ? 0.3 : 0.5) *
+          strokeScale *
+          (minDim / 100);
 
         if (annotation.type === "pin") {
-          return <circle key={annotation.annotationId} cx={annotation.x * 100} cy={annotation.y * 100} r={1.1} fill={color} />;
+          return (
+            <circle
+              key={annotation.annotationId}
+              cx={sx(annotation.x)}
+              cy={sy(annotation.y)}
+              r={1.1 * (minDim / 100)}
+              fill={color}
+            />
+          );
         }
 
         if (annotation.type === "arrow") {
           return (
             <g key={annotation.annotationId}>
               <line
-                x1={annotation.from.x * 100}
-                y1={annotation.from.y * 100}
-                x2={annotation.to.x * 100}
-                y2={annotation.to.y * 100}
+                x1={sx(annotation.from.x)}
+                y1={sy(annotation.from.y)}
+                x2={sx(annotation.to.x)}
+                y2={sy(annotation.to.y)}
                 stroke={color}
-                strokeWidth={strokeWidth * strokeScale}
+                strokeWidth={strokeWidth}
                 strokeLinecap="round"
                 strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
               />
@@ -2391,13 +2398,13 @@ function TaskImageAnnotationOverlay({
           return (
             <rect
               key={annotation.annotationId}
-              x={annotation.x * 100}
-              y={annotation.y * 100}
-              width={annotation.width * 100}
-              height={annotation.height * 100}
+              x={sx(annotation.x)}
+              y={sy(annotation.y)}
+              width={annotation.width * vbW}
+              height={annotation.height * vbH}
               fill="none"
               stroke={color}
-              strokeWidth={strokeWidth * strokeScale}
+              strokeWidth={strokeWidth}
               strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
             />
           );
@@ -2407,12 +2414,12 @@ function TaskImageAnnotationOverlay({
           return (
             <circle
               key={annotation.annotationId}
-              cx={annotation.x * 100}
-              cy={annotation.y * 100}
-              r={annotation.radius * 100}
+              cx={sx(annotation.x)}
+              cy={sy(annotation.y)}
+              r={annotation.radius * minDim}
               fill="none"
               stroke={color}
-              strokeWidth={strokeWidth * strokeScale}
+              strokeWidth={strokeWidth}
               strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
             />
           );
@@ -2420,22 +2427,22 @@ function TaskImageAnnotationOverlay({
 
         if (annotation.type === "text") {
           const fontSize = compact
-            ? Math.max(2, (annotation.fontSizePt ?? 16) * 0.14)
-            : Math.max(2.4, (annotation.fontSizePt ?? 16) * 0.18);
+            ? Math.max(2, (annotation.fontSizePt ?? 16) * 0.14) * (minDim / 100)
+            : Math.max(2.4, (annotation.fontSizePt ?? 16) * 0.18) * (minDim / 100);
           const fill = OVERLAY_COLOR_MAP[annotation.textColor] || color;
           const highlight = annotation.textColor === "white" ? "rgba(0,0,0,0.3)" : "rgba(255,255,255,0.3)";
           return (
             <g key={annotation.annotationId}>
               <rect
-                x={annotation.x * 100 - 0.4}
-                y={annotation.y * 100 - 0.4}
-                width={annotation.width * 100 + 0.8}
-                height={Math.max(fontSize * 1.3, (annotation.height ?? 0) * 100)}
+                x={sx(annotation.x) - 0.4 * (minDim / 100)}
+                y={sy(annotation.y) - 0.4 * (minDim / 100)}
+                width={annotation.width * vbW + 0.8 * (minDim / 100)}
+                height={Math.max(fontSize * 1.3, (annotation.height ?? 0) * vbH)}
                 fill={highlight}
               />
               <text
-                x={annotation.x * 100}
-                y={annotation.y * 100 + fontSize}
+                x={sx(annotation.x)}
+                y={sy(annotation.y) + fontSize}
                 fill={fill}
                 fontSize={fontSize}
               >
@@ -2446,14 +2453,16 @@ function TaskImageAnnotationOverlay({
         }
 
         if (annotation.type === "freedraw" && annotation.points.length > 1) {
-          const polylinePoints = annotation.points.map((point) => `${point.x * 100},${point.y * 100}`).join(" ");
+          const polylinePoints = annotation.points
+            .map((point) => `${sx(point.x)},${sy(point.y)}`)
+            .join(" ");
           return (
             <polyline
               key={annotation.annotationId}
               points={polylinePoints}
               fill="none"
               stroke={color}
-              strokeWidth={strokeWidth * strokeScale}
+              strokeWidth={strokeWidth}
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeDasharray={annotation.lineStyle === "dashed" ? "2 1.5" : undefined}
@@ -2481,52 +2490,84 @@ function ImageAnnotationEditorWrapper({
   detectionOverlays?: DetectionOverlay[];
   onClose: () => void;
 }) {
+  const queryClient = useQueryClient();
   const { annotations, annotationVersions, loading, saveAnnotations } = useImageAnnotations(taskId, imageId);
   const { members } = useOrgMembers();
-  const originalLayerCreatedAtRef = useRef(new Date().toISOString());
+  const { user } = useAuth();
   const hasShownEditorRef = useRef(false);
   const frozenImageUrlRef = useRef(imageUrl);
   if (imageUrl) frozenImageUrlRef.current = frozenImageUrlRef.current || imageUrl;
 
-  // Original = no annotations when we have version history; otherwise attachment baseline
-  const originalAnnotations =
-    annotationVersions.length > 0 ? [] : annotations;
-  const originalCreatedAt =
-    annotationVersions.length > 0
-      ? annotationVersions[annotationVersions.length - 1].created_at
-      : originalLayerCreatedAtRef.current;
-
-  const originalLayer = {
-    id: "original",
-    createdAt: originalCreatedAt,
-    userId: null as string | null,
-    versionNumber: 0,
-    label: "Original",
-    annotations: originalAnnotations,
-    userDisplayName: "Original",
-    userAvatarUrl: null as string | null,
-  };
+  const resolveMember = (userId: string | null | undefined) =>
+    userId ? members.find((m) => m.user_id === userId) : undefined;
 
   const versionSessions = annotationVersions.map((version) => {
-    const member = members.find((m) => m.user_id === version.created_by);
-    const displayName = member?.display_name ?? "Unknown user";
-    const dateStr = new Date(version.created_at).toLocaleString(undefined, {
-      dateStyle: "short",
-      timeStyle: "short",
-    });
+    const member = resolveMember(version.created_by);
+    const isMe = Boolean(user?.id && version.created_by === user.id);
+    const displayName =
+      member?.display_name ||
+      (isMe
+        ? ((user?.user_metadata?.display_name as string | undefined) ||
+            user?.email ||
+            "You")
+        : null) ||
+      "Teammate";
+    const avatarUrl =
+      member?.avatar_url ??
+      (isMe
+        ? ((user?.user_metadata?.avatar_url as string | undefined) ?? null)
+        : null);
     return {
       id: version.id,
       createdAt: version.created_at,
       userId: version.created_by,
       versionNumber: version.version_number,
-      label: `Edit by ${displayName}, ${dateStr}`,
+      label: version.label || `Edit by ${displayName}`,
       annotations: version.annotations,
       userDisplayName: displayName,
-      userAvatarUrl: member?.avatar_url ?? null,
+      userAvatarUrl: avatarUrl,
+      isEnabled: version.is_enabled,
     };
   });
 
-  const editSessions = [originalLayer, ...versionSessions];
+  // Legacy attachment-only annotations (no version rows yet) — one layer owned by annotator.
+  const baselineOwnerId =
+    annotations.find((a) => a.createdBy)?.createdBy || user?.id || null;
+  const baselineMember = resolveMember(baselineOwnerId);
+  const baselineIsMe = Boolean(user?.id && baselineOwnerId === user.id);
+  const baselineDisplayName =
+    baselineMember?.display_name ||
+    (baselineIsMe
+      ? ((user?.user_metadata?.display_name as string | undefined) ||
+          user?.email ||
+          "You")
+      : null) ||
+    "Teammate";
+  const baselineAvatarUrl =
+    baselineMember?.avatar_url ??
+    (baselineIsMe
+      ? ((user?.user_metadata?.avatar_url as string | undefined) ?? null)
+      : null);
+
+  const editSessions =
+    versionSessions.length > 0
+      ? versionSessions
+      : annotations.length > 0
+        ? [
+            {
+              id: "baseline",
+              createdAt: new Date().toISOString(),
+              userId: baselineOwnerId,
+              versionNumber: 0,
+              label: `Edit by ${baselineDisplayName}`,
+              annotations,
+              userDisplayName: baselineDisplayName,
+              userAvatarUrl: baselineAvatarUrl,
+              isEnabled: true,
+            },
+          ]
+        : [];
+
   if (!loading) hasShownEditorRef.current = true;
 
   if (loading && !hasShownEditorRef.current) {
@@ -2556,11 +2597,17 @@ function ImageAnnotationEditorWrapper({
       imageUrl={frozenImageUrlRef.current || imageUrl}
       imageId={imageId}
       taskId={taskId}
-      initialAnnotations={annotations}
+      initialAnnotations={[]}
       editSessions={editSessions}
       detectionOverlays={detectionOverlays}
-      onSave={async (anns) => {
-        await saveAnnotations(anns);
+      onSave={async (anns, options) => {
+        const opts =
+          typeof options === "boolean" ? { isAutosave: options } : options ?? {};
+        await saveAnnotations(anns, opts);
+        void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+        void queryClient.invalidateQueries({ queryKey: ["task", taskId] });
+        void queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
+        void queryClient.invalidateQueries({ queryKey: ["task-details"] });
       }}
       onCancel={onClose}
     />

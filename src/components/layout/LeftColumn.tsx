@@ -235,7 +235,7 @@ export function LeftColumn({
   return (
     <div 
       ref={leftColumnRef}
-      className="flex h-auto w-full max-w-full flex-col overflow-y-auto px-0 sm:overflow-visible"
+      className="flex h-auto w-full max-w-full flex-col overflow-y-auto px-0 sm:overflow-visible [overflow-anchor:none]"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
       {/* Properties: selector stack + identity strip */}

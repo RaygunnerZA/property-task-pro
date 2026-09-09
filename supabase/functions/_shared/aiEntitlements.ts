@@ -23,6 +23,8 @@ const COST_UNITS: Record<string, number> = {
   "compliance-clause-rewrite": 2,
   "knowledge-critic": 2,
   "knowledge-generate-guidance": 2,
+  "knowledge-gap-research": 1,
+  "ai-batch-poll": 1,
   "building-plan-process": 5,
   // Escalation is a user-initiated second pass on a frontier model. It is metered
   // separately from the normal run because it is a different, dearer product.

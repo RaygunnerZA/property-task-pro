@@ -8,6 +8,7 @@ import {
   Settings,
   Layers,
   FolderOpen,
+  Tags,
 } from "lucide-react";
 import {
   Drawer,
@@ -21,9 +22,10 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 
 const MORE_MENU_ITEMS = [
   { to: "/properties", label: "Properties", icon: Building2, description: "Portfolio and property hubs" },
-  { to: "/properties", label: "Spaces", icon: Layers, description: "Rooms and areas" },
+  { to: "/spaces", label: "Spaces", icon: Layers, description: "Rooms and areas" },
   { to: "/assets", label: "Assets", icon: Box, description: "Equipment and fixtures" },
   { to: "/records", label: "Records", icon: FolderOpen, description: "Compliance and documents" },
+  { to: "/tags", label: "Tags", icon: Tags, description: "Labels for tasks" },
   { to: "/reports", label: "Reports", icon: BarChart3, description: "Insights and exports" },
   { to: "/help", label: "Help", icon: HelpCircle, description: "Guides and support" },
   { to: "/settings", label: "Settings", icon: Settings, description: "Account and organisation" },
@@ -35,7 +37,7 @@ type MobileMoreMenuDrawerProps = {
 };
 
 /**
- * Mobile “More” slider — Properties (multi-property only), Spaces, Assets, Records, Reports, Help, Settings.
+ * Mobile “More” slider — portfolio and secondary destinations not on the bottom bar.
  */
 export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawerProps) {
   const { data: properties = [] } = usePropertiesQuery();
@@ -50,7 +52,7 @@ export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawe
       <DrawerContent className="max-h-[85vh]">
         <DrawerHeader className="border-b border-border/50 text-left">
           <DrawerTitle>More</DrawerTitle>
-          <DrawerDescription>Records, reports, and settings</DrawerDescription>
+          <DrawerDescription>Spaces, records, reports, and settings</DrawerDescription>
         </DrawerHeader>
         <nav className="space-y-1 p-4 pb-8" aria-label="More navigation">
           {items.map(({ to, label, icon: Icon, description }) => (

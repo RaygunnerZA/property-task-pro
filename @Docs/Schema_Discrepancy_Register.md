@@ -34,7 +34,8 @@ These objects were missing on live at squash capture and were **added** via `202
 
 | Object | Notes | Decision |
 |---|---|---|
-| `asset_inspections`, `asset_themes`, `assistant_logs`, `brain_extract_pending`, `compliance_auto_tasks`, `compliance_contractors`, `compliance_history`, `listed_buildings`, `notification_events`, `notifications`, `property_graph_edges`, `property_legal`, `property_utilities`, `space_ui_groups`, `task_assets`, `task_compliance`, `task_image_annotation_versions`, `task_teams` | In app generated types and/or old migrations; **not** on live | **bug / later PR** — do not invent in squash. Add forward migrations when the product path needs them. |
+| `asset_inspections`, `asset_themes`, `assistant_logs`, `brain_extract_pending`, `compliance_auto_tasks`, `compliance_contractors`, `compliance_history`, `listed_buildings`, `notification_events`, `notifications`, `property_graph_edges`, `property_legal`, `property_utilities`, `space_ui_groups`, `task_assets`, `task_compliance`, `task_teams` | In app generated types and/or old migrations; **not** on live | **bug / later PR** — do not invent in squash. Add forward migrations when the product path needs them. |
+| `task_image_annotation_versions` | Forward migration `20260909140000_task_image_annotation_versions.sql` | **shipping** — collaborative annotation layers |
 | `ai_capability_evals` + `record_ai_capability_eval` + `admin_ai_plan_extraction_metrics` / `admin_ai_resolution_metrics` | Archive-only at squash; client already wrote `ai_resolution_audit` | **Resolved** — `20260902120000` applied on live. `admin_list_ai_route_overrides` (`20260903080000`) is the admin read path (Ch 25 RPCs). `ai_resolution_audit` still has no `ai_request_id` (Stage 6). |
 | Empty `assigned_properties` grants all properties | Skill + docs §3.3 disagree | **bug (flagged)** — do not change in squash |
 

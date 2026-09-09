@@ -75,13 +75,34 @@ export function AppSidebar() {
   const { data: isPlatformAdmin } = useIsPlatformAdmin();
   const isMultiProperty = properties.length > 1;
 
-  const mainNavItems = useMemo(
-    () =>
-      MAIN_NAV_ITEMS.filter(
-        (item) => item.title !== "Properties" || isMultiProperty
-      ),
-    [isMultiProperty]
-  );
+  const mainNavItems = useMemo(() => {
+    const property = searchParams.get("property");
+    const withProperty = (url: string) => {
+      if (!property) return url;
+      const [path, qs] = url.split("?");
+      if (
+        path === "/spaces" ||
+        path === "/assets" ||
+        path === "/records" ||
+        path === "/tasks" ||
+        path === "/home" ||
+        path === "/agenda"
+      ) {
+        const params = new URLSearchParams(qs || "");
+        params.set("property", property);
+        const next = params.toString();
+        return next ? `${path}?${next}` : path;
+      }
+      return url;
+    };
+
+    return MAIN_NAV_ITEMS.filter(
+      (item) => item.title !== "Properties" || isMultiProperty
+    ).map((item) => ({
+      ...item,
+      url: withProperty(item.url),
+    }));
+  }, [isMultiProperty, searchParams]);
 
   const entityContext = useMemo(() => {
     const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
@@ -141,10 +162,11 @@ export function AppSidebar() {
   ) => {
     const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
     const urlBase = url.split('?')[0];
+    const search = location.search;
 
     const isActive = isContextItem
       ? currentPath === urlBase || currentPath.startsWith(urlBase + '/')
-      : isMainNavActive(currentPath, url);
+      : isMainNavActive(currentPath, url, search);
 
     const IconComponent = item.icon;
 

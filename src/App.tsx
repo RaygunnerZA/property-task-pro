@@ -41,6 +41,16 @@ function RedirectPreserveQuery({ to }: { to: string }) {
   return <Navigate to={`${to}${search}`} replace />;
 }
 
+/** Legacy `/calendar` → centre Tab-Calendar (`/tasks?panelTab=calendar`). */
+function RedirectToCentreCalendar() {
+  const { search } = useLocation();
+  const params = new URLSearchParams(search);
+  params.set("panelTab", "calendar");
+  params.delete("tab");
+  const qs = params.toString();
+  return <Navigate to={qs ? `/tasks?${qs}` : "/tasks?panelTab=calendar"} replace />;
+}
+
 // Lazy load all page components (except Login and AppLayout which load instantly)
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -62,11 +72,12 @@ const WorkAutomations = lazy(() => import("./pages/work/WorkAutomations"));
 
 // MANAGE pillar
 const ManageProperties = lazy(() => import("./pages/manage/ManageProperties"));
-const ManageSpaces = lazy(() => import("./pages/manage/ManageSpaces"));
 const ManageVendors = lazy(() => import("./pages/manage/ManageVendors"));
 const ManageTemplates = lazy(() => import("./pages/manage/ManageTemplates"));
 const ManageSettings = lazy(() => import("./pages/manage/ManageSettings"));
 const Assets = lazy(() => import("./pages/Assets"));
+const SpacesEntryPage = lazy(() => import("./pages/SpacesEntryPage"));
+const TagsPage = lazy(() => import("./pages/TagsPage"));
 
 // RECORD pillar
 const RecordDocuments = lazy(() => import("./pages/record/RecordDocuments"));
@@ -75,7 +86,6 @@ const ComplianceDashboard = lazy(() => import("./pages/ComplianceDashboard"));
 const PortfolioCompliance = lazy(() => import("./pages/compliance/PortfolioCompliance"));
 const ContractorCompliance = lazy(() => import("./pages/compliance/ContractorCompliance"));
 const ComplianceCalendar = lazy(() => import("./pages/compliance/ComplianceCalendar"));
-const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const ComplianceTasks = lazy(() => import("./pages/ComplianceTasks"));
 const RecordHistory = lazy(() => import("./pages/record/RecordHistory"));
 const RecordReports = lazy(() => import("./pages/record/RecordReports"));
@@ -359,12 +369,14 @@ const App = () => {
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
                                 <Route path="/tasks" element={<RouteBoundary title="Work"><TasksWorkbenchPage /></RouteBoundary>} />
-                                <Route path="/calendar" element={<RouteBoundary title="Calendar"><CalendarPage /></RouteBoundary>} />
-                                <Route path="/schedule" element={<Navigate to="/calendar" replace />} />
+                                <Route path="/calendar" element={<RedirectToCentreCalendar />} />
+                                <Route path="/schedule" element={<RedirectToCentreCalendar />} />
                                 <Route path="/knowledge" element={<RouteBoundary title="Knowledge"><Knowledge /></RouteBoundary>} />
                                 <Route path="/reports" element={<RouteBoundary title="Reports"><Reports /></RouteBoundary>} />
                                 <Route path="/reports/:id" element={<RouteBoundary title="Report"><ReportWorkspacePage /></RouteBoundary>} />
                                 <Route path="/assets" element={<RouteBoundary title="Assets"><Assets /></RouteBoundary>} />
+                                <Route path="/spaces" element={<RouteBoundary title="Spaces"><SpacesEntryPage /></RouteBoundary>} />
+                                <Route path="/tags" element={<RouteBoundary title="Tags"><TagsPage /></RouteBoundary>} />
                                 <Route path="/compliance" element={<RouteBoundary title="Compliance"><Compliance /></RouteBoundary>} />
                                 
                                 {/* WORK pillar */}
@@ -375,7 +387,7 @@ const App = () => {
                                 
                                 {/* MANAGE pillar */}
                                 <Route path="/manage/properties" element={<ManageProperties />} />
-                                <Route path="/manage/spaces" element={<ManageSpaces />} />
+                                <Route path="/manage/spaces" element={<Navigate to="/spaces" replace />} />
                                 <Route path="/assets" element={<Assets />} />
                                 <Route path="/manage/people" element={<Navigate to="/settings/team" replace />} />
                                 <Route path="/manage/vendors" element={<ManageVendors />} />

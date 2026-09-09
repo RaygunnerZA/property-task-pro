@@ -452,6 +452,16 @@ verify_jwt = true
 [functions.knowledge-extract-claims]
 verify_jwt = true
 
+[functions.knowledge-gap-research]
+verify_jwt = true
+
+[functions.ai-batch-submit]
+verify_jwt = true
+
+# Gemini Batch poller. Platform admin JWT or service-role bearer (cron every ~15m).
+[functions.ai-batch-poll]
+verify_jwt = true
+
 [functions.content-generate]
 verify_jwt = true
 

@@ -21,6 +21,10 @@ import {
   trackKnowledgeReused,
   trackKnowledgeTimeSaved,
 } from "@/lib/knowledge/knowledgeTelemetry";
+import {
+  formatEdgeFunctionToast,
+  parseEdgeFunctionError,
+} from "@/lib/edgeFunctionErrors";
 import type { AssistantMessage, ProposedAction } from "@/components/assistant/AssistantPanel";
 
 type AssistantExecutorType = "create_task" | "link_compliance";
@@ -31,7 +35,21 @@ type AssistantExecutorVariables = {
   orgId: string;
 };
 
-type AssistantExecutorResponse = { ok: boolean; task_id?: string; error?: string };
+type AssistantExecutorResponse = { ok: boolean; task_id?: string; error?: unknown };
+
+function coerceAssistantError(value: unknown, fallback: string): string {
+  if (typeof value === "string" && value.trim()) return value;
+  if (value && typeof value === "object") {
+    const rec = value as Record<string, unknown>;
+    if (typeof rec.message === "string" && rec.message.trim()) return rec.message;
+  }
+  return fallback;
+}
+
+function errorMessage(err: unknown, fallback: string): string {
+  if (err instanceof Error && err.message) return err.message;
+  return coerceAssistantError(err, fallback);
+}
 
 export interface AssistantContextInput {
   type: "property" | "space" | "asset" | "task" | "document" | null;
@@ -48,16 +66,20 @@ export function useAssistant() {
 
   const assistantActionMutation = useMutation({
     mutationFn: async ({ executorType, payload, orgId: oid }: AssistantExecutorVariables) => {
-      const { data, error } = await supabase.functions.invoke("assistant-action-executor", {
+      const { data, error, response } = await supabase.functions.invoke("assistant-action-executor", {
         body: {
           type: executorType,
           payload,
           org_id: oid,
         },
       });
-      if (error) throw error;
+      if (error) {
+        const info = await parseEdgeFunctionError(error, data);
+        if (!info.status && response) info.status = response.status;
+        throw new Error(formatEdgeFunctionToast(info));
+      }
       const body = data as AssistantExecutorResponse | null;
-      if (!body?.ok) throw new Error(body?.error ?? "Action failed");
+      if (!body?.ok) throw new Error(coerceAssistantError(body?.error, "Action failed"));
       return { body, executorType, orgId: oid };
     },
     onSuccess: (result) => {
@@ -113,19 +135,23 @@ export function useAssistant() {
       }
 
       try {
-        const { data: reasonerData, error: reasonerErr } = await supabase.functions.invoke(
-          "assistant-reasoner",
-          {
+        const { data: reasonerData, error: reasonerErr, response } =
+          await supabase.functions.invoke("assistant-reasoner", {
             body: {
               query,
               context: context ? { type: context.type, id: context.id } : null,
               org_id: orgId,
             },
-          }
-        );
+          });
 
-        if (reasonerErr) throw reasonerErr;
-        if (!reasonerData?.ok) throw new Error(reasonerData?.error ?? "Reasoner failed");
+        if (reasonerErr) {
+          const info = await parseEdgeFunctionError(reasonerErr, reasonerData);
+          if (!info.status && response) info.status = response.status;
+          throw new Error(formatEdgeFunctionToast(info));
+        }
+        if (!reasonerData?.ok) {
+          throw new Error(coerceAssistantError(reasonerData?.error, "Reasoner failed"));
+        }
 
         setMessages((prev) => [
           ...prev,
@@ -154,7 +180,7 @@ export function useAssistant() {
           setProposedAction(reasonerData.proposed_action as ProposedAction);
         }
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Something went wrong.";
+        const msg = errorMessage(err, "Something went wrong.");
         setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
       } finally {
         setLoading(false);
@@ -207,7 +233,7 @@ export function useAssistant() {
       ]);
       setProposedAction(null);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Action failed.";
+      const msg = errorMessage(err, "Action failed.");
       setMessages((prev) => [...prev, { role: "assistant", content: `Error: ${msg}` }]);
     } finally {
       setLoading(false);

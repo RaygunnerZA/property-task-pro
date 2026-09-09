@@ -16,6 +16,7 @@ import type { ChecklistStepResponseInput } from "@/lib/checklistStepResponse";
 import { responseLabelForType } from "@/lib/checklistStepResponse";
 import { SignaturePad } from "@/components/tasks/subtasks/SignaturePad";
 import { Input } from "@/components/ui/input";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 type StepExecuteControlsProps = {
   subtask: SubtaskData;
@@ -42,6 +43,7 @@ export function StepExecuteControls({
     stepType === "scan" ? (subtask.response_value ?? "") : ""
   );
   const [showSignature, setShowSignature] = useState(false);
+  const [evidencePreviewOpen, setEvidencePreviewOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const recorded = responseLabelForType(stepType, subtask.response_value);
@@ -56,28 +58,53 @@ export function StepExecuteControls({
       typeof subtask.response_json?.file_url === "string"
         ? subtask.response_json.file_url
         : null;
+    const looksLikeImage =
+      (Boolean(fileUrl) &&
+        /\.(png|jpe?g|gif|webp|heic|bmp)(\?|$)/i.test(fileUrl!)) ||
+      stepType === "photo" ||
+      stepType === "signature";
     return (
-      <div className="mt-1 flex flex-wrap items-center gap-2 pl-8 text-2xs">
-        <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary-deep">
-          <Check className="h-3 w-3" />
-          {STEP_TYPE_CONFIG[stepType].label}: {recorded}
-        </span>
-        {fileUrl ? (
-          <a
-            href={fileUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-primary underline-offset-2 hover:underline"
-          >
-            View evidence
-          </a>
-        ) : null}
-        {subtask.completed_at ? (
-          <span className="text-muted-foreground">
-            {new Date(subtask.completed_at).toLocaleString()}
+      <>
+        <div className="mt-1 flex flex-wrap items-center gap-2 pl-8 text-2xs">
+          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary-deep">
+            <Check className="h-3 w-3" />
+            {STEP_TYPE_CONFIG[stepType].label}: {recorded}
           </span>
+          {fileUrl ? (
+            looksLikeImage ? (
+              <button
+                type="button"
+                onClick={() => setEvidencePreviewOpen(true)}
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                View evidence
+              </button>
+            ) : (
+              <a
+                href={fileUrl}
+                download
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                View evidence
+              </a>
+            )
+          ) : null}
+          {subtask.completed_at ? (
+            <span className="text-muted-foreground">
+              {new Date(subtask.completed_at).toLocaleString()}
+            </span>
+          ) : null}
+        </div>
+        {fileUrl && looksLikeImage ? (
+          <ImageLightbox
+            open={evidencePreviewOpen}
+            images={[{ src: fileUrl, alt: "Evidence" }]}
+            index={0}
+            title="Evidence"
+            onClose={() => setEvidencePreviewOpen(false)}
+          />
         ) : null}
-      </div>
+      </>
     );
   }
 

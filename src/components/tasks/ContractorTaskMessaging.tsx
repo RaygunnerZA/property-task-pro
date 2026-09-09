@@ -7,6 +7,7 @@ import { Send, Loader2, Paperclip, Image as ImageIcon, X, FileText, Download } f
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { clipboardImageFiles } from "@/utils/ingestIntakeMediaFiles";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 interface ContractorTaskMessagingProps {
   taskId: string;
@@ -41,6 +42,7 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
   const [isSending, setIsSending] = useState(false);
   const [attachments, setAttachments] = useState<AttachmentPreview[]>([]);
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -376,24 +378,42 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
                     {/* Attachments */}
                     {messageAtts.length > 0 && (
                       <div className="mt-2 space-y-2">
-                        {messageAtts.map((att) => (
+                        {messageAtts.map((att) => {
+                          const isImage = att.file_type?.startsWith("image/");
+                          return (
                           <div key={att.id} className="flex items-center gap-2 p-2 bg-muted/50 rounded">
-                            {att.file_type?.startsWith("image/") ? (
+                            {isImage ? (
                               <ImageIcon className="h-4 w-4 text-muted-foreground" />
                             ) : (
                               <FileText className="h-4 w-4 text-muted-foreground" />
                             )}
-                            <a
-                              href={att.file_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-primary hover:underline flex-1"
-                            >
-                              {att.file_name || "Attachment"}
-                            </a>
+                            {isImage ? (
+                              <button
+                                type="button"
+                                className="text-xs text-primary hover:underline flex-1 text-left truncate"
+                                onClick={() =>
+                                  setPreviewImage({
+                                    src: att.file_url,
+                                    alt: att.file_name || "Attachment",
+                                  })
+                                }
+                              >
+                                {att.file_name || "Attachment"}
+                              </button>
+                            ) : (
+                              <a
+                                href={att.file_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-primary hover:underline flex-1"
+                              >
+                                {att.file_name || "Attachment"}
+                              </a>
+                            )}
                             <Download className="h-3 w-3 text-muted-foreground" />
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -503,6 +523,18 @@ export function ContractorTaskMessaging({ taskId, contractorToken }: ContractorT
           You can submit files such as costing, plans, or other documents. All messages and attachments are logged.
         </p>
       </div>
+
+      <ImageLightbox
+        open={Boolean(previewImage)}
+        images={
+          previewImage
+            ? [{ src: previewImage.src, alt: previewImage.alt }]
+            : []
+        }
+        index={0}
+        title="Attachment"
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

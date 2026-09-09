@@ -21,7 +21,10 @@ import {
 } from "@/lib/calendarDayMeta";
 import { filterTasksForScheduleAgenda } from "@/lib/calendarTaskSchedule";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
-import { workbenchSectionTitleClassName } from "@/lib/workbenchSectionTitle";
+import {
+  workbenchSectionTitleClassName,
+  workbenchSectionTitleInactiveClassName,
+} from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
 import type { CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
@@ -261,7 +264,7 @@ export function CalendarWorkbenchPanel({
                               workbenchSectionTitleClassName,
                               "text-lg text-foreground md:text-xl"
                             )
-                          : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                          : workbenchSectionTitleInactiveClassName
                       )}
                     >
                       {tab.label}

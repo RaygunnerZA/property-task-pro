@@ -10,6 +10,7 @@ import {
   isEligibleForGuidanceGeneration,
   isEligibleForGuidanceImprovement,
   matchesReviewQueue,
+  chunkIds,
   primaryActionForRow,
   buildReviewTrustChecks,
   reviewBlockingChecks,
@@ -236,8 +237,14 @@ describe("knowledgeReviewState", () => {
     const checks = buildReviewTrustChecks(draft, { sources: gov });
     expect(matchesReviewQueue("awaiting_critic", draft, checks, gov)).toBe(true);
     expect(matchesReviewQueue("needs_work", draft, checks, gov)).toBe(false);
+    expect(matchesReviewQueue("all", draft, checks, gov)).toBe(true);
     const counts = computeReviewToolbarCounts([draft], new Map([["r1", gov]]));
     expect(counts.awaitingCritic).toBe(1);
     expect(counts.needsWork).toBe(0);
+    expect(counts.all).toBe(1);
+  });
+
+  it("chunks guidance ids for batched AI invokes", () => {
+    expect(chunkIds(["a", "b", "c", "d", "e"], 2)).toEqual([["a", "b"], ["c", "d"], ["e"]]);
   });
 });

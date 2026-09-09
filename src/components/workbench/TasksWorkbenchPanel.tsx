@@ -8,6 +8,7 @@ import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSect
 import { useAllTasksIllustrationSrc } from "@/hooks/useAllTasksIllustration";
 import {
   workbenchSectionTitleClassName,
+  workbenchSectionTitleInactiveClassName,
 } from "@/lib/workbenchSectionTitle";
 import { useDataContext } from "@/contexts/DataContext";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
@@ -380,7 +381,7 @@ export function TasksWorkbenchPanel({
                               workbenchSectionTitleClassName,
                               "text-lg text-foreground md:text-xl"
                             )
-                          : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                          : workbenchSectionTitleInactiveClassName
                       )}
                     >
                       {tab.label}
@@ -421,7 +422,7 @@ export function TasksWorkbenchPanel({
                           workbenchSectionTitleClassName,
                           "text-lg text-foreground md:text-xl"
                         )
-                      : "font-normal text-muted-foreground/50 hover:text-muted-foreground"
+                      : workbenchSectionTitleInactiveClassName
                   )}
                 >
                   <MessagesIcon

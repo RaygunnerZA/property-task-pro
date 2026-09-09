@@ -1,11 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { ArrowRight, Square, Circle, Type, Pen, X, RotateCcw, Undo2, Redo2, MousePointer2, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
 import { UserAvatar } from "@/components/tasks/UserAvatar";
+import { useToast } from "@/hooks/use-toast";
 import type {
   Annotation,
   AnnotationColor,
@@ -13,6 +14,7 @@ import type {
   AnnotationStrokeWidth,
   TextAnnotation,
 } from "@/types/image-annotations";
+import type { SaveAnnotationsOptions } from "@/hooks/useImageAnnotations";
 import {
   getColorHex,
   getStrokeWidthPx,
@@ -36,23 +38,29 @@ export interface DetectionOverlay {
   confidence?: number;
 }
 
+export type AnnotationEditSession = {
+  id: string;
+  createdAt: string;
+  userId: string | null;
+  userDisplayName: string;
+  userAvatarUrl: string | null;
+  versionNumber: number;
+  label: string;
+  annotations: Annotation[];
+  isEnabled?: boolean;
+};
+
 interface ImageAnnotationEditorProps {
   imageUrl: string;
   imageId: string;
   taskId: string; // Can be empty string for temp images
   initialAnnotations?: Annotation[];
-  editSessions?: Array<{
-    id: string;
-    createdAt: string;
-    userId: string | null;
-    userDisplayName: string;
-    userAvatarUrl: string | null;
-    versionNumber: number;
-    label: string;
-    annotations: Annotation[];
-  }>;
+  editSessions?: AnnotationEditSession[];
   detectionOverlays?: DetectionOverlay[];
-  onSave: (annotations: Annotation[], isAutosave?: boolean) => Promise<void>;
+  onSave: (
+    annotations: Annotation[],
+    options?: boolean | SaveAnnotationsOptions
+  ) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -80,8 +88,10 @@ export function ImageAnnotationEditor({
 }: ImageAnnotationEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  /** Draft for this edit session only — saved as a new layer. */
   const [annotations, setAnnotations] = useState<Annotation[]>(initialAnnotations);
   const { user } = useAuth();
+  const { toast } = useToast();
   const currentUserId = user?.id ?? null;
   const [selectedAnnotationId, setSelectedAnnotationId] = useState<string | null>(null);
   const [currentTool, setCurrentTool] = useState<ToolType>("select");
@@ -128,26 +138,74 @@ export function ImageAnnotationEditor({
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [lastSavedAnnotations, setLastSavedAnnotations] = useState<Annotation[]>(initialAnnotations);
   const imageElementRef = useRef<HTMLImageElement | null>(null);
-  const [visibleSessionIds, setVisibleSessionIds] = useState<string[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  /** Layer opacity: 1 = full, 0.1 = dimmed by click. */
+  const [layerOpacityById, setLayerOpacityById] = useState<Record<string, number>>({});
+  /** Preview superseded (is_enabled=false) layers when clicked in the list. */
+  const [previewLayerIds, setPreviewLayerIds] = useState<string[]>([]);
+  /** Layers to disable when this draft is saved (edited an earlier layer). */
+  const [supersedeLayerIds, setSupersedeLayerIds] = useState<string[]>([]);
+  /** annotationId → layer id it was pulled from for editing. */
+  const pulledFromLayerRef = useRef<Map<string, string>>(new Map());
   
+  const isLayeredMode = editSessions.length > 0 || Boolean(taskId);
+
   // Track if annotations have changed
   const hasUnsavedChanges = useMemo(() => {
-    return JSON.stringify(annotations) !== JSON.stringify(lastSavedAnnotations);
-  }, [annotations, lastSavedAnnotations]);
+    return (
+      JSON.stringify(annotations) !== JSON.stringify(lastSavedAnnotations) ||
+      supersedeLayerIds.length > 0
+    );
+  }, [annotations, lastSavedAnnotations, supersedeLayerIds]);
 
-  // Always render the live edit buffer. History versions can be loaded into it via the layer list.
-  const displayAnnotations = annotations;
+  const draftIds = useMemo(
+    () => new Set(annotations.map((a) => a.annotationId)),
+    [annotations]
+  );
+
+  const annotationLayerId = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const session of editSessions) {
+      for (const ann of session.annotations) {
+        map.set(ann.annotationId, session.id);
+      }
+    }
+    return map;
+  }, [editSessions]);
 
   const canEditAnnotation = useCallback(
     (annotation: Annotation) => {
       if (!currentUserId) return true;
       if (annotation.createdBy && annotation.createdBy !== currentUserId) return false;
-      const activeSession = editSessions.find((s) => s.id === activeSessionId);
-      if (activeSession?.userId && activeSession.userId !== currentUserId) return false;
+      const layerId = annotationLayerId.get(annotation.annotationId);
+      if (layerId) {
+        const session = editSessions.find((s) => s.id === layerId);
+        if (session?.userId && session.userId !== currentUserId) return false;
+      }
       return true;
     },
-    [activeSessionId, currentUserId, editSessions],
+    [annotationLayerId, currentUserId, editSessions],
+  );
+
+  const pullAnnotationIntoDraft = useCallback(
+    (annotation: Annotation) => {
+      if (!canEditAnnotation(annotation)) return false;
+      const layerId = annotationLayerId.get(annotation.annotationId);
+      if (layerId && layerId !== "baseline") {
+        pulledFromLayerRef.current.set(annotation.annotationId, layerId);
+        setSupersedeLayerIds((prev) =>
+          prev.includes(layerId) ? prev : [...prev, layerId]
+        );
+      }
+      // Sync so the same pointer gesture can drag immediately.
+      flushSync(() => {
+        setAnnotations((prev) => {
+          if (prev.some((a) => a.annotationId === annotation.annotationId)) return prev;
+          return [...prev, JSON.parse(JSON.stringify(annotation)) as Annotation];
+        });
+      });
+      return true;
+    },
+    [annotationLayerId, canEditAnnotation]
   );
 
   const getFrameCorners = (annotation: Annotation): Array<{ handle: ShapeHandle; x: number; y: number }> => {
@@ -356,7 +414,25 @@ export function ImageAnnotationEditor({
   const drawAnnotations = useCallback((ctx: CanvasRenderingContext2D) => {
     if (!imageSize) return;
     try {
-      displayAnnotations.forEach((annotation) => {
+      // 1) Saved layers (enabled by default; superseded only when previewed)
+      for (const session of editSessions) {
+        const isEnabled = session.isEnabled !== false;
+        const previewing = previewLayerIds.includes(session.id);
+        if (!isEnabled && !previewing) continue;
+
+        const opacity = layerOpacityById[session.id] ?? 1;
+        ctx.save();
+        ctx.globalAlpha = opacity;
+        for (const annotation of session.annotations) {
+          // Pulled into draft — draft draws the live copy.
+          if (draftIds.has(annotation.annotationId)) continue;
+          drawOneAnnotation(ctx, annotation);
+        }
+        ctx.restore();
+      }
+
+      // 2) Current draft (this edit session)
+      annotations.forEach((annotation) => {
         const isEditing = inlineTextEditor?.annotationId === annotation.annotationId;
         drawOneAnnotation(ctx, annotation, { hideText: isEditing });
         if (annotation.annotationId === selectedAnnotationId) {
@@ -369,7 +445,17 @@ export function ImageAnnotationEditor({
     } catch (error) {
       console.error("Error in drawAnnotations:", error);
     }
-  }, [displayAnnotations, selectedAnnotationId, imageSize, tempAnnotation, inlineTextEditor]);
+  }, [
+    annotations,
+    draftIds,
+    editSessions,
+    imageSize,
+    inlineTextEditor,
+    layerOpacityById,
+    previewLayerIds,
+    selectedAnnotationId,
+    tempAnnotation,
+  ]);
 
   // Draw detection overlays (read-only, dashed boxes) — separate from user annotations
   const drawDetectionOverlays = useCallback(
@@ -459,7 +545,17 @@ export function ImageAnnotationEditor({
         console.error("Error drawing canvas:", error);
       }
     }
-  }, [annotations, selectedAnnotationId, imageSize, tempAnnotation, detectionOverlays, drawCanvas]);
+  }, [
+    annotations,
+    selectedAnnotationId,
+    imageSize,
+    tempAnnotation,
+    detectionOverlays,
+    drawCanvas,
+    editSessions,
+    layerOpacityById,
+    previewLayerIds,
+  ]);
 
   // Add to history when annotations change (for undo/redo)
   // Skip initial render and only track user changes
@@ -483,8 +579,9 @@ export function ImageAnnotationEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [annotations]);
 
-  // Handle autosave
+  // Handle autosave — pre-upload only. Layered task images save as explicit edits.
   const handleAutosave = useCallback(async () => {
+    if (isLayeredMode) return;
     const currentAnnotations = annotations;
     const currentJson = JSON.stringify(currentAnnotations);
     const savedJson = JSON.stringify(lastSavedAnnotations);
@@ -496,7 +593,7 @@ export function ImageAnnotationEditor({
 
     setAutosaveStatus('saving');
     try {
-      await onSave(currentAnnotations, true);
+      await onSave(currentAnnotations, { isAutosave: true });
       
       setLastSavedAnnotations(currentAnnotations);
       setAutosaveStatus('saved');
@@ -509,10 +606,11 @@ export function ImageAnnotationEditor({
       console.error("Autosave failed:", error);
       setAutosaveStatus('idle');
     }
-  }, [annotations, lastSavedAnnotations, onSave]);
+  }, [annotations, isLayeredMode, lastSavedAnnotations, onSave]);
 
-  // Autosave timer (2 seconds)
+  // Autosave timer (2 seconds) — disabled for collaborative layer mode
   useEffect(() => {
+    if (isLayeredMode) return;
     if (!hasUnsavedChanges || annotations.length === 0 || isInitialMount.current) return;
     if (isDrawing || inlineTextEditor) return;
 
@@ -521,7 +619,7 @@ export function ImageAnnotationEditor({
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, [annotations, hasUnsavedChanges, handleAutosave, isDrawing, inlineTextEditor]);
+  }, [annotations, hasUnsavedChanges, handleAutosave, isDrawing, inlineTextEditor, isLayeredMode]);
 
   // Undo/redo functions
   const handleUndo = useCallback(() => {
@@ -562,24 +660,37 @@ export function ImageAnnotationEditor({
     onCancel();
   }, [hasUnsavedChanges, onCancel]);
 
-  const loadSession = useCallback(
+  const handleBackdropClose = useCallback(() => {
+    // Backdrop / off-image click: close only when there are no unsaved edits.
+    if (hasUnsavedChanges) return;
+    onCancel();
+  }, [hasUnsavedChanges, onCancel]);
+
+  /** Click a layer chip: dim to 10% (or restore). Superseded layers become previewable. */
+  const toggleLayerFocus = useCallback(
     (sessionId: string) => {
       const session = editSessions.find((s) => s.id === sessionId);
       if (!session) return;
-      if (hasUnsavedChanges) {
-        const ok = window.confirm("Replace current annotations with this version? Unsaved changes will be lost.");
-        if (!ok) return;
+
+      if (session.isEnabled === false) {
+        setPreviewLayerIds((prev) =>
+          prev.includes(sessionId)
+            ? prev.filter((id) => id !== sessionId)
+            : [...prev, sessionId]
+        );
+        setLayerOpacityById((prev) => ({
+          ...prev,
+          [sessionId]: prev[sessionId] === 0.1 ? 1 : 0.1,
+        }));
+        return;
       }
-      const next = JSON.parse(JSON.stringify(session.annotations)) as Annotation[];
-      setAnnotations(next);
-      setHistory([next]);
-      setHistoryIndex(0);
-      setLastSavedAnnotations(next);
-      setSelectedAnnotationId(null);
-      setVisibleSessionIds([sessionId]);
-      setActiveSessionId(sessionId);
+
+      setLayerOpacityById((prev) => {
+        const current = prev[sessionId] ?? 1;
+        return { ...prev, [sessionId]: current === 0.1 ? 1 : 0.1 };
+      });
     },
-    [editSessions, hasUnsavedChanges]
+    [editSessions]
   );
 
   const getRelativeCoords = (clientX: number, clientY: number): { x: number; y: number } | null => {
@@ -593,11 +704,17 @@ export function ImageAnnotationEditor({
     };
   };
 
-  const startInlineTextEditing = useCallback((annotationId: string) => {
-    const textAnnotation = annotations.find(
-      (ann): ann is TextAnnotation =>
-        ann.annotationId === annotationId && ann.type === "text"
-    );
+  const startInlineTextEditing = useCallback((annotationId: string, source?: Annotation) => {
+    const fromSource =
+      source && source.annotationId === annotationId && source.type === "text"
+        ? source
+        : null;
+    const textAnnotation =
+      fromSource ??
+      annotations.find(
+        (ann): ann is TextAnnotation =>
+          ann.annotationId === annotationId && ann.type === "text"
+      );
     if (!textAnnotation || !canEditAnnotation(textAnnotation)) return;
     setInlineTextEditor({
       annotationId: textAnnotation.annotationId,
@@ -680,9 +797,20 @@ export function ImageAnnotationEditor({
     const canvasX = x - rect.left;
     const canvasY = y - rect.top;
 
+    const stack: Annotation[] = [];
+    for (const session of editSessions) {
+      const isEnabled = session.isEnabled !== false;
+      const previewing = previewLayerIds.includes(session.id);
+      if (!isEnabled && !previewing) continue;
+      for (const ann of session.annotations) {
+        if (!draftIds.has(ann.annotationId)) stack.push(ann);
+      }
+    }
+    stack.push(...annotations);
+
     // Check annotations in reverse order (top-most first)
-    for (let i = annotations.length - 1; i >= 0; i--) {
-      const ann = annotations[i];
+    for (let i = stack.length - 1; i >= 0; i--) {
+      const ann = stack[i];
       const annX = ann.x * imageSize.width;
       const annY = ann.y * imageSize.height;
 
@@ -812,6 +940,11 @@ export function ImageAnnotationEditor({
         setSelectedAnnotationId(null);
         return;
       }
+      if (!canEditAnnotation(clickedAnnotation)) {
+        setSelectedAnnotationId(null);
+        return;
+      }
+      pullAnnotationIntoDraft(clickedAnnotation);
       setSelectedAnnotationId(clickedAnnotation.annotationId);
       if (clickedAnnotation.type === "text") {
         setSelectedColor(clickedAnnotation.textColor);
@@ -846,8 +979,9 @@ export function ImageAnnotationEditor({
       if (inlineTextEditor && inlineTextEditor.annotationId !== clickedAnnotation.annotationId) {
         commitInlineTextEditing();
       }
+      pullAnnotationIntoDraft(clickedAnnotation);
       setSelectedAnnotationId(clickedAnnotation.annotationId);
-      startInlineTextEditing(clickedAnnotation.annotationId);
+      startInlineTextEditing(clickedAnnotation.annotationId, clickedAnnotation);
       return;
     }
 
@@ -926,8 +1060,9 @@ export function ImageAnnotationEditor({
     e.preventDefault();
     const clickedAnnotation = getAnnotationAtPoint(e.clientX, e.clientY, isMobile ? 22 : 16);
     if (clickedAnnotation?.type === "text" && canEditAnnotation(clickedAnnotation)) {
+      pullAnnotationIntoDraft(clickedAnnotation);
       setSelectedAnnotationId(clickedAnnotation.annotationId);
-      startInlineTextEditing(clickedAnnotation.annotationId);
+      startInlineTextEditing(clickedAnnotation.annotationId, clickedAnnotation);
     }
   };
 
@@ -1224,16 +1359,45 @@ export function ImageAnnotationEditor({
         : annotations;
 
       // Only save if changed
-      if (JSON.stringify(annotationsForSave) === JSON.stringify(lastSavedAnnotations)) {
+      if (
+        JSON.stringify(annotationsForSave) === JSON.stringify(lastSavedAnnotations) &&
+        supersedeLayerIds.length === 0
+      ) {
         setIsSaving(false);
         setAutosaveStatus('idle');
         return "unchanged";
       }
 
-      await onSave(annotationsForSave, false);
-      setAnnotations(annotationsForSave);
-      setLastSavedAnnotations(annotationsForSave);
+      // Baseline-only (attachment JSON, no version rows): migrate full composite as layer 1.
+      let payload = annotationsForSave;
+      if (
+        isLayeredMode &&
+        editSessions.length === 1 &&
+        editSessions[0]?.id === "baseline"
+      ) {
+        const baselineRemaining = editSessions[0].annotations.filter(
+          (a) => !annotationsForSave.some((d) => d.annotationId === a.annotationId)
+        );
+        payload = [...baselineRemaining, ...annotationsForSave];
+      }
+
+      if (payload.length === 0 && supersedeLayerIds.length === 0) {
+        setIsSaving(false);
+        setAutosaveStatus('idle');
+        return "unchanged";
+      }
+
+      await onSave(payload, {
+        isAutosave: false,
+        supersedeLayerIds: supersedeLayerIds.filter((id) => id !== "baseline"),
+      });
+      setAnnotations([]);
+      setLastSavedAnnotations([]);
+      setSupersedeLayerIds([]);
+      pulledFromLayerRef.current.clear();
       setInlineTextEditor(null);
+      setHistory([[]]);
+      setHistoryIndex(0);
       setAutosaveStatus('saved');
       
       setTimeout(() => {
@@ -1243,6 +1407,11 @@ export function ImageAnnotationEditor({
     } catch (error) {
       console.error("Failed to save annotations:", error);
       setAutosaveStatus('idle');
+      toast({
+        title: "Couldn't save annotations",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
       return "failed";
     } finally {
       setIsSaving(false);
@@ -1250,13 +1419,19 @@ export function ImageAnnotationEditor({
   };
 
   const handleDone = async () => {
-    if (!hasUnsavedChanges) {
+    try {
+      if (hasUnsavedChanges) {
+        const result = await handleSave();
+        if (result === "failed") return;
+      }
       onCancel();
-      return;
-    }
-    const result = await handleSave();
-    if (result !== "failed") {
-      onCancel();
+    } catch (error) {
+      console.error("Done failed:", error);
+      toast({
+        title: "Couldn't close annotation editor",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
     }
   };
 
@@ -1290,16 +1465,15 @@ export function ImageAnnotationEditor({
     return () => cancelAnimationFrame(frame);
   }, [inlineTextEditor?.annotationId]);
 
+  // Seed layer opacities when sessions arrive / change.
   useEffect(() => {
-    if (editSessions.length === 0) return;
-    const latestVersion = editSessions.find((s) => s.id !== "original");
-    const originalId = editSessions.find((s) => s.id === "original")?.id;
-    const nextId = latestVersion?.id ?? originalId ?? editSessions[0].id;
-    setVisibleSessionIds((prev) => {
-      if (prev.length > 0) return prev;
-      return [nextId];
+    setLayerOpacityById((prev) => {
+      const next = { ...prev };
+      for (const session of editSessions) {
+        if (next[session.id] == null) next[session.id] = 1;
+      }
+      return next;
     });
-    setActiveSessionId((current) => current ?? nextId);
   }, [editSessions]);
 
   const toolButtonClass = (active: boolean) =>
@@ -1383,7 +1557,7 @@ export function ImageAnnotationEditor({
       aria-label="Annotate image"
       className="modal-scrim fixed inset-0 z-[10000] flex flex-col pointer-events-auto"
       onClick={(e) => {
-        if (e.target === e.currentTarget) handleCancel();
+        if (e.target === e.currentTarget) handleBackdropClose();
       }}
     >
       {/* Top bar — always visible exit + primary action */}
@@ -1407,12 +1581,12 @@ export function ImageAnnotationEditor({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-white">Annotate</p>
           <p className="truncate text-xs text-white/55">
-            {autosaveStatus === "saving"
+            {isSaving || autosaveStatus === "saving"
               ? "Saving…"
               : autosaveStatus === "saved"
                 ? "Saved"
                 : hasUnsavedChanges
-                  ? "Unsaved changes"
+                  ? "Unsaved edit — save to add a layer"
                   : "Esc to close"}
           </p>
         </div>
@@ -1431,25 +1605,27 @@ export function ImageAnnotationEditor({
           <Download className="h-4 w-4" />
         </button>
 
-        <Button
+        <button
           type="button"
-          size="sm"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             void handleDone();
           }}
           disabled={isSaving}
-          className="shrink-0 bg-primary text-primary-foreground shadow-none"
+          className="inline-flex h-9 shrink-0 items-center rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground transition-opacity disabled:opacity-60"
         >
           {isSaving ? "Saving…" : hasUnsavedChanges ? "Save & close" : "Done"}
-        </Button>
+        </button>
       </header>
 
       {/* Canvas */}
       <div
         ref={containerRef}
         className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) handleBackdropClose();
+        }}
         onMouseMove={(e) => {
           if (isDrawing || isDragging || draggingHandle) {
             handlePointerMove(e.clientX, e.clientY);
@@ -1703,41 +1879,51 @@ export function ImageAnnotationEditor({
         </div>
       ) : null}
 
-      {editSessions.filter((session) => session.id !== "original").length > 0 ? (
+      {editSessions.length > 0 ? (
         <div className="absolute bottom-24 right-3 z-20 flex max-h-[40vh] w-[min(16rem,calc(100vw-1.5rem))] flex-col gap-1 overflow-y-auto sm:bottom-28 sm:right-4">
-          {editSessions
-            .filter((session) => session.id !== "original")
-            .map((session) => {
-              const isActive = (activeSessionId ?? visibleSessionIds[0]) === session.id;
-              const dateLabel = formatDistanceToNow(new Date(session.createdAt), { addSuffix: true });
-              return (
-                <button
-                  key={session.id}
-                  type="button"
-                  onClick={() => loadSession(session.id)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left shadow-sm backdrop-blur-md transition-colors",
-                    isActive
-                      ? "bg-black/80 ring-1 ring-primary"
-                      : "bg-black/55 hover:bg-black/70"
-                  )}
-                  title={`View ${session.userDisplayName}'s edit`}
-                >
-                  <UserAvatar
-                    imageUrl={session.userAvatarUrl}
-                    name={session.userDisplayName}
-                    size={22}
-                    shape="circle"
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-caption font-medium text-white">
-                      {session.userDisplayName}
-                    </span>
-                    <span className="block truncate text-2xs text-white/55">{dateLabel}</span>
+          {[...editSessions].reverse().map((session) => {
+            const opacity = layerOpacityById[session.id] ?? 1;
+            const isDimmed = opacity <= 0.15;
+            const isSuperseded = session.isEnabled === false;
+            const isPreviewing = previewLayerIds.includes(session.id);
+            const dateLabel = formatDistanceToNow(new Date(session.createdAt), { addSuffix: true });
+            return (
+              <button
+                key={session.id}
+                type="button"
+                onClick={() => toggleLayerFocus(session.id)}
+                className={cn(
+                  "flex items-center gap-2 rounded-lg px-2 py-1.5 text-left shadow-sm backdrop-blur-md transition-colors",
+                  isDimmed
+                    ? "bg-black/35 ring-1 ring-white/20"
+                    : isSuperseded && !isPreviewing
+                      ? "bg-black/40 opacity-70"
+                      : "bg-black/70 ring-1 ring-white/10 hover:bg-black/80"
+                )}
+                title={
+                  isSuperseded
+                    ? "Superseded edit — click to preview at 10% / restore"
+                    : isDimmed
+                      ? "Click to restore full opacity"
+                      : "Click to dim this edit to 10%"
+                }
+              >
+                <UserAvatar
+                  imageUrl={session.userAvatarUrl}
+                  name={session.userDisplayName}
+                  size={22}
+                  shape="circle"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-caption font-medium text-white">
+                    {session.userDisplayName}
+                    {isSuperseded ? " · off" : null}
                   </span>
-                </button>
-              );
-            })}
+                  <span className="block truncate text-2xs text-white/55">{dateLabel}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       ) : null}
 

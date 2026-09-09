@@ -184,23 +184,23 @@ async function invokeFunction(
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return corsPreflightResponse();
-  if (req.method !== "POST") return jsonResponse({ ok: false, error: "POST only" }, 405);
+  if (req.method !== "POST") return jsonResponse({ ok: false, error: "POST only" });
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader?.startsWith("Bearer ")) {
-    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    return jsonResponse({ ok: false, error: "Unauthorized" });
   }
 
   let body: ReasonerInput;
   try {
     body = await req.json();
   } catch {
-    return jsonResponse({ ok: false, error: "Invalid JSON" }, 400);
+    return jsonResponse({ ok: false, error: "Invalid JSON" });
   }
 
   const { query, context, org_id: orgId, intent: intentOverride, target: targetOverride } = body;
   if (!orgId || typeof query !== "string") {
-    return jsonResponse({ ok: false, error: "org_id and query required" }, 400);
+    return jsonResponse({ ok: false, error: "org_id and query required" });
   }
 
   const intent = (intentOverride as Intent) ?? classifyIntent(query);
@@ -239,17 +239,17 @@ Deno.serve(async (req) => {
   const token = authHeader.slice("Bearer ".length).trim();
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
   if (userErr || !userData.user) {
-    return jsonResponse({ ok: false, error: "Unauthorized" }, 401);
+    return jsonResponse({ ok: false, error: "Unauthorized" });
   }
 
   const { data: membership, error: membershipErr } = await supabase
     .from("organisation_members")
     .select("id")
-    .eq("organisation_id", orgId)
+    .eq("org_id", orgId)
     .eq("user_id", userData.user.id)
     .maybeSingle();
   if (membershipErr || !membership) {
-    return jsonResponse({ ok: false, error: "Forbidden" }, 403);
+    return jsonResponse({ ok: false, error: membershipErr?.message ?? "Forbidden" });
   }
 
   // ── Immediate returns for action intents ──────────────────────────────────

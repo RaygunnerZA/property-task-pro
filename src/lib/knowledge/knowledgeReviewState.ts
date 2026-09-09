@@ -27,7 +27,7 @@ import {
   type TrustCheckStatus,
 } from "@/lib/knowledge/knowledgePresentation";
 
-export type ReviewQueueId = "needs_work" | "awaiting_critic" | "ready_to_verify";
+export type ReviewQueueId = "all" | "needs_work" | "awaiting_critic" | "ready_to_verify";
 
 export type ReviewFilterId =
   | "guidance_missing"
@@ -58,6 +58,7 @@ export type CompactBlocker = {
 };
 
 export type ReviewToolbarCounts = {
+  all: number;
   needsWork: number;
   awaitingCritic: number;
   readyForVerification: number;
@@ -65,6 +66,15 @@ export type ReviewToolbarCounts = {
   needingImprovement: number;
   meaningfulDraft: number;
 };
+
+/** Per Edge Function invoke. Sequential AI inside one request; keep small to avoid timeouts. */
+export const GUIDANCE_AI_BATCH_SIZE = 6;
+
+export function chunkIds(ids: string[], size = GUIDANCE_AI_BATCH_SIZE): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < ids.length; i += size) out.push(ids.slice(i, i + size));
+  return out;
+}
 
 const PLACEHOLDER_JURISDICTIONS = /^(all|any|global|worldwide|n\/?a|unknown)$/i;
 
@@ -501,6 +511,18 @@ export function isNeedsWorkRow(
   return reviewAutomatedBlockingChecks(checks).some((b) => b.id !== "contradiction");
 }
 
+export function isInReviewUnion(
+  row: KnowledgeRow,
+  checks: TrustCheck[],
+  sources: KnowledgeSourcePreview[]
+): boolean {
+  return (
+    isReadyForHumanVerify(row, checks) ||
+    isCriticAwaiting(row, checks, sources) ||
+    isNeedsWorkRow(row, checks, sources)
+  );
+}
+
 export function matchesReviewQueue(
   queue: ReviewQueueId,
   row: KnowledgeRow,
@@ -508,14 +530,14 @@ export function matchesReviewQueue(
   sources: KnowledgeSourcePreview[]
 ): boolean {
   switch (queue) {
+    case "all":
+      return isInReviewUnion(row, checks, sources);
     case "needs_work":
       return isNeedsWorkRow(row, checks, sources);
     case "awaiting_critic":
       return isCriticAwaiting(row, checks, sources);
     case "ready_to_verify":
       return isReadyForHumanVerify(row, checks);
-    default:
-      return true;
   }
 }
 
@@ -546,6 +568,7 @@ export function computeReviewToolbarCounts(
   }
 
   return {
+    all: needsWork + awaitingCritic + readyForVerification,
     needsWork,
     awaitingCritic,
     readyForVerification,

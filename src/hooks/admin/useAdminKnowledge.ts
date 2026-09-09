@@ -15,10 +15,16 @@ import type {
 } from "@/types/knowledge";
 import {
   PLATFORM_AI_ORG_ID,
+  proposalsFromDocAnalysis,
   type DocAnalysePayload,
   type KnowledgeSourceProvenance,
   type ProposedKnowledgeCandidate,
 } from "@/lib/knowledge/knowledgeDocumentIntake";
+import {
+  applyGapApplicabilityToProposals,
+  uniqueTopicLabel,
+} from "@/lib/knowledge/knowledgeGapResearch";
+import { MAX_RESEARCH_GAPS } from "@/lib/knowledge/knowledgeCoverage";
 import {
   mergeClaimsWithAttributeFallback,
   serializeClaimsForRpc,
@@ -563,6 +569,103 @@ export type KnowledgeUrlIntakeResult = {
   analysis: DocAnalysePayload;
 };
 
+async function analyseKnowledgeUrl(url: string): Promise<KnowledgeUrlIntakeResult> {
+  const trimmed = url.trim();
+  if (!trimmed) throw new Error("URL required");
+
+  const { data, error } = await supabase.functions.invoke("knowledge-intake-url", {
+    body: { url: trimmed },
+  });
+  if (error) {
+    const info = await parseEdgeFunctionError(error, data);
+    throw new Error(formatEdgeFunctionToast(info));
+  }
+
+  const payload = data as KnowledgeUrlIntakeResult & { error?: string };
+  if (!payload?.ok) throw new Error(payload.error ?? "URL intake failed");
+  return payload;
+}
+
+async function importPlatformKnowledgeProposals(input: {
+  filename: string;
+  mime?: string;
+  storage: KnowledgeIntakeStorage | null;
+  intakeMode: "upload" | "url" | "manual";
+  source: KnowledgeSourceProvenance;
+  proposals: ProposedKnowledgeCandidate[];
+}): Promise<{ batch_id: string; created_count: number; knowledge_ids: string[] }> {
+  const selected = input.proposals.filter((p) => p.selected);
+  if (!selected.length) throw new Error("No candidates selected");
+
+  for (const p of selected) {
+    if (p.applicability.jurisdictions.length === 0 && !p.applicability.unscoped) {
+      throw new Error(`Applicability required for “${p.title}”`);
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: batch, error: batchErr } = await (supabase as any).rpc(
+    "admin_create_knowledge_intake_batch",
+    {
+      p_source_filename: input.filename,
+      p_source_mime: input.mime ?? null,
+      p_storage_bucket: input.storage?.bucket ?? null,
+      p_storage_path: input.storage?.path ?? null,
+      p_row_count: selected.length,
+      p_column_mapping: {},
+      p_metadata: {
+        intake_mode: input.intakeMode,
+        source: input.source,
+      },
+    }
+  );
+  if (batchErr) throw batchErr;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc(
+    "admin_bulk_create_platform_knowledge_candidates",
+    {
+      p_batch_id: batch.id,
+      p_candidates: selected.map((p) => ({
+        title: p.title,
+        summary: p.summary || null,
+        body: p.body || null,
+        applicability: p.applicability,
+        attributes: p.attributes,
+        claims: serializeClaimsForRpc(
+          p.claims?.length ? p.claims : mergeClaimsWithAttributeFallback([], p.attributes)
+        ),
+        provenance: {
+          ...p.provenance,
+          ...input.source,
+          intake_mode: input.intakeMode,
+        },
+      })),
+    }
+  );
+  if (error) throw error;
+
+  const result = data as { batch_id: string; created_count: number; knowledge_ids: string[] };
+  const ids = result.knowledge_ids ?? [];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const claimCount = selected[i]?.claims?.length ?? 0;
+    if (claimCount < 4) {
+      try {
+        await invokeKnowledgeExtractClaims(id);
+      } catch (err) {
+        console.warn("knowledge-extract-claims skipped/failed for", id, err);
+      }
+    }
+    try {
+      await invokeKnowledgeCritic(id);
+    } catch (err) {
+      console.error("knowledge-critic failed for", id, err);
+    }
+  }
+  return result;
+}
+
 export type WorkbookSheetInterpretationResult = {
   sheet_name: string;
   classification: "knowledge_data" | "context" | "exclude";
@@ -583,18 +686,163 @@ export type WorkbookInterpretationResult = {
 /** Safe URL fetch + storage + ai-doc-analyse (platform admin only). */
 export function useAdminAnalyseKnowledgeUrl() {
   return useMutation({
-    mutationFn: async (url: string) => {
-      const trimmed = url.trim();
-      if (!trimmed) throw new Error("URL required");
+    mutationFn: analyseKnowledgeUrl,
+  });
+}
 
-      const { data, error } = await supabase.functions.invoke("knowledge-intake-url", {
-        body: { url: trimmed },
+export type KnowledgeGapResearchProgress =
+  | { phase: "discovering"; gapCount: number }
+  | { phase: "fetching"; index: number; total: number; title: string }
+  | { phase: "importing"; candidateCount: number };
+
+export type KnowledgeGapResearchResult = {
+  createdCount: number;
+  knowledgeIds: string[];
+  sourceCount: number;
+  uncoveredGapIds: string[];
+  failedSources: Array<{ url: string; error: string }>;
+};
+
+type GapResearchSource = {
+  url: string;
+  title?: string;
+  publisher?: string;
+  covers: string[];
+};
+
+export async function ingestResearchSources(input: {
+  gaps: Array<{
+    id: string;
+    topic_key: string;
+    topic: string;
+    jurisdiction: string;
+    status: "missing" | "partial";
+  }>;
+  sources: GapResearchSource[];
+  uncovered?: string[];
+  onProgress?: (progress: KnowledgeGapResearchProgress) => void;
+}): Promise<KnowledgeGapResearchResult> {
+  const gaps = input.gaps;
+  const sources = input.sources.filter((s) => typeof s.url === "string");
+  if (sources.length === 0) {
+    throw new Error("No official source URL was found for the selected gaps");
+  }
+
+  const gapsById = new Map(gaps.map((g) => [g.id, g]));
+  const failedSources: Array<{ url: string; error: string }> = [];
+  let createdCount = 0;
+  const knowledgeIds: string[] = [];
+
+  for (let i = 0; i < sources.length; i++) {
+    const sourceHit = sources[i];
+    input.onProgress?.({
+      phase: "fetching",
+      index: i + 1,
+      total: sources.length,
+      title: sourceHit.title || sourceHit.url,
+    });
+
+    const covered = sourceHit.covers
+      .map((id) => gapsById.get(id))
+      .filter((g): g is (typeof gaps)[number] => Boolean(g));
+    const jurisdictions = covered.map((g) => g.jurisdiction);
+    const topicLabel = uniqueTopicLabel(covered.map((g) => g.topic));
+
+    try {
+      const intake = await analyseKnowledgeUrl(sourceHit.url);
+      const proposals = applyGapApplicabilityToProposals(
+        proposalsFromDocAnalysis(intake.analysis, {
+          ...intake.source,
+          intake_mode: "url",
+        }),
+        jurisdictions,
+        topicLabel
+      ).filter((p) => p.selected);
+      if (!proposals.length) {
+        failedSources.push({ url: sourceHit.url, error: "no_candidates" });
+        continue;
+      }
+      input.onProgress?.({ phase: "importing", candidateCount: proposals.length });
+      const imported = await importPlatformKnowledgeProposals({
+        filename: intake.storage.filename,
+        mime: intake.storage.mime,
+        storage: intake.storage,
+        intakeMode: "url",
+        source: {
+          ...intake.source,
+          intake_mode: "url",
+        },
+        proposals,
       });
-      if (error) throw error;
+      createdCount += imported.created_count;
+      knowledgeIds.push(...(imported.knowledge_ids ?? []));
+    } catch (err) {
+      failedSources.push({
+        url: sourceHit.url,
+        error: err instanceof Error ? err.message : "intake_failed",
+      });
+    }
+  }
 
-      const payload = data as KnowledgeUrlIntakeResult & { error?: string };
-      if (!payload?.ok) throw new Error(payload.error ?? "URL intake failed");
-      return payload;
+  if (createdCount === 0) {
+    const detail = failedSources[0]?.error ?? "intake_failed";
+    throw new Error(`Research did not add any Review candidates (${detail})`);
+  }
+
+  return {
+    createdCount,
+    knowledgeIds,
+    sourceCount: sources.length,
+    uncoveredGapIds: input.uncovered ?? [],
+    failedSources,
+  };
+}
+
+export function useAdminResearchKnowledgeGaps() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      gaps: Array<{
+        id: string;
+        topic_key: string;
+        topic: string;
+        jurisdiction: string;
+        status: "missing" | "partial";
+      }>;
+      onProgress?: (progress: KnowledgeGapResearchProgress) => void;
+    }): Promise<KnowledgeGapResearchResult> => {
+      const gaps = input.gaps.slice(0, MAX_RESEARCH_GAPS);
+      if (!gaps.length) throw new Error("Select at least one missing or partial cell");
+      input.onProgress?.({ phase: "discovering", gapCount: gaps.length });
+
+      const { data, error } = await supabase.functions.invoke("knowledge-gap-research", {
+        body: { gaps },
+      });
+      if (error) {
+        const info = await parseEdgeFunctionError(error, data);
+        throw new Error(formatEdgeFunctionToast(info));
+      }
+
+      const payload = data as {
+        ok?: boolean;
+        error?: string;
+        sources?: GapResearchSource[];
+        uncovered?: string[];
+      };
+      if (!payload?.ok) {
+        throw new Error(payload?.error ?? "Source discovery failed");
+      }
+
+      return ingestResearchSources({
+        gaps,
+        sources: payload.sources ?? [],
+        uncovered: payload.uncovered,
+        onProgress: input.onProgress,
+      });
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-metrics"] });
     },
   });
 }
@@ -626,91 +874,7 @@ export function useAdminInterpretKnowledgeWorkbook() {
 export function useAdminImportKnowledgeProposals() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: {
-      filename: string;
-      mime?: string;
-      storage: KnowledgeIntakeStorage | null;
-      intakeMode: "upload" | "url" | "manual";
-      source: KnowledgeSourceProvenance;
-      proposals: ProposedKnowledgeCandidate[];
-    }) => {
-      const selected = input.proposals.filter((p) => p.selected);
-      if (!selected.length) throw new Error("No candidates selected");
-
-      for (const p of selected) {
-        if (
-          p.applicability.jurisdictions.length === 0 &&
-          !p.applicability.unscoped
-        ) {
-          throw new Error(`Applicability required for “${p.title}”`);
-        }
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: batch, error: batchErr } = await (supabase as any).rpc(
-        "admin_create_knowledge_intake_batch",
-        {
-          p_source_filename: input.filename,
-          p_source_mime: input.mime ?? null,
-          p_storage_bucket: input.storage?.bucket ?? null,
-          p_storage_path: input.storage?.path ?? null,
-          p_row_count: selected.length,
-          p_column_mapping: {},
-          p_metadata: {
-            intake_mode: input.intakeMode,
-            source: input.source,
-          },
-        }
-      );
-      if (batchErr) throw batchErr;
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data, error } = await (supabase as any).rpc(
-        "admin_bulk_create_platform_knowledge_candidates",
-        {
-          p_batch_id: batch.id,
-          p_candidates: selected.map((p) => ({
-            title: p.title,
-            summary: p.summary || null,
-            body: p.body || null,
-            applicability: p.applicability,
-            attributes: p.attributes,
-            claims: serializeClaimsForRpc(
-              p.claims?.length
-                ? p.claims
-                : mergeClaimsWithAttributeFallback([], p.attributes)
-            ),
-            provenance: {
-              ...p.provenance,
-              ...input.source,
-              intake_mode: input.intakeMode,
-            },
-          })),
-        }
-      );
-      if (error) throw error;
-
-      const result = data as { batch_id: string; created_count: number; knowledge_ids: string[] };
-      const ids = result.knowledge_ids ?? [];
-      for (let i = 0; i < ids.length; i++) {
-        const id = ids[i];
-        const claimCount = selected[i]?.claims?.length ?? 0;
-        // Re-extract from source when intake claims are thin (e.g. attribute-only).
-        if (claimCount < 4) {
-          try {
-            await invokeKnowledgeExtractClaims(id);
-          } catch (err) {
-            console.warn("knowledge-extract-claims skipped/failed for", id, err);
-          }
-        }
-        try {
-          await invokeKnowledgeCritic(id);
-        } catch (err) {
-          console.error("knowledge-critic failed for", id, err);
-        }
-      }
-      return result;
-    },
+    mutationFn: importPlatformKnowledgeProposals,
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-metrics"] });
@@ -815,7 +979,21 @@ async function invokeContentGenerate(body: {
   stage: "seo" | "brief" | "output" | "visual_concept" | "visual_final";
   outputKinds?: ContentOutputKind[];
   regenerate?: boolean;
+  /** Same ai_batch_jobs pipeline as Knowledge. Refused until the content processor is enabled. */
+  delivery?: "interactive" | "batch";
 }) {
+  if (body.delivery === "batch") {
+    const { contentStageToBatchCapability, isAiBatchCapabilityEnabled } = await import(
+      "@/lib/ai/aiBatch"
+    );
+    const capability = contentStageToBatchCapability(body.stage);
+    if (!capability || !isAiBatchCapabilityEnabled(capability)) {
+      throw new Error(
+        "Overnight batch for Content is reserved on the same job table; the processor is not enabled yet."
+      );
+    }
+  }
+
   const generatingStatus: Record<typeof body.stage, string> = {
     seo: "generating_seo",
     brief: "generating_brief",

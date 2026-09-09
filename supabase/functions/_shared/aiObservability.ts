@@ -41,6 +41,14 @@ export function estimateCost(
   return (inputTokens / 1000) * rates.input + (outputTokens / 1000) * rates.output;
 }
 
+/** Gemini/OpenAI Batch API is billed at ~50% of interactive token rates. */
+export const BATCH_USD_MULTIPLIER = 0.5;
+
+export function applyBatchUsdDiscount(costUsd: number | null | undefined): number | null {
+  if (costUsd == null || !Number.isFinite(costUsd)) return null;
+  return costUsd * BATCH_USD_MULTIPLIER;
+}
+
 /** Provider-reported token counts for a single call. */
 export interface TokenUsage {
   input_tokens: number | null;
@@ -106,6 +114,8 @@ const DEFAULT_COST_UNITS: Record<string, number> = {
   "knowledge-discovery": 1,
   "content-generate": 2,
   "knowledge-generate-guidance": 1,
+  "knowledge-gap-research": 1,
+  "ai-batch-poll": 1,
 };
 
 /**

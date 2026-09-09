@@ -7,6 +7,7 @@ import {
   useAdminUpsertContentTopicStage,
 } from "@/hooks/admin/useAdminKnowledge";
 import { AdminContentResolveGrounding } from "@/components/admin/AdminContentResolveGrounding";
+import { ContentQueueOvernightButton } from "@/components/admin/ContentQueueOvernightButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -333,6 +334,7 @@ export function SeoStage({
     return (
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">No SEO proposal yet.</p>
+        <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
           className="shadow-primary-btn border-0"
@@ -349,6 +351,8 @@ export function SeoStage({
         >
           Generate SEO opportunity
         </Button>
+        <ContentQueueOvernightButton topicId={topicId} stage="seo" disabled={busy} />
+        </div>
       </div>
     );
   }

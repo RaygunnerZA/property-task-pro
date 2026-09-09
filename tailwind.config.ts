@@ -52,7 +52,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter Tight', 'system-ui', 'sans-serif'],
-        display: ['Inter Tight', 'system-ui', 'sans-serif'],
+        display: ['Fraunces', 'Georgia', 'serif'],
         mono: ['JetBrains Mono', 'Menlo', 'Monaco', 'monospace'],
       },
       /**

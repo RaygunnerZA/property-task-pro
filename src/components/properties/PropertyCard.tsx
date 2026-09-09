@@ -120,7 +120,7 @@ export function PropertyCard({ property, className, variant = 'default', onAddPr
     <div className={cn("flex-1 min-w-0 flex flex-col justify-center", isHorizontal ? "pt-3 pb-3 pl-3 pr-2.5" : "pt-4 pb-3 pl-2.5 pr-2.5 space-y-3")}>
       <div className="mt-0">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="font-semibold text-lg text-foreground leading-tight truncate">
+          <h3 className="font-display font-semibold text-lg text-foreground leading-tight truncate">
             {displayName}
           </h3>
           {!isHorizontal && (

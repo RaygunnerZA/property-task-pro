@@ -1137,7 +1137,7 @@ export default function Dashboard({
           (centreWorkbenchFiltersToApply != null || urlSpaceTaskFilters != null)
         }
       />
-      <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+      <div className="dashboard-workbench min-h-screen bg-background w-full max-w-full overflow-x-hidden [overflow-anchor:none]">
         <DualPaneLayout
           collapseCentreOnPhone={workbenchLayout.collapseCentreOnPhone}
           collapseLeftOnPhone={workbenchLayout.collapseLeftOnPhone}

@@ -10,7 +10,7 @@ export const BottomNav = () => {
     { to: '/properties', icon: Building2, label: 'Properties' },
     { to: '/tasks', icon: CheckSquare, label: 'Tasks' },
     { to: '/assets', icon: Package, label: 'Assets' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
+    { to: '/tasks?panelTab=calendar', icon: Calendar, label: 'Calendar' },
     { to: '/compliance', icon: Shield, label: 'Compliance' },
   ];
 
@@ -18,7 +18,20 @@ export const BottomNav = () => {
     if (path === '/') {
       return location.pathname === '/' || location.pathname === '/dashboard';
     }
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    const [pathname, qs] = path.split('?');
+    if (pathname === '/tasks' && qs?.includes('panelTab=calendar')) {
+      return (
+        (location.pathname === '/tasks' || location.pathname === '/home') &&
+        new URLSearchParams(location.search).get('panelTab') === 'calendar'
+      );
+    }
+    if (pathname === '/tasks') {
+      return (
+        location.pathname === '/tasks' &&
+        new URLSearchParams(location.search).get('panelTab') !== 'calendar'
+      );
+    }
+    return location.pathname === pathname || location.pathname.startsWith(pathname + '/');
   };
 
   return (

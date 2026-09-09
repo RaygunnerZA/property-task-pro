@@ -48,21 +48,23 @@ Three distinct jobs under Add Knowledge:
 | Job | Question | Behaviour |
 |-----|----------|-----------|
 | **ADD** | What are we learning? | Dedicated intake: one **Add source** surface (drag/select file, paste text, or URL). Spreadsheets use workbook interpretation; documents/URLs extract claims → applicability → critic → Review. Manual create remains secondary. |
-| **GAPS** | What don't we know? | Coverage matrix over Knowledge (v1: topic × jurisdiction from live rows) plus a prioritised research queue. Future axes: property type, audience, claim completeness, affected property counts, market-expansion programmes. Content `evidence_gaps` must feed this same gap system — not a separate dead-end. |
+| **GAPS** | What don't we know? | Coverage matrix over Knowledge (v1: topic × jurisdiction from live rows) plus a prioritised research queue. Admins can research a cell, a selected row/column, or the queue: one discovery pass finds official URLs; unique URLs are fetched via `knowledge-intake-url` and created as Review candidates (critic + human review; never auto-published). Future axes: property type, audience, claim completeness, affected property counts, market-expansion programmes. Content `evidence_gaps` must feed this same gap system — not a separate dead-end. |
 | **UPDATE** | What might have changed? | Monitor authoritative sources on verified/published Knowledge. Detection creates **update candidates** (no silent rewrite of v1). Triage: no material change / potential material change / material claim supersession → critic → human review → new Knowledge version. |
 
 ```
 ADD:    Source → extract claims → applicability → critic → Review
-GAPS:   Coverage matrix → research queue → ADD sources
+GAPS:   Coverage matrix → select missing/partial → batched source discovery → unique URL intake → critic → Review
 UPDATE: Monitor → detect → compare claims → critic → human review → new version
 ```
 
 Closed loop with Outputs: Content that cannot substantiate a fact records a Knowledge gap; research closes it; published Knowledge powers Content again.
 
+**Gap research batching:** Bulk research (selected cells, topic/column, or Begin research queue) enqueues a durable `ai_batch_jobs` row and one Gemini Batch discovery call (max 20 cells, ~50% of interactive token price, typical wait 1–4h / up to 24h). When discovery completes, status is `intake_pending`; opening Knowledge fetches each unique URL through `knowledge-intake-url` (SSRF-safe, interactive document-analysis price) into Review. A single-cell click still runs discovery now. Never auto-published.
+
 | Route | Behaviour |
 |-------|-----------|
 | **Add source (file)** | CSV/XLSX → deterministic workbook parse + AI sheet interpretation → mapping for Knowledge sheets. PDF/DOCX/TXT/images → `ai-doc-analyse` with `knowledge_intake` → proposed candidates → bulk import. |
-| **Add source (URL)** | `knowledge-intake-url` (safe fetch, SSRF controls) → storage snapshot + `ai-doc-analyse` → same proposal review. |
+| **Add source (URL)** | `knowledge-intake-url` (safe fetch, SSRF controls) → storage snapshot + `ai-doc-analyse` → same proposal review. Gap research discovers official URLs in one batched call, then reuses this path per unique URL. |
 | **Add source (paste)** | Pasted URL analysed as URL; pasted prose analysed as a text document. |
 | **Manual** | Secondary form; single candidate with required applicability → create → critic. |
 
@@ -90,7 +92,7 @@ Approved outputs are not silently overwritten; upstream changes mark `needs_upda
 * Platform + community: platform admins in `/admin`.
 * Platform admins may override org rows via audited admin RPCs.
 
-**Admin review UX:** Review is its own top-level tab (dense workbench). Ready-to-publish and detail sheet stay meaning-first. Draft guidance may be imported from owner action/task text or AI-proposed; drafts remain unverified until critic + human verify. Guidance quality states: Missing → Needs improvement → Meaningful draft → Verified. Short circular imports (e.g. “as required” without conditions) need **Improve guidance**. Editing critic-relevant fields invalidates the prior critic (`stale_after_guidance_edit`); primary action becomes **Run critic**, never Verify against a stale result. Batch actions: generate missing, improve weak, run critic for eligible — never batch Verify/Publish. Lifecycle: Candidate → draft guidance → critic → human verification → ready to publish → publish. Critic and human verification are mandatory; nothing auto-verifies or auto-publishes. `admin_set_knowledge_status` gates verify/publish server-side (quality guidance, authoritative source, current critic pass, applicability, human verifier) and rejects `candidate → published` (`verify_before_publish`). Check states: Passed / Failed / Incomplete / Not run / Required — never mark Passed when a check did not run. `trust_score` is ranking-only and never overrides mandatory gates.
+**Admin review UX:** Review is its own top-level tab (dense workbench). Default view is **All** (Needs work + Awaiting critic + Ready to verify in one list); those three remain filters. Ready-to-publish and detail sheet stay meaning-first. Draft guidance may be imported from owner action/task text or AI-proposed; drafts remain unverified until critic + human verify. Guidance quality states: Missing → Needs improvement → Meaningful draft → Verified. Short circular imports (e.g. “as required” without conditions) need **Improve guidance**. Editing critic-relevant fields invalidates the prior critic (`stale_after_guidance_edit`); primary action becomes **Run critic**, never Verify against a stale result. Batch actions: **Generate all** (missing) and **Improve guidance** (weak) enqueue eligible rows on Gemini Batch via `ai-batch-submit` (durable `ai_batch_jobs`, max 80 per job, ~50% token price, drafts unverified). Row-level Generate/Improve and selected-into-editor still use interactive `knowledge-generate-guidance`. Run critic for eligible — never batch Verify/Publish. Content Tree **Queue overnight** uses the same job table; submit returns not-enabled until `content-generate` processes those capabilities. Lifecycle: Candidate → draft guidance → critic → human verification → ready to publish → publish. Critic and human verification are mandatory; nothing auto-verifies or auto-publishes. `admin_set_knowledge_status` gates verify/publish server-side (quality guidance, authoritative source, current critic pass, applicability, human verifier) and rejects `candidate → published` (`verify_before_publish`). Check states: Passed / Failed / Incomplete / Not run / Required — never mark Passed when a check did not run. `trust_score` is ranking-only and never overrides mandatory gates.
 
 ## Privacy
 

@@ -25,6 +25,8 @@ Every AI call passes through `_shared/aiCall.ts`, which does five things in orde
 4.  **Retry once** on an invalid shape, then **fall back** to the next strategy. These are different failure modes and are not conflated: fallback means the primary failed, escalation means the result was poor. Cross-provider fallback is opt-in per capability, because sending customer content to a second vendor is a deliberate choice, not a default.
 5.  **Log** one `ai_requests` row per provider call, with model, prompt version, tokens, cost and status.
 
+**Delivery (interactive vs batch).** The capability is unchanged. **Interactive** calls `generateContent` (or equivalent) inside the request. **Batch** submits the same prompts to the Gemini Batch API (~50% of interactive token price, completion typically 1–4 hours, up to 24h) via `ai-batch-submit` / `ai-batch-poll` and `ai_batch_jobs`. Batch is for bulk Knowledge **Generate all** / **Improve guidance** and bulk gap-research discovery, and is reserved for Content Tree generate. It never verifies or publishes. Poller logs one `ai_requests` row per applied item with `metadata.batch = true` and `cost_usd` at half the interactive estimate. OpenAI-only deploys cannot use batch (fail closed; interactive still works). Schedule `ai-batch-poll` about every 15 minutes with the service-role bearer; the Knowledge page also polls while open.
+
 Step 5 is a billing requirement: allowance is derived from `ai_requests`, so an unlogged call is a free call (Ch 20).
 
 **Newer is not automatically better.** A model becomes primary because it scored better on Filla's own work, not because it was released. Promotion is judged on two kinds of evidence, and neither is sufficient alone:

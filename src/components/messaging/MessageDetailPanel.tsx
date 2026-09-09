@@ -18,6 +18,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { format } from "date-fns";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 
 interface MessageDetailPanelProps {
   messageId: string;
@@ -38,6 +39,7 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("details");
   const [messageText, setMessageText] = useState("");
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -88,11 +90,8 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
     const end = messagesEndRef.current;
     if (!end || conversationMessages.length === 0) return;
     const scroller = end.closest("[data-messages-scroller]") as HTMLElement | null;
-    if (scroller) {
-      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
-      return;
-    }
-    end.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    if (!scroller) return;
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
   }, [conversationMessages]);
 
   const handleSend = async () => {
@@ -316,18 +315,22 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
                                 )}
                               >
                                 {isImage ? (
-                                  <a
-                                    href={attachment.file_url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block"
+                                  <button
+                                    type="button"
+                                    className="block w-full text-left"
+                                    onClick={() =>
+                                      setPreviewImage({
+                                        src: attachment.file_url,
+                                        alt: attachment.file_name || "Attachment",
+                                      })
+                                    }
                                   >
                                     <img
                                       src={attachment.file_url}
                                       alt={attachment.file_name || "Attachment"}
                                       className="max-w-full h-auto max-h-48 object-contain"
                                     />
-                                  </a>
+                                  </button>
                                 ) : (
                                   <a
                                     href={attachment.file_url}
@@ -399,11 +402,22 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
                             >
                               <div className="flex items-center gap-2">
                                 {isImage ? (
-                                  <img
-                                    src={attachment.file_url}
-                                    alt={attachment.file_name || "Attachment"}
-                                    className="h-12 w-12 object-cover rounded"
-                                  />
+                                  <button
+                                    type="button"
+                                    className="shrink-0"
+                                    onClick={() =>
+                                      setPreviewImage({
+                                        src: attachment.file_url,
+                                        alt: attachment.file_name || "Attachment",
+                                      })
+                                    }
+                                  >
+                                    <img
+                                      src={attachment.file_url}
+                                      alt={attachment.file_name || "Attachment"}
+                                      className="h-12 w-12 object-cover rounded"
+                                    />
+                                  </button>
                                 ) : (
                                   <FileText className="h-8 w-8 text-muted-foreground" />
                                 )}
@@ -415,14 +429,30 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
                                     {attachment.file_type || "Unknown type"}
                                   </p>
                                 </div>
-                                <a
-                                  href={attachment.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="p-2 hover:bg-background rounded-lg transition-colors"
-                                >
-                                  <Download className="h-4 w-4" />
-                                </a>
+                                {isImage ? (
+                                  <button
+                                    type="button"
+                                    className="p-2 hover:bg-background rounded-lg transition-colors"
+                                    onClick={() =>
+                                      setPreviewImage({
+                                        src: attachment.file_url,
+                                        alt: attachment.file_name || "Attachment",
+                                      })
+                                    }
+                                    aria-label="View image"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </button>
+                                ) : (
+                                  <a
+                                    href={attachment.file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 hover:bg-background rounded-lg transition-colors"
+                                  >
+                                    <Download className="h-4 w-4" />
+                                  </a>
+                                )}
                               </div>
                             </div>
                           );
@@ -443,9 +473,22 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
   if (variant === "column") {
     // Column variant: render as regular div (no backdrop, no fixed positioning)
     return (
-      <div className={cn(columnShellClass, "h-full bg-card")}>
-        {panelContent}
-      </div>
+      <>
+        <div className={cn(columnShellClass, "h-full bg-card")}>
+          {panelContent}
+        </div>
+        <ImageLightbox
+          open={Boolean(previewImage)}
+          images={
+            previewImage
+              ? [{ src: previewImage.src, alt: previewImage.alt }]
+              : []
+          }
+          index={0}
+          title="Attachment"
+          onClose={() => setPreviewImage(null)}
+        />
+      </>
     );
   }
 
@@ -463,6 +506,17 @@ export function MessageDetailPanel({ messageId, onClose, variant = "modal" }: Me
           {panelContent}
         </div>
       </div>
+      <ImageLightbox
+        open={Boolean(previewImage)}
+        images={
+          previewImage
+            ? [{ src: previewImage.src, alt: previewImage.alt }]
+            : []
+        }
+        index={0}
+        title="Attachment"
+        onClose={() => setPreviewImage(null)}
+      />
     </>,
     document.body
   );

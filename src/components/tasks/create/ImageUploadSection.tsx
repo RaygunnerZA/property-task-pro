@@ -652,7 +652,7 @@ function TempImageAnnotationEditor({
   onCancel,
 }: {
   tempImage: TempImage;
-  onSave: (annotations: Annotation[], isAutosave?: boolean) => void;
+  onSave: (annotations: Annotation[], isAutosave?: boolean | import("@/hooks/useImageAnnotations").SaveAnnotationsOptions) => void;
   onCancel: () => void;
 }) {
   return (

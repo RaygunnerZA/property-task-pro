@@ -84,7 +84,8 @@ export function DualPaneLayout({
     dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
     // Triple grid: fill the track and allow compression below the 330px preferred rail.
     hasThirdColumn &&
-      "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-2 layout:pr-2"
+      "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-2 layout:pr-2",
+    "[overflow-anchor:none]"
   );
 
   // Explicit viewport height (not h-full — auto grid rows make h-full circular),

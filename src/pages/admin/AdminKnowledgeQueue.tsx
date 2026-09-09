@@ -12,6 +12,7 @@ import { AdminContentTreePanel } from "@/components/admin/AdminContentTreePanel"
 import { AdminKnowledgeDetailSheet } from "@/components/admin/AdminKnowledgeDetailSheet";
 import { AdminKnowledgeGapsPanel } from "@/components/admin/AdminKnowledgeGapsPanel";
 import { AdminKnowledgeReviewWorkbench } from "@/components/admin/AdminKnowledgeReviewWorkbench";
+import { AdminAiBatchJobsBanner } from "@/components/admin/AdminAiBatchJobsBanner";
 import { AdminKnowledgeUpdatesPanel } from "@/components/admin/AdminKnowledgeUpdatesPanel";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -335,6 +336,8 @@ export default function AdminKnowledgeQueue() {
         </div>
       </div>
 
+      <AdminAiBatchJobsBanner />
+
       {tab === "add" && (
         <div className="space-y-5">
           <div className="flex flex-wrap gap-2">
@@ -422,7 +425,13 @@ export default function AdminKnowledgeQueue() {
         </div>
       )}
 
-      <div className="space-y-8" hidden={tab !== "review"} inert={tab !== "review" ? true : undefined}>
+      <div
+        className="space-y-8"
+        hidden={tab !== "review"}
+        ref={(node) => {
+          if (node) node.inert = tab !== "review";
+        }}
+      >
         <section className="space-y-3">
           <div>
             <h2 className="font-medium text-sm">Review</h2>

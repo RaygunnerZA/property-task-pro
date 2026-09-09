@@ -27,6 +27,8 @@ type TaskDetailActionBarProps = {
   hasEdits: boolean;
   /** Show turquoise UPDATE when title/checklist/details have pending saves. */
   showUpdate: boolean;
+  /** After assignee engagement on a Not started task — blue Begin Task CTA. */
+  beginPrompt?: boolean;
   taskId: string;
   canManageTemplates: boolean;
   onAddUpdate: () => void;
@@ -50,6 +52,7 @@ export function TaskDetailActionBar({
   taskEditOpen,
   hasEdits,
   showUpdate,
+  beginPrompt = false,
   taskId,
   canManageTemplates,
   onAddUpdate,
@@ -69,6 +72,7 @@ export function TaskDetailActionBar({
   const isTerminal = normalized === "completed" || normalized === "archived";
   const isStarted =
     normalized === "in_progress" || normalized === "waiting_review";
+  const showBeginPrompt = beginPrompt && normalized === "open";
 
   useEffect(() => {
     if (statusOpen) {
@@ -88,11 +92,27 @@ export function TaskDetailActionBar({
         className="w-[4.5rem] shrink-0 text-left font-mono text-caption uppercase leading-tight tracking-wide text-muted-foreground"
         aria-hidden
       >
-        Change
-        <br />
-        status
+        {showBeginPrompt ? (
+          <>
+            Start
+            <br />
+            work
+          </>
+        ) : (
+          <>
+            Change
+            <br />
+            status
+          </>
+        )}
       </span>
-      <div className="min-w-0 flex-1 overflow-visible">
+      <div
+        className={cn(
+          showBeginPrompt
+            ? "shrink-0 overflow-visible"
+            : "min-w-0 flex-1 overflow-visible"
+        )}
+      >
         <TaskStatusDropdown
           status={status}
           variant="button"
@@ -100,7 +120,8 @@ export function TaskDetailActionBar({
           open={statusOpen}
           onOpenChange={setStatusOpen}
           onStatusChange={onStatusChange}
-          className="w-full"
+          beginPrompt={showBeginPrompt}
+          className={showBeginPrompt ? undefined : "w-full"}
         />
       </div>
 

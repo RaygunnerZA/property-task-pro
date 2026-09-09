@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { toErrorMessage } from "@/lib/error";
 import { format } from "date-fns";
 import { UserAvatar, APP_USER_AVATAR_SIZE } from "@/components/tasks/UserAvatar";
+import { ImageLightbox } from "@/components/ui/ImageLightbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,6 +117,7 @@ export function TaskMessaging({
   const [messageAttachments, setMessageAttachments] = useState<Map<string, any[]>>(new Map());
   const [showEnterHint, setShowEnterHint] = useState(true);
   const [replyTo, setReplyTo] = useState<MessageReplyTo | null>(null);
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const composeRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -133,7 +135,7 @@ export function TaskMessaging({
     if (!focusComposeKey) return;
     const el = composeRef.current;
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    // Focus only — scrollIntoView can drag the workbench/main scroller.
     el.focus({ preventScroll: true });
   }, [focusComposeKey]);
 
@@ -173,11 +175,9 @@ export function TaskMessaging({
     const end = messagesEndRef.current;
     if (!end || messages.length === 0) return;
     const scroller = end.closest("[data-messages-scroller]") as HTMLElement | null;
-    if (scroller) {
-      scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
-      return;
-    }
-    end.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" });
+    if (!scroller) return;
+    // Scroll only the thread — never scrollIntoView (moves ancestor page scrollers).
+    scroller.scrollTo({ top: scroller.scrollHeight, behavior: "smooth" });
   }, [messages, attachments.length, variant]);
 
   const handleFileSelect = (files: FileList | File[] | null, isImage: boolean) => {
@@ -621,18 +621,22 @@ export function TaskMessaging({
                               )}
                             >
                               {isImage ? (
-                                <a
-                                  href={attachment.file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block"
+                                <button
+                                  type="button"
+                                  className="block w-full text-left"
+                                  onClick={() =>
+                                    setPreviewImage({
+                                      src: attachment.file_url,
+                                      alt: attachment.file_name || "Attachment",
+                                    })
+                                  }
                                 >
                                   <img
                                     src={attachment.file_url}
                                     alt={attachment.file_name || "Attachment"}
                                     className="max-h-40 max-w-full object-contain"
                                   />
-                                </a>
+                                </button>
                               ) : (
                                 <a
                                   href={attachment.file_url}
@@ -814,6 +818,18 @@ export function TaskMessaging({
           </div>
         </div>
       ) : null}
+
+      <ImageLightbox
+        open={Boolean(previewImage)}
+        images={
+          previewImage
+            ? [{ src: previewImage.src, alt: previewImage.alt }]
+            : []
+        }
+        index={0}
+        title="Attachment"
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

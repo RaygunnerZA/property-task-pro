@@ -1,6 +1,10 @@
 /**
  * content-generate — SEO, editorial brief, outputs, and visual concept for Content Tree.
  * Uses verified Knowledge + linked authoritative sources. Never publishes.
+ * Overnight / half-price: enqueue via ai-batch-submit with capability
+ * content_seo_draft | content_brief_draft | content_output_draft | content_visual_brief.
+ * Submit accepts those ids (CHECK + parse) but returns 501 capability_not_enabled
+ * until this function grows a batch processor. Do not fake success.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { geminiUsage, openAiUsage } from "../_shared/aiObservability.ts";

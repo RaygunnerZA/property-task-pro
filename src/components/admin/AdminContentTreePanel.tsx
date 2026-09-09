@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ContentQueueOvernightButton } from "@/components/admin/ContentQueueOvernightButton";
 import { SeoStage } from "@/components/admin/AdminContentSeoStage";
 import { AdminContentEvidenceDrawer } from "@/components/admin/AdminContentEvidenceDrawer";
 import { cn } from "@/lib/utils";
@@ -745,6 +746,7 @@ function BriefStage({
     return (
       <div className="space-y-2">
         <p className="text-xs text-muted-foreground">No brief yet.</p>
+        <div className="flex flex-wrap items-center gap-2">
         <Button
           size="sm"
           className="shadow-primary-btn border-0"
@@ -761,6 +763,8 @@ function BriefStage({
         >
           Generate editorial brief
         </Button>
+        <ContentQueueOvernightButton topicId={topicId} stage="brief" disabled={busy} />
+        </div>
       </div>
     );
   }
@@ -906,6 +910,7 @@ function OutputsStage({
             ))}
           </div>
           {selected.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               className="shadow-primary-btn border-0"
@@ -925,6 +930,13 @@ function OutputsStage({
             >
               Generate selected ({selected.length})
             </Button>
+            <ContentQueueOvernightButton
+              topicId={topicId}
+              stage="output"
+              outputKinds={selected}
+              disabled={busy}
+            />
+            </div>
           )}
         </>
       )}

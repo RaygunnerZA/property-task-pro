@@ -39,10 +39,42 @@ function AppLayoutShell({ children }: AppLayoutProps) {
   }, []);
 
   useEffect(() => {
-    window.scrollTo(0, 0);
-    mainRef.current?.scrollTo(0, 0);
-    mainRef.current?.querySelectorAll('[class*="overflow-y-auto"], [class*="overflow-auto"]')
-      .forEach(el => el.scrollTo(0, 0));
+    const resetScroll = () => {
+      window.scrollTo(0, 0);
+      const main = mainRef.current;
+      if (!main) return;
+      main.scrollTop = 0;
+      // Nested workbench rails (third column, left column on phone, message threads).
+      main
+        .querySelectorAll(
+          '[class*="overflow-y-auto"], [class*="overflow-auto"], [data-workbench-third-column]'
+        )
+        .forEach((node) => {
+          if (node instanceof HTMLElement) node.scrollTop = 0;
+        });
+    };
+
+    resetScroll();
+
+    // Records (and similar) mount tall left-rail content after the first paint.
+    // Without a follow-up pin, overflow anchoring keeps lower content stable and
+    // the page appears to open scrolled halfway down.
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      resetScroll();
+      raf2 = requestAnimationFrame(resetScroll);
+    });
+    const t0 = window.setTimeout(resetScroll, 0);
+    const t1 = window.setTimeout(resetScroll, 50);
+    const t2 = window.setTimeout(resetScroll, 200);
+
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.clearTimeout(t0);
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [pathname]);
 
   return (
@@ -62,7 +94,7 @@ function AppLayoutShell({ children }: AppLayoutProps) {
 
           <main 
             ref={mainRef}
-            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-20 md:pb-0"
+            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-20 md:pb-0 [overflow-anchor:none]"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,
               backgroundRepeat: 'repeat',

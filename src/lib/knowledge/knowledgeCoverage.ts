@@ -36,6 +36,75 @@ export type ResearchGapItem = {
   knowledgeIds: string[];
 };
 
+export type ResearchableGapInput = {
+  id: string;
+  topic_key: string;
+  topic: string;
+  jurisdiction: string;
+  status: "missing" | "partial";
+};
+
+/** Keep in lockstep with supabase/functions/_shared/knowledgeGapResearch.ts */
+export const MAX_RESEARCH_GAPS = 20;
+
+export function coverageGapId(topicKey: string, jurisdiction: string): string {
+  return `${topicKey}::${jurisdiction}`;
+}
+
+export function parseCoverageGapId(
+  id: string
+): { topicKey: string; jurisdiction: string } | null {
+  const idx = id.indexOf("::");
+  if (idx <= 0 || idx >= id.length - 1) return null;
+  return { topicKey: id.slice(0, idx), jurisdiction: id.slice(idx + 2) };
+}
+
+export function isResearchableStatus(status: CoverageCellStatus): boolean {
+  return status === "missing" || status === "partial";
+}
+
+export function researchableIdsForTopic(
+  matrix: CoverageMatrix,
+  topicKey: string,
+  jurisdictions: string[]
+): string[] {
+  return jurisdictions
+    .filter((j) => isResearchableStatus(matrix.cells[topicKey]?.[j]?.status ?? "missing"))
+    .map((j) => coverageGapId(topicKey, j));
+}
+
+export function researchableIdsForJurisdiction(
+  matrix: CoverageMatrix,
+  jurisdiction: string,
+  topics: CoverageTopic[]
+): string[] {
+  return topics
+    .filter((topic) =>
+      isResearchableStatus(matrix.cells[topic.key]?.[jurisdiction]?.status ?? "missing")
+    )
+    .map((topic) => coverageGapId(topic.key, jurisdiction));
+}
+
+export function researchGapsFromIds(
+  matrix: CoverageMatrix,
+  ids: Iterable<string>
+): ResearchableGapInput[] {
+  const wanted = new Set(ids);
+  const out: ResearchableGapInput[] = [];
+  for (const item of researchQueueFromCoverage(matrix)) {
+    if (!wanted.has(item.id) || !isResearchableStatus(item.status)) continue;
+    const parsed = parseCoverageGapId(item.id);
+    out.push({
+      id: item.id,
+      topic_key: parsed?.topicKey ?? item.id,
+      topic: item.topic,
+      jurisdiction: item.jurisdiction,
+      status: item.status === "partial" ? "partial" : "missing",
+    });
+  }
+  return out;
+}
+
 function topicKeyFromRow(row: KnowledgeRow): { key: string; label: string } {
   const category = attrString(row.attributes, "category")?.trim();
   if (category && category.length >= 3) {

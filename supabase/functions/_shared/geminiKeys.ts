@@ -9,6 +9,18 @@ export function geminiGenerateContentUrl(
   return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 }
 
+export function geminiBatchGenerateContentUrl(
+  model: string = GEMINI_FLASH_MODEL,
+  apiKey: string
+): string {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:batchGenerateContent?key=${apiKey}`;
+}
+
+export function geminiBatchGetUrl(batchName: string, apiKey: string): string {
+  const name = batchName.replace(/^\/+/, "");
+  return `https://generativelanguage.googleapis.com/v1beta/${name}?key=${apiKey}`;
+}
+
 /** Dedicated Gemini key for platform Knowledge intake (workbook, doc proposals, critic). */
 export function knowledgeGeminiApiKey(): string | undefined {
   const dedicated = Deno.env.get("FILLA_KNOWLEDGE_GEMINI_API_KEY")?.trim();
