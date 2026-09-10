@@ -27,6 +27,10 @@ describe("isFuzzyMatch — short-word false positives are rejected", () => {
   it("'in' does NOT match 'kitchen'", () => {
     expect(isFuzzyMatch("in", "kitchen")).toBe(false);
   });
+
+  it("'tap' does NOT match 'bar' (3-letter Levenshtein 2 is too loose)", () => {
+    expect(isFuzzyMatch("tap", "bar")).toBe(false);
+  });
 });
 
 describe("isFuzzyMatch — legitimate matches still work", () => {

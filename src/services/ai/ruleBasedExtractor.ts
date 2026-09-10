@@ -27,6 +27,7 @@ interface AvailableEntities {
   members: Array<{ id: string; user_id: string; display_name: string }>;
   teams: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string }>;
+  assets?: Array<{ id: string; name: string }>;
 }
 
 /**
@@ -98,8 +99,8 @@ export function extractChipsFromText(
     }
   });
   
-  // 3b. Asset detection (using assetToSpaceMap keys as known assets)
-  const assetChips = detectAssets(text, words);
+  // 3b. Asset detection (property assets first, then assetToSpaceMap keywords)
+  const assetChips = detectAssets(text, words, entities.assets ?? []);
   chips.push(...assetChips);
   
   // 4. Person detection — pass combinedText (original casing) for proper-noun detection
@@ -281,16 +282,19 @@ function detectSpaces(
     const spaceName = space.name.toLowerCase();
     const spaceNameWordRe = new RegExp(`\\b${escapeForRegex(spaceName)}\\b`);
 
-    if (spaceNameWordRe.test(text) || words.some(w => isFuzzyMatch(w, spaceName))) {
+    const exactName = spaceNameWordRe.test(text);
+    const fuzzyName = !exactName && words.some((w) => isFuzzyMatch(w, spaceName));
+    if (exactName || fuzzyName) {
       chips.push({
         id: `space-${space.id}`,
         type: 'space',
         value: space.id,
         label: space.name,
-        score: 0.85,
+        score: exactName ? 0.85 : 0.7,
         source: 'rule',
         resolvedEntityId: space.id,
-        blockingRequired: false
+        blockingRequired: false,
+        metadata: exactName ? { matchedExactName: true } : { matchedFuzzyName: true },
       });
       matchedSpaces.add(spaceName);
     }
@@ -423,7 +427,8 @@ function detectSpaces(
  */
 function detectAssets(
   text: string,
-  words: string[]
+  words: string[],
+  assets: Array<{ id: string; name: string }>
 ): SuggestedChip[] {
   const chips: SuggestedChip[] = [];
   const matchedAssets = new Set<string>();
@@ -435,6 +440,31 @@ function detectAssets(
     if (value.length > 3 && value.endsWith("s")) return value.slice(0, -1);
     return value;
   };
+
+  // Direct asset name matching against property inventory (word-boundary only —
+  // same rule as spaces, to avoid short-token false positives).
+  for (const asset of assets) {
+    const assetName = asset.name?.trim();
+    if (!assetName || assetName.length < 3) continue;
+    const assetNameLower = assetName.toLowerCase();
+    const assetNameWordRe = new RegExp(`\\b${escapeForRegex(assetNameLower)}\\b`);
+    if (!assetNameWordRe.test(text)) continue;
+    const normalizedAsset = singularize(assetNameLower);
+    if (matchedAssets.has(normalizedAsset) || chips.some((c) => c.resolvedEntityId === asset.id)) {
+      continue;
+    }
+    chips.push({
+      id: `asset-${asset.id}`,
+      type: "asset",
+      value: asset.id,
+      label: assetName,
+      score: 0.85,
+      source: "rule",
+      resolvedEntityId: asset.id,
+      blockingRequired: false,
+    });
+    matchedAssets.add(normalizedAsset);
+  }
   
   // Check for known asset keywords from assetToSpaceMap
   for (const asset of Object.keys(extractionPatterns.assetToSpaceMap)) {
@@ -855,6 +885,14 @@ function detectTeams(
   return chips;
 }
 
+/** Local calendar date (YYYY-MM-DD). Avoid UTC `toISOString` crossing midnight. */
+function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 /**
  * Format a date as "DAY DD MONTH" (e.g., "TUES 10 FEBRUARY")
  */
@@ -1154,7 +1192,7 @@ function detectDate(text: string): SuggestedChip | null {
       const targetDate = new Date(baseDate);
       targetDate.setDate(baseDate.getDate() + (amount * 7));
       const label = formatDateLabel(targetDate);
-      const dateValue = targetDate.toISOString().split("T")[0];
+      const dateValue = toLocalISODate(targetDate);
       return {
         id: `date-${Date.now()}`,
         type: "date",
@@ -1183,7 +1221,7 @@ function detectDate(text: string): SuggestedChip | null {
         targetDate.setMonth(targetDate.getMonth() + amount);
       }
       const label = formatDateLabel(targetDate);
-      const dateValue = targetDate.toISOString().split("T")[0];
+      const dateValue = toLocalISODate(targetDate);
       return {
         id: `date-${Date.now()}`,
         type: "date",
@@ -1203,7 +1241,7 @@ function detectDate(text: string): SuggestedChip | null {
     const weekday = nextWeekWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, true);
     const label = formatDateLabel(targetDate);
-    const dateValue = targetDate.toISOString().split('T')[0];
+    const dateValue = toLocalISODate(targetDate);
     return {
       id: `date-${Date.now()}`,
       type: 'date',
@@ -1222,7 +1260,7 @@ function detectDate(text: string): SuggestedChip | null {
     const weekday = nextWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, true);
     const label = formatDateLabel(targetDate);
-    const dateValue = targetDate.toISOString().split('T')[0];
+    const dateValue = toLocalISODate(targetDate);
     return {
       id: `date-${Date.now()}`,
       type: 'date',
@@ -1241,7 +1279,7 @@ function detectDate(text: string): SuggestedChip | null {
     const weekday = beforeWeekdayMatch[1].toLowerCase();
     const targetDate = getNextWeekday(weekday, false);
     const label = formatDateLabel(targetDate);
-    const dateValue = targetDate.toISOString().split('T')[0];
+    const dateValue = toLocalISODate(targetDate);
     return {
       id: `date-${Date.now()}`,
       type: 'date',
@@ -1267,27 +1305,27 @@ function detectDate(text: string): SuggestedChip | null {
       if (matchedText === 'today') {
         calculatedDate = new Date();
         label = formatDateLabel(calculatedDate);
-        dateValue = calculatedDate.toISOString().split('T')[0];
+        dateValue = toLocalISODate(calculatedDate);
       } else if (matchedText === 'tomorrow') {
         calculatedDate = new Date();
         calculatedDate.setDate(calculatedDate.getDate() + 1);
         label = formatDateLabel(calculatedDate);
-        dateValue = calculatedDate.toISOString().split('T')[0];
+        dateValue = toLocalISODate(calculatedDate);
       } else if (matchedText === 'next week') {
         calculatedDate = new Date();
         calculatedDate.setDate(calculatedDate.getDate() + 7);
         label = formatDateLabel(calculatedDate);
-        dateValue = calculatedDate.toISOString().split('T')[0];
+        dateValue = toLocalISODate(calculatedDate);
       } else if (matchedText === 'this week') {
         // This week typically means by end of this week (Friday)
         calculatedDate = getNextWeekday('friday', false);
         label = formatDateLabel(calculatedDate);
-        dateValue = calculatedDate.toISOString().split('T')[0];
+        dateValue = toLocalISODate(calculatedDate);
       } else if (WEEKDAY_LIST.includes(matchedText)) {
         // Single weekday without "next" prefix - get next occurrence
         calculatedDate = getNextWeekday(matchedText, false);
         label = formatDateLabel(calculatedDate);
-        dateValue = calculatedDate.toISOString().split('T')[0];
+        dateValue = toLocalISODate(calculatedDate);
       } else {
         // Parse explicit month/day dates (e.g. "14th april", "april 14")
         const dmy = matchedText.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\b/i);
@@ -1307,7 +1345,7 @@ function detectDate(text: string): SuggestedChip | null {
           }
           calculatedDate = explicit;
           label = formatDateLabel(explicit);
-          dateValue = explicit.toISOString().split("T")[0];
+          dateValue = toLocalISODate(explicit);
         } else {
           // Fallback: keep original snippet if parsing fails.
           label = matchedText.charAt(0).toUpperCase() + matchedText.slice(1);
@@ -1338,7 +1376,7 @@ function detectDate(text: string): SuggestedChip | null {
     if (normalizedWeekday) {
       const targetDate = getNextWeekday(normalizedWeekday, false);
       const label = formatDateLabel(targetDate);
-      const dateValue = targetDate.toISOString().split("T")[0];
+      const dateValue = toLocalISODate(targetDate);
       return {
         id: `date-${Date.now()}`,
         type: "date",

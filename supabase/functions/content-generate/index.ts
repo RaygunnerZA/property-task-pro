@@ -103,10 +103,23 @@ function appendVersion(
     provenance,
     payload,
   });
+  const previous =
+    envelope.current && typeof envelope.current === "object" && !Array.isArray(envelope.current)
+      ? (envelope.current as Record<string, unknown>)
+      : {};
+  // Preserve research_* so SEO regen does not restart the Knowledge↔SEO bounce loop.
+  const current: Record<string, unknown> = { ...payload };
+  for (const [key, value] of Object.entries(previous)) {
+    if (!key.startsWith("research_")) continue;
+    if (!(key in current)) current[key] = value;
+  }
+  if (current.research_status === "running") {
+    current.research_status = "idle";
+  }
   return {
     ...envelope,
     approval_status: "pending",
-    current: payload,
+    current,
     versions,
     last_error: null,
   };

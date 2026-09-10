@@ -23,6 +23,8 @@ const COST_UNITS: Record<string, number> = {
   "compliance-clause-rewrite": 2,
   "knowledge-critic": 2,
   "knowledge-generate-guidance": 2,
+  "knowledge-extract-claims": 2,
+  "knowledge-evidence-pack": 2,
   "knowledge-gap-research": 1,
   "ai-batch-poll": 1,
   "building-plan-process": 5,

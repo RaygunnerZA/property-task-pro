@@ -24,6 +24,7 @@ interface AvailableEntities {
   members: Array<{ id: string; user_id: string; display_name: string }>;
   teams: Array<{ id: string; name: string }>;
   categories: Array<{ id: string; name: string }>;
+  assets?: Array<{ id: string; name: string }>;
 }
 
 interface SuggestionEngineConfig {

@@ -509,6 +509,10 @@ export function IntakeModal({
   const userClearedAssigneeRef = useRef(false);
   /** Prevents extracted date chips from re-applying after the user clears WHEN. */
   const userClearedDueDateRef = useRef(false);
+  /** Space ids the user removed — do not auto-apply those ids again this draft. */
+  const userClearedSpaceIdsRef = useRef<Set<string>>(new Set());
+  /** Asset ids the user removed — do not auto-apply those ids again this draft. */
+  const userClearedAssetIdsRef = useRef<Set<string>>(new Set());
   /** Prevents extracted recurrence from re-applying after the user clears REPEAT. */
   const userClearedRepeatRef = useRef(false);
 
@@ -1177,14 +1181,11 @@ export function IntakeModal({
       return;
     }
     try {
-      let query = supabase
+      const query = supabase
         .from("assets")
         .select("id, name, serial_number")
         .eq("org_id", orgId)
         .eq("property_id", propertyId);
-      if (intakeMode !== "add_record" && selectedSpaceIds[0]) {
-        query = query.eq("space_id", selectedSpaceIds[0]);
-      }
       const { data, error } = await query;
       if (error) throw error;
       setAvailableAssets(
@@ -1198,7 +1199,7 @@ export function IntakeModal({
       console.error("[IntakeModal] failed loading assets", error);
       setAvailableAssets([]);
     }
-  }, [orgId, propertyId, selectedSpaceIds, intakeMode]);
+  }, [orgId, propertyId]);
 
   useEffect(() => {
     void loadAssets();
@@ -1206,8 +1207,9 @@ export function IntakeModal({
 
   useEffect(() => {
     const priorityChip = chipSuggestions.find((c) => c.type === "priority");
-    if (!priorityChip?.label || priorityDefined) return;
-    const raw = priorityChip.label.toLowerCase();
+    if (priorityDefined) return;
+    const raw = (priorityChip?.label || priorityChip?.value || "").toLowerCase();
+    if (!raw) return;
     if (raw.includes("urgent")) {
       setPriority("urgent");
       setPriorityDefined(true);
@@ -1686,7 +1688,10 @@ export function IntakeModal({
         label: space.name.toUpperCase(),
         epistemic: "fact",
         removable: true,
-        onRemove: () => setSelectedSpaceIds((prev) => prev.filter((id) => id !== space.id)),
+        onRemove: () => {
+          userClearedSpaceIdsRef.current.add(space.id);
+          setSelectedSpaceIds((prev) => prev.filter((id) => id !== space.id));
+        },
       });
     });
 
@@ -1697,7 +1702,10 @@ export function IntakeModal({
         label: asset.name.toUpperCase(),
         epistemic: "fact",
         removable: true,
-        onRemove: () => setSelectedAssetIds((prev) => prev.filter((id) => id !== asset.id)),
+        onRemove: () => {
+          userClearedAssetIdsRef.current.add(asset.id);
+          setSelectedAssetIds((prev) => prev.filter((id) => id !== asset.id));
+        },
       });
     });
 
@@ -1843,9 +1851,10 @@ export function IntakeModal({
         if (chipType === repeatPreset) return false;
       }
       if (chip.type === "asset" && chip.resolvedEntityId && selectedAssetIds.includes(chip.resolvedEntityId)) return false;
+      if (chip.type === "priority" && priorityDefined) return false;
       return true;
     });
-  }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, repeatPreset, selectedAssetIds]);
+  }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, repeatPreset, selectedAssetIds, priorityDefined]);
 
   /**
    * Person invite verbs lead the strip. When the org is small (≤3 others),
@@ -1912,11 +1921,46 @@ export function IntakeModal({
     description,
   ]);
 
+  // Auto-apply named spaces that match a property space (like due date / assets).
+  // Skip activity/asset inferences — those stay suggestions.
+  useEffect(() => {
+    if (!propertyId) return;
+    const toAdd = chipSuggestions
+      .filter(
+        (c) =>
+          c.type === "space" &&
+          c.resolvedEntityId &&
+          !c.blockingRequired &&
+          c.metadata?.matchedExactName &&
+          !c.metadata?.matchedActivity &&
+          !c.metadata?.matchedAsset &&
+          !userClearedSpaceIdsRef.current.has(c.resolvedEntityId)
+      )
+      .map((c) => c.resolvedEntityId as string);
+    if (toAdd.length === 0) return;
+    setSelectedSpaceIds((prev) => {
+      const next = [...prev];
+      let changed = false;
+      for (const id of toAdd) {
+        if (!next.includes(id)) {
+          next.push(id);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [chipSuggestions, propertyId]);
+
   // Auto-apply assets that match DB entities mentioned in the description (like due date).
   useEffect(() => {
     if (!propertyId) return;
     const toAdd = chipSuggestions
-      .filter((c) => c.type === "asset" && c.resolvedEntityId)
+      .filter(
+        (c) =>
+          c.type === "asset" &&
+          c.resolvedEntityId &&
+          !userClearedAssetIdsRef.current.has(c.resolvedEntityId)
+      )
       .map((c) => c.resolvedEntityId as string);
     if (toAdd.length === 0) return;
     setSelectedAssetIds((prev) => {
@@ -1949,6 +1993,7 @@ export function IntakeModal({
           setAssignedTeamIds((prev) => (prev.includes(resolutionEntityId) ? prev : [...prev, resolutionEntityId]));
           break;
         case "space": {
+          userClearedSpaceIdsRef.current.delete(resolutionEntityId);
           const sp = spaces.find((s) => s.id === resolutionEntityId);
           if (sp) {
             if (sp.property_id && sp.property_id !== propertyId) {
@@ -1961,6 +2006,7 @@ export function IntakeModal({
           break;
         }
         case "asset":
+          userClearedAssetIdsRef.current.delete(resolutionEntityId);
           setSelectedAssetIds((prev) => (prev.includes(resolutionEntityId) ? prev : [...prev, resolutionEntityId]));
           break;
         case "category":
@@ -3983,6 +4029,8 @@ export function IntakeModal({
     userClearedAssigneeRef.current = false;
     userClearedDueDateRef.current = false;
     userClearedRepeatRef.current = false;
+    userClearedSpaceIdsRef.current = new Set();
+    userClearedAssetIdsRef.current = new Set();
     setAssignedUserId(undefined);
     setAssignedTeamIds([]);
     setSubtasks([]);

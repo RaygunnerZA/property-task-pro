@@ -62,6 +62,19 @@ const STAGGER_MS = 2000;
 /** Core rows stagger in; Asset/Tag/Compliance appear together once Priority is visible. */
 const CORE_ORDER: IntakeChipSlotId[] = ["who", "where", "when", "priority"];
 
+/** Empty rows still stagger in; a row with extracted facts must show immediately. */
+export function shouldShowStaggerSection(
+  index: number,
+  visibleCount: number,
+  hasFacts: boolean
+): boolean {
+  return hasFacts || index < visibleCount;
+}
+
+export function shouldShowMetaSection(showMeta: boolean, hasFacts: boolean): boolean {
+  return showMeta || hasFacts;
+}
+
 function StaggerRow({
   section,
   isOpen,
@@ -273,7 +286,7 @@ export function IntakeStaggeredSections({
   return (
     <div className={cn("space-y-1 pt-1.5", className)}>
       {coreSections.map((section, index) => {
-        if (index >= visibleCount) return null;
+        if (!shouldShowStaggerSection(index, visibleCount, section.facts.length > 0)) return null;
         return (
           <StaggerRow
             key={section.id}
@@ -288,17 +301,18 @@ export function IntakeStaggeredSections({
         );
       })}
 
-      {showMeta
-        ? metaSections.map((section) => (
-            <StaggerRow
-              key={section.id}
-              section={section}
-              isOpen={openSlot === section.id}
-              onOpenSlot={onOpenSlot}
-              slotPanel={openSlot === section.id ? slotPanel : undefined}
-            />
-          ))
-        : null}
+      {metaSections.map((section) => {
+        if (!shouldShowMetaSection(showMeta, section.facts.length > 0)) return null;
+        return (
+          <StaggerRow
+            key={section.id}
+            section={section}
+            isOpen={openSlot === section.id}
+            onOpenSlot={onOpenSlot}
+            slotPanel={openSlot === section.id ? slotPanel : undefined}
+          />
+        );
+      })}
     </div>
   );
 }

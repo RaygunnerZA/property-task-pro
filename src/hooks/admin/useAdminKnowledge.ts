@@ -245,6 +245,7 @@ export function useAdminSetKnowledgeStatus() {
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-metrics"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic"] });
     },
   });
 }
@@ -271,6 +272,77 @@ export function useAdminExtractKnowledgeClaims() {
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", knowledgeId] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
       void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+    },
+  });
+}
+
+export function useAdminAddKnowledgeSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      knowledgeId: string;
+      url: string;
+      label?: string | null;
+      sourceType?: string;
+    }) => {
+      const url = input.url.trim();
+      if (!/^https?:\/\//i.test(url)) {
+        throw new Error("Enter a valid http(s) URL");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_add_knowledge_source", {
+        p_knowledge_id: input.knowledgeId,
+        p_source_type: input.sourceType ?? "url",
+        p_label: input.label?.trim() || null,
+        p_url: url,
+      });
+      if (error) throw error;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any).rpc("knowledge_invalidate_critic", {
+        p_knowledge_id: input.knowledgeId,
+        p_reason: "source_edit",
+      });
+      return data as KnowledgeSourceRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", vars.knowledgeId] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic"] });
+    },
+  });
+}
+
+export function useAdminUpdateKnowledgeSource() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      sourceId: string;
+      knowledgeId: string;
+      url?: string;
+      label?: string | null;
+    }) => {
+      if (input.url !== undefined) {
+        const url = input.url.trim();
+        if (!/^https?:\/\//i.test(url)) {
+          throw new Error("Enter a valid http(s) URL");
+        }
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_update_knowledge_source", {
+        p_source_id: input.sourceId,
+        p_url: input.url !== undefined ? input.url.trim() : null,
+        // Empty string clears label; omit/undefined keeps existing (sent as null).
+        p_label: input.label !== undefined ? input.label.trim() : null,
+      });
+      if (error) throw error;
+      return data as KnowledgeSourceRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", vars.knowledgeId] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic"] });
     },
   });
 }

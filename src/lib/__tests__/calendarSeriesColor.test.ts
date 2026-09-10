@@ -45,4 +45,11 @@ describe("calendarSeriesColor", () => {
     expect(anchor).not.toBe(repeat);
     expect(anchor.slice(0, 15)).toBe(repeat.slice(0, 15));
   });
+
+  it("opaque stacked chips use solid hex so text cannot ghost through", () => {
+    const task = { id: "once-opaque", title: "Plumbing compliance" };
+    const fill = resolveCalendarChipBackground(task, false, { opaque: true });
+    expect(fill).toMatch(/^#[0-9a-fA-F]{6}$/);
+    expect(fill).not.toMatch(/^rgba\(/);
+  });
 });

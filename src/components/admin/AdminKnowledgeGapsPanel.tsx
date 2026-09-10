@@ -8,6 +8,9 @@ import {
   coverageSummary,
   isResearchableStatus,
   MAX_RESEARCH_GAPS,
+  clusterResearchQueue,
+  distinctCoverageJurisdictions,
+  researchGapIdsFromClusters,
   researchableIdsForJurisdiction,
   researchableIdsForTopic,
   researchGapsFromIds,
@@ -76,13 +79,21 @@ type Props = {
 export function AdminKnowledgeGapsPanel({ rows }: Props) {
   const matrix = useMemo(() => buildKnowledgeCoverageMatrix(rows), [rows]);
   const summary = useMemo(() => coverageSummary(matrix), [matrix]);
-  const queue = useMemo(() => researchQueueFromCoverage(matrix).slice(0, 40), [matrix]);
+  const queue = useMemo(
+    () =>
+      clusterResearchQueue(researchQueueFromCoverage(matrix)).slice(0, 40),
+    [matrix]
+  );
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [progress, setProgress] = useState<KnowledgeGapResearchProgress | null>(null);
   const research = useAdminResearchKnowledgeGaps();
   const submitBatch = useAdminSubmitAiBatch();
 
-  const displayJurisdictions = matrix.jurisdictions.filter((j) => j !== "Unspecified").slice(0, 12);
+  const distinctJurisdictions = useMemo(
+    () => distinctCoverageJurisdictions(matrix.jurisdictions),
+    [matrix]
+  );
+  const displayJurisdictions = distinctJurisdictions.slice(0, 12);
   const displayTopics = matrix.topics.slice(0, 24);
   const busy = research.isPending || submitBatch.isPending;
   const selectedCount = selectedIds.size;
@@ -352,10 +363,10 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
               </tbody>
             </table>
             {(matrix.topics.length > displayTopics.length ||
-              matrix.jurisdictions.length > displayJurisdictions.length) && (
+              distinctJurisdictions.length > displayJurisdictions.length) && (
               <p className="p-3 text-[11px] text-muted-foreground border-t border-border/30">
                 Showing {displayTopics.length} of {matrix.topics.length} topics ·{" "}
-                {displayJurisdictions.length} of {matrix.jurisdictions.length} jurisdictions
+                {displayJurisdictions.length} of {distinctJurisdictions.length} jurisdictions
               </p>
             )}
           </div>
@@ -369,8 +380,8 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
               Research queue
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5 max-w-xl">
-              Prioritised gaps. Begin research uses the current selection, or the top{" "}
-              {MAX_RESEARCH_GAPS} queued items. Related jurisdictions share one source search.
+              Prioritised topics. Begin research uses the current selection, or the next topics
+              up to {MAX_RESEARCH_GAPS} cells. Related jurisdictions share one source search.
             </p>
           </div>
           {queue.length > 0 && (
@@ -383,7 +394,7 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
                 void runResearch(
                   selectedCount > 0
                     ? selectedIds
-                    : queue.slice(0, MAX_RESEARCH_GAPS).map((item) => item.id)
+                    : researchGapIdsFromClusters(queue, MAX_RESEARCH_GAPS)
                 )
               }
             >
@@ -396,21 +407,16 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
           <p className="text-sm text-muted-foreground">No open gaps in the current matrix.</p>
         ) : (
           <ul className="space-y-2">
-            {queue.map((item) => {
-              const selected = selectedIds.has(item.id);
+            {queue.map((cluster) => {
+              const gapIds = cluster.items.map((item) => item.id);
+              const selected =
+                gapIds.length > 0 && gapIds.every((id) => selectedIds.has(id));
               return (
-                <li key={item.id}>
+                <li key={cluster.topicKey}>
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() =>
-                      setSelectedIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(item.id)) next.delete(item.id);
-                        else next.add(item.id);
-                        return next;
-                      })
-                    }
+                    onClick={() => setSelectedIds((prev) => toggleIds(prev, gapIds))}
                     aria-pressed={selected}
                     className={cn(
                       "w-full text-left rounded-xl bg-card/80 shadow-e1 p-3 space-y-1 transition-colors",
@@ -426,16 +432,19 @@ export function AdminKnowledgeGapsPanel({ rows }: Props) {
                       <span
                         className={cn(
                           "text-[10px] font-mono uppercase tracking-wider",
-                          priorityTone(item.priority)
+                          priorityTone(cluster.priority)
                         )}
                       >
-                        {item.priority} priority
+                        {cluster.priority} priority
                       </span>
                       <span className="text-sm font-medium text-foreground">
-                        {item.jurisdiction} · {item.topic}
+                        {cluster.topic}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground">{item.reason}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {cluster.items.map((item) => item.jurisdiction).join(" · ")}
+                    </p>
+                    <p className="text-xs text-muted-foreground">{cluster.reason}</p>
                   </button>
                 </li>
               );

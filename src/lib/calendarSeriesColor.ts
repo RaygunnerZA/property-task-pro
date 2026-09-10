@@ -7,8 +7,12 @@ import {
   calendarTypeColorWithAlpha,
   getCalendarTypeColor,
   inferCalendarType,
+  mixHexColors,
 } from "@/lib/calendarTypes";
 import { getTaskRepeatRule } from "@/lib/taskWhenNormalize";
+
+/** Warm paper card tone — mix target for opaque stacked chips. */
+const CHIP_PAPER = "#FBFAF8";
 
 /** Distinct, accessible hues aligned with Filla tokens. */
 export const RECURRING_TASK_SERIES_PALETTE = [
@@ -65,9 +69,21 @@ export function resolveCalendarChipColor(task: Record<string, unknown>): {
 
 export function resolveCalendarChipBackground(
   task: Record<string, unknown>,
-  isRepeatOccurrence: boolean
+  isRepeatOccurrence: boolean,
+  options?: { opaque?: boolean }
 ): string {
   const { baseColor, isSeriesColor } = resolveCalendarChipColor(task);
+  if (options?.opaque) {
+    // Solid pastel so stacked / fanned chips don't ghost text through each other.
+    const paperAmount = isSeriesColor
+      ? isRepeatOccurrence
+        ? 0.72
+        : 0.55
+      : isRepeatOccurrence
+        ? 0.82
+        : 0.68;
+    return mixHexColors(baseColor, CHIP_PAPER, paperAmount);
+  }
   if (isSeriesColor) {
     return calendarTypeColorWithAlpha(baseColor, isRepeatOccurrence ? 0.34 : 0.44);
   }

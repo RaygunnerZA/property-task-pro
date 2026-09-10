@@ -9,6 +9,7 @@ import {
   useAdminSetKnowledgeStatus,
 } from "@/hooks/admin/useAdminKnowledge";
 import { KnowledgeClaimsList } from "@/components/admin/KnowledgeClaimsList";
+import { KnowledgeSourceUrlEditor } from "@/components/admin/KnowledgeSourceUrlEditor";
 import { needsGuidanceGeneration } from "@/lib/knowledge/knowledgeDraftGuidance";
 import {
   isEligibleForGuidanceImprovement,
@@ -521,31 +522,44 @@ export function AdminKnowledgeDetailSheet({
 
               <Section id="ko-sources" title="Sources">
                 {health && health.authoritative.length === 0 && (
-                  <p className="text-muted-foreground">No authoritative sources linked.</p>
+                  <p className="text-muted-foreground mb-2">No authoritative sources linked.</p>
                 )}
-                {health?.authoritative.map((s) => (
-                  <div key={s.url || s.id} className="space-y-0.5 pb-2 last:pb-0">
-                    <p className="font-medium text-foreground">{s.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[s.publisher, s.authorityType].filter(Boolean).join(" · ")}
-                    </p>
-                    {s.lastCheckedLabel && (
-                      <p className="text-xs text-muted-foreground">
-                        Last checked {s.lastCheckedLabel}
+                {row && (
+                  <KnowledgeSourceUrlEditor
+                    knowledgeId={row.id}
+                    sources={[
+                      ...(health?.authoritative ?? []).map((s) => ({
+                        id: s.id,
+                        title: s.title,
+                        url: s.url,
+                        label: s.title,
+                      })),
+                      ...sources
+                        .filter(
+                          (s) =>
+                            s.url &&
+                            !(health?.authoritative ?? []).some((a) => a.id === s.id)
+                        )
+                        .map((s) => ({
+                          id: s.id,
+                          title: s.label,
+                          url: s.url,
+                          label: s.label,
+                        })),
+                    ]}
+                  />
+                )}
+                {health && health.intakeProvenance.length > 0 && (
+                  <div className="mt-3 space-y-1 border-t border-border/20 pt-3">
+                    <p className="text-xs font-medium text-muted-foreground">Intake provenance</p>
+                    {health.intakeProvenance.map((s) => (
+                      <p key={s.id || s.title} className="text-xs text-muted-foreground">
+                        {s.title}
+                        {s.lastCheckedLabel ? ` · ${s.lastCheckedLabel}` : ""}
                       </p>
-                    )}
-                    {s.url && (
-                      <a
-                        href={s.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-xs text-primary truncate block hover:underline"
-                      >
-                        {s.url}
-                      </a>
-                    )}
+                    ))}
                   </div>
-                ))}
+                )}
               </Section>
 
               <Section id="ko-claims" title="Claims">

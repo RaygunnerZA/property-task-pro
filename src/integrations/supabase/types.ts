@@ -7050,6 +7050,30 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_update_knowledge_source: {
+        Args: {
+          p_label?: string
+          p_source_id: string
+          p_url?: string
+        }
+        Returns: {
+          attachment_id: string | null
+          created_at: string
+          external_ref: string | null
+          id: string
+          knowledge_id: string
+          label: string | null
+          metadata: Json
+          source_type: string
+          url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "knowledge_sources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_ai_plan_extraction_metrics: {
         Args: { p_since?: string }
         Returns: {

@@ -1,30 +1,26 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  GitBranch,
-  Loader2,
-  RefreshCw,
-} from "lucide-react";
 import {
   useAdminApproveContentTopicBrief,
   useAdminContentTopic,
   useAdminContentTopics,
   useAdminCreateContentTopic,
   useAdminGenerateContent,
+  useAdminKnowledgeDetail,
   useAdminKnowledgeQueue,
   useAdminRejectContentTopicBrief,
   useAdminSetContentOutputStatus,
+  useAdminSetKnowledgeStatus,
   useAdminUpsertContentOutput,
   useAdminUpsertContentTopicStage,
 } from "@/hooks/admin/useAdminKnowledge";
+import { useContentEvidenceResearch } from "@/hooks/admin/useContentEvidenceResearch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ContentQueueOvernightButton } from "@/components/admin/ContentQueueOvernightButton";
 import { SeoStage } from "@/components/admin/AdminContentSeoStage";
 import { AdminContentEvidenceDrawer } from "@/components/admin/AdminContentEvidenceDrawer";
+import { KnowledgeSourceUrlEditor } from "@/components/admin/KnowledgeSourceUrlEditor";
+import { KnowledgeClaimsList } from "@/components/admin/KnowledgeClaimsList";
 import { cn } from "@/lib/utils";
 import {
   OUTPUT_KIND_OPTIONS,
@@ -35,6 +31,7 @@ import {
   getWorkflowStep,
   briefSummary,
   canGenerateOutputs,
+  hasSeoProposal,
   isBriefApproved,
   isSeoApproved,
   isStageActivelyGenerating,
@@ -48,6 +45,13 @@ import {
   type ContentWorkflowStep,
   type GroundingRemedyId,
 } from "@/lib/content/contentTopicWorkflow";
+import {
+  buildEvidenceResearchFingerprint,
+  classifyEvidenceBlocker,
+  applyHumanVerifiedSeoClearance,
+  readResearchMetaFromSeoCurrent,
+  shouldAutoKickEvidenceResearch,
+} from "@/lib/content/contentEvidenceResearch";
 import type {
   ContentOutputKind,
   ContentOutputRow,
@@ -56,6 +60,15 @@ import type {
   KnowledgeRow,
 } from "@/types/knowledge";
 import { toast } from "sonner";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  GitBranch,
+  Loader2,
+  RefreshCw,
+} from "lucide-react";
 
 const STEPS: { id: ContentWorkflowStep; label: string }[] = [
   { id: "knowledge", label: "Knowledge" },
@@ -84,6 +97,10 @@ export function AdminContentTreePanel() {
   const topicsQuery = useAdminContentTopics();
   const createTopic = useAdminCreateContentTopic();
   const generateContent = useAdminGenerateContent();
+  const evidenceResearch = useContentEvidenceResearch();
+  const setKnowledgeStatus = useAdminSetKnowledgeStatus();
+  const upsertStage = useAdminUpsertContentTopicStage();
+  const autoKickRef = useRef<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const detailQuery = useAdminContentTopic(selectedId);
 
@@ -97,11 +114,27 @@ export function AdminContentTreePanel() {
   const outputs = detailQuery.data?.outputs ?? [];
   const knowledge = detailQuery.data?.knowledge;
   const sources = detailQuery.data?.sources ?? [];
+  const claims = detailQuery.data?.claims;
+  const claimRows = claims ?? [];
 
   const workflowStatus = (topic?.workflow_status ?? "seo_review") as ContentTopicWorkflowStatus;
   const seoEnv = normalizeStageEnvelope(topic?.seo);
   const briefEnv = normalizeStageEnvelope(topic?.brief);
   const briefApproved = isBriefApproved(briefEnv);
+  const researchMeta = readResearchMetaFromSeoCurrent(seoEnv.current);
+  const hasUsableSourceUrl = sources.some(
+    (s) => typeof s.url === "string" && /^https?:\/\//i.test(s.url.trim())
+  );
+  const seoReadiness = getSeoReadiness(seoEnv);
+  const researchFingerprint =
+    topic && knowledge
+      ? buildEvidenceResearchFingerprint({
+          topicId: topic.id,
+          knowledgeId: knowledge.id,
+          knowledgeGaps: seoReadiness.knowledgeGaps,
+          sourceUnavailable: seoReadiness.sourceUnavailable,
+        })
+      : null;
   const accessibleOutputs = useMemo(
     () => getAccessibleOutputs(outputs, briefApproved),
     [outputs, briefApproved]
@@ -137,8 +170,79 @@ export function AdminContentTreePanel() {
       : null;
 
   useEffect(() => {
+    // Only seed the expanded step when switching topics — do not yank the user
+    // between Knowledge and SEO on every workflow/status flicker.
     setExpandedStep(activeStep);
-  }, [topic?.id, activeStep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: topic change only
+  }, [topic?.id]);
+
+  useEffect(() => {
+    autoKickRef.current = null;
+  }, [topic?.id]);
+
+  useEffect(() => {
+    if (!topic || !knowledge || !researchFingerprint) return;
+    if (activelyGenerating || evidenceResearch.isPending) return;
+    if (!hasSeoProposal(seoEnv) || isSeoApproved(seoEnv)) return;
+    if (researchMeta.research_status === "human_verified") return;
+
+    const blocker = classifyEvidenceBlocker({
+      readiness: seoReadiness,
+      claims: claimRows,
+      hasUsableSourceUrl,
+    });
+    if (blocker !== "research_pack" && blocker !== "verify_only") return;
+    if (!shouldAutoKickEvidenceResearch({ fingerprint: researchFingerprint, meta: researchMeta })) {
+      return;
+    }
+    if (autoKickRef.current === researchFingerprint) return;
+    autoKickRef.current = researchFingerprint;
+
+    void evidenceResearch
+      .run({
+        topicId: topic.id,
+        knowledgeId: knowledge.id,
+        knowledgeTitle: knowledge.title ?? topic.title ?? "",
+        applicability: (topic.applicability_snapshot ?? knowledge.applicability) as
+          | Record<string, unknown>
+          | null,
+        seoEnvelope: seoEnv,
+        claims: claimRows,
+        hasUsableSourceUrl,
+        auto: true,
+      })
+      .then((result) => {
+        if (!result.ok && result.outcome === "skipped") {
+          autoKickRef.current = null;
+          return;
+        }
+        // Stay on SEO — Verify claims lives on the grounding banner. Do not bounce to Knowledge.
+        if (result.ok && result.outcome === "verify_only") {
+          setExpandedStep("seo");
+          toast.info("Tap Verify claims on the SEO panel");
+          return;
+        }
+        if (result.ok && result.outcome === "awaiting_human") {
+          setExpandedStep("seo");
+          toast.success("Evidence pack ready — tap Verify claims on the SEO panel");
+          return;
+        }
+        if (!result.ok && result.outcome === "failed") {
+          toast.error(result.reason ?? "Evidence research failed");
+        }
+      });
+    // Intentionally keyed on fingerprint + generation gate, not full envelope identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- seoEnv/claims captured when fingerprint changes
+  }, [
+    topic?.id,
+    knowledge?.id,
+    researchFingerprint,
+    activelyGenerating,
+    evidenceResearch.isPending,
+    hasUsableSourceUrl,
+    researchMeta.research_status,
+    researchMeta.research_fingerprint,
+  ]);
 
   const platformVerified = (verifiedQueue.data ?? []).filter(
     (k: KnowledgeRow) => k.scope === "platform"
@@ -174,14 +278,84 @@ export function AdminContentTreePanel() {
     );
   };
 
-  const handleGroundingRemedy = (remedy: GroundingRemedyId) => {
+  const handleVerifyClaims = () => {
+    if (!topic || !knowledge) return;
+    const wasPublished = knowledge.status === "published";
+    const clearedCurrent = applyHumanVerifiedSeoClearance(seoEnv.current, {
+      research_fingerprint: researchFingerprint ?? researchMeta.research_fingerprint,
+    });
+    const stampedSeo = {
+      ...seoEnv,
+      current: clearedCurrent,
+    };
+
+    setKnowledgeStatus.mutate(
+      { knowledgeId: knowledge.id, status: "verified" },
+      {
+        onSuccess: () => {
+          setExpandedStep("seo");
+          upsertStage.mutate(
+            { topicId: topic.id, seo: stampedSeo as unknown as Record<string, unknown> },
+            {
+              onSuccess: () => {
+                toast.success(
+                  wasPublished
+                    ? "Claims verified — Approve SEO below (re-publish Knowledge from Review if needed)"
+                    : "Claims verified — Approve SEO below"
+                );
+              },
+              onError: (e) =>
+                toast.error(
+                  e instanceof Error ? e.message : "Could not update SEO after verify"
+                ),
+            }
+          );
+        },
+        onError: (e) =>
+          toast.error(
+            e instanceof Error
+              ? e.message.includes("critic_required")
+                ? "Critic must pass before verifying claims — research again or run critic in Review"
+                : e.message
+              : "Verify failed"
+          ),
+      }
+    );
+  };
+
+  /** For topics already stuck on human_verified with leftover soft gaps after an earlier regen. */
+  const handleEnableApproveSeo = () => {
     if (!topic) return;
+    const cleared = applyHumanVerifiedSeoClearance(seoEnv.current, {
+      research_fingerprint: researchFingerprint ?? researchMeta.research_fingerprint,
+    });
+    upsertStage.mutate(
+      {
+        topicId: topic.id,
+        seo: { ...seoEnv, current: cleared } as unknown as Record<string, unknown>,
+      },
+      {
+        onSuccess: () => {
+          setExpandedStep("seo");
+          toast.success("Grounding cleared — Approve SEO below");
+        },
+        onError: (e) =>
+          toast.error(e instanceof Error ? e.message : "Could not clear SEO grounding"),
+      }
+    );
+  };
+
+  const handleGroundingRemedy = (remedy: GroundingRemedyId) => {
+    if (!topic || !knowledge) return;
     switch (remedy) {
       case "retrieve_source":
         generateContent.mutate(
           { topicId: topic.id, stage: "seo", regenerate: true },
           {
-            onSuccess: () => toast.success("SEO regenerated from sources"),
+            onSuccess: () => {
+              toast.success("SEO regenerated from sources");
+              autoKickRef.current = null;
+            },
             onError: (e) => toast.error(rpcErrorMessage(e, "Regeneration failed")),
           }
         );
@@ -191,12 +365,48 @@ export function AdminContentTreePanel() {
         setExpandedStep("knowledge");
         toast.info(
           remedy === "return_knowledge"
-            ? "Review linked Knowledge and its sources below."
-            : "Review or attach sources on the linked Knowledge item."
+            ? "Knowledge stage shows claims and sources. Prefer Verify claims on the SEO panel."
+            : "Edit or add the source URL under Knowledge → Sources, then retrieve source."
         );
         break;
       case "research_evidence":
-        toast.info("Knowledge research workflow — coming soon.");
+        void evidenceResearch
+          .run({
+            topicId: topic.id,
+            knowledgeId: knowledge.id,
+            knowledgeTitle: knowledge.title ?? topic.title ?? "",
+            applicability: (topic.applicability_snapshot ?? knowledge.applicability) as
+              | Record<string, unknown>
+              | null,
+            seoEnvelope: seoEnv,
+            claims: claimRows,
+            hasUsableSourceUrl,
+            force: true,
+          })
+          .then((result) => {
+            if (result.ok && result.outcome === "retrieve") {
+              setExpandedStep("knowledge");
+              toast.info("Add a reachable source URL, then research again");
+              return;
+            }
+            if (result.ok && result.outcome === "verify_only") {
+              setExpandedStep("seo");
+              toast.info("Tap Verify claims on the SEO panel");
+              return;
+            }
+            if (result.ok && result.outcome === "awaiting_human") {
+              setExpandedStep("seo");
+              toast.success("Evidence pack ready — tap Verify claims on the SEO panel");
+              return;
+            }
+            if (result.ok && result.outcome === "ready") {
+              toast.success("Grounding looks ready for Approve SEO");
+              return;
+            }
+            if (!result.ok && result.outcome === "failed") {
+              toast.error(result.reason ?? "Evidence research failed");
+            }
+          });
         break;
       default:
         break;
@@ -480,19 +690,58 @@ export function AdminContentTreePanel() {
                 }
               >
                 {step.id === "knowledge" && (
-                  <KnowledgeStage knowledge={knowledge} sources={sources} />
+                  <KnowledgeStage
+                    topicId={topic.id}
+                    knowledge={knowledge}
+                    sources={sources}
+                    claims={claimRows}
+                    highlightVerify={
+                      researchMeta.research_status === "awaiting_human" ||
+                      researchMeta.research_status === "verify_only" ||
+                      evidenceResearch.phase === "awaiting_human" ||
+                      evidenceResearch.phase === "verify_only"
+                    }
+                    onVerifyClaims={
+                      researchMeta.research_status === "human_verified"
+                        ? undefined
+                        : handleVerifyClaims
+                    }
+                    verifyBusy={setKnowledgeStatus.isPending || generateContent.isPending}
+                  />
                 )}
                 {step.id === "seo" && (
                   <SeoStage
                     topicId={topic.id}
                     envelope={seoEnv}
                     workflowStatus={workflowStatus}
-                    busy={isGenerating}
+                    busy={isGenerating || evidenceResearch.isPending}
                     applicability={topic.applicability_snapshot as Record<string, unknown>}
                     showResolvePanel={showResolvePanel}
                     onRemedy={handleGroundingRemedy}
                     sourceCount={sources.length}
                     groundingCheckedAt={seoGroundingCheckedAt ?? null}
+                    researchPhase={
+                      researchMeta.research_status === "human_verified"
+                        ? "idle"
+                        : evidenceResearch.phase
+                    }
+                    researchMeta={researchMeta}
+                    onVerifyClaims={
+                      researchMeta.research_status === "human_verified"
+                        ? undefined
+                        : handleVerifyClaims
+                    }
+                    onEnableApprove={
+                      researchMeta.research_status === "human_verified" &&
+                      !getSeoReadiness(seoEnv).canApprove
+                        ? handleEnableApproveSeo
+                        : undefined
+                    }
+                    verifyBusy={
+                      setKnowledgeStatus.isPending ||
+                      upsertStage.isPending ||
+                      generateContent.isPending
+                    }
                   />
                 )}
                 {step.id === "brief" && (
@@ -605,29 +854,131 @@ function StageSection({
 }
 
 function KnowledgeStage({
+  topicId: _topicId,
   knowledge,
   sources,
+  claims,
+  highlightVerify,
+  onVerifyClaims,
+  verifyBusy,
 }: {
+  topicId: string;
   knowledge: KnowledgeRow;
-  sources: { label: string | null; url: string | null; source_type: string }[];
+  sources: { id?: string; label: string | null; url: string | null; source_type: string }[];
+  claims: Array<Record<string, unknown>>;
+  highlightVerify?: boolean;
+  onVerifyClaims?: () => void;
+  verifyBusy?: boolean;
 }) {
+  const detail = useAdminKnowledgeDetail(knowledge.id);
+  const detailClaims = (detail.data?.claims ?? []) as Array<Record<string, unknown>>;
+  const mergedClaims = detailClaims.length > 0 ? detailClaims : claims;
+
+  const claimRows = mergedClaims
+    .filter((c) => typeof c.claim_text === "string" && String(c.claim_text).trim())
+    .map((c) => ({
+      id: typeof c.id === "string" ? c.id : undefined,
+      claim_text: String(c.claim_text),
+      category: typeof c.category === "string" ? c.category : undefined,
+      verification_status:
+        typeof c.verification_status === "string" ? c.verification_status : undefined,
+      source_id: typeof c.source_id === "string" ? c.source_id : null,
+      source_location:
+        typeof c.source_location === "string" ? c.source_location : null,
+    }));
+
+  const extractedCount = claimRows.filter(
+    (c) => String(c.verification_status ?? "extracted").toLowerCase() === "extracted"
+  ).length;
+  const unknownCount = claimRows.filter((c) => {
+    const s = String(c.verification_status ?? "").toLowerCase();
+    return s === "unknown" || s === "unresolved";
+  }).length;
+
+  // Always show when research is waiting on the human, even if claims are still loading.
+  const showVerify =
+    (Boolean(highlightVerify) || extractedCount > 0) && Boolean(onVerifyClaims);
+
   return (
-    <div className="space-y-2 text-sm">
+    <div className="space-y-3 text-sm">
       <p className="text-xs text-muted-foreground line-clamp-4">
         {knowledge.summary || knowledge.body || "—"}
       </p>
       <p className="text-xs font-mono text-muted-foreground">
         {knowledge.status} · v{knowledge.version}
       </p>
-      {sources.length > 0 && (
-        <ul className="text-xs space-y-1">
-          {sources.map((s, i) => (
-            <li key={i} className="text-muted-foreground">
-              {s.label || s.url || s.source_type}
-            </li>
-          ))}
-        </ul>
-      )}
+
+      <div
+        className={cn(
+          "space-y-2 rounded-lg px-2.5 py-2",
+          highlightVerify || extractedCount > 0 ? "bg-primary/10 shadow-sm" : "bg-transparent"
+        )}
+      >
+        {detail.isLoading && claimRows.length === 0 ? (
+          <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+            Loading claims…
+          </p>
+        ) : (
+          <KnowledgeClaimsList
+            claims={claimRows}
+            sources={sources
+              .filter((s): s is typeof s & { id: string } => typeof s.id === "string")
+              .map((s) => ({
+                id: s.id,
+                label: s.label,
+                url: s.url,
+              }))}
+            compact
+            emptyHint="No claims yet. Research missing evidence or extract claims in Review."
+          />
+        )}
+        {extractedCount > 0 ? (
+          <p className="text-[10px] text-muted-foreground">
+            {extractedCount} claim{extractedCount === 1 ? "" : "s"} waiting for human verify
+            {unknownCount > 0
+              ? ` · ${unknownCount} gap${unknownCount === 1 ? "" : "s"} stay unknown`
+              : ""}
+            . Verify promotes source-backed claims only.
+          </p>
+        ) : highlightVerify ? (
+          <p className="text-[10px] text-muted-foreground">
+            Confirm Knowledge claims to unlock Approve SEO. Unknown gaps stay unresolved.
+          </p>
+        ) : null}
+        {showVerify ? (
+          <Button
+            type="button"
+            size="sm"
+            className="shadow-primary-btn border-0"
+            disabled={verifyBusy}
+            onClick={onVerifyClaims}
+          >
+            {verifyBusy ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                Verifying…
+              </>
+            ) : (
+              "Verify claims"
+            )}
+          </Button>
+        ) : null}
+      </div>
+
+      <div className="space-y-1.5">
+        <p className="text-xs font-medium text-foreground">Sources</p>
+        <KnowledgeSourceUrlEditor
+          knowledgeId={knowledge.id}
+          compact
+          sources={sources.map((s) => ({
+            id: s.id,
+            title: s.label,
+            url: s.url,
+            label: s.label,
+          }))}
+        />
+      </div>
     </div>
   );
 }

@@ -21,6 +21,13 @@ const EMPTY_ENTITIES = {
   categories: [] as Array<{ id: string; name: string }>,
 };
 
+function toLocalISODate(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
 function makeContext(description: string, propertyId?: string): ChipSuggestionContext {
   return { description, propertyId };
 }
@@ -262,6 +269,29 @@ describe("extractChipsFromText — space detection", () => {
     );
     expect(kitchen).toBeDefined();
     expect(kitchen!.score).toBeGreaterThanOrEqual(0.8);
+    expect(kitchen!.metadata?.matchedExactName).toBe(true);
+  });
+
+  it("'kitchen' auto-apply metadata is only on the exact Kitchen space", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [
+        { id: "s-kitchen", name: "Kitchen", property_id: "p1" },
+        { id: "s-chefs", name: "Chef's Kitchen", property_id: "p1" },
+        { id: "s-terrace", name: "Kitchen Terrace", property_id: "p1" },
+        { id: "s-bar", name: "Bar", property_id: "p1" },
+      ],
+    };
+    const result = extractChipsFromText(
+      { description: "Fix the kitchen tap tomorrow, urgent", propertyId: "p1" },
+      entities
+    );
+    const exact = result.chips.filter(
+      (c) => c.type === "space" && c.metadata?.matchedExactName
+    );
+    expect(exact.map((c) => c.resolvedEntityId)).toEqual(["s-kitchen"]);
+    const bar = result.chips.find((c) => c.resolvedEntityId === "s-bar");
+    expect(bar?.metadata?.matchedExactName).toBeFalsy();
   });
 
   it("'at the bowling alley' → multi-word space detection", () => {
@@ -387,7 +417,7 @@ describe("extractChipsFromText — date detection", () => {
     const result = extract("Fix the door today");
     const dateChip = result.chips.find((c) => c.type === "date");
     expect(dateChip).toBeDefined();
-    const today = new Date().toISOString().split("T")[0];
+    const today = toLocalISODate(new Date());
     expect(dateChip!.value).toBe(today);
   });
 
@@ -397,7 +427,7 @@ describe("extractChipsFromText — date detection", () => {
     expect(dateChip).toBeDefined();
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
-    expect(dateChip!.value).toBe(tomorrow.toISOString().split("T")[0]);
+    expect(dateChip!.value).toBe(toLocalISODate(tomorrow));
   });
 
   it("'next week' → date chip ~7 days ahead", () => {
@@ -530,6 +560,21 @@ describe("extractChipsFromText — asset detection", () => {
     const assets = result.chips.filter((c) => c.type === "asset");
     expect(assets.length).toBeGreaterThanOrEqual(1);
     expect(assets[0].label.toLowerCase()).toContain("boiler");
+  });
+
+  it("named property asset → resolved entity ID", () => {
+    const result = extractChipsFromText(
+      { description: "Service the Daikin unit tomorrow", propertyId: "p1" },
+      {
+        ...EMPTY_ENTITIES,
+        assets: [{ id: "a-daikin", name: "Daikin" }],
+      }
+    );
+    const daikin = result.chips.find(
+      (c) => c.type === "asset" && c.resolvedEntityId === "a-daikin"
+    );
+    expect(daikin).toBeDefined();
+    expect(daikin!.blockingRequired).toBe(false);
   });
 
   it("'washing machine' → asset ghost chip", () => {

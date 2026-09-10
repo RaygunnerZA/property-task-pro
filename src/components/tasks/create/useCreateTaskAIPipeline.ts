@@ -43,7 +43,7 @@ const CHIP_TYPE_TO_SECTION: Record<string, string> = {
   compliance: "compliance",
 };
 
-const FACT_CHIP_TYPES: ChipType[] = ["person", "team", "space", "asset", "category", "date", "recurrence"];
+const FACT_CHIP_TYPES: ChipType[] = ["person", "team", "space", "asset", "category", "date", "recurrence", "priority"];
 
 // ─── Public interface ─────────────────────────────────────────────────────────
 

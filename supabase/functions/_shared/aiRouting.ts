@@ -92,6 +92,7 @@ export type Capability =
   | "knowledge_critique"
   | "knowledge_guidance_draft"
   | "knowledge_claim_extract"
+  | "knowledge_evidence_pack"
   | "knowledge_gap_research"
   | "plan_label_extraction"
   | "content_seo_draft"
@@ -179,6 +180,12 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   knowledge_claim_extract: {
     functionName: "knowledge-extract-claims",
     promptVersion: "knowledge-extract-claims-v1",
+    requires: { structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  knowledge_evidence_pack: {
+    functionName: "knowledge-evidence-pack",
+    promptVersion: "knowledge-evidence-pack-v1",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },

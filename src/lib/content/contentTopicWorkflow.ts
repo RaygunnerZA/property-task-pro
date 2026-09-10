@@ -634,15 +634,16 @@ export function getGroundingRemedies(readiness: SeoReadiness): {
         },
         {
           id: "return_knowledge",
-          label: "Return to Knowledge",
+          label: "Open Knowledge",
           description: "Review verified Knowledge and its linked sources before continuing SEO.",
           available: true,
         },
         {
           id: "research_evidence",
           label: "Research missing evidence",
-          description: "Use Filla Knowledge research to fill gaps — coming soon.",
-          available: false,
+          description:
+            "Build one grounded evidence pack on the linked Knowledge row, then run critic. You still verify claims before Approve SEO.",
+          available: true,
         },
       ],
     };
@@ -658,13 +659,14 @@ export function getGroundingRemedies(readiness: SeoReadiness): {
         {
           id: "research_evidence",
           label: "Research missing evidence",
-          description: "Investigate gaps and add verified facts to Knowledge — coming soon.",
-          available: false,
+          description:
+            "Fetch sources, propose claims on the linked Knowledge row, and run critic. Never auto-verifies or auto-approves SEO.",
+          available: true,
         },
         {
           id: "return_knowledge",
-          label: "Return to Knowledge",
-          description: "Update or verify upstream Knowledge, then regenerate or edit the SEO proposal.",
+          label: "Open Knowledge",
+          description: "Open the Knowledge stage to review claims and tap Verify claims.",
           available: true,
         },
         {
@@ -778,10 +780,19 @@ export function appendStageVersion(
     provenance,
     payload,
   };
+  const previous = envelope.current ?? {};
+  const current: Record<string, unknown> = { ...payload };
+  for (const [key, value] of Object.entries(previous)) {
+    if (!key.startsWith("research_")) continue;
+    if (!(key in current)) current[key] = value;
+  }
+  if (current.research_status === "running") {
+    current.research_status = "idle";
+  }
   return {
     ...envelope,
     approval_status: "pending",
-    current: payload,
+    current,
     versions: [...(envelope.versions ?? []), version],
     last_error: undefined,
   };

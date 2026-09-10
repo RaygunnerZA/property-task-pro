@@ -126,6 +126,10 @@ type CalendarTaskChipProps = {
   isDragOverlay?: boolean;
   /** Single-line chip while click-and-hold / drag so morning ↔ afternoon halves are reachable. */
   singleLine?: boolean;
+  /** Solid fill — used when chips fan/stack so text cannot ghost through. */
+  opaque?: boolean;
+  /** Deeper neo shadow while a hand is expanded on hover. */
+  elevated?: boolean;
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
 };
@@ -137,6 +141,8 @@ function CalendarTaskChip({
   onTaskClick,
   isDragOverlay,
   singleLine = false,
+  opaque = false,
+  elevated = false,
   onHoldStart,
   onHoldEnd,
 }: CalendarTaskChipProps) {
@@ -163,7 +169,9 @@ function CalendarTaskChip({
     disabled: isDragOverlay,
   });
 
-  const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat);
+  const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat, {
+    opaque,
+  });
   const title = task.title || "Task";
 
   return (
@@ -187,11 +195,13 @@ function CalendarTaskChip({
       }}
       className={cn(
         compact ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
-        "transition-[height,min-height,opacity] duration-150 ease-out",
+        "transition-[height,min-height,opacity,box-shadow] duration-200 ease-out",
         isSeriesColor && "pl-2",
         isRepeat &&
           !isSeriesColor &&
           "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
+        elevated &&
+          "shadow-[0_12px_28px_-6px_rgba(0,0,0,0.32),2px_2px_2px_0px_rgba(0,0,0,0.18),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -278,6 +288,151 @@ function DayDropZone({ dateKey, period, isDragging }: DayDropZoneProps) {
   );
 }
 
+const HAND_CHIP_HEIGHT = 42;
+const HAND_CHIP_COMPACT_HEIGHT = 22;
+const HAND_EXPANDED_GAP = 4;
+
+function handChipHeight(placement: CalendarTaskPlacement): number {
+  return placement.source === "repeat" ? HAND_CHIP_COMPACT_HEIGHT : HAND_CHIP_HEIGHT;
+}
+
+type PeriodHandGroup = {
+  period: CalendarTaskPlacement["period"];
+  items: CalendarTaskPlacement[];
+};
+
+/** Morning → afternoon → untimed groups (empty groups omitted). */
+function groupPlacementsIntoHands(
+  placements: CalendarTaskPlacement[]
+): PeriodHandGroup[] {
+  const buckets: PeriodHandGroup[] = [
+    { period: "morning", items: [] },
+    { period: "afternoon", items: [] },
+    { period: "untimed", items: [] },
+  ];
+  for (const placement of placements) {
+    const bucket = buckets.find((b) => b.period === placement.period);
+    bucket?.items.push(placement);
+  }
+  return buckets.filter((b) => b.items.length > 0);
+}
+
+type CalendarEventHandProps = {
+  items: CalendarTaskPlacement[];
+  propertyMap: Map<string, { nickname?: string; name?: string; address?: string }>;
+  selectedTaskId?: string | null;
+  onTaskClick?: (taskId: string) => void;
+  isDragging: boolean;
+  onExpandedChange?: (expanded: boolean) => void;
+};
+
+/**
+ * Same-period multi-event layout: opaque chips fanned horizontally inside the cell;
+ * on hover, deal into a vertical stack centred on the rest height (may spill above/below).
+ */
+function CalendarEventHand({
+  items,
+  propertyMap,
+  selectedTaskId,
+  onTaskClick,
+  isDragging,
+  onExpandedChange,
+}: CalendarEventHandProps) {
+  const [expanded, setExpanded] = useState(false);
+  const n = items.length;
+  const restHeight = Math.max(...items.map(handChipHeight));
+  // Keep every card inside the cell: total horizontal peek ≤ 36% of width.
+  const peekFraction = Math.min(0.14, 0.36 / Math.max(n - 1, 1));
+  const fanWidthPercent = 100 - (n - 1) * peekFraction * 100;
+
+  const heights = items.map(handChipHeight);
+  const stackTotal =
+    heights.reduce((sum, h) => sum + h, 0) + HAND_EXPANDED_GAP * Math.max(n - 1, 0);
+  const stackOrigin = (restHeight - stackTotal) / 2;
+
+  const setExpandedSafe = useCallback(
+    (next: boolean) => {
+      if (isDragging) {
+        setExpanded(false);
+        onExpandedChange?.(false);
+        return;
+      }
+      setExpanded(next);
+      onExpandedChange?.(next);
+    },
+    [isDragging, onExpandedChange]
+  );
+
+  useEffect(() => {
+    if (isDragging) setExpandedSafe(false);
+  }, [isDragging, setExpandedSafe]);
+
+  useEffect(
+    () => () => {
+      onExpandedChange?.(false);
+    },
+    [onExpandedChange]
+  );
+
+  return (
+    <div
+      className={cn(
+        "relative w-full",
+        expanded ? "z-40" : "z-[1]"
+      )}
+      style={{ height: restHeight }}
+      onMouseEnter={() => setExpandedSafe(true)}
+      onMouseLeave={() => setExpandedSafe(false)}
+      onFocusCapture={() => setExpandedSafe(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setExpandedSafe(false);
+        }
+      }}
+    >
+      {items.map((placement, index) => {
+        let top = 0;
+        if (expanded) {
+          top = stackOrigin;
+          for (let i = 0; i < index; i++) {
+            top += heights[i] + HAND_EXPANDED_GAP;
+          }
+        }
+        return (
+          <div
+            key={placement.id}
+            className="absolute transition-[top,left,width,transform,box-shadow] duration-200 ease-out"
+            style={
+              expanded
+                ? {
+                    top,
+                    left: 0,
+                    width: "100%",
+                    zIndex: 20 + index,
+                  }
+                : {
+                    top: 0,
+                    left: `${index * peekFraction * 100}%`,
+                    width: `${fanWidthPercent}%`,
+                    zIndex: index + 1,
+                  }
+            }
+          >
+            <CalendarTaskChip
+              placement={placement}
+              propertyMap={propertyMap}
+              selectedTaskId={selectedTaskId}
+              onTaskClick={onTaskClick}
+              opaque
+              elevated={expanded}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 type CalendarDayCellProps = {
   date: Date;
   month: Date;
@@ -316,22 +471,41 @@ function CalendarDayCell({
   const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
   const isTodayDate = isToday(date);
   const [holding, setHolding] = useState(false);
+  const [handExpanded, setHandExpanded] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
+  const handExpandCountRef = useRef(0);
+
+  const onHandExpandedChange = useCallback((expanded: boolean) => {
+    handExpandCountRef.current = Math.max(
+      0,
+      handExpandCountRef.current + (expanded ? 1 : -1)
+    );
+    setHandExpanded(handExpandCountRef.current > 0);
+  }, []);
 
   const rowMinHeight = compact ? CALENDAR_ROW_MINIMAL_PX : CALENDAR_ROW_EXPANDED_PX;
   const singleEvent = placements.length === 1;
   const occupied = placements.length > 0;
-  const stacked = placements.length > 1;
   const dateLabel = format(date, "MMMM d");
+  const hands = useMemo(() => groupPlacementsIntoHands(placements), [placements]);
+  const hasMultiHand = hands.some((hand) => hand.items.length > 1);
 
   /**
-   * Expanded weeks keep chips in their morning/afternoon half at rest.
-   * Compact afternoon-only weeks pin to the bottom so the unused morning
-   * half collapses with the shorter row. Click-and-hold / drag still
-   * collapses a single chip to one line so the other drop zone is reachable.
+   * Half-day pins (morning → top, afternoon → bottom) only for single chips per
+   * period. Same-period multiples use the opaque hand fan instead.
    */
   const collapseForPeriodMove =
     singleEvent && ((compact && holding) || isDragging);
+
+  const morningCount = placements.filter((p) => p.period === "morning").length;
+  const afternoonCount = placements.filter((p) => p.period === "afternoon").length;
+  const hasUntimed = placements.some((p) => p.period === "untimed");
+  const useHalfDayPins =
+    !compact &&
+    !hasMultiHand &&
+    !hasUntimed &&
+    morningCount <= 1 &&
+    afternoonCount <= 1;
 
   const clearHoldTimer = useCallback(() => {
     if (holdTimerRef.current != null) {
@@ -373,7 +547,9 @@ function CalendarDayCell({
         fillRow ? "h-full pb-1.5" : "h-auto pb-0.5",
         !inMonth && "bg-muted/10 text-muted-foreground/50",
         isDragging && "hover:bg-muted/20",
-        isWeekendColumn && "opacity-50"
+        isWeekendColumn && "opacity-50",
+        // Let hover stacks paint above neighbouring days.
+        handExpanded && "z-30 overflow-visible"
       )}
       style={{ minHeight: isDragging ? CALENDAR_ROW_EXPANDED_PX : rowMinHeight }}
       onDoubleClick={() => {
@@ -421,7 +597,8 @@ function CalendarDayCell({
       <div
         className={cn(
           "relative flex flex-col",
-          fillRow ? "min-h-0 flex-1" : "min-h-[22px]"
+          fillRow ? "min-h-0 flex-1" : "min-h-[22px]",
+          handExpanded && "overflow-visible"
         )}
       >
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
@@ -430,24 +607,31 @@ function CalendarDayCell({
           className={cn(
             "relative z-[1] flex flex-col gap-0.5",
             fillRow ? "min-h-0 flex-1" : "min-h-0",
-            // Scroll stacked days with the wheel; never while dragging so drop zones stay hittable.
-            stacked && !isDragging
-              ? "overflow-y-auto overscroll-contain scrollbar-vt-teal"
-              : "overflow-hidden",
+            handExpanded ? "overflow-visible" : "overflow-hidden",
             collapseForPeriodMove && fillRow && "h-full",
             // Source chips must not steal the drop target under the pointer.
             isDragging && "pointer-events-none"
           )}
-          onWheel={(e) => {
-            if (!stacked || isDragging) return;
-            const el = e.currentTarget;
-            if (el.scrollHeight > el.clientHeight) e.stopPropagation();
-          }}
         >
-          {placements.map((placement) => {
+          {hands.map((hand) => {
+            if (hand.items.length > 1) {
+              return (
+                <CalendarEventHand
+                  key={`${dateKey}-${hand.period}`}
+                  items={hand.items}
+                  propertyMap={propertyMap}
+                  selectedTaskId={selectedTaskId}
+                  onTaskClick={onTaskClick}
+                  isDragging={isDragging}
+                  onExpandedChange={onHandExpandedChange}
+                />
+              );
+            }
+
+            const placement = hand.items[0];
             const period = placement.period;
             const pinExpanded =
-              !compact && (period === "morning" || period === "afternoon");
+              useHalfDayPins && (period === "morning" || period === "afternoon");
             const pinHold =
               collapseForPeriodMove && (period === "morning" || period === "afternoon");
             const pinAfternoonCompact =
@@ -460,7 +644,6 @@ function CalendarDayCell({
                   pinAbsolute && "absolute inset-x-0 z-[1]",
                   pinAbsolute && period === "morning" && "top-0",
                   pinAbsolute && period === "afternoon" && "bottom-0",
-                  // Keep the chip in normal flow so auto-height weeks still measure it.
                   pinAfternoonCompact && "mt-auto"
                 )}
               >
@@ -627,7 +810,7 @@ export function CalendarMonthGrid({
           ))}
         </div>
         <div
-          className="grid shrink-0 grid-cols-7"
+          className="grid shrink-0 grid-cols-7 overflow-visible"
           style={{ gridTemplateRows }}
         >
           {flatDays.map((date, index) => {

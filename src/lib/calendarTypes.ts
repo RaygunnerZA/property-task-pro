@@ -83,6 +83,26 @@ export function calendarTypeColorWithAlpha(hex: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Mix two #RRGGBB colours; `withAmount` is how much of `withHex` (0–1). */
+export function mixHexColors(hex: string, withHex: string, withAmount: number): string {
+  const parse = (value: string) => {
+    const n = value.replace("#", "");
+    if (n.length !== 6) return null;
+    return {
+      r: parseInt(n.slice(0, 2), 16),
+      g: parseInt(n.slice(2, 4), 16),
+      b: parseInt(n.slice(4, 6), 16),
+    };
+  };
+  const a = parse(hex);
+  const b = parse(withHex);
+  if (!a || !b) return hex;
+  const t = Math.min(1, Math.max(0, withAmount));
+  const channel = (x: number, y: number) => Math.round(x * (1 - t) + y * t);
+  const toHex = (n: number) => n.toString(16).padStart(2, "0");
+  return `#${toHex(channel(a.r, b.r))}${toHex(channel(a.g, b.g))}${toHex(channel(a.b, b.b))}`;
+}
+
 export function taskMatchesCalendarFilters(
   task: Parameters<typeof inferCalendarType>[0],
   selected: Set<CalendarTypeId>

@@ -452,6 +452,9 @@ verify_jwt = true
 [functions.knowledge-extract-claims]
 verify_jwt = true
 
+[functions.knowledge-evidence-pack]
+verify_jwt = true
+
 [functions.knowledge-gap-research]
 verify_jwt = true
 

@@ -16,6 +16,7 @@ import { useSpaces } from './useSpaces';
 import { useTeams } from './useTeams';
 import { useOrgMembers } from './useOrgMembers';
 import { useCategories } from './useCategories';
+import { useAssetsQuery } from './useAssetsQuery';
 import { useOrgScope } from '@/hooks/useOrgScope';
 import { extractChipsSync, generateChipSuggestions } from '@/services/ai/chipSuggestionEngine';
 import {
@@ -54,6 +55,7 @@ export function useChipSuggestions(
   const { teams } = useTeams();
   const { members } = useOrgMembers();
   const { categories } = useCategories();
+  const { data: propertyAssets } = useAssetsQuery(context.propertyId);
 
   // Icon enrichment state (Phase 2 only)
   const [suggestedIcon, setSuggestedIcon] = useState<string | undefined>();
@@ -67,6 +69,9 @@ export function useChipSuggestions(
   const membersSerial = members?.map(m => `${m.id}|${m.display_name}`).join(',') ?? '';
   const teamsSerial   = teams?.map(t => `${t.id}|${t.name ?? ''}`).join(',') ?? '';
   const catSerial     = categories?.map(c => `${c.id}|${c.name}`).join(',') ?? '';
+  const assetsSerial  = (propertyAssets ?? [])
+    .map((a) => `${a.id ?? ''}|${a.name ?? ''}`)
+    .join(',');
 
   const entities = useMemo(() => {
     return {
@@ -74,9 +79,12 @@ export function useChipSuggestions(
       members: (members ?? []).map(m => ({ id: m.id, user_id: m.user_id, display_name: m.display_name })),
       teams: (teams ?? []).map(t => ({ id: t.id, name: t.name ?? '' })),
       categories: (categories ?? []).map(c => ({ id: c.id, name: c.name })),
+      assets: (propertyAssets ?? []).flatMap((a) =>
+        a.id && a.name ? [{ id: a.id, name: a.name }] : []
+      ),
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spacesSerial, membersSerial, teamsSerial, catSerial]);
+  }, [spacesSerial, membersSerial, teamsSerial, catSerial, assetsSerial]);
 
   // ── Phase 1: synchronous chip extraction (instant, no debounce) ──────────
   const syncResult = useMemo(() => {

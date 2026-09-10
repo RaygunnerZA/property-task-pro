@@ -25,7 +25,16 @@ interface AISuggestionChipsProps {
   className?: string;
 }
 
-const FACT_CHIP_TYPES: ChipType[] = ['person', 'team', 'space', 'asset', 'category', 'date', 'recurrence'];
+const FACT_CHIP_TYPES: ChipType[] = [
+  'person',
+  'team',
+  'space',
+  'asset',
+  'category',
+  'date',
+  'recurrence',
+  'priority',
+];
 
 function verbLabel(chip: SuggestedChip): string {
   const raw = chip.value || chip.label;

@@ -105,10 +105,8 @@ export function isFuzzyMatch(a: string, b: string, maxDistance = 2): boolean {
     if (longer.startsWith(shorter)) return true;
   }
 
-  // Below 3 characters, Levenshtein distance is too small to discriminate
-  // (e.g. distance("do","door") = 2 ≤ default maxDistance of 2). Require an
-  // exact match — already handled above — so reject here.
-  if (shorter.length < 3) return false;
+  // 3-letter pairs are too dense for distance 2 ("tap" ≈ "bar"). Exact only.
+  if (shorter.length <= 3) return false;
 
   return levenshteinDistance(na, nb) <= maxDistance;
 }

@@ -25,6 +25,10 @@ import {
   type ContentStageEnvelope,
   type GroundingRemedyId,
 } from "@/lib/content/contentTopicWorkflow";
+import type {
+  ContentEvidenceResearchMeta,
+  EvidenceResearchPhase,
+} from "@/lib/content/contentEvidenceResearch";
 import type { ContentTopicWorkflowStatus } from "@/types/knowledge";
 import { toast } from "sonner";
 
@@ -212,6 +216,11 @@ export function SeoStage({
   onRemedy,
   sourceCount = 0,
   groundingCheckedAt,
+  researchPhase,
+  researchMeta,
+  onVerifyClaims,
+  verifyBusy,
+  onEnableApprove,
 }: {
   topicId: string;
   envelope: ContentStageEnvelope;
@@ -222,6 +231,11 @@ export function SeoStage({
   onRemedy?: (id: GroundingRemedyId) => void;
   sourceCount?: number;
   groundingCheckedAt?: string | null;
+  researchPhase?: EvidenceResearchPhase | null;
+  researchMeta?: ContentEvidenceResearchMeta | null;
+  onVerifyClaims?: () => void;
+  verifyBusy?: boolean;
+  onEnableApprove?: () => void;
 }) {
   const generate = useAdminGenerateContent();
   const approve = useAdminApproveContentTopicSeo();
@@ -366,7 +380,16 @@ export function SeoStage({
       )}
 
       {showResolvePanel && onRemedy && !groundingHealthy && (
-        <AdminContentResolveGrounding readiness={readiness} busy={busy} onRemedy={onRemedy} />
+        <AdminContentResolveGrounding
+          readiness={readiness}
+          busy={busy}
+          onRemedy={onRemedy}
+          researchPhase={researchPhase}
+          researchMeta={researchMeta}
+          onVerifyClaims={onVerifyClaims}
+          onEnableApprove={onEnableApprove}
+          verifyBusy={verifyBusy}
+        />
       )}
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
