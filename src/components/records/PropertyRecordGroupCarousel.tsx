@@ -1,4 +1,3 @@
-import { FolderOpen } from "lucide-react";
 import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
 import { RecordGroupCard } from "@/components/records/RecordGroupCard";
 import {
@@ -58,27 +57,6 @@ export function PropertyRecordGroupCarousel({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <div
-            className="rounded-xl bg-primary p-2.5"
-            style={{
-              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-            }}
-          >
-            <FolderOpen className="h-5 w-5 text-white" aria-hidden />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">Your Cabinet</h2>
-        </div>
-        <img
-          src="/records/cabinet-storage.png?v=2"
-          alt=""
-          width={280}
-          height={300}
-          decoding="async"
-          className="h-14 w-auto shrink-0 object-contain sm:h-16"
-        />
-      </div>
       <p className="text-sm text-muted-foreground">
         Browse by category — select a group to focus the directory below.
       </p>

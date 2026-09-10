@@ -8,6 +8,7 @@ import {
   ClipboardCheck,
   FileText,
   FolderOpen,
+  LayoutGrid,
   Shield,
   ShieldCheck,
   Tag,
@@ -30,12 +31,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
-import {
-  WorkspaceSectionHeading,
-  WorkspaceTabList,
-  WorkspaceTabTrigger,
-} from "@/components/property-workspace";
-import fillaAiIcon from "@/assets/filla-ai.svg";
+import { WorkspaceSectionHeading } from "@/components/property-workspace";
+import { IconButton } from "@/components/ui/IconButton";
 import { cn } from "@/lib/utils";
 import { DocumentGrid } from "@/components/properties/DocumentGrid";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
@@ -53,6 +50,7 @@ import {
 } from "./complianceRecordModel";
 import { PropertyRecordGroupCarousel } from "./PropertyRecordGroupCarousel";
 import { AllRecordsDirectory } from "./AllRecordsDirectory";
+import { RecordsSearchField } from "./RecordsSearchField";
 import type { RecordGroupId } from "@/lib/records/recordGroups";
 
 const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
@@ -95,6 +93,8 @@ export type PropertyRecordsTabProps = {
   onRecordsViewChange: (next: RecordsView) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
   extraComplianceRecords?: ComplianceRecord[];
+  recordsSearch?: string;
+  onRecordsSearchChange?: (value: string) => void;
 };
 
 function docExpiryState(d: PropertyDocument): "overdue" | "expiring" | "none" {
@@ -118,6 +118,8 @@ export function PropertyRecordsTab({
   onRecordsViewChange,
   onOpenIntake,
   extraComplianceRecords = [],
+  recordsSearch: recordsSearchProp,
+  onRecordsSearchChange,
 }: PropertyRecordsTabProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -126,7 +128,9 @@ export function PropertyRecordsTab({
   const { toast } = useToast();
   const legacyDocFilter = searchParams.get("filter");
 
-  const [recordsSearch, setRecordsSearch] = useState("");
+  const [internalRecordsSearch, setInternalRecordsSearch] = useState("");
+  const recordsSearch = recordsSearchProp ?? internalRecordsSearch;
+  const setRecordsSearch = onRecordsSearchChange ?? setInternalRecordsSearch;
   const [compliancePropertyFilter, setCompliancePropertyFilter] = useState<string>("all");
   const [complianceTypeFilter, setComplianceTypeFilter] = useState<string>("all");
   const [complianceExpiryRange, setComplianceExpiryRange] = useState<ExpiryRange>("all");
@@ -370,7 +374,6 @@ export function PropertyRecordsTab({
   const attentionCount = attentionCompliance.length + attentionDocs.length;
   const attentionRequested =
     recordsView === "expiring" || recordsView === "overdue" || recordsView === "missing";
-  const showRecordsOperationalView = attentionCount > 0 || attentionRequested;
 
   const complianceTypeOptions = useMemo(() => {
     const typeSet = new Set<string>();
@@ -682,29 +685,13 @@ export function PropertyRecordsTab({
         </p>
       )}
 
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pb-4">
-        <div className="min-w-0">
-          <div className="flex min-w-0 w-full items-center gap-2 overflow-hidden rounded-card bg-card/70 px-3 shadow-search-pressed">
-            <img
-              src={fillaAiIcon}
-              alt=""
-              aria-hidden
-              className="h-4 w-4 shrink-0 object-contain opacity-80"
-              width={16}
-              height={16}
-            />
-            <input
-              type="search"
-              value={recordsSearch}
-              onChange={(event) => setRecordsSearch(event.target.value)}
-              placeholder="Search records, certificates, or types"
-              className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground/70"
-              aria-label="Search records"
-            />
-          </div>
+      <div className="min-h-0 flex-1 overflow-y-auto pb-4">
+        <div className="mb-5 block min-w-0 sm:mb-0 sm:hidden layout:mb-5 layout:block">
+          <RecordsSearchField value={recordsSearch} onChange={setRecordsSearch} />
         </div>
 
-        <FilterBar
+        <div className="space-y-5">
+          <FilterBar
           primaryOptions={recordsPrimaryOptions}
           secondaryGroups={recordsSecondaryGroups}
           selectedFilters={recordsSelectedFilters}
@@ -715,6 +702,36 @@ export function PropertyRecordsTab({
           collapseInteractionRootRef={panelRef}
           showClearButton={recordsHasExtraFilters}
           onClearAll={resetRecordsFilters}
+          rightElement={
+            <div className="flex items-center gap-1" role="group" aria-label="Records view">
+              <IconButton
+                role="filter-toggle"
+                size={24}
+                active={workTab === "groups"}
+                onClick={() => setWorkTab("groups")}
+                icon={<LayoutGrid className="h-3.5 w-3.5" />}
+                tooltip="By group"
+                aria-label="By group"
+              />
+              <IconButton
+                role="filter-toggle"
+                size={24}
+                active={workTab === "attention"}
+                onClick={() => setWorkTab("attention")}
+                icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                tooltip={
+                  attentionCount > 0
+                    ? `Needs attention (${attentionCount})`
+                    : "Needs attention"
+                }
+                aria-label={
+                  attentionCount > 0
+                    ? `Needs attention, ${attentionCount}`
+                    : "Needs attention"
+                }
+              />
+            </div>
+          }
         />
 
         {!scopedPropertyId && (
@@ -724,24 +741,7 @@ export function PropertyRecordsTab({
           </p>
         )}
 
-        {showRecordsOperationalView ? (
-          <div>
-            <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-            <WorkspaceTabList>
-              <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
-                By group
-              </WorkspaceTabTrigger>
-              <WorkspaceTabTrigger
-                selected={workTab === "attention"}
-                onClick={() => setWorkTab("attention")}
-              >
-                Needs attention ({attentionCount})
-              </WorkspaceTabTrigger>
-            </WorkspaceTabList>
-          </div>
-        ) : null}
-
-        {!(showRecordsOperationalView && workTab === "attention") ? (
+        {workTab !== "attention" ? (
           <div className="space-y-4">
             <PropertyRecordGroupCarousel
               documents={documents}
@@ -921,6 +921,7 @@ export function PropertyRecordsTab({
             )}
           </div>
         )}
+        </div>
       </div>
 
       <ComplianceDetailDrawer

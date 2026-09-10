@@ -130,6 +130,9 @@ type CalendarTaskChipProps = {
   opaque?: boolean;
   /** Deeper neo shadow while a hand is expanded on hover. */
   elevated?: boolean;
+  /** Position in a same-period hand (0 = furthest back / earliest). */
+  stackIndex?: number;
+  stackCount?: number;
   onHoldStart?: () => void;
   onHoldEnd?: () => void;
 };
@@ -143,6 +146,8 @@ function CalendarTaskChip({
   singleLine = false,
   opaque = false,
   elevated = false,
+  stackIndex = 0,
+  stackCount = 1,
   onHoldStart,
   onHoldEnd,
 }: CalendarTaskChipProps) {
@@ -171,6 +176,8 @@ function CalendarTaskChip({
 
   const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat, {
     opaque,
+    stackIndex,
+    stackCount,
   });
   const title = task.title || "Task";
 
@@ -178,10 +185,7 @@ function CalendarTaskChip({
     <button
       ref={isDragOverlay ? undefined : setNodeRef}
       type="button"
-      style={{
-        backgroundColor: chipBackground,
-        ...(isSeriesColor ? { borderLeft: `3px solid ${baseColor}` } : undefined),
-      }}
+      style={{ backgroundColor: chipBackground }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
@@ -196,12 +200,10 @@ function CalendarTaskChip({
       className={cn(
         compact ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
         "transition-[height,min-height,opacity,box-shadow] duration-200 ease-out",
-        isSeriesColor && "pl-2",
         isRepeat &&
-          !isSeriesColor &&
           "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
         elevated &&
-          "shadow-[0_12px_28px_-6px_rgba(0,0,0,0.32),2px_2px_2px_0px_rgba(0,0,0,0.18),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]",
+          "shadow-[3px_4px_8px_-2px_rgba(0,0,0,0.18),1px_1px_1px_0px_rgba(0,0,0,0.1),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -290,7 +292,7 @@ function DayDropZone({ dateKey, period, isDragging }: DayDropZoneProps) {
 
 const HAND_CHIP_HEIGHT = 42;
 const HAND_CHIP_COMPACT_HEIGHT = 22;
-const HAND_EXPANDED_GAP = 4;
+const HAND_EXPANDED_GAP = 2;
 
 function handChipHeight(placement: CalendarTaskPlacement): number {
   return placement.source === "repeat" ? HAND_CHIP_COMPACT_HEIGHT : HAND_CHIP_HEIGHT;
@@ -425,6 +427,8 @@ function CalendarEventHand({
               onTaskClick={onTaskClick}
               opaque
               elevated={expanded}
+              stackIndex={index}
+              stackCount={n}
             />
           </div>
         );
@@ -578,7 +582,9 @@ function CalendarDayCell({
         }
         title={occupied && onCreateForDate ? "Create task" : undefined}
         className={cn(
-          "relative z-[2] -mx-px inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+          "relative -mx-px inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+          // Below expanded hands so stacked cards aren't clipped by the date badge.
+          handExpanded ? "z-[1]" : "z-[2]",
           compact ? "h-5 w-5" : "h-6 w-6"
         )}
       >
@@ -598,16 +604,17 @@ function CalendarDayCell({
         className={cn(
           "relative flex flex-col",
           fillRow ? "min-h-0 flex-1" : "min-h-[22px]",
-          handExpanded && "overflow-visible"
+          // Above the date numeral while a hand is dealt out on hover.
+          handExpanded ? "z-20 overflow-visible" : "z-[1]"
         )}
       >
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
         <div
           className={cn(
-            "relative z-[1] flex flex-col gap-0.5",
+            "relative flex flex-col gap-0.5",
             fillRow ? "min-h-0 flex-1" : "min-h-0",
-            handExpanded ? "overflow-visible" : "overflow-hidden",
+            handExpanded ? "z-20 overflow-visible" : "z-[1] overflow-hidden",
             collapseForPeriodMove && fillRow && "h-full",
             // Source chips must not steal the drop target under the pointer.
             isDragging && "pointer-events-none"

@@ -33,17 +33,27 @@ describe("calendarSeriesColor", () => {
     expect(isSeriesColor).toBe(false);
   });
 
-  it("anchor and repeat occurrences share hue with different alpha", () => {
+  it("anchor and repeat occurrences share the same series fill", () => {
     const task = {
       id: "weekly-2",
       repeat_rule: { type: "weekly", interval: 1 },
     };
     const anchor = resolveCalendarChipBackground(task, false);
     const repeat = resolveCalendarChipBackground(task, true);
-    expect(anchor).toMatch(/^rgba\(/);
-    expect(repeat).toMatch(/^rgba\(/);
-    expect(anchor).not.toBe(repeat);
-    expect(anchor.slice(0, 15)).toBe(repeat.slice(0, 15));
+    expect(anchor).toBe(repeat);
+    expect(
+      resolveCalendarChipBackground(task, false, {
+        opaque: true,
+        stackIndex: 0,
+        stackCount: 2,
+      })
+    ).toBe(
+      resolveCalendarChipBackground(task, true, {
+        opaque: true,
+        stackIndex: 1,
+        stackCount: 2,
+      })
+    );
   });
 
   it("opaque stacked chips use solid hex so text cannot ghost through", () => {
@@ -51,5 +61,46 @@ describe("calendarSeriesColor", () => {
     const fill = resolveCalendarChipBackground(task, false, { opaque: true });
     expect(fill).toMatch(/^#[0-9a-fA-F]{6}$/);
     expect(fill).not.toMatch(/^rgba\(/);
+  });
+
+  it("one-off chips tint by priority", () => {
+    const urgent = resolveCalendarChipColor({
+      id: "u1",
+      title: "Burst pipe",
+      priority: "urgent",
+    });
+    const high = resolveCalendarChipColor({
+      id: "h1",
+      title: "Service boiler",
+      priority: "high",
+    });
+    expect(urgent.isSeriesColor).toBe(false);
+    expect(urgent.baseColor).toBe("#EB6834");
+    expect(high.baseColor).toBe("#E8A04A");
+  });
+
+  it("darkens cards further back in a same-period hand", () => {
+    const task = { id: "stack-1", title: "Same priority", priority: "high" };
+    const back = resolveCalendarChipBackground(task, false, {
+      opaque: true,
+      stackIndex: 0,
+      stackCount: 2,
+    });
+    const front = resolveCalendarChipBackground(task, false, {
+      opaque: true,
+      stackIndex: 1,
+      stackCount: 2,
+    });
+    expect(back).not.toBe(front);
+    // Back card should mix more ink → lower RGB sum.
+    const sum = (hex: string) => {
+      const n = hex.replace("#", "");
+      return (
+        parseInt(n.slice(0, 2), 16) +
+        parseInt(n.slice(2, 4), 16) +
+        parseInt(n.slice(4, 6), 16)
+      );
+    };
+    expect(sum(back)).toBeLessThan(sum(front));
   });
 });

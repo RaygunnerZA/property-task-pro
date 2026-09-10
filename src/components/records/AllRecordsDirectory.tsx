@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { ComplianceRecord } from "@/components/records/complianceRecordModel";
-import type { RecordGroupId } from "@/lib/records/recordGroups";
+import { getRecordGroup, type RecordGroupId } from "@/lib/records/recordGroups";
 import { cn } from "@/lib/utils";
 
 type AllRecordsDirectoryProps = {
@@ -54,6 +54,9 @@ export function AllRecordsDirectory({
 }: AllRecordsDirectoryProps) {
   const [sort, setSort] = useState<SortId>("name");
   const q = searchQuery.trim().toLowerCase();
+  const selectedGroup = groupFilter ? getRecordGroup(groupFilter) : undefined;
+  const HeadingIcon = selectedGroup?.icon ?? List;
+  const headingLabel = selectedGroup?.label ?? "All records";
 
   const rows = useMemo(() => {
     const docRows: DirectoryRow[] = documents
@@ -118,10 +121,10 @@ export function AllRecordsDirectory({
               boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
             }}
           >
-            <List className="h-5 w-5 text-white" aria-hidden />
+            <HeadingIcon className="h-5 w-5 text-white" aria-hidden />
           </div>
           <h2 id="all-records-heading" className="text-lg font-semibold text-foreground">
-            All records
+            {headingLabel}
           </h2>
           <span
             className="inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-white px-1.5 text-caption font-medium tabular-nums text-muted-foreground shadow-e1"

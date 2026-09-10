@@ -13,6 +13,15 @@ import { getTaskRepeatRule } from "@/lib/taskWhenNormalize";
 
 /** Warm paper card tone — mix target for opaque stacked chips. */
 const CHIP_PAPER = "#FBFAF8";
+/** Soft ink for darkening cards further back in a hand. */
+const CHIP_STACK_INK = "#2C2A28";
+
+/** Priority fills for one-off (non-recurring) chips. */
+const PRIORITY_CHIP_COLORS: Record<string, string> = {
+  urgent: "#EB6834", // coral
+  high: "#E8A04A", // amber
+  low: "#9AA8AE", // muted slate
+};
 
 /** Distinct, accessible hues aligned with Filla tokens. */
 export const RECURRING_TASK_SERIES_PALETTE = [
@@ -56,6 +65,14 @@ export function resolveCalendarChipColor(task: Record<string, unknown>): {
   if (taskHasRecurrence(task)) {
     return { baseColor: getRecurringTaskSeriesColor(taskId), isSeriesColor: true };
   }
+
+  const priority =
+    typeof task.priority === "string" ? task.priority.trim().toLowerCase() : "";
+  const priorityColor = PRIORITY_CHIP_COLORS[priority];
+  if (priorityColor) {
+    return { baseColor: priorityColor, isSeriesColor: false };
+  }
+
   const title = typeof task.title === "string" ? task.title : null;
   const themes = task.themes as
     | Array<{ name?: string; type?: string }>
@@ -70,22 +87,46 @@ export function resolveCalendarChipColor(task: Record<string, unknown>): {
 export function resolveCalendarChipBackground(
   task: Record<string, unknown>,
   isRepeatOccurrence: boolean,
-  options?: { opaque?: boolean }
+  options?: {
+    opaque?: boolean;
+    /** 0 = furthest back in the hand (darkest); higher = closer to front. */
+    stackIndex?: number;
+    stackCount?: number;
+  }
 ): string {
   const { baseColor, isSeriesColor } = resolveCalendarChipColor(task);
+  const stackCount = Math.max(1, options?.stackCount ?? 1);
+  const stackIndex = Math.min(
+    Math.max(0, options?.stackIndex ?? 0),
+    stackCount - 1
+  );
+  // Earlier / back cards sit further in the fan — slightly darker than the front.
+  const backness =
+    stackCount > 1 ? (stackCount - 1 - stackIndex) / (stackCount - 1) : 0;
+
   if (options?.opaque) {
     // Solid pastel so stacked / fanned chips don't ghost text through each other.
-    const paperAmount = isSeriesColor
-      ? isRepeatOccurrence
-        ? 0.72
-        : 0.55
+    // Recurring series keep one stable fill (anchor + occurrences match).
+    let paperAmount = isSeriesColor
+      ? 0.58
       : isRepeatOccurrence
         ? 0.82
         : 0.68;
+    // Depth tint only for one-offs — recurring stays the same colour in a hand.
+    if (!isSeriesColor && backness > 0) {
+      paperAmount = Math.max(0.4, paperAmount - backness * 0.14);
+      const pastel = mixHexColors(baseColor, CHIP_PAPER, paperAmount);
+      return mixHexColors(pastel, CHIP_STACK_INK, backness * 0.1);
+    }
     return mixHexColors(baseColor, CHIP_PAPER, paperAmount);
   }
   if (isSeriesColor) {
-    return calendarTypeColorWithAlpha(baseColor, isRepeatOccurrence ? 0.34 : 0.44);
+    // Same alpha for every occurrence of a series.
+    return calendarTypeColorWithAlpha(baseColor, 0.4);
   }
-  return calendarTypeColorWithAlpha(baseColor, isRepeatOccurrence ? 0.16 : 0.35);
+  const alphaBoost = backness * 0.08;
+  return calendarTypeColorWithAlpha(
+    baseColor,
+    Math.min(0.55, (isRepeatOccurrence ? 0.16 : 0.35) + alphaBoost)
+  );
 }

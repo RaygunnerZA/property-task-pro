@@ -4,6 +4,7 @@ import {
   expandRepeatOccurrenceDateKeys,
   getTaskRepeatRule,
 } from "@/lib/taskWhenNormalize";
+import { taskHasRecurrence } from "@/lib/calendarSeriesColor";
 
 export type DayPeriod = "morning" | "afternoon" | "untimed";
 export type PlacementSource = "due" | "milestone" | "repeat";
@@ -311,6 +312,16 @@ export function groupPlacementsByDate(
       };
       const pr = rank(a.period) - rank(b.period);
       if (pr !== 0) return pr;
+      // Recurring / repeat occurrences first in the hand.
+      const aRecurring =
+        a.source === "repeat" || taskHasRecurrence(a.task) ? 0 : 1;
+      const bRecurring =
+        b.source === "repeat" || taskHasRecurrence(b.task) ? 0 : 1;
+      if (aRecurring !== bRecurring) return aRecurring - bRecurring;
+      // Then earlier → further back among one-offs (and same-series ties).
+      const aTime = parseScheduleDateTime(String(a.task.due_date ?? ""))?.getTime() ?? 0;
+      const bTime = parseScheduleDateTime(String(b.task.due_date ?? ""))?.getTime() ?? 0;
+      if (aTime !== bTime) return aTime - bTime;
       return String(a.task.title ?? "").localeCompare(String(b.task.title ?? ""));
     });
     map.set(key, list);

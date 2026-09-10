@@ -42,6 +42,7 @@ import {
 import { AnimatedIcon } from "@/components/ui/AnimatedIcon";
 import { FilterChip } from "@/components/chips/filter";
 import { PropertyRecordsTab } from "@/components/records/PropertyRecordsTab";
+import { RecordsSearchField } from "@/components/records/RecordsSearchField";
 import { cn } from "@/lib/utils";
 import { workbenchPageTitleClassName } from "@/lib/workbenchSectionTitle";
 import { isPropertySubsetSelected, recordMatchesPropertyScope } from "@/utils/propertyFilter";
@@ -178,6 +179,7 @@ export function TaskPanel({
   const [internalIssuesFilter, setInternalIssuesFilter] = useState<WorkbenchIssuesFilter>("all");
   const workbenchControls = useOptionalWorkbenchControls();
   const [localIssuesSearch, setLocalIssuesSearch] = useState("");
+  const [recordsSearch, setRecordsSearch] = useState("");
   const issuesWorkbenchSearch = workbenchControls?.searchQuery ?? localIssuesSearch;
   const setIssuesWorkbenchSearch = workbenchControls?.setSearchQuery ?? setLocalIssuesSearch;
   const issuesFilter = issuesFilterProp ?? internalIssuesFilter;
@@ -659,8 +661,9 @@ export function TaskPanel({
         <div
           className={cn(
             "sticky top-0 z-10 bg-transparent flex min-w-0 w-full max-w-full overflow-x-hidden",
-            /* Below layout the centre column is capped at 700px: stack so intake actions stay in-flow */
-            "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
+            activeTab === "records"
+              ? "flex-col items-stretch gap-2 md:gap-2.5"
+              : "flex-col items-stretch gap-2 md:gap-2.5 lg:flex-row lg:items-start lg:justify-start lg:gap-3",
             "px-2 max-sm:px-2",
             // Match TASK_TAB_NARROW_VIEWPORT_PX — reclaim horizontal space when the strip is squeezed
             "max-pane:px-2 max-pane:gap-1"
@@ -834,7 +837,35 @@ export function TaskPanel({
             ) : null}
           </div>
 
-          {onOpenIntake && (
+          {activeTab === "records" ? (
+            <div className="hidden min-w-0 w-full items-center gap-2 layout:hidden sm:flex">
+              <RecordsSearchField
+                value={recordsSearch}
+                onChange={setRecordsSearch}
+                className="min-w-0 flex-1"
+              />
+              {onOpenIntake ? (
+                <div className="h-12 min-h-12 w-[255px] shrink-0">
+                  <div className={cn("h-12 min-h-12 w-full min-w-0", taskToolbarRecessedClass)}>
+                    <div
+                      className={cn(
+                        "grid h-12 min-h-12 w-full grid-cols-2 items-stretch gap-x-1.5 px-2 pt-[6px] pb-1.5",
+                        "max-pane:px-1"
+                      )}
+                    >
+                      <IntakeActionButtonPair
+                        variant="toolbar"
+                        layout="grid"
+                        onAddRecord={() => onOpenIntake("add_record")}
+                        onReportIssue={() => onOpenIntake("report_issue")}
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            onOpenIntake && (
             <div className="hidden min-w-0 layout:hidden sm:block lg:w-[255px] lg:shrink-0 lg:self-start lg:h-12 lg:min-h-12">
               <div className={cn("w-full min-w-0 lg:h-12 lg:min-h-12", taskToolbarRecessedClass)}>
                 <div
@@ -853,6 +884,7 @@ export function TaskPanel({
                 </div>
               </div>
             </div>
+            )
           )}
         </div>
 
@@ -993,6 +1025,8 @@ export function TaskPanel({
               onRecordsViewChange={onRecordsViewChange ?? (() => {})}
               onOpenIntake={onOpenIntake}
               extraComplianceRecords={attentionComplianceDrafts}
+              recordsSearch={recordsSearch}
+              onRecordsSearchChange={setRecordsSearch}
             />
           )}
 
