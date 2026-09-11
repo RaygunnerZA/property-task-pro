@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Copy,
   MoreHorizontal,
@@ -19,6 +19,9 @@ import { TaskStatusDropdown } from "@/components/tasks/TaskStatusDropdown";
 import type { TaskStatus } from "@/types/database";
 import { cn } from "@/lib/utils";
 
+/** Hide leading icons once Begin Task + Update no longer fit comfortably. */
+const ACTION_ICONS_COMPACT_MAX_WIDTH = 220;
+
 type TaskDetailActionBarProps = {
   status: TaskStatus | string;
   isUpdating: boolean;
@@ -27,7 +30,7 @@ type TaskDetailActionBarProps = {
   hasEdits: boolean;
   /** Show turquoise UPDATE when title/checklist/details have pending saves. */
   showUpdate: boolean;
-  /** After assignee engagement on a Not started task — blue Begin Task CTA. */
+  /** After assignee engagement on a Not started task — primary Begin Task CTA. */
   beginPrompt?: boolean;
   taskId: string;
   canManageTemplates: boolean;
@@ -67,6 +70,8 @@ export function TaskDetailActionBar({
   const [moreOpen, setMoreOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [moreLocked, setMoreLocked] = useState(false);
+  const [hideIcons, setHideIcons] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
   const normalized = String(status ?? "open").toLowerCase() as TaskStatus;
   const isTerminal = normalized === "completed" || normalized === "archived";
@@ -84,59 +89,64 @@ export function TaskDetailActionBar({
     return () => window.clearTimeout(unlock);
   }, [statusOpen]);
 
+  useEffect(() => {
+    const el = actionsRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const sync = () => {
+      // When Update sits beside Begin Task, icons eat the shared row — hide sooner.
+      const threshold =
+        showUpdate && showBeginPrompt
+          ? ACTION_ICONS_COMPACT_MAX_WIDTH + 40
+          : ACTION_ICONS_COMPACT_MAX_WIDTH;
+      setHideIcons(el.clientWidth < threshold);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [showUpdate, showBeginPrompt]);
+
   if (!canManage) return null;
 
   return (
-    <div className="flex min-w-0 w-full flex-nowrap items-center gap-2 py-[18px]">
-      <span
-        className="w-[4.5rem] shrink-0 text-left font-mono text-caption uppercase leading-tight tracking-wide text-muted-foreground"
-        aria-hidden
-      >
-        {showBeginPrompt ? (
-          <>
-            Start
-            <br />
-            work
-          </>
-        ) : (
-          <>
-            Change
-            <br />
-            status
-          </>
-        )}
-      </span>
+    <div className="flex min-w-0 w-full flex-nowrap items-center gap-1.5 py-[18px]">
       <div
-        className={cn(
-          showBeginPrompt
-            ? "shrink-0 overflow-visible"
-            : "min-w-0 flex-1 overflow-visible"
-        )}
+        ref={actionsRef}
+        className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden"
       >
-        <TaskStatusDropdown
-          status={status}
-          variant="button"
-          disabled={isUpdating}
-          open={statusOpen}
-          onOpenChange={setStatusOpen}
-          onStatusChange={onStatusChange}
-          beginPrompt={showBeginPrompt}
-          className={showBeginPrompt ? undefined : "w-full"}
-        />
-      </div>
-
-      {showUpdate ? (
-        <Button
-          type="button"
-          data-task-action
-          className="h-9 shrink-0 px-4 font-mono text-caption uppercase tracking-wide shadow-primary-btn"
-          disabled={isUpdating || !hasEdits}
-          onClick={onSaveEdits}
-          title={hasEdits ? "Save changes" : "No changes to save"}
+        <div
+          className={cn(
+            "min-w-0",
+            showBeginPrompt ? "shrink" : "flex-1 overflow-hidden"
+          )}
         >
-          {isUpdating ? "…" : "Update"}
-        </Button>
-      ) : null}
+          <TaskStatusDropdown
+            status={status}
+            variant="button"
+            disabled={isUpdating}
+            open={statusOpen}
+            onOpenChange={setStatusOpen}
+            onStatusChange={onStatusChange}
+            beginPrompt={showBeginPrompt}
+            hideIcons={hideIcons}
+            className={showBeginPrompt ? undefined : "w-full"}
+          />
+        </div>
+
+        {showUpdate ? (
+          <Button
+            type="button"
+            data-task-action
+            size="sm"
+            className="h-9 min-w-0 shrink px-2.5 text-sm font-semibold shadow-primary-btn sm:px-3"
+            disabled={isUpdating || !hasEdits}
+            onClick={onSaveEdits}
+            title={hasEdits ? "Save changes" : "No changes to save"}
+          >
+            {isUpdating ? "…" : "Update"}
+          </Button>
+        ) : null}
+      </div>
 
       <div
         className={cn(

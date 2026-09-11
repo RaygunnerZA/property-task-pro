@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 export type TaskDetailScrollSection = {
   id: string;
   /** Section heading — string or custom node (e.g. Checklist + action). */
-  title: ReactNode;
+  title?: ReactNode;
   content: ReactNode;
   /** Skip empty sections. */
   hidden?: boolean;
@@ -90,16 +90,30 @@ export function TaskDetailContent({
             key={section.id}
             id={`task-detail-${section.id}`}
             className={cn(
-              "space-y-3",
-              section.elevated &&
-                "rounded-[12px] bg-muted/25 px-3.5 py-3.5 shadow-e1"
+              section.elevated
+                ? "space-y-2 rounded-[12px] bg-muted/25 py-2.5 shadow-e1"
+                : "space-y-3"
             )}
           >
             {section.title ? (
               typeof section.title === "string" ? (
-                <h3 className="text-sm font-medium text-foreground">{section.title}</h3>
+                <h3
+                  className={cn(
+                    "text-sm font-medium text-foreground",
+                    section.elevated && "px-3.5"
+                  )}
+                >
+                  {section.title}
+                </h3>
               ) : (
-                <div className="text-sm font-medium text-foreground">{section.title}</div>
+                <div
+                  className={cn(
+                    "text-sm font-medium text-foreground",
+                    section.elevated && "px-3.5"
+                  )}
+                >
+                  {section.title}
+                </div>
               )
             ) : null}
             {section.content}

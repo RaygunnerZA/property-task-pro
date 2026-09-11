@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   resolveWorkbenchLayout,
   shouldRouteCentreTabsToWorkSurface,
+  shouldShowPortfolioCarousel,
 } from "@/lib/workbenchLayoutMode";
 
 describe("resolveWorkbenchLayout", () => {
@@ -48,5 +49,64 @@ describe("resolveWorkbenchLayout", () => {
     expect(shouldRouteCentreTabsToWorkSurface(home, false)).toBe(false);
     expect(shouldRouteCentreTabsToWorkSurface(propertyHome, true)).toBe(true);
     expect(shouldRouteCentreTabsToWorkSurface(tasks, true)).toBe(false);
+  });
+});
+
+describe("shouldShowPortfolioCarousel", () => {
+  it("shows the All Properties card on portfolio home", () => {
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/",
+        workbenchPanel: "home",
+        isAllProperties: true,
+      })
+    ).toBe(true);
+  });
+
+  it("keeps the All Properties card when scope is All Properties on /home", () => {
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/home",
+        workbenchPanel: "issues",
+        isAllProperties: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not replace a focused property home with the portfolio carousel", () => {
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/home",
+        workbenchPanel: "issues",
+        isAllProperties: false,
+      })
+    ).toBe(false);
+  });
+
+  it("shows the All Properties card on /tasks when scope is All Properties", () => {
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/tasks",
+        workbenchPanel: "home",
+        isAllProperties: true,
+      })
+    ).toBe(true);
+  });
+
+  it("does not show the portfolio carousel on records or schedule", () => {
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/records",
+        workbenchPanel: "records",
+        isAllProperties: true,
+      })
+    ).toBe(false);
+    expect(
+      shouldShowPortfolioCarousel({
+        pathname: "/agenda",
+        workbenchPanel: "schedule",
+        isAllProperties: true,
+      })
+    ).toBe(false);
   });
 });

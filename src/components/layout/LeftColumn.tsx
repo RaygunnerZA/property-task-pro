@@ -20,7 +20,7 @@ import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContex
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
-import { isHomeHubPath } from "@/lib/workbenchLayoutMode";
+import { isHomeHubPath, shouldShowPortfolioCarousel } from "@/lib/workbenchLayoutMode";
 import { RecordsContextColumn } from "@/components/records/RecordsContextColumn";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 
@@ -199,7 +199,18 @@ export function LeftColumn({
     [calendarTasks, tasksByDate]
   );
 
-  const calendarAboveNavCards = Boolean(focusedProperty) && !isScheduleMobile && !isRecordsWorkbench;
+  const isPortfolioScope =
+    properties.length > 1 && isAllPropertiesActive(selectedPropertyIds, ALL_PROPERTY_IDS);
+  const showPortfolioCarousel = shouldShowPortfolioCarousel({
+    pathname,
+    workbenchPanel,
+    isAllProperties: isPortfolioScope,
+  });
+  const calendarAboveNavCards =
+    Boolean(focusedProperty) &&
+    !showPortfolioCarousel &&
+    !isScheduleMobile &&
+    !isRecordsWorkbench;
 
   const recordsContext = isRecordsWorkbench ? (
     <>
@@ -232,7 +243,7 @@ export function LeftColumn({
               ? false
               : isScheduleMobile
                 ? !selectedDate
-                : !isHubHome
+                : !showPortfolioCarousel
           }
           collapseOnDateSelect={isScheduleMobile}
         />
@@ -271,7 +282,7 @@ export function LeftColumn({
             <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
               {recordsContext}
             </div>
-          ) : isHubHome ? (
+          ) : showPortfolioCarousel ? (
             <div ref={propertiesRef} className="relative w-full min-w-0 max-w-full rounded-none pl-0 pr-[2px] pt-0 pb-[3px]">
               <PropertyDashboardCarousel
                 properties={properties as PropertyForStrip[]}

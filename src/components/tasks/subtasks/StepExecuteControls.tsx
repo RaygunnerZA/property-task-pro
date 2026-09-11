@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import {
   getStepType,
+  showsExecuteCheckbox,
   type SubtaskData,
 } from "@/components/tasks/subtasks/stepTypes";
 import { STEP_TYPE_CONFIG } from "@/components/tasks/subtasks/SubtaskCard";
@@ -48,6 +49,7 @@ export function StepExecuteControls({
 
   const recorded = responseLabelForType(stepType, subtask.response_value);
   const done = Boolean(subtask.is_completed);
+  const indentClass = showsExecuteCheckbox(stepType) ? "pl-[22px]" : "pl-0";
 
   if (stepType === "title" || stepType === "note" || stepType === "divider") {
     return null;
@@ -65,7 +67,7 @@ export function StepExecuteControls({
       stepType === "signature";
     return (
       <>
-        <div className="mt-1 flex flex-wrap items-center gap-2 pl-8 text-2xs">
+        <div className={cn("mt-1 flex flex-wrap items-center gap-2 text-2xs", indentClass)}>
           <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 font-medium text-primary-deep">
             <Check className="h-3 w-3" />
             {STEP_TYPE_CONFIG[stepType].label}: {recorded}
@@ -91,7 +93,13 @@ export function StepExecuteControls({
           ) : null}
           {subtask.completed_at ? (
             <span className="text-muted-foreground">
-              {new Date(subtask.completed_at).toLocaleString()}
+              {new Date(subtask.completed_at).toLocaleString(undefined, {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
             </span>
           ) : null}
         </div>
@@ -108,6 +116,9 @@ export function StepExecuteControls({
     );
   }
 
+  // Plain check steps complete from the circle — no duplicate Mark done button.
+  if (stepType === "check") return null;
+
   const submit = async (response: ChecklistStepResponseInput) => {
     setLocalError(null);
     try {
@@ -118,7 +129,7 @@ export function StepExecuteControls({
   };
 
   return (
-    <div className="mt-1 space-y-1.5 pl-8">
+    <div className={cn("mt-1 space-y-1.5", indentClass)}>
       {stepType === "yes_no" && (
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted/40 p-0.5">
           <button
@@ -311,20 +322,6 @@ export function StepExecuteControls({
             Record
           </button>
         </div>
-      )}
-
-      {stepType === "check" && (
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void submit({ value: "done", metadata: { answer: "checked" } })}
-          className={cn(
-            "inline-flex h-8 items-center gap-1.5 rounded-lg bg-card px-2.5 text-2xs font-medium uppercase tracking-wider text-muted-foreground shadow-sm"
-          )}
-        >
-          <Check className="h-3.5 w-3.5" />
-          Mark done
-        </button>
       )}
 
       {localError ? <p className="text-2xs text-destructive">{localError}</p> : null}

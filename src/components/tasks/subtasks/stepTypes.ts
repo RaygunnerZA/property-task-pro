@@ -100,3 +100,17 @@ export const STEP_TYPES_ORDERED: StepType[] = [
   "scan",
   "pass_fail",
 ];
+
+const STRUCTURE_STEP_TYPES: ReadonlySet<StepType> = new Set(["title", "note", "divider"]);
+
+/**
+ * Execute-mode circle checkbox is only for plain check steps.
+ * Signature / photo / yes-no / etc. use their dedicated action control instead.
+ */
+export function showsExecuteCheckbox(stepType: StepType): boolean {
+  return stepType === "check";
+}
+
+export function isStructureStepType(stepType: StepType): boolean {
+  return STRUCTURE_STEP_TYPES.has(stepType);
+}

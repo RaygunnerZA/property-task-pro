@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { Shield, AlertTriangle, CircleDot, X, ChevronDown, FileText, Repeat } from "lucide-react";
+import { Shield, AlertTriangle, CircleDot, X, FileText, Repeat } from "lucide-react";
 import { useGeoCaptureOnAction } from "@/hooks/useGeoCaptureOnAction";
 import { GEO_EVIDENCE_CONSENT_LINE } from "@/lib/location/geoCaptureCopy";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -1935,42 +1935,16 @@ export function TaskDetailPanel({
         sections={[
           {
             id: "checklist",
-            title: (
-              <button
-                type="button"
-                className="flex w-full items-center justify-between gap-2 text-left"
-                aria-expanded={!checklistCollapsed}
-                onClick={() => setChecklistCollapsed((v) => !v)}
-              >
-                <span className="text-sm font-medium text-foreground">
-                  Checklist
-                  {checklistItemCount > 0 ? (
-                    <span className="ml-1.5 text-muted-foreground tabular-nums">
-                      ({checklistItemCount})
-                    </span>
-                  ) : null}
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
-                    checklistCollapsed ? "-rotate-90" : "rotate-0"
-                  )}
-                  aria-hidden
-                />
-              </button>
-            ),
-            elevated: true,
-            content: checklistCollapsed ? (
-              <p className="text-[11px] text-muted-foreground">
-                Checklist collapsed — expand to review steps.
-              </p>
-            ) : (
+            title: null,
+            content: (
               <TaskDetailChecklistTab
                 taskId={taskId}
                 canEdit={canManageTask}
                 canManageTemplates={canManageTemplates}
                 editMode={taskEditOpen}
                 onSessionChange={markChecklistSessionDirty}
+                collapsed={checklistCollapsed}
+                onToggleCollapsed={() => setChecklistCollapsed((v) => !v)}
               />
             ),
             // Empty: hide. Editing: checklist lives in the description composer (avoid duplicate).
@@ -1979,7 +1953,7 @@ export function TaskDetailPanel({
         ]}
       />
 
-      <div className="flex flex-col gap-1.5 px-4 pb-px pt-2 text-foreground">
+      <div className="flex flex-col gap-1.5 px-5 pb-px pt-2 text-foreground">
         <TaskMessaging
           taskId={taskId}
           variant="chat"
@@ -2067,18 +2041,16 @@ export function TaskDetailPanel({
           }}
           onDelete={() => setShowDeleteDialog(true)}
         />
-        <div className="flex items-start justify-between gap-3 px-0.5">
+        <div className="flex flex-col gap-1 px-0.5">
           {canManageTask && status !== "completed" ? (
-            <p className="min-w-0 flex-1 text-caption leading-snug text-muted-foreground">
+            <p className="text-caption leading-snug text-muted-foreground">
               {GEO_EVIDENCE_CONSENT_LINE}
             </p>
-          ) : (
-            <span className="min-w-0 flex-1" />
-          )}
+          ) : null}
           <button
             type="button"
             onClick={() => setActivityExpanded((open) => !open)}
-            className="shrink-0 pt-px text-caption font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            className="shrink-0 self-end pt-px text-caption font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
             aria-expanded={activityExpanded}
             aria-controls="task-detail-activity-panel"
           >

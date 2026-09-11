@@ -10,4 +10,6 @@ export {
   getStepType,
   resolveIsSubStep,
   stepTypeToLegacy,
+  showsExecuteCheckbox,
+  isStructureStepType,
 } from "./SubtaskCard";

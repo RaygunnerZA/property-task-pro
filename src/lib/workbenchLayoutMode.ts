@@ -54,6 +54,22 @@ export function isHomeHubPath(pathname: string): boolean {
 }
 
 /**
+ * Left-rail All Properties card (carousel + centre-nav tabs).
+ * Homepage always uses it; All Properties scope on home-like surfaces must too,
+ * so `/home` without a focused property does not collapse to calendar-only.
+ */
+export function shouldShowPortfolioCarousel(args: {
+  pathname: string;
+  workbenchPanel: DashboardWorkbenchPanel;
+  isAllProperties: boolean;
+}): boolean {
+  const { pathname, workbenchPanel, isAllProperties } = args;
+  if (workbenchPanel === "records" || workbenchPanel === "schedule") return false;
+  if (isHomeHubPath(pathname)) return true;
+  return isAllProperties && (workbenchPanel === "home" || workbenchPanel === "issues");
+}
+
+/**
  * Resolve the layout contract from route + workbench panel.
  * Keep DualPane / property-card / navigation flags in sync via this helper only.
  */

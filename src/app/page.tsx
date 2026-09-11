@@ -308,15 +308,21 @@ export default function Dashboard({
       } else if (isAllPropertiesActive(next, allIds)) {
         if (allIds.length === 1) {
           params.set("property", allIds[0]);
+          setSearchParams(params, { replace: true });
         } else {
           params.delete("property");
+          if (pathname === "/home") {
+            const qs = params.toString();
+            navigate(`/${qs ? `?${qs}` : ""}`, { replace: true });
+          } else {
+            setSearchParams(params, { replace: true });
+          }
         }
-        setSearchParams(params, { replace: true });
       } else {
         setSearchParams(params, { replace: true });
       }
     },
-    [properties, searchParams, setSearchParams]
+    [navigate, pathname, properties, searchParams, setSearchParams]
   );
 
   /** Centre column tab on Home / Issues (Inflow · Tasks · Calendar). */
@@ -497,6 +503,20 @@ export default function Dashboard({
     const qs = params.toString();
     navigate(`/home${qs ? `?${qs}` : ""}`, { replace: true });
   }, [workbenchPanel, pathname, searchParams, navigate]);
+
+  /**
+   * Canonical All Properties hub is `/`. `/home` without `?property=` is a leftover of
+   * clearing scope from property home — send multi-property orgs back to the portfolio.
+   */
+  useEffect(() => {
+    if (pathname !== "/home") return;
+    if (searchParams.get("property")) return;
+    if (properties.length <= 1) return;
+    const params = workbenchSearchParamsFromBrowser(searchParams);
+    params.delete("property");
+    const qs = params.toString();
+    navigate(`/${qs ? `?${qs}` : ""}`, { replace: true });
+  }, [pathname, searchParams, properties.length, navigate]);
 
   // When property scope changes on a dedicated workbench page, strip stale panelTab query keys.
   useEffect(() => {

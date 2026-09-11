@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { ChevronDown, Pencil, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { useSubtasks } from "@/hooks/useSubtasks";
@@ -72,6 +72,9 @@ type TaskDetailChecklistTabProps = {
   composerEmbed?: boolean;
   /** Fired after checklist structure or responses change in this session. */
   onSessionChange?: () => void;
+  /** Collapse the execute-mode list under the section header. */
+  collapsed?: boolean;
+  onToggleCollapsed?: () => void;
 };
 
 const TEMPLATE_CATEGORIES: { value: ChecklistTemplateCategory; label: string }[] = [
@@ -237,6 +240,8 @@ export function TaskDetailChecklistTab({
   editMode = false,
   composerEmbed = false,
   onSessionChange,
+  collapsed = false,
+  onToggleCollapsed,
 }: TaskDetailChecklistTabProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -788,46 +793,84 @@ export function TaskDetailChecklistTab({
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {!listOnly ? (
-        <div className="flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
-            {actionableSteps.length > 0 ? (
-              <p className="text-[11px] text-muted-foreground tabular-nums">
-                {doneCount}/{actionableSteps.length} done
-              </p>
-            ) : null}
-          </div>
-          {canEdit ? (
-            <div className="flex items-center gap-2 shrink-0">
-              {checklistAuthoring && !editMode ? (
+        <div className="space-y-0.5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              {onToggleCollapsed ? (
                 <button
                   type="button"
-                  onClick={() => setChecklistAuthoring(false)}
-                  className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                  className="flex min-w-0 items-center gap-1.5 text-left"
+                  aria-expanded={!collapsed}
+                  onClick={onToggleCollapsed}
                 >
-                  Done editing
+                  <span className="truncate text-sm font-semibold text-foreground">
+                    Checklist
+                    {actionableSteps.length > 0 ? (
+                      <span className="ml-1.5 font-medium text-muted-foreground tabular-nums">
+                        ({actionableSteps.length})
+                      </span>
+                    ) : null}
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                      collapsed ? "-rotate-90" : "rotate-0"
+                    )}
+                    aria-hidden
+                  />
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => void handleAddItem()}
-                disabled={addingItem}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-1 text-sm font-medium text-primary transition-colors hover:bg-primary/15",
-                  addingItem && "opacity-60"
-                )}
-              >
-                <Plus className="h-3.5 w-3.5" aria-hidden />
-                Add item
-              </button>
+              ) : (
+                <h3 className="text-sm font-semibold text-foreground">Checklist</h3>
+              )}
             </div>
+            {canEdit && !collapsed ? (
+              <div className="flex items-center gap-1 shrink-0">
+                {!editMode ? (
+                  <button
+                    type="button"
+                    onClick={() => setChecklistAuthoring((open) => !open)}
+                    aria-pressed={checklistAuthoring}
+                    className={cn(
+                      "inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium transition-colors",
+                      checklistAuthoring
+                        ? "bg-primary/10 text-primary hover:bg-primary/15"
+                        : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    )}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden />
+                    {checklistAuthoring ? "Done" : "Edit"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => void handleAddItem()}
+                  disabled={addingItem}
+                  className={cn(
+                    "inline-flex items-center gap-0.5 rounded-md bg-primary/10 px-1.5 py-0.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15",
+                    addingItem && "opacity-60"
+                  )}
+                >
+                  <Plus className="h-3 w-3" aria-hidden />
+                  Add item
+                </button>
+              </div>
+            ) : null}
+          </div>
+          {!collapsed && actionableSteps.length > 0 ? (
+            <p className="text-[11px] text-muted-foreground tabular-nums">
+              {doneCount}/{actionableSteps.length} done
+            </p>
           ) : null}
         </div>
       ) : null}
 
-      {editorItems.length === 0 ? (
+      {collapsed ? (
+        <p className="text-[11px] text-muted-foreground">
+          Checklist collapsed — expand to review steps.
+        </p>
+      ) : editorItems.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           {isAuthoring
             ? "No checklist items yet. Add steps like Create Task."
@@ -869,7 +912,7 @@ export function TaskDetailChecklistTab({
         />
       )}
 
-      {!listOnly && canEdit ? footer : null}
+      {!listOnly && canEdit && !collapsed ? footer : null}
       {saveDialog}
     </div>
   );

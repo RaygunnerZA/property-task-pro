@@ -15,10 +15,21 @@ import {
 import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
+import { WORKBENCH_SIDE_RAIL_PX } from "@/lib/layoutBreakpoints";
 import { cn } from "@/lib/utils";
 
 /** Desktop workbench header band height (keep in sync with `index.css` / shell offset). */
 const DESKTOP_HEADER_BAND_PX = 73;
+
+function FillaLogoMark({ className }: { className?: string }) {
+  return (
+    <img
+      src={fillaDarkLogo}
+      alt="Filla"
+      className={cn("h-[28px] w-auto shrink-0", className)}
+    />
+  );
+}
 
 /** Gradient strip: colour solid until ~33%, then fades to transparent, with paper grain. */
 export function createGradientHeaderStyle(color: string): CSSProperties {
@@ -78,16 +89,18 @@ export function WorkbenchGradientHeader({
     }
   };
 
-  const backButton = (
+  const backButtonClassName = cn(
+    "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-white/70 px-3",
+    "text-sm font-medium text-foreground shadow-e1",
+    "outline-none transition-shadow hover:shadow-md",
+    "focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-1"
+  );
+
+  const renderBackButton = () => (
     <button
       type="button"
       onClick={handleBack}
-      className={cn(
-        "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl bg-white/70 px-3",
-        "text-sm font-medium text-foreground shadow-e1",
-        "outline-none transition-shadow hover:shadow-md",
-        "focus-visible:ring-2 focus-visible:ring-white/80 focus-visible:ring-offset-1"
-      )}
+      className={backButtonClassName}
       aria-label="Go back"
     >
       <ArrowLeft className="h-4 w-4" />
@@ -96,15 +109,11 @@ export function WorkbenchGradientHeader({
   );
 
   const mobileLeftContent = (
-    <div className="flex min-w-0 flex-1 items-center gap-2.5">
+    <div className="flex min-w-0 flex-1 items-center gap-3">
       {isActivity ? (
-        <span className="ml-1.5 shrink-0">{backButton}</span>
+        <span className="ml-1.5 shrink-0">{renderBackButton()}</span>
       ) : (
-        <img
-          src={fillaDarkLogo}
-          alt="Filla"
-          className="ml-1.5 h-[28px] w-auto shrink-0"
-        />
+        <FillaLogoMark className="ml-1.5" />
       )}
       {showPropertySelector ? (
         <PropertySelectorStack
@@ -162,24 +171,35 @@ export function WorkbenchGradientHeader({
         style={{ ...headerStyle, height: DESKTOP_HEADER_BAND_PX }}
       />
       <div
-        className="fixed top-0 z-[56] hidden items-center lg:flex"
-        style={{ height: DESKTOP_HEADER_BAND_PX, left: 0 }}
+        className="fixed top-0 z-[56] hidden min-w-0 items-center gap-3 pl-5 pr-3 lg:flex"
+        style={{
+          height: DESKTOP_HEADER_BAND_PX,
+          left: 0,
+          maxWidth: `calc(var(--sidebar-width-icon, 3.09375rem) + ${WORKBENCH_SIDE_RAIL_PX}px - 0.75rem)`,
+        }}
       >
         {isActivity ? (
-          <span className="pl-5">{backButton}</span>
+          <span className="shrink-0">{renderBackButton()}</span>
         ) : (
           <Link
             to="/"
-            className="flex shrink-0 items-center rounded-md pl-5 outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
+            className="flex shrink-0 items-center rounded-md outline-none ring-offset-2 ring-offset-transparent focus-visible:ring-2 focus-visible:ring-white/50"
             aria-label="Go to home"
           >
-            <img
-              src={fillaDarkLogo}
-              alt="Filla"
-              className="h-[28px] w-auto"
-            />
+            <FillaLogoMark />
           </Link>
         )}
+        {showPropertySelector ? (
+          <PropertySelectorStack
+            variant="gradientHeader"
+            properties={properties}
+            tasks={tasks}
+            selectedPropertyIds={selectedPropertyIds}
+            onSelectionChange={onPropertySelectionChange}
+            onFilterClick={onFilterClick}
+            className="min-w-0 flex-1"
+          />
+        ) : null}
       </div>
 
       {/* Desktop: account avatar (settings / profile) top-right of the gradient band. */}
@@ -204,20 +224,8 @@ export function WorkbenchGradientHeader({
             "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
           )}
         >
-          {/* Spacer column under the fixed logo / above the property rail */}
-          <div className="relative z-10 flex min-w-0 items-center gap-2.5 px-3 sm:px-[18px] sm:pt-[22px] sm:pl-2">
-            {showPropertySelector ? (
-              <PropertySelectorStack
-                variant="gradientHeader"
-                properties={properties}
-                tasks={tasks}
-                selectedPropertyIds={selectedPropertyIds}
-                onSelectionChange={onPropertySelectionChange}
-                onFilterClick={onFilterClick}
-                className="min-w-0 flex-1"
-              />
-            ) : null}
-          </div>
+          {/* Spacer under the fixed logo + property selector cluster */}
+          <div className="relative z-10 min-w-0 px-3 sm:px-[18px]" aria-hidden />
 
           <div
             className={cn(

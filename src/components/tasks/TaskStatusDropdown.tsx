@@ -30,9 +30,11 @@ type TaskStatusDropdownProps = {
   onOpenChange?: (open: boolean) => void;
   /**
    * When status is still Not started and the assignee has engaged (comment/edit),
-   * surface a blue “Begin Task” CTA that activates the task.
+   * surface the primary “Begin Task” CTA that activates the task.
    */
   beginPrompt?: boolean;
+  /** Hide leading icons when the action bar is too narrow (label-only). */
+  hideIcons?: boolean;
 };
 
 /**
@@ -48,6 +50,7 @@ export function TaskStatusDropdown({
   open,
   onOpenChange,
   beginPrompt = false,
+  hideIcons = false,
 }: TaskStatusDropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isOpen = open ?? uncontrolledOpen;
@@ -59,12 +62,12 @@ export function TaskStatusDropdown({
   const showBeginCta =
     beginPrompt && variant === "button" && normalized === "open";
   const statusTriggerTextClass = showBeginCta
-    ? "text-white"
+    ? "text-primary-foreground"
     : normalized === "open"
       ? "text-muted-foreground"
       : "text-white";
   const triggerBlockClass = showBeginCta
-    ? "bg-blue-500"
+    ? "bg-primary"
     : currentStatus.blockClassName;
 
   const statusMenu = (
@@ -116,8 +119,8 @@ export function TaskStatusDropdown({
       className={cn(
         variant === "button"
           ? showBeginCta
-            ? "inline-flex shrink-0 overflow-visible"
-            : "w-full min-w-0 max-w-full overflow-visible"
+            ? "inline-flex max-w-full min-w-0 overflow-hidden"
+            : "w-full min-w-0 max-w-full overflow-hidden"
           : "inline-flex",
         disabled && "pointer-events-none opacity-50"
       )}
@@ -125,7 +128,7 @@ export function TaskStatusDropdown({
       {showBeginCta ? (
         <div
           className={cn(
-            "inline-flex h-9 shrink-0 overflow-visible rounded-md border-0 shadow-primary-btn",
+            "inline-flex h-9 max-w-full min-w-0 overflow-hidden rounded-card border-0 shadow-primary-btn",
             triggerBlockClass,
             className
           )}
@@ -136,9 +139,9 @@ export function TaskStatusDropdown({
             aria-disabled={disabled || undefined}
             disabled={disabled}
             className={cn(
-              "inline-flex items-center justify-center gap-1.5 whitespace-nowrap px-3.5 text-sm font-semibold",
+              "inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap px-2.5 text-sm font-semibold sm:px-3",
               statusTriggerTextClass,
-              "hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              "hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             )}
             aria-label="Begin task"
             onClick={(e) => {
@@ -147,8 +150,10 @@ export function TaskStatusDropdown({
               onStatusChange("in_progress");
             }}
           >
-            <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
-            <span className="whitespace-nowrap font-semibold">Begin Task</span>
+            {!hideIcons ? (
+              <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
+            ) : null}
+            <span className="truncate font-semibold">Begin Task</span>
           </button>
           <DropdownMenu
             modal={false}
@@ -165,9 +170,9 @@ export function TaskStatusDropdown({
                 aria-disabled={disabled || undefined}
                 disabled={disabled}
                 className={cn(
-                  "inline-flex h-full w-9 shrink-0 items-center justify-center border-l border-white/30",
+                  "inline-flex h-full w-8 shrink-0 items-center justify-center border-l border-primary-foreground/15",
                   statusTriggerTextClass,
-                  "hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  "hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
                 aria-label="Change status"
                 onClick={(e) => e.stopPropagation()}
@@ -218,7 +223,9 @@ export function TaskStatusDropdown({
                 aria-label={`Change status, currently ${currentStatus.label}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <CurrentStatusIcon className="h-4 w-4 shrink-0" aria-hidden />
+                {!hideIcons ? (
+                  <CurrentStatusIcon className="h-4 w-4 shrink-0" aria-hidden />
+                ) : null}
                 <span className="min-w-0 truncate font-semibold">
                   {currentStatus.label}
                 </span>

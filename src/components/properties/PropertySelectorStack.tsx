@@ -157,7 +157,6 @@ export function PropertySelectorStack({
 
   const handleSelectAll = () => {
     onSelectionChange(new Set(allPropertyIds));
-    onFilterClick?.("show-tasks");
     closeMenu();
   };
 
@@ -254,6 +253,7 @@ export function PropertySelectorStack({
   if (isCompactPopover) {
     return (
       <TooltipProvider delayDuration={200}>
+        <div className={cn("min-w-0", className)}>
         <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
           <PopoverTrigger asChild>
             <button
@@ -286,6 +286,7 @@ export function PropertySelectorStack({
           </PopoverContent>
         </Popover>
         <AddPropertyDialog open={showAddProperty} onOpenChange={setShowAddProperty} />
+        </div>
       </TooltipProvider>
     );
   }

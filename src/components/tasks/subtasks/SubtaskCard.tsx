@@ -38,13 +38,22 @@ import {
   resolveIsSubStep,
   stepTypeToLegacy,
   STEP_TYPES_ORDERED,
+  showsExecuteCheckbox,
+  isStructureStepType,
   type StepNote,
   type StepType,
   type SubtaskData,
 } from "./stepTypes";
 
 export type { StepNote, StepType, SubtaskData };
-export { getStepType, resolveIsSubStep, stepTypeToLegacy, STEP_TYPES_ORDERED };
+export {
+  getStepType,
+  resolveIsSubStep,
+  stepTypeToLegacy,
+  STEP_TYPES_ORDERED,
+  showsExecuteCheckbox,
+  isStructureStepType,
+};
 
 // ─── Step Type System ─────────────────────────────────────────────────────────
 
@@ -180,6 +189,7 @@ export function SubtaskCard({
   const [backspaceCount, setBackspaceCount] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const [assignPickerOpen, setAssignPickerOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
 
@@ -200,6 +210,10 @@ export function SubtaskCard({
   const currentType = getStepType(subtask);
   const isStructureOnly = STRUCTURE_ONLY_TYPES.includes(currentType);
   const isSubStep = resolveIsSubStep(subtask);
+  const responseRecorded = Boolean(
+    subtask.is_completed || subtask.response_value || subtask.signed_at
+  );
+  const showTypeOptions = isCreator && (isFocused || isHovered);
 
   useEffect(() => {
     if (autoFocus && inputRef.current) {
@@ -414,73 +428,80 @@ export function SubtaskCard({
           isSubStep && "ml-5"
         )}
         style={{ boxShadow: "none", border: "none" }}
+        onMouseEnter={() => {
+          if (isCreator) setIsHovered(true);
+        }}
+        onMouseLeave={() => setIsHovered(false)}
       >
         {/* Main Row — min-height grows with wrapped title on narrow/mobile */}
         <div
-          className="group/row flex items-start gap-2 pl-1.5 pr-1.5 py-1 rounded"
-          style={{ backgroundColor: "rgba(255, 255, 255, 0)", minHeight: "42px" }}
+          className="group/row flex items-start gap-1.5 px-1 py-0 rounded"
+          style={{ backgroundColor: "rgba(255, 255, 255, 0)", minHeight: "32px" }}
         >
           {/* Drag Handle — authoring only */}
           {isCreator ? (
             <div
               {...attributes}
               {...listeners}
-              className="mt-2.5 cursor-grab active:cursor-grabbing touch-none"
+              className="mt-1.5 cursor-grab active:cursor-grabbing touch-none"
             >
               <GripVertical className="h-4 w-4 text-muted-foreground/40" />
             </div>
-          ) : (
-            <div className="w-4 shrink-0" aria-hidden />
-          )}
+          ) : null}
 
-          {/* Circle checkbox — not used for pure formatting steps */}
-          {currentType !== "divider" && currentType !== "title" && currentType !== "note" && (
+          {/* Circle checkbox — execute mode: check steps only. Action types (Sign, photo, …) use their own control. */}
+          {(isCreator
+            ? !isStructureStepType(currentType)
+            : showsExecuteCheckbox(currentType)) && (
             <button
               type="button"
-              disabled={
-                isCreator ||
-                responseBusy ||
-                (!isCreator && currentType !== "check" && !subtask.is_completed)
-              }
+              disabled={isCreator || responseBusy}
               onClick={() => {
-                if (isCreator) return;
-                // Only plain check steps complete from the circle; other types use StepExecuteControls.
-                if (currentType !== "check") return;
-                if (onSubmitResponse && !subtask.is_completed) {
+                if (isCreator || currentType !== "check") return;
+                if (responseRecorded) {
+                  if (onClearResponse) {
+                    void onClearResponse(subtask.id);
+                    return;
+                  }
+                  onUpdate(subtask.id, { is_completed: false });
+                  return;
+                }
+                if (onSubmitResponse) {
                   void onSubmitResponse(subtask.id, {
                     value: "done",
                     metadata: { answer: "checked" },
                   });
                   return;
                 }
-                onUpdate(subtask.id, { is_completed: !subtask.is_completed });
+                onUpdate(subtask.id, { is_completed: true });
               }}
               className={cn(
-                "shrink-0 mt-3 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
-                !isCreator && currentType === "check" && "cursor-pointer",
-                (isCreator || currentType !== "check") && "cursor-default"
+                "shrink-0 mt-2 h-[14px] w-[14px] rounded-full bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.6)] flex items-center justify-center",
+                !isCreator && showsExecuteCheckbox(currentType) && "cursor-pointer",
+                isCreator && "cursor-default"
               )}
               aria-label={
-                subtask.is_completed
-                  ? `Mark ${subtask.title || "step"} incomplete`
+                responseRecorded
+                  ? `Clear ${subtask.title || "step"}`
                   : `Mark ${subtask.title || "step"} complete`
               }
             >
               <Check
                 className={cn(
-                  "h-2.5 w-2.5 text-accent transition-opacity",
-                  subtask.is_completed
+                  "h-3 w-3 text-accent transition-opacity",
+                  responseRecorded
                     ? "opacity-100"
                     : isCreator
                       ? "opacity-0"
                       : "opacity-0 group-hover/row:opacity-30"
                 )}
+                strokeWidth={3}
               />
             </button>
           )}
           {/* Spacer so title/note align with other rows */}
           {(currentType === "title" || currentType === "note") && (
-            <div className="mt-3 h-[14px] w-[14px] shrink-0" aria-hidden />
+            <div className="mt-2 h-[14px] w-[14px] shrink-0" aria-hidden />
           )}
 
           {/* Divider step — render a horizontal rule instead of input */}
@@ -527,13 +548,13 @@ export function SubtaskCard({
                 }}
                 readOnly={!isCreator}
                 className={cn(
-                  "w-full min-h-[32px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none",
+                  "w-full min-h-[28px] border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 px-0 resize-none",
                   "whitespace-pre-wrap break-words [overflow-wrap:anywhere]",
                   isCreator ? "max-h-[120px] overflow-y-auto" : "max-h-[320px] overflow-y-auto",
                   currentType === "title" ? "text-lg md:text-lg font-semibold" : "text-sm md:text-sm",
                   currentType === "note" && "italic",
                   !isCreator && "cursor-default",
-                  !isCreator && subtask.is_completed && !isStructureOnly && "text-muted-foreground line-through"
+                  !isCreator && subtask.is_completed && !isStructureOnly && "text-muted-foreground"
                 )}
                 style={{
                   border: "none",
@@ -541,17 +562,17 @@ export function SubtaskCard({
                   color: currentType === "note"
                     ? "rgba(42, 41, 62, 0.5)"
                     : "rgba(42, 41, 62, 1)",
-                  paddingTop: "6px",
-                  paddingBottom: "6px",
-                  paddingLeft: "10px",
-                  paddingRight: "8px",
+                  paddingTop: "4px",
+                  paddingBottom: "4px",
+                  paddingLeft: "4px",
+                  paddingRight: "4px",
                 }}
                 rows={1}
               />
 
               {subtask.is_required && (
                 <span
-                  className="absolute top-[7px] text-accent font-bold text-sm leading-none pointer-events-none select-none"
+                  className="absolute top-[5px] text-accent font-bold text-sm leading-none pointer-events-none select-none"
                   style={{ left: `${asteriskLeft}px` }}
                   aria-hidden="true"
                 >
@@ -563,13 +584,13 @@ export function SubtaskCard({
 
           {/* Follow-up if failed indicator */}
           {subtask.has_followup_if_failed && (
-            <GitBranch className="mt-3 h-3 w-3 shrink-0 text-destructive" />
+            <GitBranch className="mt-2 h-3 w-3 shrink-0 text-destructive" />
           )}
 
           {/* Assigned user badge */}
           {subtask.assigned_user_id && (
             <div
-              className="mt-2 shrink-0 h-5 w-5 rounded-full bg-accent/20 flex items-center justify-center cursor-pointer"
+              className="mt-1.5 shrink-0 h-5 w-5 rounded-full bg-accent/20 flex items-center justify-center cursor-pointer"
               title={subtask.assigned_user_name ?? "Assigned user"}
               onClick={handleUnassignUser}
             >
@@ -578,7 +599,7 @@ export function SubtaskCard({
           )}
 
           {/* Options Menu */}
-          <div className="mt-1.5 shrink-0">
+          <div className="mt-1 shrink-0">
             <SubtaskOptionsMenu
               isCreator={isCreator}
               isRequired={subtask.is_required}
@@ -605,7 +626,7 @@ export function SubtaskCard({
 
           {/* ── Right-side step-type affordances (authoring preview) ── */}
           {isCreator && !isStructureOnly && (
-            <div className="mt-1.5 flex shrink-0 items-start gap-1">
+            <div className="mt-1 flex shrink-0 items-start gap-1">
               {currentType === "yes_no" && (
                 <div className="flex items-center gap-0.5 rounded-lg bg-muted/40 p-0.5 w-[72px] border-none">
                   <span className="h-6 flex-1 rounded-md flex items-center justify-center text-2xs font-medium text-muted-foreground/60 bg-card shadow-sm">
@@ -710,16 +731,16 @@ export function SubtaskCard({
           )}
         </div>
 
-        {/* ── Inline type selector — authoring only ──── */}
+        {/* ── Inline type selector — authoring only (focus or hover) ──── */}
         {isCreator && currentType !== "divider" && (
           <div
             className={cn(
               "grid transition-[grid-template-rows] duration-200 ease-out",
-              isFocused ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+              showTypeOptions ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
             )}
           >
             <div className="overflow-hidden">
-              <div className="flex items-center gap-1 flex-wrap justify-end pr-2 pb-2 pt-0.5">
+              <div className="flex items-center gap-1 flex-wrap justify-end pr-1 pb-1.5 pt-0.5">
                 {/* Response types */}
                 {RESPONSE_TYPES.map((type, i) => {
                   const { icon: TypeIcon } = STEP_TYPE_CONFIG[type];
@@ -736,8 +757,8 @@ export function SubtaskCard({
                           : "bg-transparent text-muted-foreground/70 hover:bg-card hover:shadow-[1px_2px_2px_0px_rgba(0,0,0,0.12),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] hover:text-foreground/80"
                       )}
                       style={{
-                        opacity: isFocused ? 1 : 0,
-                        transform: isFocused ? "translateX(0)" : "translateX(-6px)",
+                        opacity: showTypeOptions ? 1 : 0,
+                        transform: showTypeOptions ? "translateX(0)" : "translateX(-6px)",
                         transition: `opacity 0.15s ease ${i * 22}ms, transform 0.15s ease ${i * 22}ms`,
                       }}
                       title={STEP_TYPE_CONFIG[type].label}
@@ -751,7 +772,7 @@ export function SubtaskCard({
                 <div
                   className="w-px h-3.5 bg-muted-foreground/15 mx-0.5 shrink-0"
                   style={{
-                    opacity: isFocused ? 1 : 0,
+                    opacity: showTypeOptions ? 1 : 0,
                     transition: `opacity 0.15s ease ${RESPONSE_TYPES.length * 22}ms`,
                   }}
                 />
@@ -775,8 +796,8 @@ export function SubtaskCard({
                       )}
                       style={{
                         color: isSelected ? "rgba(142,201,206,1)" : "rgba(42,41,62,0.5)",
-                        opacity: isFocused ? 1 : 0,
-                        transform: isFocused ? "translateX(0)" : "translateX(-6px)",
+                        opacity: showTypeOptions ? 1 : 0,
+                        transform: showTypeOptions ? "translateX(0)" : "translateX(-6px)",
                         transition: `opacity 0.15s ease ${delay}ms, transform 0.15s ease ${delay}ms, color 0.1s`,
                       }}
                       title={
@@ -800,8 +821,8 @@ export function SubtaskCard({
                     className="flex items-center h-[22px] w-[22px] justify-center rounded-sm bg-transparent transition-all focus:outline-none hover:bg-card hover:shadow-[1px_2px_2px_0px_rgba(0,0,0,0.12),-2px_-2px_2px_0px_rgba(255,255,255,0.7)]"
                     style={{
                       color: "rgba(42,41,62,0.5)",
-                      opacity: isFocused ? 1 : 0,
-                      transform: isFocused ? "translateX(0)" : "translateX(-6px)",
+                      opacity: showTypeOptions ? 1 : 0,
+                      transform: showTypeOptions ? "translateX(0)" : "translateX(-6px)",
                       transition: `opacity 0.15s ease ${(RESPONSE_TYPES.length + 5) * 22}ms, transform 0.15s ease ${(RESPONSE_TYPES.length + 5) * 22}ms`,
                     }}
                     title="Outdent"
@@ -816,7 +837,7 @@ export function SubtaskCard({
 
         {/* Below-row affordance for text type (authoring preview) */}
         {isCreator && currentType === "text" && (
-          <div className="ml-[46px] mr-2 pb-2 -mt-0.5">
+          <div className="ml-9 mr-1 pb-1.5 -mt-0.5">
             <div className="h-7 rounded-md px-2.5 flex items-center bg-card shadow-[inset_1px_1px_2px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)] text-xs text-muted-foreground/40 italic">
               Type your answer…
             </div>
@@ -834,7 +855,7 @@ export function SubtaskCard({
 
         {/* ── Follow-up Branch (if failed) ─────────────────────────── */}
         {subtask.has_followup_if_failed && (
-          <div className="ml-[22px] pb-1.5">
+          <div className="ml-4 pb-1">
             {/* "If Failed →" label with connector */}
             <div className="flex items-center gap-1 mb-0.5 pl-[2px]">
               <div className="w-[1px] h-2.5 bg-destructive/50 shrink-0" />
@@ -845,7 +866,7 @@ export function SubtaskCard({
             </div>
 
             {/* Follow-up step row */}
-            <div className="flex items-center gap-[3px] border-l-[2px] border-destructive pl-2 min-h-[30px]">
+            <div className="flex items-center gap-[3px] border-l-[2px] border-destructive pl-2 min-h-[28px]">
               <Check className="h-3 w-3 shrink-0 text-destructive" />
               <input
                 type="text"
@@ -868,7 +889,7 @@ export function SubtaskCard({
 
         {/* ── Inline Note ──────────────────────────────────────────── */}
         {subtask.note && (
-          <div className="group/note flex items-start gap-[3px] ml-[24px] mr-[36px] pb-2 -mt-0.5">
+          <div className="group/note flex items-start gap-[3px] ml-5 mr-2 pb-1.5 -mt-0.5">
             {/* Avatar in type icon position */}
             <div
               className="h-6 w-6 shrink-0 flex items-center justify-center rounded-full mt-0.5 overflow-hidden"
