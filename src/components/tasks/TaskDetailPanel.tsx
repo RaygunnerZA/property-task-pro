@@ -7,6 +7,7 @@ import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { useComplianceQuery } from "@/hooks/useComplianceQuery";
 import { TaskMessaging } from "./TaskMessaging";
 import { markTaskCommentSeen } from "@/lib/taskCommentSeen";
+import { writeLastTaskId } from "@/lib/templateLibraryPrefs";
 import { ImageAnnotationEditor, type DetectionOverlay } from "./ImageAnnotationEditor";
 import {
   isPersistedAnnotationLayerId,
@@ -139,6 +140,11 @@ export function TaskDetailPanel({
 }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { capture: captureGeo } = useGeoCaptureOnAction();
+
+  useEffect(() => {
+    if (taskId) writeLastTaskId(taskId);
+  }, [taskId]);
+
   const {
     data: timelineEvents,
     isLoading: timelineLoading,

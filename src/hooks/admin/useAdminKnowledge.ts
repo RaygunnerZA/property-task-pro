@@ -120,7 +120,7 @@ async function invokeKnowledgeGenerateGuidance(
   );
 
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, "knowledge-generate-guidance");
     if (!info.status && response) info.status = response.status;
     const message = formatEdgeFunctionToast(info);
     const err = new Error(message) as Error & {
@@ -649,7 +649,7 @@ async function analyseKnowledgeUrl(url: string): Promise<KnowledgeUrlIntakeResul
     body: { url: trimmed },
   });
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, "knowledge-intake-url");
     throw new Error(formatEdgeFunctionToast(info));
   }
 
@@ -891,7 +891,7 @@ export function useAdminResearchKnowledgeGaps() {
         body: { gaps },
       });
       if (error) {
-        const info = await parseEdgeFunctionError(error, data);
+        const info = await parseEdgeFunctionError(error, data, "knowledge-gap-research");
         throw new Error(formatEdgeFunctionToast(info));
       }
 
@@ -1103,7 +1103,7 @@ async function invokeContentGenerate(body: {
       },
     }));
   } catch (fetchErr) {
-    const info = await parseEdgeFunctionError(fetchErr, data);
+    const info = await parseEdgeFunctionError(fetchErr, data, "content-generate");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any).rpc("admin_set_content_topic_workflow_status", {
       p_topic_id: body.topicId,
@@ -1114,7 +1114,7 @@ async function invokeContentGenerate(body: {
   }
 
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, "content-generate");
     if (!info.status && response) info.status = response.status;
     throw new Error(formatEdgeFunctionToast(info));
   }

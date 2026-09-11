@@ -4613,11 +4613,7 @@ export function IntakeModal({
                     description={description}
                     onDescriptionChange={() => {}}
                     className="bg-transparent"
-                    templates={templates}
-                    recentTemplateIds={recentTemplateIds}
                     activeTemplateName={activeTemplate?.name ?? null}
-                    onUseTemplate={importTemplateItems}
-                    onUseStarterPreset={importStarterPreset}
                     onSaveAsTemplate={() => openTemplateDialog("save")}
                     onEditTemplate={() => openTemplateDialog("edit")}
                     onDuplicateTemplate={() => openTemplateDialog("duplicate")}

@@ -12,7 +12,7 @@ export interface FilterRowProps {
  */
 export const FilterRow: React.FC<FilterRowProps> = ({ children, className = '' }) => (
   <div className={cn(
-    'flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right px-1 pb-1',
+    'flex items-center gap-2 overflow-x-auto no-scrollbar mask-gradient-right px-1 pt-1 pb-1',
     className
   )}>
     {children}

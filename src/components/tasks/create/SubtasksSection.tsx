@@ -1,18 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronLeft, MoreHorizontal, Search } from "lucide-react";
-import { FilterChip } from "@/components/chips/filter";
-import { FilterRow } from "@/components/filla/FilterRow";
+import { MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { SubtaskList, SubtaskData } from "../subtasks";
-import type { ChecklistTemplate, ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
-import {
-  PRESET_TEMPLATES,
-  findLibraryTemplateForPreset,
-  type PresetTemplate,
-} from "@/data/presetTemplates";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,14 +19,6 @@ import {
 // Re-export for backwards compatibility
 export type SubtaskInput = SubtaskData;
 
-const CATEGORY_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "compliance", label: "Compliance" },
-  { id: "maintenance", label: "Maintenance" },
-  { id: "security", label: "Security" },
-  { id: "operations", label: "Operations" },
-];
-
 interface SubtasksSectionProps {
   subtasks: SubtaskInput[];
   onSubtasksChange: (subtasks: SubtaskInput[]) => void;
@@ -45,16 +29,13 @@ interface SubtasksSectionProps {
   /** When pasting or dropping a file into the description, parent adds it like Add Photo. */
   onPasteImages?: (files: File[]) => void;
   className?: string;
-  templates?: ChecklistTemplate[];
-  recentTemplateIds?: string[];
   activeTemplateName?: string | null;
-  onUseTemplate?: (templateId: string) => void;
-  onUseStarterPreset?: (preset: PresetTemplate) => void;
   onSaveAsTemplate?: () => void | Promise<void>;
   onEditTemplate?: () => void | Promise<void>;
   onDuplicateTemplate?: () => void | Promise<void>;
   onArchiveTemplate?: () => void | Promise<void>;
 }
+
 export function SubtasksSection({
   subtasks,
   onSubtasksChange,
@@ -63,11 +44,7 @@ export function SubtasksSection({
   description = "",
   onDescriptionChange,
   onPasteImages,
-  templates = [],
-  recentTemplateIds = [],
   activeTemplateName,
-  onUseTemplate,
-  onUseStarterPreset,
   onSaveAsTemplate,
   onEditTemplate,
   onDuplicateTemplate,
@@ -75,13 +52,6 @@ export function SubtasksSection({
   className
 }: SubtasksSectionProps) {
   const navigate = useNavigate();
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerView, setPickerView] = useState<
-    "root" | "recent" | "categories" | "category-options" | "search" | "starters"
-  >("root");
-  const [animationDirection, setAnimationDirection] = useState<"left-to-right" | "right-to-left" | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<"all" | ChecklistTemplateCategory>("all");
-  const [searchQuery, setSearchQuery] = useState("");
   const [descriptionFocused, setDescriptionFocused] = useState(false);
 
   const handleAddFirstSubtask = () => {
@@ -105,153 +75,40 @@ export function SubtasksSection({
   // If no subtasks, show the "add subtask" placeholder row
   const showPlaceholder = subtasks.length === 0;
 
-  // Reveal checklist chrome once the user starts writing (or already has steps / picker open).
+  // Reveal checklist chrome once the user starts writing (or already has steps).
   // When showDescription is false, the parent already gated mounting (e.g. Intake) — keep chrome on.
   const hasDescriptionContent = Boolean(description.trim());
   const revealChecklistChrome =
     !showDescription ||
     hasDescriptionContent ||
     descriptionFocused ||
-    subtasks.length > 0 ||
-    pickerOpen;
+    subtasks.length > 0;
 
-  const templateMap = useMemo(() => {
-    return new Map(templates.map((template) => [template.id, template]));
-  }, [templates]);
-
-  const recentTemplates = useMemo(() => {
-    return recentTemplateIds
-      .map((id) => templateMap.get(id))
-      .filter((template): template is ChecklistTemplate => Boolean(template))
-      .slice(0, 8);
-  }, [recentTemplateIds, templateMap]);
-
-  const categoryTemplates = useMemo(() => {
-    if (selectedCategory === "all") return templates;
-    return templates.filter((template) => template.category === selectedCategory);
-  }, [selectedCategory, templates]);
-
-  const searchResults = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return [];
-    return templates.filter((template) => template.name.toLowerCase().includes(query));
-  }, [searchQuery, templates]);
-
-  const closePicker = () => {
-    setAnimationDirection("right-to-left");
-    setTimeout(() => {
-      setPickerOpen(false);
-      setPickerView("root");
-      setSearchQuery("");
-    }, 120);
-  };
-
-  useEffect(() => {
-    if (!animationDirection) return;
-    const timer = window.setTimeout(() => setAnimationDirection(null), 280);
-    return () => window.clearTimeout(timer);
-  }, [animationDirection]);
-
-  const getAnimationClass = () => {
-    if (!animationDirection) return "";
-    return animationDirection === "right-to-left"
-      ? "animate-wipe-right-to-left"
-      : "animate-wipe-left-to-right";
-  };
-
-  const starterPresets = useMemo(() => {
-    return PRESET_TEMPLATES;
-  }, []);
-
-  const handleStarterSelect = (preset: PresetTemplate) => {
-    const libraryMatch = findLibraryTemplateForPreset(preset, templates);
-    if (libraryMatch) {
-      onUseTemplate?.(libraryMatch.id);
-    } else {
-      onUseStarterPreset?.(preset);
-    }
-    closePicker();
-  };
-
-  const renderTemplateChips = (items: ChecklistTemplate[], emptyLabel: string) => {
-    if (items.length === 0) {
-      return (
-        <div className="text-caption text-muted-foreground/70 px-2 py-1 whitespace-nowrap ml-auto">
-          {emptyLabel}
-        </div>
-      );
-    }
-
-    return (
-      <FilterRow className="py-1 justify-end w-full min-w-0">
-        {items.map((template) => (
-          <FilterChip
-            key={template.id}
-            label={template.name}
-            className="h-[24px]"
-            onSelect={() => {
-              onUseTemplate?.(template.id);
-              closePicker();
-            }}
-          />
-        ))}
-      </FilterRow>
-    );
-  };
-
-  const renderStarterChips = () => {
-    return (
-      <FilterRow className="py-1 justify-end w-full min-w-0">
-        {starterPresets.map((preset) => (
-          <FilterChip
-            key={preset.id}
-            label={preset.name}
-            className="h-[24px]"
-            onSelect={() => handleStarterSelect(preset)}
-          />
-        ))}
-      </FilterRow>
-    );
-  };
-
-  const openChildView = (view: "recent" | "categories" | "search" | "starters") => {
-    setAnimationDirection("left-to-right");
-    setPickerView(view);
-  };
-
-  const handleBack = () => {
-    setAnimationDirection("right-to-left");
-    if (pickerView === "category-options") {
-      setPickerView("categories");
-      return;
-    }
-    setPickerView("root");
-  };
-
-  return <div 
+  return (
+    <div
       className={cn(
         "group/subtask overflow-hidden text-white",
         embedded ? "mt-0 rounded-none bg-transparent shadow-none" : "shadow-engraved rounded-xl bg-white/80 mt-4",
         className
       )}
       style={{
-        backgroundClip: 'unset',
-        WebkitBackgroundClip: 'unset',
-        backgroundImage: 'none',
-        paddingTop: '0px'
+        backgroundClip: "unset",
+        WebkitBackgroundClip: "unset",
+        backgroundImage: "none",
+        paddingTop: "0px",
       }}
     >
       {/* Description Area */}
       {showDescription && (
         <div
           className="pt-3 pb-3 bg-black/0 min-h-[80px]"
-          style={{ paddingLeft: '15px', paddingRight: '15px' }}
+          style={{ paddingLeft: "15px", paddingRight: "15px" }}
           {...(onPasteImages ? fileDropBind(onPasteImages) : {})}
         >
           <Textarea
             placeholder="What Needs Doing?"
             value={description}
-            onChange={e => onDescriptionChange?.(e.target.value)}
+            onChange={(e) => onDescriptionChange?.(e.target.value)}
             onFocus={() => setDescriptionFocused(true)}
             onBlur={() => setDescriptionFocused(false)}
             onPaste={(e) => {
@@ -263,21 +120,21 @@ export function SubtasksSection({
             }}
             rows={2}
             className="box-content border-0 bg-transparent shadow-none focus-visible:ring-0 p-0 text-[17px] font-normal text-foreground placeholder:text-muted-foreground/60 resize-none"
-            style={{ fontFamily: '"Inter Tight"', boxShadow: 'none' }}
+            style={{ fontFamily: '"Inter Tight"', boxShadow: "none" }}
           />
         </div>
       )}
 
       {/* Subtasks Area */}
       <div className="pl-0 pr-0 pb-[6px] pt-0">
-        {showPlaceholder ? (/* Empty State - Add Step Placeholder */
-      <div
-        className={cn(
-          "flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group transition-opacity duration-200",
-          !revealChecklistChrome && "opacity-0 hover:opacity-100"
-        )}
-        onClick={handleAddFirstSubtask}
-      >
+        {showPlaceholder ? (
+          <div
+            className={cn(
+              "flex items-center gap-2 py-[3px] pl-[13px] cursor-pointer group transition-opacity duration-200",
+              !revealChecklistChrome && "opacity-0 hover:opacity-100"
+            )}
+            onClick={handleAddFirstSubtask}
+          >
             <div
               className={cn(
                 "h-3 w-3 rounded-lg border-2 border-muted-foreground/20 bg-background/50 transition-opacity",
@@ -302,7 +159,7 @@ export function SubtasksSection({
                     "h-7 w-7 transition-opacity",
                     !revealChecklistChrome && "opacity-0 group-hover:opacity-100"
                   )}
-                  onClick={e => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
                 >
                   <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
                 </Button>
@@ -313,11 +170,14 @@ export function SubtasksSection({
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-          </div>) : (
-          <>
-            {/* Subtask List with DnD */}
-            <SubtaskList subtasks={subtasks} isCreator={true} onSubtasksChange={onSubtasksChange} onReorder={handleReorder} />
-          </>
+          </div>
+        ) : (
+          <SubtaskList
+            subtasks={subtasks}
+            isCreator={true}
+            onSubtasksChange={onSubtasksChange}
+            onReorder={handleReorder}
+          />
         )}
 
         {activeTemplateName && (
@@ -340,17 +200,6 @@ export function SubtasksSection({
               className="hover:text-muted-foreground transition-colors"
               onClick={(e) => {
                 e.preventDefault();
-                setPickerOpen((prev) => !prev);
-              }}
-            >
-              Templates
-            </button>
-            <span className="text-muted-foreground/30">|</span>
-            <button
-              type="button"
-              className="hover:text-muted-foreground transition-colors"
-              onClick={(e) => {
-                e.preventDefault();
                 onSaveAsTemplate?.();
               }}
             >
@@ -365,7 +214,7 @@ export function SubtasksSection({
                 navigate("/manage/templates");
               }}
             >
-              Manage
+              Templates
             </button>
           </div>
         ) : (
@@ -404,104 +253,7 @@ export function SubtasksSection({
             </button>
           </div>
         )}
-
-        {pickerOpen && (
-          <div className="-mt-[6px] pl-1 pr-[7px] pt-[5px] pb-0 animate-fade-in">
-            <div
-              key={`${pickerView}-${selectedCategory}-${searchQuery.length > 0 ? "q" : "nq"}`}
-              className={cn(
-                "flex items-center gap-2 overflow-x-auto no-scrollbar h-[37px] px-[4px]",
-                getAnimationClass()
-              )}
-            >
-              {pickerView === "root" && (
-                <FilterRow className="py-0 justify-end w-full min-w-0 pb-0">
-                  <FilterChip
-                    label="Recent"
-                    onSelect={() => openChildView("recent")}
-                    className="h-[24px]"
-                  />
-                  <FilterChip
-                    label="Categories"
-                    onSelect={() => openChildView("categories")}
-                    className="h-[24px]"
-                  />
-                  <FilterChip
-                    label="Search"
-                    onSelect={() => openChildView("search")}
-                    className="h-[24px]"
-                  />
-                  <FilterChip
-                    label="Starters"
-                    onSelect={() => openChildView("starters")}
-                    className="h-[24px]"
-                  />
-                </FilterRow>
-              )}
-
-              {pickerView !== "root" && (
-                <button
-                  type="button"
-                  className="h-[24px] w-[24px] rounded-card grid place-items-center bg-background shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-2px_-2px_2px_0px_rgba(255,255,255,0.7)] shrink-0 mr-auto"
-                  onClick={handleBack}
-                  aria-label="Back"
-                >
-                  <ChevronLeft className="h-4 w-4 text-muted-foreground" />
-                </button>
-              )}
-
-              {pickerView === "recent" && renderTemplateChips(recentTemplates, "No recent checklists yet")}
-
-              {pickerView === "categories" && (
-                <FilterRow className="py-1 justify-end w-full min-w-0">
-                  {CATEGORY_OPTIONS.map((option) => (
-                    <FilterChip
-                      key={option.id}
-                      label={option.label}
-                      selected={selectedCategory === option.id}
-                      className="h-[24px]"
-                      onSelect={() => {
-                        setSelectedCategory(option.id);
-                        setAnimationDirection("left-to-right");
-                        setPickerView("category-options");
-                      }}
-                    />
-                  ))}
-                </FilterRow>
-              )}
-
-              {pickerView === "category-options" &&
-                renderTemplateChips(
-                  categoryTemplates,
-                  selectedCategory === "all" ? "No checklists yet" : "No checklists here yet"
-                )}
-
-              {pickerView === "search" && (
-                <div className="h-9 min-w-[220px] max-w-full px-3 rounded-[10px] bg-background shadow-engraved flex items-center gap-2 ml-auto">
-                  <Search className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <input
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search checklist templates"
-                    className="w-full bg-transparent border-0 outline-none text-sm text-foreground placeholder:text-muted-foreground/60"
-                  />
-                </div>
-              )}
-            </div>
-
-            {pickerView === "search" && (
-              <div className={cn("mt-1 flex justify-end", getAnimationClass())}>
-                {renderTemplateChips(searchResults, searchQuery ? "No matching checklists" : "Type to search templates")}
-              </div>
-            )}
-
-            {pickerView === "starters" && (
-              <div className={cn("mt-1 flex justify-end", getAnimationClass())}>
-                {renderStarterChips()}
-              </div>
-            )}
-          </div>
-        )}
       </div>
-    </div>;
+    </div>
+  );
 }

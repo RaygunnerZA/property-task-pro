@@ -72,7 +72,6 @@ export function CreateTaskModal({
   const {
     members,
     refreshMembers,
-    templates,
     spaces,
     teams,
     categories,
@@ -96,7 +95,6 @@ export function CreateTaskModal({
     complianceLevel, setComplianceLevel,
     annotationRequired, setAnnotationRequired,
     setTemplateId,
-    recentTemplateIds,
     templateDialogMode, setTemplateDialogMode,
     templateDraftName, setTemplateDraftName,
     templateDraftCategory, setTemplateDraftCategory,
@@ -114,8 +112,6 @@ export function CreateTaskModal({
     showArchiveTemplateDialog, setShowArchiveTemplateDialog,
     handlePropertyChange,
     rememberRecentTemplate,
-    importTemplateItems,
-    importStarterPreset,
     openTemplateDialog,
     submitTemplateDialog,
     archiveActiveTemplate,
@@ -313,16 +309,12 @@ export function CreateTaskModal({
             onDescriptionChange={setDescription}
             onPasteImages={handlePasteImages}
             className="bg-transparent"
-          templates={templates}
-          recentTemplateIds={recentTemplateIds}
-          activeTemplateName={activeTemplate?.name ?? null}
-          onUseTemplate={importTemplateItems}
-          onUseStarterPreset={importStarterPreset}
-          onSaveAsTemplate={() => openTemplateDialog("save")}
-          onEditTemplate={() => openTemplateDialog("edit")}
-          onDuplicateTemplate={() => openTemplateDialog("duplicate")}
-          onArchiveTemplate={archiveActiveTemplate}
-        />
+            activeTemplateName={activeTemplate?.name ?? null}
+            onSaveAsTemplate={() => openTemplateDialog("save")}
+            onEditTemplate={() => openTemplateDialog("edit")}
+            onDuplicateTemplate={() => openTemplateDialog("duplicate")}
+            onArchiveTemplate={archiveActiveTemplate}
+          />
         </div>
 
         <div

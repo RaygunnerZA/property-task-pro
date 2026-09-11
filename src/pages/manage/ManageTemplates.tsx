@@ -9,6 +9,8 @@ import {
   CheckSquare,
   FileSignature,
   Sparkles,
+  Star,
+  ListPlus,
 } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { FilterChip } from "@/components/chips/filter/Chip";
@@ -20,6 +22,17 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import {
@@ -34,6 +47,7 @@ import {
   duplicateTemplate,
   normalizeItems,
 } from "@/services/templates/templateService";
+import { applyTemplateToTask } from "@/services/tasks/taskMutations";
 import { TemplateDialog, CATEGORY_OPTIONS, type TemplateDialogValue } from "@/components/templates/TemplateDialog";
 import { PresetBrowser, PresetPreviewDialog } from "@/components/templates/PresetBrowser";
 import { StarterTemplateDisclaimerDialog } from "@/components/templates/StarterTemplateDisclaimerDialog";
@@ -51,12 +65,23 @@ import {
   getManageTemplateEntryKey,
   getManageTemplateEntryCategory,
   isRegulatedStarterPreset,
+  sortEntriesAddedFirst,
+  isStarterTemplateName,
 } from "@/data/presetTemplates";
 import type { SubtaskData } from "@/components/tasks/subtasks";
 import { parseChecklistTemplateItems } from "@/lib/checklistTemplateItems";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import {
+  addMyTemplateId,
+  readLastTaskId,
+  readMyTemplateIds,
+  writeMyTemplateIds,
+} from "@/lib/templateLibraryPrefs";
 
-const FILTER_OPTIONS: Array<{ id: "all" | ChecklistTemplateCategory; label: string }> = [
+const FILTER_OPTIONS: Array<{ id: "all" | "mine" | ChecklistTemplateCategory; label: string }> = [
   { id: "all", label: "All" },
+  { id: "mine", label: "My Templates" },
   ...CATEGORY_OPTIONS.map((o) => ({ id: o.value, label: o.label })),
 ];
 
@@ -80,14 +105,28 @@ function parseItems(raw: unknown): SubtaskData[] {
 
 interface TemplateCardProps {
   entry: ManageTemplateEntry;
+  starred?: boolean;
   onOpen: () => void;
+  onEdit?: () => void;
+  onAddToTask?: () => void;
+  onToggleStar?: () => void;
   onDuplicate?: () => void;
   onArchive?: () => void;
 }
 
-function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardProps) {
+function TemplateCard({
+  entry,
+  starred = false,
+  onOpen,
+  onEdit,
+  onAddToTask,
+  onToggleStar,
+  onDuplicate,
+  onArchive,
+}: TemplateCardProps) {
   const isStarter = entry.kind === "preset" || entry.isStarter;
   const isVirtual = entry.kind === "preset";
+  const isLibrary = entry.kind === "library";
   const name = entry.kind === "preset" ? entry.preset.name : entry.template.name;
   const category = getManageTemplateEntryCategory(entry);
   const regulatedPreset =
@@ -122,13 +161,39 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
           onOpen();
         }
       }}
-      className={`group relative rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-[2px] px-5 py-4 flex flex-col gap-3 cursor-pointer text-left w-full ${
+      className={cn(
+        "group relative rounded-2xl shadow-md hover:shadow-lg transition-all duration-200 hover:-translate-y-[2px] px-5 py-4 flex flex-col gap-3 cursor-pointer text-left w-full",
         isVirtual ? "bg-primary/5" : "bg-card"
-      }`}
+      )}
     >
+      {isLibrary && isStarter && onToggleStar ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleStar();
+          }}
+          className={cn(
+            "absolute right-3 top-3 z-10 inline-flex h-7 w-7 items-center justify-center rounded-lg transition-opacity",
+            starred
+              ? "text-primary opacity-100"
+              : "text-muted-foreground/45 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
+          )}
+          aria-label={starred ? "Remove from My Templates" : "Add to My Templates"}
+          title={starred ? "Remove from My Templates" : "Add to My Templates"}
+        >
+          <Star className={cn("h-4 w-4", starred && "fill-current")} aria-hidden />
+        </button>
+      ) : null}
+
       <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-foreground truncate leading-snug">
+        <div className={cn("flex-1 min-w-0", isLibrary && isStarter && onToggleStar && "pr-7")}>
+          <p
+            className={cn(
+              "font-semibold text-sm truncate leading-snug",
+              isStarter ? "text-muted-foreground" : "text-foreground"
+            )}
+          >
             {name}
           </p>
           {isVirtual && (
@@ -139,44 +204,80 @@ function TemplateCard({ entry, onOpen, onDuplicate, onArchive }: TemplateCardPro
         </div>
 
         {!isVirtual && onDuplicate && onArchive && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              onClick={(e) => e.stopPropagation()}
-              className="h-7 w-7 rounded-lg grid place-items-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus:opacity-100 shrink-0"
-              aria-label="Template options"
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-card border-0 shadow-e3 rounded-xl w-40">
-            <DropdownMenuItem onClick={onOpen} className="gap-2 text-sm cursor-pointer">
-              <Pencil className="h-3.5 w-3.5" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onDuplicate} className="gap-2 text-sm cursor-pointer">
-              <Copy className="h-3.5 w-3.5" />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={onArchive}
-              className="gap-2 text-sm cursor-pointer text-accent focus:text-accent focus:bg-accent/10"
-            >
-              <Archive className="h-3.5 w-3.5" />
-              Archive
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "h-7 w-7 rounded-lg grid place-items-center text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/40 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 focus:opacity-100 shrink-0",
+                  isLibrary && isStarter && onToggleStar && "mr-7"
+                )}
+                aria-label="Template options"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-card border-0 shadow-e3 rounded-xl w-40">
+              <DropdownMenuItem onClick={onOpen} className="gap-2 text-sm cursor-pointer">
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDuplicate} className="gap-2 text-sm cursor-pointer">
+                <Copy className="h-3.5 w-3.5" />
+                Duplicate
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={onArchive}
+                className="gap-2 text-sm cursor-pointer text-accent focus:text-accent focus:bg-accent/10"
+              >
+                <Archive className="h-3.5 w-3.5" />
+                Archive
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
 
+      {isLibrary && (onEdit || onAddToTask) ? (
+        <div
+          className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 transition-opacity"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {onEdit ? (
+            <button
+              type="button"
+              onClick={onEdit}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-mono uppercase tracking-wider text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+            >
+              <Pencil className="h-3 w-3" aria-hidden />
+              Edit
+            </button>
+          ) : null}
+          {onAddToTask ? (
+            <button
+              type="button"
+              onClick={onAddToTask}
+              className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-2xs font-mono uppercase tracking-wider text-primary hover:bg-primary/10 transition-colors"
+            >
+              <ListPlus className="h-3 w-3" aria-hidden />
+              Add to Task
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+
       <div className="flex items-center gap-2 flex-wrap">
-        {isStarter && (
+        {isVirtual && (
           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-primary/10 text-primary-deep">
             <Sparkles className="h-3 w-3" aria-hidden />
             Starting template
+          </span>
+        )}
+        {isLibrary && isStarter && (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-2xs font-mono uppercase tracking-wider bg-muted/60 text-muted-foreground">
+            Added to library
           </span>
         )}
         {showRegulatedBadge && <RegulatedAreaBadge />}
@@ -213,7 +314,7 @@ export default function ManageTemplates() {
   const { toast } = useToast();
   const { templates, loading, refresh } = useChecklistTemplates(true);
 
-  const [activeFilter, setActiveFilter] = useState<"all" | ChecklistTemplateCategory>("all");
+  const [activeFilter, setActiveFilter] = useState<"all" | "mine" | ChecklistTemplateCategory>("all");
   const [dialogState, setDialogState] = useState<DialogState>(null);
   const [submitting, setSubmitting] = useState(false);
   const [presetBrowserOpen, setPresetBrowserOpen] = useState(false);
@@ -222,8 +323,23 @@ export default function ManageTemplates() {
   const [pendingPreset, setPendingPreset] = useState<PresetTemplate | null>(null);
   const [disclaimerSubmitting, setDisclaimerSubmitting] = useState(false);
   const [addedTemplateDialog, setAddedTemplateDialog] = useState<PresetTemplate | null>(null);
+  const [myTemplateIds, setMyTemplateIds] = useState<Set<string>>(() => new Set());
+  const [pendingAddToTask, setPendingAddToTask] = useState<{
+    template: ChecklistTemplate;
+    taskId: string;
+    existingCount: number;
+  } | null>(null);
+  const [addingToTask, setAddingToTask] = useState(false);
 
   const { hasAccepted, acceptDisclaimer } = useOrgStarterDisclaimer();
+
+  useEffect(() => {
+    if (!orgId) {
+      setMyTemplateIds(new Set());
+      return;
+    }
+    setMyTemplateIds(readMyTemplateIds(orgId));
+  }, [orgId]);
 
   // Track which preset IDs have already been added by the user this session
   const [addedPresetIds, setAddedPresetIds] = useState<Set<string>>(new Set());
@@ -290,10 +406,21 @@ export default function ManageTemplates() {
     [templates]
   );
 
-  const customTemplateCount = useMemo(
-    () => displayEntries.filter((entry) => entry.kind === "library" && !entry.isStarter).length,
-    [displayEntries]
+  const isMyTemplateEntry = useCallback(
+    (entry: ManageTemplateEntry) => {
+      if (entry.kind !== "library") return false;
+      if (!entry.isStarter) return true;
+      return myTemplateIds.has(entry.template.id);
+    },
+    [myTemplateIds]
   );
+
+  const myEntries = useMemo(
+    () => displayEntries.filter(isMyTemplateEntry),
+    [displayEntries, isMyTemplateEntry]
+  );
+
+  const customTemplateCount = myEntries.length;
 
   const libraryPresetIds = useMemo(
     () => getPresetIdsInLibrary(templates.map((t) => t.name)),
@@ -306,22 +433,36 @@ export default function ManageTemplates() {
     return merged;
   }, [addedPresetIds, libraryPresetIds]);
 
+  const starterEntriesForCategory = useCallback(
+    (category: ChecklistTemplateCategory) =>
+      sortEntriesAddedFirst(
+        displayEntries.filter((entry) => {
+          if (getManageTemplateEntryCategory(entry) !== category) return false;
+          // Custom templates live under My Templates only.
+          if (entry.kind === "library" && !entry.isStarter) return false;
+          // Starred starters already appear in My Templates — avoid duplicates on All.
+          if (activeFilter === "all" && isMyTemplateEntry(entry)) return false;
+          return true;
+        })
+      ),
+    [displayEntries, activeFilter, isMyTemplateEntry]
+  );
+
   const filteredEntries = useMemo(() => {
     if (activeFilter === "all") return displayEntries;
-    return displayEntries.filter((entry) => getManageTemplateEntryCategory(entry) === activeFilter);
-  }, [displayEntries, activeFilter]);
+    if (activeFilter === "mine") return myEntries;
+    return starterEntriesForCategory(activeFilter);
+  }, [activeFilter, displayEntries, myEntries, starterEntriesForCategory]);
 
   const groupedEntries = useMemo(() => {
     if (activeFilter !== "all") return null;
     const map = new Map<ChecklistTemplateCategory, ManageTemplateEntry[]>();
     for (const opt of CATEGORY_OPTIONS) {
-      const items = displayEntries.filter(
-        (entry) => getManageTemplateEntryCategory(entry) === opt.value
-      );
+      const items = starterEntriesForCategory(opt.value);
       if (items.length > 0) map.set(opt.value, items);
     }
     return map;
-  }, [displayEntries, activeFilter]);
+  }, [activeFilter, starterEntriesForCategory]);
 
   const openCreate = () => setDialogState({ mode: "create" });
   const openEdit = (template: ChecklistTemplate) => setDialogState({ mode: "edit", template });
@@ -342,15 +483,22 @@ export default function ManageTemplates() {
           items: normalizedItems,
         });
         if (error) throw error;
+        // Editing a starter automatically adds it to My Templates.
+        if (isStarterTemplateName(dialogState.template.name)) {
+          setMyTemplateIds(addMyTemplateId(orgId, dialogState.template.id));
+        }
         toast({ title: "Template updated", description: `"${value.name}" has been updated.` });
       } else {
-        const { error } = await saveTemplate({
+        const { data, error } = await saveTemplate({
           orgId,
           name: value.name,
           category: value.category,
           items: normalizedItems,
         });
         if (error) throw error;
+        if (data?.id) {
+          setMyTemplateIds(addMyTemplateId(orgId, data.id));
+        }
         toast({ title: "Template created", description: `"${value.name}" is now available.` });
       }
 
@@ -367,7 +515,7 @@ export default function ManageTemplates() {
   const handleDuplicate = async (template: ChecklistTemplate) => {
     if (!orgId) return;
     const items = normalizeItems(parseItems(template.items));
-    const { error } = await duplicateTemplate(
+    const { data, error } = await duplicateTemplate(
       orgId,
       template.id,
       `${template.name} Copy`,
@@ -377,6 +525,9 @@ export default function ManageTemplates() {
     if (error) {
       toast({ title: "Couldn't duplicate", description: error.message, variant: "destructive" });
       return;
+    }
+    if (data?.id) {
+      setMyTemplateIds(addMyTemplateId(orgId, data.id));
     }
     await refresh();
     toast({ title: "Template duplicated", description: `"${template.name} Copy" created.` });
@@ -405,6 +556,111 @@ export default function ManageTemplates() {
     }
     openEdit(entry.template as ChecklistTemplate);
   }, []);
+
+  const handleToggleStar = useCallback(
+    (templateId: string) => {
+      if (!orgId) return;
+      setMyTemplateIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(templateId)) {
+          next.delete(templateId);
+          writeMyTemplateIds(orgId, next);
+          toast({ title: "Removed from My Templates" });
+        } else {
+          next.add(templateId);
+          writeMyTemplateIds(orgId, next);
+          toast({ title: "Added to My Templates" });
+        }
+        return next;
+      });
+    },
+    [orgId, toast]
+  );
+
+  const clearExistingSubtasks = useCallback(async (taskId: string) => {
+    if (!orgId) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = supabase as any;
+    const { error } = await client
+      .from("subtasks")
+      .update({ is_archived: true })
+      .eq("task_id", taskId)
+      .eq("org_id", orgId);
+    if (error) throw error;
+  }, [orgId]);
+
+  const countTaskSubtasks = useCallback(async (taskId: string) => {
+    if (!orgId) return 0;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = supabase as any;
+    const { count, error } = await client
+      .from("subtasks")
+      .select("id", { count: "exact", head: true })
+      .eq("task_id", taskId)
+      .eq("org_id", orgId)
+      .or("is_archived.eq.false,is_archived.is.null");
+    if (error) throw error;
+    return count ?? 0;
+  }, [orgId]);
+
+  const applyTemplateMode = useCallback(
+    async (template: ChecklistTemplate, taskId: string, mode: "replace" | "append") => {
+      if (!orgId) return;
+      setAddingToTask(true);
+      try {
+        if (mode === "replace") {
+          await clearExistingSubtasks(taskId);
+        }
+        await applyTemplateToTask(taskId, template.id, orgId);
+        toast({
+          title: mode === "replace" ? "Checklist replaced" : "Checklist added",
+          description: `"${template.name}" applied to the current task.`,
+        });
+        setPendingAddToTask(null);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast({
+          title: "Couldn't add to task",
+          description: message,
+          variant: "destructive",
+        });
+      } finally {
+        setAddingToTask(false);
+      }
+    },
+    [orgId, clearExistingSubtasks, toast]
+  );
+
+  const handleAddToTask = useCallback(
+    async (template: ChecklistTemplate) => {
+      if (!orgId) return;
+      const taskId = readLastTaskId();
+      if (!taskId) {
+        toast({
+          title: "No task selected",
+          description: "Open a task first, then add a template from the library.",
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        const existingCount = await countTaskSubtasks(taskId);
+        if (existingCount > 0) {
+          setPendingAddToTask({ template, taskId, existingCount });
+          return;
+        }
+        await applyTemplateMode(template, taskId, "append");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        toast({
+          title: "Couldn't add to task",
+          description: message,
+          variant: "destructive",
+        });
+      }
+    },
+    [orgId, countTaskSubtasks, applyTemplateMode, toast]
+  );
 
   const handleAddPreset = useCallback(
     async (preset: PresetTemplate) => {
@@ -540,7 +796,7 @@ export default function ManageTemplates() {
 
   return (
     <StandardPage
-      title="Templates"
+      title="Template Library"
       icon={<FileStack className="h-6 w-6" />}
       maxWidth="lg"
       action={headerActions}
@@ -552,7 +808,11 @@ export default function ManageTemplates() {
             key={opt.id}
             label={opt.label}
             selected={activeFilter === opt.id}
-            color={opt.id !== "all" ? CATEGORY_COLORS[opt.id as ChecklistTemplateCategory] : undefined}
+            color={
+              opt.id !== "all" && opt.id !== "mine"
+                ? CATEGORY_COLORS[opt.id as ChecklistTemplateCategory]
+                : undefined
+            }
             onSelect={() => setActiveFilter(opt.id)}
             className="h-[28px]"
           />
@@ -569,25 +829,39 @@ export default function ManageTemplates() {
         <p className="mb-4 text-xs text-muted-foreground/50">Loading your custom templates…</p>
       )}
 
-      {/* Templates — grouped by category when "All" is selected */}
-      {activeFilter === "all" && groupedEntries && (
+      {/* Templates — My Templates first, then categories when "All" is selected */}
+      {activeFilter === "all" && (
         <div className="space-y-8">
-          {Array.from(groupedEntries.entries()).map(([cat, items]) => (
-            <section key={cat}>
+          {myEntries.length > 0 ? (
+            <section>
               <div className="flex items-center gap-2 mb-3">
-                <span
-                  className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono uppercase tracking-wider ${CATEGORY_BG[cat]}`}
-                >
-                  {cat}
+                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono uppercase tracking-wider bg-card text-foreground shadow-sm">
+                  My Templates
                 </span>
-                <span className="text-xs text-muted-foreground/50">{items.length}</span>
+                <span className="text-xs text-muted-foreground/50">{myEntries.length}</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {items.map((entry) => (
+                {myEntries.map((entry) => (
                   <TemplateCard
                     key={getManageTemplateEntryKey(entry)}
                     entry={entry}
+                    starred={entry.kind === "library" && myTemplateIds.has(entry.template.id)}
                     onOpen={() => openEntry(entry)}
+                    onEdit={
+                      entry.kind === "library"
+                        ? () => openEdit(entry.template as ChecklistTemplate)
+                        : undefined
+                    }
+                    onAddToTask={
+                      entry.kind === "library"
+                        ? () => void handleAddToTask(entry.template as ChecklistTemplate)
+                        : undefined
+                    }
+                    onToggleStar={
+                      entry.kind === "library" && entry.isStarter
+                        ? () => handleToggleStar(entry.template.id)
+                        : undefined
+                    }
                     onDuplicate={
                       entry.kind === "library"
                         ? () => void handleDuplicate(entry.template as ChecklistTemplate)
@@ -602,16 +876,68 @@ export default function ManageTemplates() {
                 ))}
               </div>
             </section>
-          ))}
+          ) : null}
+
+          {groupedEntries
+            ? Array.from(groupedEntries.entries()).map(([cat, items]) => (
+                <section key={cat}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-mono uppercase tracking-wider ${CATEGORY_BG[cat]}`}
+                    >
+                      {cat}
+                    </span>
+                    <span className="text-xs text-muted-foreground/50">{items.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {items.map((entry) => (
+                      <TemplateCard
+                        key={getManageTemplateEntryKey(entry)}
+                        entry={entry}
+                        starred={entry.kind === "library" && myTemplateIds.has(entry.template.id)}
+                        onOpen={() => openEntry(entry)}
+                        onEdit={
+                          entry.kind === "library"
+                            ? () => openEdit(entry.template as ChecklistTemplate)
+                            : undefined
+                        }
+                        onAddToTask={
+                          entry.kind === "library"
+                            ? () => void handleAddToTask(entry.template as ChecklistTemplate)
+                            : undefined
+                        }
+                        onToggleStar={
+                          entry.kind === "library" && entry.isStarter
+                            ? () => handleToggleStar(entry.template.id)
+                            : undefined
+                        }
+                        onDuplicate={
+                          entry.kind === "library"
+                            ? () => void handleDuplicate(entry.template as ChecklistTemplate)
+                            : undefined
+                        }
+                        onArchive={
+                          entry.kind === "library"
+                            ? () => void handleArchive(entry.template as ChecklistTemplate)
+                            : undefined
+                        }
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))
+            : null}
         </div>
       )}
 
-      {/* Templates — flat list when a specific category is selected */}
+      {/* Templates — flat list when a specific category / My Templates is selected */}
       {activeFilter !== "all" && (
         <>
           {filteredEntries.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground/60 text-sm">
-              No templates in this category yet.
+              {activeFilter === "mine"
+                ? "No templates in My Templates yet. Star a library template or create your own."
+                : "No templates in this category yet."}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -619,7 +945,23 @@ export default function ManageTemplates() {
                 <TemplateCard
                   key={getManageTemplateEntryKey(entry)}
                   entry={entry}
+                  starred={entry.kind === "library" && myTemplateIds.has(entry.template.id)}
                   onOpen={() => openEntry(entry)}
+                  onEdit={
+                    entry.kind === "library"
+                      ? () => openEdit(entry.template as ChecklistTemplate)
+                      : undefined
+                  }
+                  onAddToTask={
+                    entry.kind === "library"
+                      ? () => void handleAddToTask(entry.template as ChecklistTemplate)
+                      : undefined
+                  }
+                  onToggleStar={
+                    entry.kind === "library" && entry.isStarter
+                      ? () => handleToggleStar(entry.template.id)
+                      : undefined
+                  }
                   onDuplicate={
                     entry.kind === "library"
                       ? () => void handleDuplicate(entry.template as ChecklistTemplate)
@@ -665,6 +1007,57 @@ export default function ManageTemplates() {
         onOpenChange={(open) => { if (!open) setAddedTemplateDialog(null); }}
         onOpenTemplate={handleOpenAddedTemplate}
       />
+
+      <AlertDialog
+        open={pendingAddToTask !== null}
+        onOpenChange={(open) => {
+          if (!open && !addingToTask) setPendingAddToTask(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace existing checklist?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This task already has {pendingAddToTask?.existingCount} checklist item
+              {(pendingAddToTask?.existingCount ?? 0) === 1 ? "" : "s"}. Replace them with
+              &ldquo;{pendingAddToTask?.template.name}&rdquo;, or append the new items?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel disabled={addingToTask}>Cancel</AlertDialogCancel>
+            <Button
+              type="button"
+              variant="outline"
+              className="shadow-e1"
+              disabled={addingToTask || !pendingAddToTask}
+              onClick={() => {
+                if (!pendingAddToTask) return;
+                void applyTemplateMode(
+                  pendingAddToTask.template,
+                  pendingAddToTask.taskId,
+                  "append"
+                );
+              }}
+            >
+              Append
+            </Button>
+            <AlertDialogAction
+              disabled={addingToTask || !pendingAddToTask}
+              onClick={(e) => {
+                e.preventDefault();
+                if (!pendingAddToTask) return;
+                void applyTemplateMode(
+                  pendingAddToTask.template,
+                  pendingAddToTask.taskId,
+                  "replace"
+                );
+              }}
+            >
+              Replace
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Preset browser sheet */}
       <PresetBrowser

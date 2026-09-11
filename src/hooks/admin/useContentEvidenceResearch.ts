@@ -57,7 +57,7 @@ async function invokeEvidencePack(body: {
     body,
   });
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, "knowledge-evidence-pack");
     throw new Error(formatEdgeFunctionToast(info));
   }
   const payload = data as {
@@ -79,7 +79,7 @@ async function invokeKnowledgeCritic(knowledgeId: string) {
     body: { knowledge_id: knowledgeId },
   });
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, "knowledge-critic");
     throw new Error(formatEdgeFunctionToast(info));
   }
   const payload = data as { ok?: boolean; error?: string; message?: string };

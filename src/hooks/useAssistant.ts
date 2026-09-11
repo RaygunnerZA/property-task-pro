@@ -74,7 +74,7 @@ export function useAssistant() {
         },
       });
       if (error) {
-        const info = await parseEdgeFunctionError(error, data);
+        const info = await parseEdgeFunctionError(error, data, "assistant-action-executor");
         if (!info.status && response) info.status = response.status;
         throw new Error(formatEdgeFunctionToast(info));
       }
@@ -145,7 +145,11 @@ export function useAssistant() {
           });
 
         if (reasonerErr) {
-          const info = await parseEdgeFunctionError(reasonerErr, reasonerData);
+          const info = await parseEdgeFunctionError(
+            reasonerErr,
+            reasonerData,
+            "assistant-reasoner"
+          );
           if (!info.status && response) info.status = response.status;
           throw new Error(formatEdgeFunctionToast(info));
         }

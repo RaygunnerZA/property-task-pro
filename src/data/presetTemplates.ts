@@ -396,12 +396,16 @@ export type ManageTemplateEntry =
   | { kind: "library"; template: { id: string; name: string; category: ChecklistTemplateCategory; items: unknown }; isStarter: boolean }
   | { kind: "preset"; preset: PresetTemplate };
 
-/** Starters always appear on Manage Templates; library rows replace presets when saved. */
+/** Starters always appear on Manage Templates; library rows replace presets when saved.
+ * Within each category, Added-to-Library rows come before virtual starters.
+ */
 export function buildManageTemplateEntries(
   templates: Array<{ id: string; name: string; category: ChecklistTemplateCategory; items: unknown }>
 ): ManageTemplateEntry[] {
   const matchedLibraryIds = new Set<string>();
-  const entries: ManageTemplateEntry[] = [];
+  const libraryStarters: ManageTemplateEntry[] = [];
+  const virtualPresets: ManageTemplateEntry[] = [];
+  const customLibrary: ManageTemplateEntry[] = [];
 
   for (const preset of PRESET_TEMPLATES) {
     const library = findLibraryTemplateForPreset(preset, templates);
@@ -409,20 +413,33 @@ export function buildManageTemplateEntries(
       matchedLibraryIds.add(library.id);
       const full = templates.find((template) => template.id === library.id);
       if (full) {
-        entries.push({ kind: "library", template: full, isStarter: true });
+        libraryStarters.push({ kind: "library", template: full, isStarter: true });
       }
     } else {
-      entries.push({ kind: "preset", preset });
+      virtualPresets.push({ kind: "preset", preset });
     }
   }
 
   for (const template of templates) {
     if (!matchedLibraryIds.has(template.id) && !isStarterTemplateName(template.name)) {
-      entries.push({ kind: "library", template, isStarter: false });
+      customLibrary.push({ kind: "library", template, isStarter: false });
     }
   }
 
-  return entries;
+  // Added-to-library starters first, then virtual starters, then custom (for flat lists).
+  return [...libraryStarters, ...virtualPresets, ...customLibrary];
+}
+
+/** Library / added entries before virtual presets; customs stay after starters. */
+export function sortEntriesAddedFirst(entries: ManageTemplateEntry[]): ManageTemplateEntry[] {
+  return [...entries].sort((a, b) => {
+    const rank = (entry: ManageTemplateEntry) => {
+      if (entry.kind === "library" && entry.isStarter) return 0;
+      if (entry.kind === "preset") return 1;
+      return 2;
+    };
+    return rank(a) - rank(b);
+  });
 }
 
 export function getManageTemplateEntryKey(entry: ManageTemplateEntry): string {

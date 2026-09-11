@@ -4,13 +4,9 @@ import { ChevronDown, Pencil, Plus } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { useSubtasks } from "@/hooks/useSubtasks";
-import {
-  useChecklistTemplates,
-  type ChecklistTemplateCategory,
-} from "@/hooks/useChecklistTemplates";
+import { type ChecklistTemplateCategory } from "@/hooks/useChecklistTemplates";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useAuth } from "@/hooks/useAuth";
-import { applyTemplateToTask } from "@/services/tasks/taskMutations";
 import {
   completeChecklistStep,
   clearChecklistStepResponse,
@@ -39,12 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import {
   SubtaskList,
   type SubtaskData,
@@ -67,7 +58,7 @@ type TaskDetailChecklistTabProps = {
   editMode?: boolean;
   /**
    * Compact create-task style checklist under the description while editing
-   * (Add step + Templates | Save Checklist | Manage).
+   * (Add step + Save Checklist | Templates).
    */
   composerEmbed?: boolean;
   /** Fired after checklist structure or responses change in this session. */
@@ -84,13 +75,11 @@ const TEMPLATE_CATEGORIES: { value: ChecklistTemplateCategory; label: string }[]
   { value: "security", label: "Security" },
 ];
 
-/** Create-task style footer: Templates | Save Checklist | Manage */
+/** Create-task style footer: Save Checklist | Templates */
 function ChecklistComposerFooter({
-  taskId,
   canEdit,
   canManageTemplates,
   items,
-  onApplied,
   onRequestSave,
 }: {
   taskId: string;
@@ -102,27 +91,6 @@ function ChecklistComposerFooter({
 }) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { orgId } = useActiveOrg();
-  const { templates, loading: templatesLoading } = useChecklistTemplates(canEdit || canManageTemplates);
-  const [applyingTemplateId, setApplyingTemplateId] = useState<string | null>(null);
-
-  const handleApplyTemplate = async (templateId: string) => {
-    if (!orgId || !canEdit) return;
-    setApplyingTemplateId(templateId);
-    try {
-      await applyTemplateToTask(taskId, templateId, orgId);
-      await onApplied();
-      toast({ title: "Checklist template applied" });
-    } catch (err: unknown) {
-      toast({
-        title: "Couldn't apply template",
-        description: err instanceof Error ? err.message : undefined,
-        variant: "destructive",
-      });
-    } finally {
-      setApplyingTemplateId(null);
-    }
-  };
 
   if (!canEdit && !canManageTemplates) return null;
 
@@ -130,33 +98,6 @@ function ChecklistComposerFooter({
     <div className="flex items-center justify-end gap-[5px] pt-[3px] pr-1 pb-1 text-xs text-muted-foreground/70">
       {canEdit ? (
         <>
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                disabled={templatesLoading || applyingTemplateId !== null}
-                className="hover:text-muted-foreground transition-colors disabled:opacity-50"
-              >
-                Templates
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="z-[120] max-h-64 overflow-y-auto">
-              {templates.length === 0 ? (
-                <DropdownMenuItem disabled>No templates yet</DropdownMenuItem>
-              ) : (
-                templates.map((t) => (
-                  <DropdownMenuItem
-                    key={t.id}
-                    onSelect={() => void handleApplyTemplate(t.id)}
-                    disabled={applyingTemplateId === t.id}
-                  >
-                    {t.name}
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <span className="text-muted-foreground/30">|</span>
           <button
             type="button"
             className="hover:text-muted-foreground transition-colors"
@@ -178,7 +119,7 @@ function ChecklistComposerFooter({
         className="hover:text-muted-foreground transition-colors"
         onClick={() => navigate("/manage/templates")}
       >
-        Manage
+        Templates
       </button>
     </div>
   );
@@ -208,7 +149,7 @@ export function TaskDetailChecklistActions({
     if (!canManageTemplates) return null;
     return (
       <DropdownMenuItem onSelect={() => navigate("/manage/templates")}>
-        Manage checklists
+        Templates
       </DropdownMenuItem>
     );
   }

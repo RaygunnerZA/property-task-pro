@@ -51,7 +51,7 @@ export function isOpenAiBatchJob(job: Pick<AiBatchJobRow, "status">): boolean {
 async function invokeJson(name: string, body: Record<string, unknown>) {
   const { data, error, response } = await supabase.functions.invoke(name, { body });
   if (error) {
-    const info = await parseEdgeFunctionError(error, data);
+    const info = await parseEdgeFunctionError(error, data, name);
     if (!info.status && response) info.status = response.status;
     const err = new Error(formatEdgeFunctionToast(info)) as Error & {
       code?: string;

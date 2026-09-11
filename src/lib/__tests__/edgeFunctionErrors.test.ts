@@ -45,7 +45,21 @@ describe("edgeFunctionErrors", () => {
     expect(formatEdgeFunctionToast(info)).toContain("Request: req-9");
   });
 
-  it("maps FunctionsFetchError to deploy guidance", async () => {
+  it("maps FunctionsFetchError to deploy guidance for the invoked function", async () => {
+    const info = await parseEdgeFunctionError(
+      {
+        name: "FunctionsFetchError",
+        message: "Failed to send a request to the Edge Function",
+      },
+      null,
+      "knowledge-gap-research"
+    );
+    expect(info.code).toBe("edge_function_unreachable");
+    expect(formatEdgeFunctionToast(info)).toContain("knowledge-gap-research");
+    expect(formatEdgeFunctionToast(info)).not.toContain("content-generate");
+  });
+
+  it("maps FunctionsFetchError without a function name to generic deploy guidance", async () => {
     const info = await parseEdgeFunctionError(
       {
         name: "FunctionsFetchError",
@@ -54,6 +68,7 @@ describe("edgeFunctionErrors", () => {
       null
     );
     expect(info.code).toBe("edge_function_unreachable");
-    expect(formatEdgeFunctionToast(info)).toContain("content-generate");
+    expect(formatEdgeFunctionToast(info)).toContain("edge function");
+    expect(formatEdgeFunctionToast(info)).not.toContain("content-generate");
   });
 });

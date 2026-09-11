@@ -48,10 +48,15 @@ async function readResponseBody(response: Response): Promise<EdgeFunctionErrorIn
 /**
  * Async parser for invoke() failures. Prefer this over the sync helper when
  * error.context may be a Response (FunctionsHttpError).
+ *
+ * Pass `functionName` when known so unreachable-function guidance names the
+ * function that was actually invoked (e.g. knowledge-gap-research), not a
+ * hardcoded default.
  */
 export async function parseEdgeFunctionError(
   error: unknown,
-  data?: unknown
+  data?: unknown,
+  functionName?: string
 ): Promise<EdgeFunctionErrorInfo> {
   if (data && typeof data === "object") {
     const fromData = fromPayload(data as Record<string, unknown>);
@@ -100,9 +105,15 @@ export async function parseEdgeFunctionError(
 
     if (err.message && !/non-2xx/i.test(err.message)) {
       if (err.name === "FunctionsFetchError" || /failed to send a request to the edge function/i.test(err.message)) {
+        const slug =
+          typeof functionName === "string" && /^[a-z0-9][a-z0-9-]*$/i.test(functionName.trim())
+            ? functionName.trim()
+            : "edge function";
         return {
           message:
-            "Could not reach the content-generate edge function. Deploy it with: supabase functions deploy content-generate",
+            slug === "edge function"
+              ? "Could not reach the edge function. Deploy it with: supabase functions deploy <name>"
+              : `Could not reach the ${slug} edge function. Deploy it with: supabase functions deploy ${slug}`,
           code: "edge_function_unreachable",
         };
       }
