@@ -21,6 +21,8 @@ import {
 } from "@/lib/mainNavigation";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
+import { useCanAccessDevTools } from "@/hooks/useCanAccessDevTools";
+import { DevToolsDropdown } from "@/components/dev/DevToolsDropdown";
 import fillaLogo from "@/assets/filla-logo.svg";
 import fillaLogoTeal2 from "@/assets/filla-logo-teal-2.svg";
 import fillaDarkLogo from "@/assets/filla-dark.png";
@@ -115,6 +117,7 @@ export function AppSidebar() {
   const { openAssistant } = useAssistantContext();
   const { data: properties = [] } = usePropertiesQuery();
   const { data: isPlatformAdmin } = useIsPlatformAdmin();
+  const canAccessDevTools = useCanAccessDevTools();
   const isMultiProperty = properties.length > 1;
   const scopedProperty = searchParams.get("property");
 
@@ -514,6 +517,14 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               )}
+
+              {canAccessDevTools ? (
+                <SidebarMenuItem>
+                  <div className={cn("relative w-full", !open && "flex justify-center")}>
+                    <DevToolsDropdown variant="sidebar" sidebarExpanded={open} />
+                  </div>
+                </SidebarMenuItem>
+              ) : null}
 
               {open && (
                 <SidebarMenuItem>

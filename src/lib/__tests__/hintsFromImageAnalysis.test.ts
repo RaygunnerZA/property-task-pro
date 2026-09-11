@@ -14,7 +14,7 @@ describe("hintsFromImageAnalysis", () => {
         expiry_date: "04/05/27",
       },
     });
-    expect(hints.documentType).toBe("Fire Extinguisher Service Certificate");
+    expect(hints.documentType).toBe("Fire Extinguisher Service");
     expect(hints.expiryDate).toBe("2027-05-04");
   });
 

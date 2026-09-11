@@ -105,7 +105,7 @@ Left-nav **Property**:
 
 **Tags** are not a primary nav item. A compact **Manage Tags** panel sits below action panels on Spaces, Assets, and People, explaining how tags (including Teams-as-tags) assist that surface.
 
-**Filla Admin** (orgs, utilisation, AI, Knowledge) and **Dev Tools** are platform-admin only and do **not** appear on user navigation.
+**Filla Admin** (orgs, utilisation, AI, Knowledge) and **Dev Tools** are platform-only. They do **not** appear in primary user nav (Home · Tasks · Calendar · Records · Property · Reports). Dev Tools sits at the **bottom of the left nav rail** when the signed-in user is allowlisted on a local/dev build; Filla Admin / Knowledge admin links remain platform-gated at the rail footer.
 
 Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
@@ -517,7 +517,7 @@ User left navigation (desktop), in order:
 * Property
 * Reports
 
-**Filla Admin** (The Org, utilisation, AI, Knowledge) and **Dev Tools** are platform-only and never appear on user nav.
+**Filla Admin** (The Org, utilisation, AI, Knowledge) and **Dev Tools** are platform-only and never appear in primary user nav. Dev Tools lives at the bottom of the left rail (dev/allowlisted builds only).
 
 Not every role sees every activity area.
 

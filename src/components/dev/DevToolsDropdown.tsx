@@ -1,7 +1,7 @@
 /**
- * Dev Tools Dropdown — Header integration
+ * Dev Tools Dropdown — platform rail / header integration
  *
- * Provides quick access to all dev mode features from any page.
+ * Provides quick access to all dev mode features.
  * Renders only for allowlisted internal users on a local/dev build
  * (see `canAccessDevTools`). Never for production customers.
  */
@@ -78,13 +78,31 @@ const TIME_SHIFTS: { days: number; label: string }[] = [
   { days: 365, label: "+365 days" },
 ];
 
-export function DevToolsDropdown() {
+export type DevToolsDropdownProps = {
+  /**
+   * `sidebar`: left-rail footer (icon + label that collapses with the rail).
+   * `header`: compact pill (legacy header placement).
+   */
+  variant?: "header" | "sidebar";
+  /** When sidebar is expanded (`true`) or icon-only (`false`). */
+  sidebarExpanded?: boolean;
+};
+
+export function DevToolsDropdown({
+  variant = "header",
+  sidebarExpanded = true,
+}: DevToolsDropdownProps = {}) {
   const canAccess = useCanAccessDevTools();
   if (!canAccess) return null;
-  return <DevToolsDropdownInner />;
+  return (
+    <DevToolsDropdownInner variant={variant} sidebarExpanded={sidebarExpanded} />
+  );
 }
 
-function DevToolsDropdownInner() {
+function DevToolsDropdownInner({
+  variant,
+  sidebarExpanded,
+}: Required<DevToolsDropdownProps>) {
   const navigate = useNavigate();
   const devEmbed = useDevEmbedLayout();
   const devMode = useDevMode();
@@ -215,22 +233,69 @@ function DevToolsDropdownInner() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
+          type="button"
           className={cn(
-            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors",
-            devMode.enabled
-              ? "bg-primary/15 text-primary-deep shadow-sm"
-              : "bg-muted/60 text-muted-foreground hover:bg-muted"
+            "relative",
+            variant === "sidebar"
+              ? cn(
+                  "flex w-full items-center gap-3 rounded-xl py-2.5 transition-all duration-200",
+                  sidebarExpanded ? "px-3" : "justify-center px-0",
+                  "bg-transparent text-foreground/70 hover:bg-black/[0.04]",
+                  "outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                )
+              : cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                  devMode.enabled
+                    ? "bg-primary/15 text-primary-deep shadow-sm"
+                    : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                ),
+            variant === "sidebar" &&
+              devMode.enabled &&
+              "text-primary-deep"
           )}
+          aria-label="Dev Tools"
         >
-          <Wrench className="h-3.5 w-3.5" />
-          Dev Tools
+          <Wrench
+            className={cn(
+              "shrink-0",
+              variant === "sidebar"
+                ? sidebarExpanded
+                  ? "h-4 w-4"
+                  : "h-5 w-5"
+                : "h-3.5 w-3.5"
+            )}
+          />
+          {variant === "sidebar" ? (
+            <span
+              className={cn(
+                "whitespace-nowrap text-sm tracking-tight transition-[opacity,max-width] duration-200 ease-out",
+                sidebarExpanded
+                  ? "max-w-[9rem] opacity-100"
+                  : "max-w-0 overflow-hidden opacity-0"
+              )}
+            >
+              Dev Tools
+            </span>
+          ) : (
+            "Dev Tools"
+          )}
           {devMode.enabled && (
-            <span className="ml-1 w-1.5 h-1.5 rounded-full bg-teal-500 animate-pulse" />
+            <span
+              className={cn(
+                "rounded-full bg-teal-500 animate-pulse",
+                variant === "sidebar" ? "ml-auto h-1.5 w-1.5 shrink-0" : "ml-1 h-1.5 w-1.5",
+                variant === "sidebar" && !sidebarExpanded && "absolute right-1 top-1"
+              )}
+            />
           )}
         </button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent
+        align={variant === "sidebar" ? "start" : "end"}
+        side={variant === "sidebar" ? "right" : "bottom"}
+        className="w-64"
+      >
         <DropdownMenuLabel className="text-xs">
           Development Tools
         </DropdownMenuLabel>

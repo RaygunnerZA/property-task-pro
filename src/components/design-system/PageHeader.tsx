@@ -1,13 +1,11 @@
-import { ReactNode, lazy, Suspense, type CSSProperties } from "react";
+import { ReactNode, type CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { useCanAccessDevTools } from "@/hooks/useCanAccessDevTools";
 import { HeaderAccountMenu } from "@/components/layout/HeaderAccountMenu";
 import { MobileHeaderSearchButton } from "@/components/layout/MobileHeaderSearchButton";
 
-const DevToolsDropdown = lazy(() => import("@/components/dev/DevToolsDropdown"));
-
 /**
- * Gradient / page headers: dev tools + account on the header strip (not a separate app bar).
+ * Gradient / page headers: account + mobile search/filter on the header strip.
+ * Dev Tools live at the bottom of the left nav (platform-only).
  */
 function PageHeaderToolbar({
   className,
@@ -30,7 +28,6 @@ function PageHeaderToolbar({
   accentColor?: string;
 }) {
   const onGradient = surface === "gradient";
-  const canAccessDevTools = useCanAccessDevTools();
   return (
     <div
       className={cn(
@@ -38,11 +35,6 @@ function PageHeaderToolbar({
         className
       )}
     >
-      {canAccessDevTools && (
-        <Suspense fallback={null}>
-          <DevToolsDropdown />
-        </Suspense>
-      )}
       {showSearch && (
         <div className="lg:hidden">
           {mobileSearchSlot ?? (
