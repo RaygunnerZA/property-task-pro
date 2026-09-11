@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { 
+import { useMemo } from "react";
+import {
   Package,
   FileText,
   Wrench,
@@ -9,58 +9,102 @@ import {
   Plus,
   CheckSquare,
   BookOpen,
-} from 'lucide-react';
-import { FillaIcon } from '@/components/filla/FillaIcon';
-import { useLocation, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { MAIN_NAV_ITEMS, isMainNavActive } from '@/lib/mainNavigation';
-import { centreWorkbenchTasksPath } from '@/lib/centreWorkbenchTabs';
-import { usePropertiesQuery } from '@/hooks/usePropertiesQuery';
-import { useIsPlatformAdmin } from '@/hooks/admin/useIsPlatformAdmin';
-import fillaLogo from '@/assets/filla-logo.svg';
-import fillaLogoTeal2 from '@/assets/filla-logo-teal-2.svg';
-import fillaDarkLogo from '@/assets/filla-dark.png';
-import { Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, useSidebar } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
-import { useAssistantContext } from '@/contexts/AssistantContext';
-import { APP_VERSION } from '@/config/version';
+  type LucideIcon,
+} from "lucide-react";
+import { FillaIcon } from "@/components/filla/FillaIcon";
+import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
+import {
+  MAIN_NAV_ENTRIES,
+  PROPERTY_SPACES_PATH,
+  isMainNavActive,
+  type MainNavItem,
+} from "@/lib/mainNavigation";
+import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
+import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
+import fillaLogo from "@/assets/filla-logo.svg";
+import fillaLogoTeal2 from "@/assets/filla-logo-teal-2.svg";
+import fillaDarkLogo from "@/assets/filla-dark.png";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "@/components/ui/hover-card";
+import { cn } from "@/lib/utils";
+import { useAssistantContext } from "@/contexts/AssistantContext";
+import { APP_VERSION } from "@/config/version";
+
 /** Asset context items (Appendix A: Overview, Tasks, Maintenance, History, Documents, Photos, Warranty) */
 const assetContextItems = [
   {
-    title: 'Overview',
+    title: "Overview",
     icon: Package,
-    getUrl: (id: string) => `/assets/${id}`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'Tasks',
+    title: "Tasks",
     icon: CheckSquare,
-    getUrl: (id: string) => `/assets/${id}/tasks`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'Maintenance',
+    title: "Maintenance",
     icon: Wrench,
-    getUrl: (id: string) => `/assets/${id}/maintenance`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'History',
+    title: "History",
     icon: History,
-    getUrl: (id: string) => `/assets/${id}/history`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'Documents',
+    title: "Documents",
     icon: FileText,
-    getUrl: (id: string) => `/assets/${id}/documents`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'Photos',
+    title: "Photos",
     icon: Camera,
-    getUrl: (id: string) => `/assets/${id}/photos`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
   {
-    title: 'Warranty',
+    title: "Warranty",
     icon: FileCheck,
-    getUrl: (id: string) => `/assets/${id}/warranty`,
+    getUrl: (id: string) => `/property/assets?assetId=${encodeURIComponent(id)}`,
   },
 ];
+
+function withScopedProperty(url: string, property: string | null): string {
+  if (!property) return url;
+  const [path, qs] = url.split("?");
+  if (
+    path === "/property" ||
+    path.startsWith("/property/") ||
+    path === "/spaces" ||
+    path === "/assets" ||
+    path === "/records" ||
+    path === "/tasks" ||
+    path === "/calendar" ||
+    path === "/home" ||
+    path === "/agenda" ||
+    path === "/"
+  ) {
+    const params = new URLSearchParams(qs || "");
+    params.set("property", property);
+    const next = params.toString();
+    return next ? `${path}?${next}` : path;
+  }
+  return url;
+}
 
 export function AppSidebar() {
   const { open, isMobile } = useSidebar();
@@ -72,75 +116,63 @@ export function AppSidebar() {
   const { data: properties = [] } = usePropertiesQuery();
   const { data: isPlatformAdmin } = useIsPlatformAdmin();
   const isMultiProperty = properties.length > 1;
+  const scopedProperty = searchParams.get("property");
 
-  const mainNavItems = useMemo(() => {
-    const property = searchParams.get("property");
-    const withProperty = (url: string) => {
-      if (!property) return url;
-      const [path, qs] = url.split("?");
-      if (
-        path === "/spaces" ||
-        path === "/assets" ||
-        path === "/records" ||
-        path === "/tasks" ||
-        path === "/home" ||
-        path === "/agenda"
-      ) {
-        const params = new URLSearchParams(qs || "");
-        params.set("property", property);
-        const next = params.toString();
-        return next ? `${path}?${next}` : path;
-      }
-      return url;
-    };
-
-    /**
-     * On property home, switch the centre Tab-Calendar in place.
-     * Elsewhere deep-link the work-surface calendar (`/tasks?panelTab=calendar`).
-     */
-    const calendarUrl =
-      currentPath === "/home"
-        ? "/home?panelTab=calendar"
-        : centreWorkbenchTasksPath("calendar");
-
-    return MAIN_NAV_ITEMS.filter(
-      (item) => item.title !== "Properties" || isMultiProperty
-    ).map((item) => ({
-      ...item,
-      url: withProperty(item.title === "Calendar" ? calendarUrl : item.url),
-    }));
-  }, [isMultiProperty, searchParams, currentPath]);
+  const mainNavEntries = useMemo(() => {
+    return MAIN_NAV_ENTRIES.map((entry) => {
+      if (entry.type === "separator") return entry;
+      return {
+        type: "item" as const,
+        item: {
+          ...entry.item,
+          url: withScopedProperty(entry.item.url, scopedProperty),
+        },
+      };
+    });
+  }, [scopedProperty]);
 
   const entityContext = useMemo(() => {
     const assetMatch = currentPath.match(/^\/(?:assets|asset)\/([^/]+)/);
     if (assetMatch) {
       return {
-        type: 'asset' as const,
+        type: "asset" as const,
         id: assetMatch[1],
       };
     }
-
+    if (currentPath.startsWith("/property/assets")) {
+      const assetId = searchParams.get("assetId");
+      if (assetId) {
+        return { type: "asset" as const, id: assetId };
+      }
+    }
     return null;
-  }, [currentPath]);
+  }, [currentPath, searchParams]);
 
   const contextItems = useMemo(() => {
     if (!entityContext) return [];
-    if (entityContext.type === 'asset') return assetContextItems;
+    if (entityContext.type === "asset") return assetContextItems;
     return [];
   }, [entityContext]);
 
   const handleCreateNew = () => {
     const params = new URLSearchParams(searchParams);
-    params.set('add', 'true');
-    const path = currentPath === '' ? '/' : currentPath;
-    const workbenchPaths = new Set(['/', '/home', '/tasks', '/records', '/agenda']);
+    params.set("add", "true");
+    const path = currentPath === "" ? "/" : currentPath;
+    const workbenchPaths = new Set([
+      "/",
+      "/home",
+      "/tasks",
+      "/calendar",
+      "/records",
+      "/agenda",
+    ]);
     if (workbenchPaths.has(path)) {
       navigate(`${path}?${params.toString()}`);
       return;
     }
-    const property = searchParams.get('property');
-    const q = new URLSearchParams({ add: 'true' });
-    if (property) q.set('property', property);
+    const property = searchParams.get("property");
+    const q = new URLSearchParams({ add: "true" });
+    if (property) q.set("property", property);
     navigate(`/tasks?${q.toString()}`);
   };
 
@@ -162,27 +194,124 @@ export function AppSidebar() {
     open ? "h-4 w-4" : "h-5 w-5"
   );
 
+  const renderNavIcon = (item: Pick<MainNavItem, "icon" | "iconSrc" | "title">) => {
+    if (item.iconSrc) {
+      return (
+        <img
+          src={item.iconSrc}
+          alt=""
+          className={cn(iconClass, "object-contain")}
+          aria-hidden
+        />
+      );
+    }
+    const IconComponent = item.icon as LucideIcon;
+    return <IconComponent className={iconClass} />;
+  };
+
+  const propertySpacesUrl = (propertyId: string) => {
+    const params = new URLSearchParams();
+    params.set("property", propertyId);
+    return `${PROPERTY_SPACES_PATH}?${params.toString()}`;
+  };
+
+  const renderPropertyNavItem = (item: MainNavItem) => {
+    const isActive = isMainNavActive(currentPath, item.url, location.search);
+    const link = (
+      <Link to={item.url} className={navLinkClass(isActive)} aria-label={item.title}>
+        {renderNavIcon(item)}
+        <span
+          className={cn(
+            "whitespace-nowrap text-sm font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
+            open ? "max-w-[9rem] opacity-100" : "max-w-0 overflow-hidden opacity-0"
+          )}
+        >
+          {item.title}
+        </span>
+      </Link>
+    );
+
+    if (!isMultiProperty || isMobile) {
+      return (
+        <SidebarMenuItem key={item.title}>
+          <SidebarMenuButton
+            asChild
+            tooltip={isMobile ? undefined : item.title}
+            className="group relative !bg-transparent hover:!bg-transparent"
+          >
+            {link}
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+
+    return (
+      <SidebarMenuItem key={item.title}>
+        <HoverCard openDelay={120} closeDelay={180}>
+          <HoverCardTrigger asChild>
+            <SidebarMenuButton
+              asChild
+              tooltip={undefined}
+              className="group relative !bg-transparent hover:!bg-transparent"
+            >
+              {link}
+            </SidebarMenuButton>
+          </HoverCardTrigger>
+          <HoverCardContent
+            side="right"
+            align="start"
+            sideOffset={10}
+            className="w-56 border-0 bg-card p-2 shadow-e3"
+          >
+            <p className="mb-1.5 px-2 font-mono text-2xs uppercase tracking-[0.18em] text-muted-foreground/70">
+              Properties
+            </p>
+            <ul className="max-h-72 space-y-0.5 overflow-y-auto">
+              {properties.map((property) => (
+                <li key={property.id}>
+                  <Link
+                    to={propertySpacesUrl(property.id)}
+                    className={cn(
+                      "block rounded-lg px-2 py-1.5 text-sm text-foreground/80 no-underline transition-colors hover:bg-muted/50 hover:text-foreground",
+                      scopedProperty === property.id &&
+                        "bg-muted/40 font-semibold text-foreground"
+                    )}
+                  >
+                    {property.nickname || property.address || "Untitled property"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </HoverCardContent>
+        </HoverCard>
+      </SidebarMenuItem>
+    );
+  };
+
   const renderNavItem = (
-    item: { title: string; url?: string; icon: typeof CheckSquare; getUrl?: (id: string) => string },
+    item: {
+      title: string;
+      url?: string;
+      icon: LucideIcon;
+      iconSrc?: string;
+      expandPropertiesOnHover?: boolean;
+      getUrl?: (id: string) => string;
+    },
     isContextItem = false,
     entityId?: string
   ) => {
-    const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || '#';
-    const urlBase = url.split('?')[0];
+    if (item.expandPropertiesOnHover) {
+      return renderPropertyNavItem(item as MainNavItem);
+    }
+
+    const url = item.getUrl && entityId ? item.getUrl(entityId) : item.url || "#";
+    const urlBase = url.split("?")[0];
     const search = location.search;
 
     const isActive = isContextItem
-      ? currentPath === urlBase || currentPath.startsWith(urlBase + '/')
+      ? currentPath === urlBase || currentPath.startsWith(urlBase + "/")
       : isMainNavActive(currentPath, url, search);
 
-    const IconComponent = item.icon;
-
-    /**
-     * Keep Link mounted across hover-expand. Toggling an outer Tooltip when
-     * `open` flips remounts the anchor mid-click and drops navigation
-     * (especially Calendar / Tags further down the rail).
-     * SidebarMenuButton's `tooltip` keeps a stable trigger tree; content hides when expanded.
-     */
     return (
       <SidebarMenuItem key={item.title}>
         <SidebarMenuButton
@@ -191,7 +320,7 @@ export function AppSidebar() {
           className="group relative !bg-transparent hover:!bg-transparent"
         >
           <Link to={url} className={navLinkClass(isActive)} aria-label={item.title}>
-            <IconComponent className={iconClass} />
+            {renderNavIcon(item)}
             <span
               className={cn(
                 "whitespace-nowrap text-sm font-medium tracking-[-0.2px] transition-[opacity,max-width] duration-200 ease-out",
@@ -215,8 +344,8 @@ export function AppSidebar() {
           ? { background: "hsl(var(--sidebar-background))" }
           : {
               backgroundImage: `url("/textures/white-texture2.jpg")`,
-              backgroundRepeat: 'repeat',
-              backgroundSize: '50%',
+              backgroundRepeat: "repeat",
+              backgroundSize: "50%",
             }
       }
     >
@@ -227,7 +356,6 @@ export function AppSidebar() {
           isMobile && "text-sidebar-foreground"
         )}
       >
-        {/* Logo lives on the workbench gradient header from `lg` up; keep it in the nav rail only for offcanvas / narrow. */}
         <div
           className={cn(
             "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out lg:hidden",
@@ -261,7 +389,22 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {mainNavItems.map((item) => renderNavItem(item))}
+              {mainNavEntries.map((entry, index) => {
+                if (entry.type === "separator") {
+                  return (
+                    <SidebarMenuItem key={`sep-${index}`} className="pointer-events-none list-none">
+                      <div
+                        className={cn(
+                          "my-2 h-px w-full bg-foreground/10",
+                          open ? "mx-1" : "mx-auto w-6"
+                        )}
+                        aria-hidden
+                      />
+                    </SidebarMenuItem>
+                  );
+                }
+                return renderNavItem(entry.item);
+              })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -280,7 +423,7 @@ export function AppSidebar() {
             )}
             <SidebarGroupContent>
               <SidebarMenu className="space-y-1">
-                {contextItems.map(item => renderNavItem(item, true, entityContext.id))}
+                {contextItems.map((item) => renderNavItem(item, true, entityContext.id))}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
@@ -295,7 +438,13 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button
                     type="button"
-                    onClick={() => openAssistant(entityContext ? { type: entityContext.type, id: entityContext.id } : undefined)}
+                    onClick={() =>
+                      openAssistant(
+                        entityContext
+                          ? { type: entityContext.type, id: entityContext.id }
+                          : undefined
+                      )
+                    }
                     className={cn(
                       navLinkClass(false),
                       "w-full",
@@ -341,7 +490,6 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Settings moved to the account avatar menu in the gradient header (top right). */}
               {isPlatformAdmin === true && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">

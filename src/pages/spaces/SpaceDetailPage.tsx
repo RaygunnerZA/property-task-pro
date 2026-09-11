@@ -425,7 +425,13 @@ export default function SpaceDetailPage() {
                       <button
                         key={asset.id}
                         type="button"
-                        onClick={() => navigate(`/assets?assetId=${asset.id}`)}
+                        onClick={() =>
+                          navigate(
+                            propertyId
+                              ? `/property/assets?property=${encodeURIComponent(propertyId)}&assetId=${encodeURIComponent(asset.id)}`
+                              : `/property/assets?assetId=${encodeURIComponent(asset.id)}`
+                          )
+                        }
                         className={cn(
                           "w-full rounded-lg p-4 text-left",
                           "bg-card shadow-e1 transition-all hover:shadow-e2"

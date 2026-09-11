@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
-import { TaskPanel } from "@/components/dashboard/TaskPanel";
 import { HomeWorkbenchCentre } from "@/components/workbench/HomeWorkbenchCentre";
+import { CentreWorkbench } from "@/components/workbench/CentreWorkbench";
+import { RecordsWorkbenchPanel } from "@/components/workbench/RecordsWorkbenchPanel";
 import type { IntakeMode } from "@/types/intake";
 import type { RecordsView, WorkbenchIssuesFilter, DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
@@ -39,11 +40,11 @@ interface RightColumnProps {
   onCreateForDate?: (date: Date) => void;
 }
 
-const panelShellClass = cn(columnShellClass, "rounded-xl");
+const panelShellClass = cn(columnShellClass, "h-full min-h-0 rounded-xl");
 
 /**
  * Product centre column (DualPaneLayout `rightColumn`).
- * Home → org-wide Attention; `/home` → property home; `/records` & `/agenda` → TaskPanel.
+ * Home → standalone Inflow; workspace → Tasks · Calendar · Records.
  */
 export function RightColumn({
   children,
@@ -60,26 +61,22 @@ export function RightColumn({
   onDateSelect,
   filterToApply,
   filtersToApply,
-  issuesFilter,
-  onIssuesFilterChange,
   selectedPropertyIds,
   onOpenIntake,
   onOpenAddToFilla,
   recordsView,
   onRecordsViewChange,
   workbenchPanel = "home",
-  centreWorkbenchTab = "inflow",
+  centreWorkbenchTab = "tasks",
   onCentreWorkbenchTabChange,
   calendarInitialView,
   hideCentreTabStrip = false,
   onCreateForDate,
 }: RightColumnProps) {
-  const dedicatedTitle =
-    workbenchPanel === "records"
-      ? "Records"
-      : workbenchPanel === "schedule"
-        ? "Schedule"
-        : undefined;
+  const isPrimaryWorkspace =
+    workbenchPanel === "workspace" ||
+    workbenchPanel === "records" ||
+    workbenchPanel === "schedule";
 
   const sharedTaskListProps = {
     tasks,
@@ -93,32 +90,32 @@ export function RightColumn({
   };
 
   const renderCentre = () => {
-    if (workbenchPanel === "home") {
+    if (workbenchPanel === "home" || workbenchPanel === "issues") {
       return (
         <HomeWorkbenchCentre
           {...sharedTaskListProps}
-          activeTab={centreWorkbenchTab}
-          onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
           onOpenAddToFilla={onOpenAddToFilla}
           onMessageClick={onMessageClick}
           onAttentionItemSelect={onAttentionItemSelect}
           onRecordsViewChange={onRecordsViewChange}
-          selectedDate={selectedDate}
-          onDateSelect={onDateSelect}
-          initialCalendarView={calendarInitialView}
-          hideTabStrip={hideCentreTabStrip}
-          onCreateForDate={onCreateForDate}
         />
       );
     }
 
-    if (workbenchPanel === "issues") {
+    if (isPrimaryWorkspace && onCentreWorkbenchTabChange) {
+      const tab: CentreWorkbenchTab =
+        workbenchPanel === "records"
+          ? "records"
+          : workbenchPanel === "schedule"
+            ? "calendar"
+            : centreWorkbenchTab;
+
       return (
-        <HomeWorkbenchCentre
+        <CentreWorkbench
           {...sharedTaskListProps}
-          activeTab={centreWorkbenchTab}
+          activeTab={tab}
           onCentreTabChange={onCentreWorkbenchTabChange}
           onTabChange={onTabChange}
           onOpenIntake={onOpenIntake}
@@ -129,46 +126,26 @@ export function RightColumn({
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
           initialCalendarView={calendarInitialView}
-          hideViewAllLinks
           hideTabStrip={hideCentreTabStrip}
           onCreateForDate={onCreateForDate}
+          recordsView={recordsView}
         />
       );
     }
 
     return (
-      <TaskPanel
-        tasks={tasks}
-        properties={properties}
-        tasksLoading={tasksLoading}
-        onTaskClick={onTaskClick}
-        onMessageClick={onMessageClick}
-        onAttentionItemSelect={onAttentionItemSelect}
-        selectedItem={selectedItem}
-        activeTab={activeTab}
-        onTabChange={onTabChange}
-        selectedDate={selectedDate}
-        filterToApply={filterToApply}
-        filtersToApply={filtersToApply}
-        selectedPropertyIds={selectedPropertyIds}
+      <RecordsWorkbenchPanel
+        {...sharedTaskListProps}
         onOpenIntake={onOpenIntake}
-        recordsView={recordsView}
         onRecordsViewChange={onRecordsViewChange}
-        hideTabs
-        pageTitle={dedicatedTitle}
-        pageTitleClassName={
-          /* Records: left column owns the title on desktop (mobile hides the rail). */
-          workbenchPanel === "records" ? "lg:hidden" : undefined
-        }
+        recordsView={recordsView}
       />
     );
   };
 
   return (
     <div className={cn(columnShellClass, "h-full px-0 sm:w-auto")}>
-      <div className={panelShellClass}>
-        {children || renderCentre()}
-      </div>
+      <div className={panelShellClass}>{children || renderCentre()}</div>
     </div>
   );
 }

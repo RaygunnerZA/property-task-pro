@@ -4,6 +4,21 @@ export const ONBOARDING_DEMO_MARKER = "[onboarding_demo]";
 /** Visible title cue used by the seed (`Gas Safety Certificate (sample)`). */
 const SAMPLE_TITLE_RE = /\(\s*sample(?:\s*[-–—][^)]*)?\s*\)/i;
 
+/** Seeded assets/spaces often use `Sample: boiler unit` — strip for UI labels. */
+const SAMPLE_NAME_PREFIX_RE = /^sample:\s*/i;
+
+/**
+ * Display label for seeded sample entities without the `Sample:` / `(sample)` cues.
+ * Keeps the original string when stripping would leave nothing.
+ */
+export function displayNameWithoutSampleCue(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  let next = trimmed.replace(SAMPLE_NAME_PREFIX_RE, "").trim();
+  next = next.replace(SAMPLE_TITLE_RE, "").trim();
+  return next || trimmed;
+}
+
 export function isOnboardingDemoTask(task: {
   description?: string | null;
   title?: string | null;

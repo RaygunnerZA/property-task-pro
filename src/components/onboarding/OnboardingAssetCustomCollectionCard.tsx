@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -327,7 +328,7 @@ export function OnboardingAssetCustomCollectionCard({
                   return (
                     <ExpandableAssetChip
                       key={name}
-                      label={name}
+                      label={displayNameWithoutSampleCue(name)}
                       color={SELECTED_CHIP_TEAL}
                       onRemove={() => onRemoveAsset?.(name)}
                       onRename={

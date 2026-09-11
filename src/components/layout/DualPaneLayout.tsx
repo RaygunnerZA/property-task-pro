@@ -27,10 +27,8 @@ interface DualPaneLayoutProps {
    */
   stackOnPhone?: boolean;
   /**
-   * Pin the centre column to the visible viewport (sticky, like the side rail)
-   * so inner panes scroll their own lists instead of growing the page.
-   * The grid rows are auto-sized, so `h-full` alone never bounds the centre —
-   * this gives it an explicit viewport-based height on tablet/desktop.
+   * Stretch the centre column to the tallest workbench sibling (usually the left
+   * rail), with a viewport-height floor. Inner panes own list scrolling.
    */
   viewportBoundCentre?: boolean;
 }
@@ -88,14 +86,14 @@ export function DualPaneLayout({
     "[overflow-anchor:none]"
   );
 
-  // Explicit viewport height (not h-full — auto grid rows make h-full circular),
-  // sticky beside the side rail so page scroll from a taller rail doesn't move it.
+  // Stretch with the tallest grid sibling (usually the left rail). Floor at
+  // viewport height so a short left rail still fills the screen; inner panes scroll.
   const boundCentreMd = hasHeader
-    ? "md:sticky md:top-[var(--header-height,0px)] md:self-start md:h-[calc(100dvh-var(--header-height,0px)-20px)]"
-    : "md:sticky md:top-0 md:self-start md:h-[calc(100dvh-20px)]";
+    ? "md:self-stretch md:min-h-[calc(100dvh-var(--header-height,0px)-20px)]"
+    : "md:self-stretch md:min-h-[calc(100dvh-20px)]";
   const boundCentreSm = hasHeader
-    ? "sm:sticky sm:top-[var(--header-height,0px)] sm:self-start sm:h-[calc(100dvh-var(--header-height,0px)-20px)]"
-    : "sm:sticky sm:top-0 sm:self-start sm:h-[calc(100dvh-20px)]";
+    ? "sm:self-stretch sm:min-h-[calc(100dvh-var(--header-height,0px)-20px)]"
+    : "sm:self-stretch sm:min-h-[calc(100dvh-20px)]";
 
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
@@ -106,16 +104,16 @@ export function DualPaneLayout({
     collapseCentreOnPhone
       ? cn(
           "hidden md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
-          viewportBoundCentre ? boundCentreMd : "md:h-full"
+          viewportBoundCentre ? boundCentreMd : "md:h-full md:self-stretch"
         )
       : dualGridFromPhone
         ? cn(
             "md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
-            viewportBoundCentre ? boundCentreMd : "md:h-full"
+            viewportBoundCentre ? boundCentreMd : "md:h-full md:self-stretch"
           )
         : cn(
             "sm:flex sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
-            viewportBoundCentre ? boundCentreSm : "sm:h-full"
+            viewportBoundCentre ? boundCentreSm : "sm:h-full sm:self-stretch"
           ),
     hasThirdColumn
       ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-x-clip layout:px-2 layout:pb-5"

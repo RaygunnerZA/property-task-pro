@@ -1,20 +1,24 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { CentreWorkbenchTabStrip } from "@/components/workbench/CentreWorkbenchTabStrip";
 import { CentreWorkbenchMobileCalendar } from "@/components/workbench/CentreWorkbenchMobileCalendar";
-import { InflowPanel } from "@/components/workbench/InflowPanel";
 import { TasksWorkbenchPanel } from "@/components/workbench/TasksWorkbenchPanel";
 import { CalendarWorkbenchPanel } from "@/components/workbench/CalendarWorkbenchPanel";
-import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
+import { RecordsWorkbenchPanel } from "@/components/workbench/RecordsWorkbenchPanel";
 import { cn } from "@/lib/utils";
 import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
+import type { RecordsView } from "@/lib/propertyRoutes";
 
 const centreScrollClass =
-  "box-border max-h-full min-h-0 min-w-0 w-full max-w-[700px] overflow-x-clip overflow-y-auto px-2 pb-4 max-pane:px-2";
+  "box-border flex min-h-0 min-w-0 w-full max-w-[700px] flex-1 flex-col overflow-x-clip overflow-y-hidden px-2 pb-4 max-pane:px-2";
 
-/** Space from the tab strip’s white bottom border to the first panel title. */
-const PANEL_BELOW_TABS_GAP_CLASS = "pt-[55px]";
+/**
+ * Equal space above and below the tab-strip perforation
+ * (32px midpoint, then −10px → 22px).
+ */
+const TAB_PERFORATION_GAP_CLASS = "mt-[22px]";
+const PANEL_BELOW_TABS_GAP_CLASS = "pt-[22px]";
 
 export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;
@@ -25,14 +29,18 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
   hideViewAllLinks?: boolean;
   /**
    * Hide illustrated tab strip below `md` (home-hub phone).
-   * On work-surface phone this stays false so Inflow | Tasks | Calendar remain visible.
+   * On work-surface phone this stays false so Tasks | Calendar | Records remain visible.
    */
   hideTabStrip?: boolean;
   onCreateForDate?: (date: Date) => void;
+  /** Optional override for Records centre content (defaults to RecordsWorkbenchPanel). */
+  recordsContent?: ReactNode;
+  recordsView?: RecordsView;
 };
 
 /**
- * Centre work column — Inflow · Tasks · Calendar with search/filter per tab.
+ * Centre work column — Tasks · Calendar · Records (primary workspace).
+ * Home/Inflow is a separate surface and does not use this strip.
  */
 export function CentreWorkbench({
   activeTab,
@@ -55,6 +63,8 @@ export function CentreWorkbench({
   hideViewAllLinks = false,
   hideTabStrip = false,
   onCreateForDate,
+  recordsContent,
+  recordsView = "all",
 }: CentreWorkbenchProps) {
   /** Driven by Tasks All / My tabs so the phone calendar matches the list scope. */
   const [tasksCalendarScope, setTasksCalendarScope] = useState<CalendarTaskScope>("all");
@@ -92,14 +102,13 @@ export function CentreWorkbench({
     ]
   );
 
-  const showMobileCalendar = activeTab === "inflow" || activeTab === "tasks";
+  const showMobileCalendar = activeTab === "tasks";
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-transparent pb-1">
       <div
         className={cn(
           "shrink-0",
-          // Avoid `flex` + `hidden` on the same node — last utility in the stylesheet wins.
           hideTabStrip ? "hidden md:block" : "block"
         )}
       >
@@ -109,33 +118,17 @@ export function CentreWorkbench({
             onTabChange={onCentreTabChange}
             className="min-w-0 flex-1"
           />
-
-          {/* Tablet/desktop below layout: CTAs beside tab strip. Phone uses FAB instead. */}
-          {onOpenIntake ? (
-            <div className="hidden w-[148px] shrink-0 flex-col justify-start gap-1.5 self-start md:flex layout:hidden">
-              <IntakeActionButton
-                mode="report_issue"
-                variant="micro"
-                className="h-9 min-h-9 w-full justify-center gap-1.5 px-2.5 text-sm font-semibold leading-none"
-                onClick={() => onOpenIntake("report_issue")}
-              />
-              <IntakeActionButton
-                mode="add_record"
-                variant="micro"
-                className="h-9 min-h-9 w-full justify-center gap-1.5 px-2.5 text-sm font-semibold leading-none"
-                onClick={() => onOpenIntake("add_record")}
-              />
-            </div>
-          ) : null}
         </div>
         <div
-          className="perforation-section pointer-events-none mt-4 md:-ml-4 md:w-[calc(100%+1rem)]"
+          className={cn(
+            "perforation-section pointer-events-none md:-ml-4 md:w-[calc(100%+1rem)]",
+            TAB_PERFORATION_GAP_CLASS
+          )}
           aria-hidden
         />
       </div>
 
-      <div className={cn(centreScrollClass, "flex flex-1 min-h-0 flex-col")}>
-        {/* Phone only — does not affect the 55px desktop gap below the tab border. */}
+      <div className={centreScrollClass}>
         {showMobileCalendar ? (
           <div className="mt-3 md:hidden">
             <CentreWorkbenchMobileCalendar
@@ -145,7 +138,7 @@ export function CentreWorkbench({
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
               selectedPropertyIds={selectedPropertyIds}
-              taskScope={activeTab === "tasks" ? tasksCalendarScope : undefined}
+              taskScope={tasksCalendarScope}
               className="mb-0"
             />
           </div>
@@ -154,16 +147,11 @@ export function CentreWorkbench({
         <div
           key={activeTab}
           className={cn(
-            // flex-col so panels can claim the full height and scroll their lists internally.
-            "panel-enter flex min-h-0 flex-col",
-            // Inflow / Tasks fill the column; Calendar sizes to the month grid.
-            activeTab === "calendar" ? "flex-none" : "flex-1",
-            // Inflow / Tasks / Calendar: 55px from tab border → first title.
-            // Phone with week calendar above: tighter gap after the calendar.
-            showMobileCalendar ? "pt-3 md:pt-[55px]" : PANEL_BELOW_TABS_GAP_CLASS
+            "panel-enter flex min-h-0 min-w-0 flex-col",
+            activeTab === "calendar" ? "flex-none" : "min-h-0 flex-1",
+            showMobileCalendar ? "pt-3 md:pt-[22px]" : PANEL_BELOW_TABS_GAP_CLASS
           )}
         >
-          {activeTab === "inflow" && <InflowPanel {...sharedPanelProps} />}
           {activeTab === "tasks" && (
             <TasksWorkbenchPanel
               {...sharedPanelProps}
@@ -178,6 +166,13 @@ export function CentreWorkbench({
               onCreateForDate={onCreateForDate}
             />
           )}
+          {activeTab === "records" &&
+            (recordsContent ?? (
+              <RecordsWorkbenchPanel
+                {...sharedPanelProps}
+                recordsView={recordsView}
+              />
+            ))}
         </div>
       </div>
     </div>

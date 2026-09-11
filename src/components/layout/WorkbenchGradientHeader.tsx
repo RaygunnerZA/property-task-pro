@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/design-system/PageHeader";
@@ -13,6 +13,8 @@ import {
   type PropertySelectorStackProps,
 } from "@/components/properties/PropertySelectorStack";
 import type { PropertySelectorRowProperty } from "@/components/properties/PropertySelectorRow";
+import { IntakeActionButton } from "@/components/intake/IntakeActionButton";
+import type { IntakeMode } from "@/types/intake";
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { WORKBENCH_SIDE_RAIL_PX } from "@/lib/layoutBreakpoints";
@@ -45,16 +47,18 @@ export type WorkbenchGradientHeaderProps = {
   onPropertySelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
   onAskFilla?: (query: string) => void;
+  /** Mid-width: Create Task / Add Record between Search and Profile. */
+  onOpenIntake?: (mode: IntakeMode) => void;
   /** Activity-area screens move search into the centre column. */
   hideSearch?: boolean;
   /**
-   * `workbench` (Home / Inflow / Tasks / Calendar): Filla logo + header search.
-   * `activity` (Spaces / Assets / Reports / Records / Tags / Settings / Knowledge):
-   * no logo, no header search — [< Back] top-left with the property selector to its right.
+   * `workbench` (Home / Tasks / Calendar / Records): Filla logo + header search.
+   * `activity` (Reports / Settings / …): [< Back] top-left with the property selector to its right.
    */
   variant?: "workbench" | "activity";
   /** Back handler for the activity variant. Defaults to history back (fallback `/`). */
   onBack?: () => void;
+  headerEndSlot?: ReactNode;
 };
 
 export function WorkbenchGradientHeader({
@@ -66,6 +70,7 @@ export function WorkbenchGradientHeader({
   onPropertySelectionChange,
   onFilterClick,
   onAskFilla,
+  onOpenIntake,
   hideSearch = false,
   variant = "workbench",
   onBack,
@@ -202,7 +207,7 @@ export function WorkbenchGradientHeader({
         ) : null}
       </div>
 
-      {/* Desktop: account avatar (settings / profile) top-right of the gradient band. */}
+      {/* Desktop: account avatar — vertically centred on the gradient band. */}
       <div
         className="fixed right-4 top-0 z-[56] hidden items-center lg:flex"
         style={{ height: DESKTOP_HEADER_BAND_PX }}
@@ -218,7 +223,7 @@ export function WorkbenchGradientHeader({
       >
         <div
           className={cn(
-            "relative grid w-full min-w-0 auto-rows-min items-start gap-y-2 pr-28 sm:min-h-[var(--workbench-header-band,70px)] sm:gap-y-0 sm:pr-40",
+            "relative grid h-full w-full min-w-0 auto-rows-min content-center items-center gap-y-2 pr-14 sm:min-h-[var(--header-height,73px)] sm:gap-y-0 sm:pr-16",
             "grid-cols-1",
             "sm:grid-cols-workbench-dual",
             "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
@@ -229,19 +234,36 @@ export function WorkbenchGradientHeader({
 
           <div
             className={cn(
-              "relative z-10 flex min-w-0 items-start px-3 sm:col-start-2 sm:px-1 sm:pt-5 sm:max-w-[700px]",
+              "relative z-10 flex min-h-0 min-w-0 items-center gap-2 self-center px-3 sm:col-start-2 sm:px-1 sm:max-w-[700px]",
               "layout:max-w-[700px]"
             )}
           >
             {!showSearch ? null : (
               <WorkbenchHeaderToolbar
                 variant="gradient"
-                className="w-full min-w-0"
+                className="min-w-0 flex-1"
                 properties={properties}
                 onAskFilla={onAskFilla}
                 accentColor={accentColor}
               />
             )}
+            {/* Mid-width: CTAs sit beside search (not over it); hide when third column is open. */}
+            {onOpenIntake ? (
+              <div className="hidden shrink-0 items-center gap-1.5 md:flex layout:hidden">
+                <IntakeActionButton
+                  mode="report_issue"
+                  variant="micro"
+                  className="h-9 min-h-9 px-3 text-sm font-semibold"
+                  onClick={() => onOpenIntake("report_issue")}
+                />
+                <IntakeActionButton
+                  mode="add_record"
+                  variant="micro"
+                  className="h-9 min-h-9 px-3 text-sm font-semibold"
+                  onClick={() => onOpenIntake("add_record")}
+                />
+              </div>
+            ) : null}
           </div>
 
           {/* Spacer aligns with the third workbench column (intake / details live in-column). */}

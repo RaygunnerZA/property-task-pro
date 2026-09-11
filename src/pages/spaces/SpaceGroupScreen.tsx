@@ -92,11 +92,7 @@ export default function SpaceGroupScreen() {
   }
 
   const header = (
-    <GlobalAppHeader
-      accentColor={group.color || FILLA_TURQUOISE}
-      hideSearch
-      variant="activity"
-    />
+    <GlobalAppHeader accentColor={group.color || FILLA_TURQUOISE} />
   );
 
   const thirdColumnContent = propertyId && groupSlug ? (

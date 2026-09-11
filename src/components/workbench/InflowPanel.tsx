@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import { TaskList } from "@/components/tasks/TaskList";
@@ -247,6 +247,17 @@ export function InflowPanel({
     navigate(centreWorkbenchTasksPath("tasks", params));
   };
 
+  const foundSignalsRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get("inflow") !== "signals") return;
+    const node = foundSignalsRef.current;
+    if (!node) return;
+    window.requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [searchParams, tasksLoading]);
+
   if (tasksLoading) {
     return (
       <div className="space-y-6">
@@ -381,7 +392,11 @@ export function InflowPanel({
             )}
           </section>
 
-          <section className="min-w-0 rounded-2xl bg-transparent py-1">
+          <section
+            ref={foundSignalsRef}
+            className="min-w-0 rounded-2xl bg-transparent py-1"
+            id="found-signals"
+          >
             <IssuesWorkbenchSectionHeader
               title={FOUND_SIGNALS_SECTION.title}
               subtitle={FOUND_SIGNALS_SECTION.subtitle}

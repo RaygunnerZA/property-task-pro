@@ -48,67 +48,102 @@ Contains the user’s current activity area.
 
 Examples:
 
-* My Work
-* Calendar
-* Properties
-* Knowledge
+* Home (Inflow)
+* Tasks · Calendar · Records (primary workspace)
+* Property (Spaces · Assets · People)
 * Reports
 
 This is the primary focus area.
 
-On **Home**, the centre column is **My Work** (see below). **Issues** is a separate manager triage activity, not the Home execution queue.
-
 ⸻
 
-**My Work Surface Decision (V2.1)**
+**Home & Primary Workspace Decision (V2.2)**
 
-Filla separates work execution from signal triage.
+Filla separates **signal intake** (Home / Inflow) from **work execution** (Tasks · Calendar · Records) and **place entities** (Property).
 
-**My Work**
+**Home (Inflow)**
 
-My Work is the primary operational surface for staff, technicians, caretakers and contractors.
+Home is the standalone homepage. Route: `/`.
 
-*Purpose:* Execute work.
+*Purpose:* Review signals, suggestions, and items waiting for a decision.
 
-*Content:* Overdue work · Today’s work · This week’s work · Completed work.
+*Content:* Needs review · Found signals · Suggested tasks · Records to organise.
 
-Task cards prioritise checklist progress, evidence status, property and location context, and due urgency.
+Home has **no** Tasks · Calendar · Records tab strip. Left column keeps property / portfolio context and suggested actions; the expandable mini-calendar is **not** on Home.
 
-My Work is **work-driven**.
+Inflow is **signal-driven**.
 
-**Issues / Signals**
+**Primary workspace — Tasks · Calendar · Records**
 
-Issues is a manager-facing triage surface.
+The primary operational workspace for staff, technicians, caretakers and contractors.
 
-*Purpose:* Review, classify and convert signals into work.
+| Tab | Route | Purpose |
+|-----|-------|---------|
+| Tasks | `/tasks` | Execute work — overdue, today, assigned, completed |
+| Calendar | `/calendar` | Month grid and day schedule for planned work |
+| Records | `/records` | Evidence, certificates, documents, compliance artefacts |
 
-*Content:* Uploads · AI suggestions · Compliance detections · External messages · Weather and risk signals · Records requiring review.
+Centre tabs **Tasks · Calendar · Records** are the titles of this workspace. Task cards prioritise checklist progress, evidence status, property/location context, and due urgency.
 
-Issues is **signal-driven**.
+Tasks is **work-driven**. Records is **evidence-driven**.
 
-**Relationship**
+**Property activity area — Spaces · Assets · People**
 
-Signals create or influence work. Users primarily interact with My Work. Managers primarily interact with Issues.
+Property is an **activity area for place entities**, not a duplicate task tree.
+
+| Tab | Route | Purpose |
+|-----|-------|---------|
+| Spaces | `/property/spaces` | Spaces and space groups |
+| Assets | `/property/assets` | Equipment and maintainable items |
+| People | `/property/people` | Staff, contractors, suppliers, contacts (outside Settings) |
+
+Left-nav **Property**:
+* Single property: opens Spaces for the current scope.
+* Multiple properties: hover expands a property list; click a property sets scope and opens Spaces; click Property itself opens Spaces for the current scope.
+
+**Add Property** is a secondary tab on the Create Space action panel (not a primary nav item).
+
+**Tags** are not a primary nav item. A compact **Manage Tags** panel sits below action panels on Spaces, Assets, and People, explaining how tags (including Teams-as-tags) assist that surface.
+
+**Filla Admin** (orgs, utilisation, AI, Knowledge) and **Dev Tools** are platform-admin only and do **not** appear on user navigation.
 
 Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
-**Desktop — Home Workbench**
+**Desktop — Home**
 
 | Column | Role |
 |--------|------|
-| Left | Scope + Calendar + Property context |
-| Centre | **My Work** |
-| Right | Task context panel (Overview, Checklist, Evidence, Activity) |
+| Left | Scope + property / portfolio context (no mini-calendar) |
+| Centre | **Inflow** |
+| Right | Context / intake as needed |
 
-Issues remains a separate triage activity (dedicated route or mode), not the Home centre queue.
+**Desktop — Primary workspace (Tasks · Calendar · Records)**
+
+| Column | Role |
+|--------|------|
+| Left | Title image block (160px) · section health tabs (no radial) · perforation · expandable calendar (Tasks & Records only, collapsed by default) · ≤3 suggested actions · Recent |
+| Centre | Tasks · Calendar · Records + page content |
+| Right | Create Task / Add Record / relevant detail (≥1280px) |
+
+**Desktop — Property (Spaces · Assets · People)**
+
+| Column | Role |
+|--------|------|
+| Left | Title image block (160px) · section health tabs (no radial) · perforation · ≤3 suggested · Recent (spaces / assets / people / contractors / teams) |
+| Centre | Spaces · Assets · People · sub-tabs · collection slider · filter/sort · lists |
+| Right | Create Space / Add Asset / Invite Member · Manage Tags below |
 
 **Mobile**
 
-Primary destination: My Work. Issues is secondary and manager-oriented.
+Primary destinations: Home, Tasks, Calendar / Records as capacity allows. Property entity surfaces remain available; complex coordination may defer to desktop.
 
-**Properties**
+**Gradient header (all primary screens)**
 
-Properties provide scope. Property selection filters My Work and Issues; it does not create alternative task navigation trees.
+At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Property screens.
+
+**Properties (scope)**
+
+Properties remain a **scope** mechanism. Property selection filters Home, Tasks, Calendar, Records, and Property entity lists. It does **not** create `Property → {name} → Tasks` navigation trees.
 
 ⸻
 
@@ -147,12 +182,12 @@ MOBILE STRUCTURE
 
 Primary flows:
 
-* Home
-* My Work
-* Calendar
+* Home (Inflow)
+* Tasks
+* Calendar / Records
 * Report Issue
 
-Additional activity areas may appear depending on role and permissions.
+Additional activity areas (Property, Reports) may appear depending on role and permissions.
 
 All mobile interactions should favour:
 
@@ -173,22 +208,28 @@ Examples:
 * The Bird
 * Pelican House
 
-Changing scope filters content.
+Changing scope filters content across activity areas.
 
-Scope must not create duplicate navigation structures.
+The left-nav **Property** item opens the Property activity area (Spaces · Assets · People). Hover-listing properties for multi-property orgs sets **scope** then opens Spaces — it must not nest Tasks under each property.
+
+Scope must not create duplicate task navigation structures.
 
 Bad:
 
-Properties
+Property
 → The Bird
 → Tasks
 
 Good:
 
-My Work
-
+Tasks
 filtered by:
+The Bird
 
+and separately:
+
+Property → Spaces
+filtered by:
 The Bird
 
 ⸻
@@ -245,29 +286,24 @@ All design tokens are defined in:
 
 **4.3b — ACTIVITY-AREA CHROME & LEFT-COLUMN FORMULA (desktop workbench)**
 
-Applies to Spaces, Assets, Reports, Records, Tags, Settings, and Knowledge — **not** Home / Inflow / Tasks / Calendar.
+**Primary chrome (Home, Tasks · Calendar · Records, Property):** Filla logo top-left; Search on the gradient; **Create Task** / **Add Record** between Search and Profile at middle widths; account avatar top-right. Settings is **not** in the left nav rail.
 
-**Gradient header (activity variant):**
+**Left column — Home (Inflow):** property / portfolio context + suggested actions; **no** expandable mini-calendar.
 
-| Element | Placement |
-|---------|-----------|
-| **[< Back]** | Top-left — replaces the Filla logo (frosted `bg-white/70` pill) |
-| Property selector | To the **right** of [< Back] (multi-property orgs only) |
-| Account avatar | Top-right of the gradient band (`HeaderAccountMenu`) — opens Profile / Settings / Trash / Sign out. Settings is **not** in the left nav rail. |
-| Search | **None** in the header — pressed search lives in the centre column |
+**Left column — Tasks · Calendar · Records and Property (Spaces · Assets · People), top to bottom:**
 
-**Left (context) column — consistent formula, top to bottom:**
+1. **Title image block** (~160px) — H1 (`font-display` / Fraunces) + short description on imagery
+2. **Section health dashboard** — three informational tabs styled like the Inflow property card stats (**omit** the radial completion graph)
+3. **Perforation** line
+4. **Expandable calendar** — **Tasks** and **Records** only; **collapsed by default**. Omitted on **Calendar** (centre owns the calendar) and on Property / Home
+5. **Filla suggested actions** — up to 3
+6. **Recent** — compact list of recent task activity / messages / events / records (workspace) or spaces / assets / people / contractors / teams (Property)
 
-1. Screen **H1** (`font-display` / Fraunces) + description — one title only, always in the left column
-2. **Overview** card (`WorkspaceSurfaceCard title="Overview"`) — what exists here, counts + orientation copy
-3. **Health** 4-cell dashboard (`WorkspaceHealthGrid`, or `ReportKpiRow` / `RecordsContextSummary` which share the grammar) — e.g. “Property Health”, “Asset Health”
-4. **Recent items** list — last-touched entities for the area
+**Centre — Property:** Spaces · Assets · People tabs → perforation → page sub-tabs → collection slider (no collection title/description above; match Spaces Groups / Records slider patterns for Assets and People) → filter bar + sort → responsive lists.
 
-**Home / primary-workbench exception:** Filla logo top-left, search stays on the gradient header, centre tabs (**Inflow · Tasks · Calendar**) are the titles.
+**Reports / Settings / Knowledge (admin):** may retain Back + activity header variants as needed. Knowledge is under **Filla Admin**, not user nav.
 
 Placeholder pattern: `Ask about {Topic} or anything else.` (opens Ask Filla on submit; `onChange` may also filter the page). Pressed search fields carry the Filla AI icon on the left.
-
-Use `PropertyWorkspaceLayout` `pageTitle` / `searchPlaceholder` props + `StandardPage` `hideTitle` + `hideHeaderSearch` + `headerVariant="activity"` (or `StandardPageWithBack`, which applies the activity header automatically).
 
 **4.4 — REUSABLE COMPONENTS**
 
@@ -470,14 +506,18 @@ These concepts must remain separate.
 
 ACTIVITY AREAS
 
-Examples:
+User left navigation (desktop), in order:
 
 * Home
-* My Work
+* — separator —
+* Tasks
 * Calendar
-* Properties
-* Knowledge
+* Records
+* — separator —
+* Property
 * Reports
+
+**Filla Admin** (The Org, utilisation, AI, Knowledge) and **Dev Tools** are platform-only and never appear on user nav.
 
 Not every role sees every activity area.
 
@@ -487,11 +527,11 @@ Navigation should remain as consistent as possible across user types.
 
 PROPERTY SCOPE
 
-Properties are a scope mechanism, not a navigation system.
+Properties are a scope mechanism. The **Property** activity area manages place entities (Spaces · Assets · People) under that scope.
 
-Property selection filters activity areas.
+Property selection filters all activity areas.
 
-Property selection should never create duplicate navigation structures.
+Property selection must never create duplicate **task** navigation trees (e.g. Property → {name} → Tasks). Hover-to-list properties only sets scope and opens the Property activity area.
 
 ⸻
 
@@ -520,24 +560,29 @@ Examples:
 Cleaner:
 
 * Home
-* My Work
+* Tasks
 * Calendar
 
 Property Manager:
 
 * Home
-* My Work
+* Tasks
 * Calendar
-* Properties
-* Knowledge
+* Records
+* Property
 * Reports
 
 Portfolio Manager:
 
 * Home
-* Properties
+* Property
 * Reports
 * Intelligence
+
+Platform admin (separate shell):
+
+* Filla Admin (orgs, utilisation, AI, Knowledge)
+* Dev Tools
 
 The platform remains the same.
 

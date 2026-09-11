@@ -333,11 +333,11 @@ export function TasksWorkbenchPanel({
   };
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-transparent pt-0 pb-1">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+      <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-transparent pt-0 pb-1">
         {/*
-          items-start so the illustration doesn’t push “All” down (was items-end → ~75px gap).
-          CentreWorkbench owns the 55px space above this title.
+          items-start so the illustration doesn’t push “All” down (was items-end).
+          CentreWorkbench owns equal space above/below the tab perforation (pt-[22px]).
         */}
         <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
           <div

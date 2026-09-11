@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
@@ -176,7 +177,7 @@ export function AllAssetsDirectory({
   }, [sorted, sort, assetToCollection]);
 
   const renderLink = (asset: AssetViewRow) => {
-    const name = assetNameRaw(asset);
+    const name = displayNameWithoutSampleCue(assetNameRaw(asset));
     const taskCount = asset.open_tasks_count ?? 0;
     const hasOpen = taskCount > 0;
     return (

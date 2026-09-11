@@ -50,7 +50,6 @@ import {
 } from "./complianceRecordModel";
 import { PropertyRecordGroupCarousel } from "./PropertyRecordGroupCarousel";
 import { AllRecordsDirectory } from "./AllRecordsDirectory";
-import { RecordsSearchField } from "./RecordsSearchField";
 import type { RecordGroupId } from "@/lib/records/recordGroups";
 
 const COMPLIANCE_DOC_CATEGORIES = ["Fire Safety", "Electrical", "Water", "Mechanical"] as const;
@@ -677,7 +676,7 @@ export function PropertyRecordsTab({
   return (
     <div
       ref={panelRef}
-      className="flex h-full min-h-0 flex-col px-[10px] pb-[11px] pt-[8px] max-sm:px-0 max-pane:px-2"
+      className="flex h-full min-h-0 flex-col px-[10px] pb-[11px] pt-0 max-sm:px-0 max-pane:px-2"
     >
       {recordsUploading && (
         <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
@@ -686,11 +685,17 @@ export function PropertyRecordsTab({
       )}
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
-        <div className="mb-5 block min-w-0 sm:mb-0 sm:hidden layout:mb-5 layout:block">
-          <RecordsSearchField value={recordsSearch} onChange={setRecordsSearch} />
-        </div>
-
         <div className="space-y-5">
+        {workTab !== "attention" ? (
+          <PropertyRecordGroupCarousel
+            documents={documents}
+            complianceRecords={filteredComplianceRecords}
+            selectedGroupId={selectedGroupId}
+            onSelectGroup={handleSelectGroup}
+            searchQuery={recordsSearch}
+          />
+        ) : null}
+
           <FilterBar
           primaryOptions={recordsPrimaryOptions}
           secondaryGroups={recordsSecondaryGroups}
@@ -743,14 +748,6 @@ export function PropertyRecordsTab({
 
         {workTab !== "attention" ? (
           <div className="space-y-4">
-            <PropertyRecordGroupCarousel
-              documents={documents}
-              complianceRecords={filteredComplianceRecords}
-              selectedGroupId={selectedGroupId}
-              onSelectGroup={handleSelectGroup}
-              searchQuery={recordsSearch}
-            />
-
             <div className="space-y-4 border-t border-border/30 pt-5">
               <AllRecordsDirectory
                 documents={documentsForWork}

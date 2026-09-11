@@ -140,43 +140,57 @@ export function OnboardingAttentionFeed({
         )}
       </section>
 
-      {needsAttention.length > 0 ? (
-        <section className="space-y-2">
+      <section className="space-y-2">
           <FeedSectionHeader
-            title="Needs attention"
+            title="Needs review"
             subtitle="Compliance, maintenance, and items needing a decision."
           />
-          <IssuesScrollColumn
-            title=""
-            subtitle=""
-            countVariant="review"
-            items={needsAttention}
-            totalCount={needsAttention.length}
-            renderCard={renderSignal}
-            layout="vertical"
-            hideHeader
-          />
+          {needsAttention.length > 0 ? (
+            <IssuesScrollColumn
+              title=""
+              subtitle=""
+              countVariant="review"
+              items={needsAttention}
+              totalCount={needsAttention.length}
+              renderCard={renderSignal}
+              layout="vertical"
+              hideHeader
+            />
+          ) : (
+            <div className="space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
+              <p className="text-xs font-medium text-foreground/90">Nothing to review</p>
+              <p className="text-caption leading-relaxed text-muted-foreground">
+                When certificates, uploads, or risks need a decision, they appear here.
+              </p>
+            </div>
+          )}
         </section>
-      ) : null}
 
-      {signals.length > 0 ? (
-        <section className="space-y-2">
+      <section className="space-y-2">
           <FeedSectionHeader
-            title="Signals Filla found"
-            subtitle="How AI surfaces updates and risks across your property."
+            title="Found signals"
+            subtitle="Uploads, emails, and system events that can become work."
           />
-          <IssuesScrollColumn
-            title=""
-            subtitle=""
-            countVariant="recent"
-            items={signals}
-            totalCount={signals.length}
-            renderCard={renderSignal}
-            layout="vertical"
-            hideHeader
-          />
+          {signals.length > 0 ? (
+            <IssuesScrollColumn
+              title=""
+              subtitle=""
+              countVariant="recent"
+              items={signals}
+              totalCount={signals.length}
+              renderCard={renderSignal}
+              layout="vertical"
+              hideHeader
+            />
+          ) : (
+            <div className="space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
+              <p className="text-xs font-medium text-foreground/90">Nothing new to triage</p>
+              <p className="text-caption leading-relaxed text-muted-foreground">
+                When uploads, emails, or environmental scans arrive, they appear here.
+              </p>
+            </div>
+          )}
         </section>
-      ) : null}
 
       {sampleRecords.length > 0 ? (
         <section className="space-y-2">

@@ -2,13 +2,11 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
   Building2,
-  Box,
+  Calendar,
   BarChart3,
   HelpCircle,
   Settings,
-  Layers,
   FolderOpen,
-  Tags,
 } from "lucide-react";
 import {
   Drawer,
@@ -18,14 +16,11 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
-import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 
 const MORE_MENU_ITEMS = [
-  { to: "/properties", label: "Properties", icon: Building2, description: "Portfolio and property hubs" },
-  { to: "/spaces", label: "Spaces", icon: Layers, description: "Rooms and areas" },
-  { to: "/assets", label: "Assets", icon: Box, description: "Equipment and fixtures" },
+  { to: "/calendar", label: "Calendar", icon: Calendar, description: "Month and schedule" },
   { to: "/records", label: "Records", icon: FolderOpen, description: "Compliance and documents" },
-  { to: "/tags", label: "Tags", icon: Tags, description: "Labels for tasks" },
+  { to: "/property/spaces", label: "Property", icon: Building2, description: "Spaces, assets, and people" },
   { to: "/reports", label: "Reports", icon: BarChart3, description: "Insights and exports" },
   { to: "/help", label: "Help", icon: HelpCircle, description: "Guides and support" },
   { to: "/settings", label: "Settings", icon: Settings, description: "Account and organisation" },
@@ -37,43 +32,43 @@ type MobileMoreMenuDrawerProps = {
 };
 
 /**
- * Mobile “More” slider — portfolio and secondary destinations not on the bottom bar.
+ * Mobile “More” slider — secondary destinations not on the bottom bar.
  */
 export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawerProps) {
-  const { data: properties = [] } = usePropertiesQuery();
-  const isMultiProperty = properties.length > 1;
-  const items = useMemo(
-    () => MORE_MENU_ITEMS.filter((item) => item.label !== "Properties" || isMultiProperty),
-    [isMultiProperty]
-  );
+  const items = useMemo(() => MORE_MENU_ITEMS, []);
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="border-b border-border/50 text-left">
-          <DrawerTitle>More</DrawerTitle>
-          <DrawerDescription>Spaces, records, reports, and settings</DrawerDescription>
+      <DrawerContent className="max-h-[85vh] border-0 bg-card shadow-e3">
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="font-display text-xl">More</DrawerTitle>
+          <DrawerDescription>Workspace and account</DrawerDescription>
         </DrawerHeader>
-        <nav className="space-y-1 p-4 pb-8" aria-label="More navigation">
-          {items.map(({ to, label, icon: Icon, description }) => (
-            <Link
-              key={label}
-              to={to}
-              onClick={() => onOpenChange(false)}
-              className={cn(
-                "flex items-center gap-3 rounded-xl p-3 transition-colors",
-                "bg-card shadow-sm hover:bg-card/90 active:scale-[0.99]"
-              )}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-muted/60">
-                <Icon className="h-5 w-5 text-foreground/80" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold text-foreground">{label}</div>
-                <div className="text-xs text-muted-foreground">{description}</div>
-              </div>
-            </Link>
-          ))}
+        <nav className="grid gap-1 px-4 pb-8" aria-label="More destinations">
+          {items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  "flex items-center gap-3 rounded-xl px-3 py-3 no-underline transition-colors",
+                  "text-foreground hover:bg-muted/50"
+                )}
+              >
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted/40 shadow-sm">
+                  <Icon className="h-4 w-4 text-primary" aria-hidden />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">{item.label}</span>
+                  <span className="block text-caption text-muted-foreground">
+                    {item.description}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
         </nav>
       </DrawerContent>
     </Drawer>

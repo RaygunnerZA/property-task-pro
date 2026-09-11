@@ -31,7 +31,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Layers } from "lucide-react";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { isFuzzyMatchSimilarity } from "@/services/ai/fuzzyMatch";
 import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
@@ -575,17 +574,6 @@ export function PropertySpaceGroupCarousel({
   return (
     <>
       <div className={cn("space-y-4", className)}>
-        <div className="flex items-center gap-2">
-          <div
-            className="rounded-xl bg-primary p-2.5"
-            style={{
-              boxShadow: "3px 3px 8px rgba(0,0,0,0.1), -2px -2px 6px rgba(255,255,255,0.3)",
-            }}
-          >
-            <Layers className="h-5 w-5 text-white" />
-          </div>
-          <h2 className="text-lg font-semibold text-foreground">Space groups</h2>
-        </div>
         {!filterKey ? (
           <p className="text-sm text-muted-foreground">
             Hover a group to browse suggestions, add spaces, or manage what you already have.

@@ -25,13 +25,11 @@ interface StandardPageProps {
   /** Omit in-content title when the page renders its own heading (e.g. left column). */
   hideTitle?: boolean;
   /**
-   * Hide gradient-header search; use centre-column pressed search on activity areas.
-   * Keep search in the header on Home only.
+   * Hide gradient-header search; rare on Property — keep search in the header by default.
    */
   hideHeaderSearch?: boolean;
   /**
-   * `activity`: secondary-screen header — no logo / no search,
-   * [< Back] top-left with property selector to its right.
+   * `activity`: Back + depth chrome (Reports / Settings). Property uses `workbench`.
    */
   headerVariant?: "workbench" | "activity";
   /** Back handler for the activity header (defaults to history back). */

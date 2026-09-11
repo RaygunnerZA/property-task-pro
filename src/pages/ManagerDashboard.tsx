@@ -107,7 +107,7 @@ const ManagerDashboard = () => {
             <Plus className="h-4 w-4 mr-2" />
             Add Property
           </NeomorphicButton>
-          <NeomorphicButton size="sm" onClick={() => navigate("/assets")}>
+          <NeomorphicButton size="sm" onClick={() => navigate("/property/assets")}>
             <Plus className="h-4 w-4 mr-2" />
             Add Asset
           </NeomorphicButton>

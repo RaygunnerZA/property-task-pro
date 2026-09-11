@@ -29,8 +29,13 @@ interface StandardPageWithBackProps {
   headerAccentColor?: string;
   /** Omit in-content title when the page renders its own heading. */
   hideTitleInHeader?: boolean;
-  /** Hide gradient-header search (centre-column search on activity areas). */
+  /** Hide gradient-header search (rare — Property keeps header search). */
   hideHeaderSearch?: boolean;
+  /**
+   * Header chrome. Property activity uses `workbench` (logo + search + CTAs).
+   * Depth screens (Reports / Settings) may use `activity` (Back).
+   */
+  headerVariant?: "workbench" | "activity";
 }
 
 /**
@@ -56,6 +61,7 @@ export function StandardPageWithBack({
   headerAccentColor,
   hideTitleInHeader = false,
   hideHeaderSearch = false,
+  headerVariant = "workbench",
 }: StandardPageWithBackProps) {
   const navigate = useNavigate();
   const accent = headerAccentColor?.trim() || FILLA_TURQUOISE;
@@ -97,9 +103,9 @@ export function StandardPageWithBack({
     >
       <GlobalAppHeader
         accentColor={accent}
-        hideSearch
-        variant="activity"
-        onBack={handleBack}
+        hideSearch={hideHeaderSearch}
+        variant={headerVariant}
+        onBack={headerVariant === "activity" ? handleBack : undefined}
       />
 
       {belowGradientRow != null && (

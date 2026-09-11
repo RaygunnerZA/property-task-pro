@@ -4,27 +4,25 @@ import { Layers } from "lucide-react";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
-import { propertyActivitySpacesPath } from "@/lib/propertyRoutes";
+import SpaceOrganisationScreen from "@/pages/spaces/SpaceOrganisationScreen";
 
 /**
- * Legacy `/spaces` entry — redirects into the Property activity Spaces route.
- * Prefer `/property/spaces` for new links.
+ * Property activity — Spaces entry.
+ * Resolves `?property=` (or the sole org property) then renders the organise workspace.
  */
-export default function SpacesEntryPage() {
+export default function PropertySpacesPage() {
   const [searchParams] = useSearchParams();
   const { data: properties = [], isLoading } = usePropertiesQuery();
 
-  const target = useMemo(() => {
+  const targetPropertyId = useMemo(() => {
     const fromQuery = searchParams.get("property");
     if (fromQuery && properties.some((p) => p.id === fromQuery)) {
-      return propertyActivitySpacesPath(fromQuery);
+      return fromQuery;
     }
     if (properties.length === 1 && properties[0]?.id) {
-      return propertyActivitySpacesPath(properties[0].id);
+      return properties[0].id;
     }
-    // Preserve any query while landing on the activity route (PropertySpacesPage resolves scope).
-    const qs = searchParams.toString();
-    return qs ? `/property/spaces?${qs}` : "/property/spaces";
+    return null;
   }, [searchParams, properties]);
 
   if (isLoading) {
@@ -33,13 +31,23 @@ export default function SpacesEntryPage() {
         title="Spaces"
         icon={<Layers className="h-6 w-6" />}
         maxWidth="md"
-        hideHeaderSearch
-        headerVariant="activity"
       >
         <LoadingState message="Loading spaces…" />
       </StandardPage>
     );
   }
 
-  return <Navigate to={target} replace />;
+  if (!targetPropertyId) {
+    return <Navigate to="/properties" replace />;
+  }
+
+  const fromQuery = searchParams.get("property");
+  if (!fromQuery) {
+    // Preserve other query keys (e.g. workTab, urgent) when syncing property scope.
+    const next = new URLSearchParams(searchParams);
+    next.set("property", targetPropertyId);
+    return <Navigate to={`/property/spaces?${next.toString()}`} replace />;
+  }
+
+  return <SpaceOrganisationScreen />;
 }

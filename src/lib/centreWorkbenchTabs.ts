@@ -1,5 +1,5 @@
-/** Primary tabs in the centre work column (Home workbench). */
-export type CentreWorkbenchTab = "inflow" | "tasks" | "calendar";
+/** Primary workspace centre tabs (Tasks · Calendar · Records). Home/Inflow is standalone. */
+export type CentreWorkbenchTab = "tasks" | "calendar" | "records";
 
 export const CENTRE_WORKBENCH_TAB_QUERY = "panelTab";
 
@@ -11,13 +11,15 @@ export const WORKBENCH_CALENDAR_VIEW_QUERY = "calendarView";
 
 export type CentreCalendarView = "calendar" | "schedule";
 
-/** Dedicated work-surface route for phone (see `workbenchLayoutMode.ts`). */
+/** Dedicated work-surface routes. */
 export const CENTRE_WORKBENCH_TASKS_PATH = "/tasks";
+export const CENTRE_WORKBENCH_CALENDAR_PATH = "/calendar";
+export const CENTRE_WORKBENCH_RECORDS_PATH = "/records";
 
 export const CENTRE_WORKBENCH_TABS: readonly CentreWorkbenchTab[] = [
-  "inflow",
   "tasks",
   "calendar",
+  "records",
 ] as const;
 
 export type CentreWorkbenchTabMeta = {
@@ -32,14 +34,6 @@ export type CentreWorkbenchTabMeta = {
 };
 
 export const CENTRE_WORKBENCH_TAB_META: Record<CentreWorkbenchTab, CentreWorkbenchTabMeta> = {
-  inflow: {
-    id: "inflow",
-    label: "Inflow",
-    accentColor: "#EB6834",
-    fill: "hsl(16 78% 84%)",
-    description: "Signals, suggestions, and records waiting for a decision.",
-    illustrationSrc: "/centre-workbench/inflow.png",
-  },
   tasks: {
     id: "tasks",
     label: "Tasks",
@@ -56,17 +50,27 @@ export const CENTRE_WORKBENCH_TAB_META: Record<CentreWorkbenchTab, CentreWorkben
     description: "Month grid and day-by-day schedule for planned work.",
     illustrationSrc: "/centre-workbench/calendar.png",
   },
+  records: {
+    id: "records",
+    label: "Records",
+    accentColor: "#C4A35A",
+    fill: "hsl(42 45% 86%)",
+    description: "Evidence, certificates, documents, and compliance artefacts.",
+    illustrationSrc: "/centre-workbench/records.png",
+  },
 };
 
 const LEGACY_CENTRE_TAB_MAP: Record<string, CentreWorkbenchTab> = {
-  inflow: "inflow",
-  attention: "inflow",
-  issues: "inflow",
   tasks: "tasks",
   calendar: "calendar",
   schedule: "calendar",
   agenda: "calendar",
-  records: "inflow",
+  records: "records",
+  // Legacy Inflow deep-links land on Tasks within the primary workspace;
+  // Home/Inflow itself is `/` (no centre tab).
+  inflow: "tasks",
+  attention: "tasks",
+  issues: "tasks",
 };
 
 export function normalizeCentreWorkbenchTab(
@@ -75,7 +79,7 @@ export function normalizeCentreWorkbenchTab(
 ): CentreWorkbenchTab {
   const raw = (panelTabRaw || tabAliasRaw || "").toLowerCase();
   if (LEGACY_CENTRE_TAB_MAP[raw]) return LEGACY_CENTRE_TAB_MAP[raw];
-  return "inflow";
+  return "tasks";
 }
 
 export function isCentreWorkbenchTab(value: string): value is CentreWorkbenchTab {
@@ -88,9 +92,21 @@ export function normalizeCentreCalendarView(
   return raw === "schedule" ? "schedule" : "calendar";
 }
 
+export function centreWorkbenchPathForTab(tab: CentreWorkbenchTab): string {
+  switch (tab) {
+    case "calendar":
+      return CENTRE_WORKBENCH_CALENDAR_PATH;
+    case "records":
+      return CENTRE_WORKBENCH_RECORDS_PATH;
+    case "tasks":
+    default:
+      return CENTRE_WORKBENCH_TASKS_PATH;
+  }
+}
+
 /**
- * Canonical work-surface URL: `/tasks` (+ optional `?property=` / `panelTab=`).
- * Tasks tab is the default on `/tasks`, so `panelTab` is omitted when `tab === "tasks"`.
+ * Canonical primary-workspace URL for a tab (+ optional `?property=` etc.).
+ * Prefer dedicated routes (`/tasks`, `/calendar`, `/records`) over `panelTab`.
  */
 export function centreWorkbenchTasksPath(
   tab: CentreWorkbenchTab,
@@ -98,11 +114,30 @@ export function centreWorkbenchTasksPath(
 ): string {
   const params = new URLSearchParams(searchParams);
   params.delete("tab");
-  if (tab === "tasks") {
-    params.delete(CENTRE_WORKBENCH_TAB_QUERY);
-  } else {
-    params.set(CENTRE_WORKBENCH_TAB_QUERY, tab);
-  }
+  params.delete(CENTRE_WORKBENCH_TAB_QUERY);
+  const path = centreWorkbenchPathForTab(tab);
   const qs = params.toString();
-  return qs ? `${CENTRE_WORKBENCH_TASKS_PATH}?${qs}` : CENTRE_WORKBENCH_TASKS_PATH;
+  return qs ? `${path}?${qs}` : path;
+}
+
+/** Infer active centre tab from pathname (+ legacy panelTab on /tasks|/home). */
+export function centreWorkbenchTabFromLocation(
+  pathname: string,
+  search: string = ""
+): CentreWorkbenchTab {
+  if (pathname === "/calendar" || pathname === "/agenda" || pathname === "/schedule") {
+    return "calendar";
+  }
+  if (pathname === "/records" || pathname.startsWith("/records/")) {
+    return "records";
+  }
+  if (pathname === "/tasks") {
+    const panel = new URLSearchParams(
+      search.startsWith("?") ? search.slice(1) : search
+    ).get(CENTRE_WORKBENCH_TAB_QUERY);
+    if (panel === "calendar") return "calendar";
+    if (panel === "records") return "records";
+    return "tasks";
+  }
+  return "tasks";
 }

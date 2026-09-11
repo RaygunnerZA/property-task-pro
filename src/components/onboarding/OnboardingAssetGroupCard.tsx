@@ -13,6 +13,7 @@ import {
   SPACE_GROUP_ADD_INPUT_CLASS,
   SPACE_GROUP_ADD_INPUT_SHADOW,
 } from "./spaceGroupCardInputStyles";
+import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -316,6 +317,7 @@ export function OnboardingAssetGroupCard({
           >
             {visibleAssetNames.map((name) => {
               const key = name.toLowerCase().trim();
+              const label = displayNameWithoutSampleCue(name);
               const isSelected = selectedAssetsSet.has(key);
               if (isSelected) {
                 const viewHandler =
@@ -324,7 +326,7 @@ export function OnboardingAssetGroupCard({
                 return (
                   <ExpandableAssetChip
                     key={name}
-                    label={name}
+                    label={label}
                     color={SELECTED_CHIP_TEAL}
                     onRemove={() => onRemoveAsset?.(name)}
                     onRename={
@@ -340,7 +342,7 @@ export function OnboardingAssetGroupCard({
                 <SemanticChip
                   key={name}
                   epistemic="proposal"
-                  label={name}
+                  label={label}
                   removable
                   onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
                   onPress={() => handleChipClick(name)}

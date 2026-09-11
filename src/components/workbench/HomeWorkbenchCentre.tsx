@@ -1,30 +1,23 @@
-import { CentreWorkbench, type CentreWorkbenchProps } from "@/components/workbench/CentreWorkbench";
+import { InflowPanel } from "@/components/workbench/InflowPanel";
+import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 import type { IntakeMode } from "@/types/intake";
 
-export interface HomeWorkbenchCentreProps extends Omit<CentreWorkbenchProps, "activeTab" | "onCentreTabChange"> {
-  activeTab?: CentreWorkbenchProps["activeTab"];
-  onCentreTabChange?: CentreWorkbenchProps["onCentreTabChange"];
-  /** @deprecated Use onCentreTabChange */
-  onTabChange?: (tab: string) => void;
+export interface HomeWorkbenchCentreProps extends MyWorkPanelProps {
   onOpenIntake?: (mode: IntakeMode) => void;
 }
 
 /**
- * Home centre column — Inflow · Tasks · Calendar work surface.
+ * Home centre column — standalone Inflow (no Tasks · Calendar · Records strip).
  */
 export function HomeWorkbenchCentre({
-  activeTab = "inflow",
-  onCentreTabChange,
-  onTabChange,
+  onOpenIntake,
   ...props
 }: HomeWorkbenchCentreProps) {
-  const handleCentreTabChange = onCentreTabChange ?? ((tab) => onTabChange?.(tab));
-
   return (
-    <CentreWorkbench
-      {...props}
-      activeTab={activeTab}
-      onCentreTabChange={handleCentreTabChange}
-    />
+    <div className="flex h-full min-h-0 min-w-0 flex-col bg-transparent pb-1">
+      <div className="box-border max-h-full min-h-0 min-w-0 w-full max-w-[700px] overflow-x-clip overflow-y-auto px-2 pb-4 max-pane:px-2">
+        <InflowPanel {...props} onOpenIntake={onOpenIntake} />
+      </div>
+    </div>
   );
 }

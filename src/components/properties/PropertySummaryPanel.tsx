@@ -50,7 +50,17 @@ const metricsCollapseMotionClass =
 const metricsChevronMotionClass =
   "h-4 w-4 transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none";
 
-const STAT_CENTRE_TABS: readonly CentreWorkbenchTab[] = ["inflow", "tasks", "calendar"];
+const STAT_CENTRE_TABS = ["home", "tasks", "calendar"] as const;
+type PropertyStatNavTarget = (typeof STAT_CENTRE_TABS)[number];
+
+const STAT_LABELS: Record<
+  PropertyStatNavTarget,
+  { line1: string; line2: string; aria: string }
+> = {
+  home: { line1: "needs", line2: "review", aria: "Needs review" },
+  tasks: { line1: "open", line2: "tasks", aria: "Open tasks" },
+  calendar: { line1: "found", line2: "signals", aria: "Found signals" },
+};
 
 type StatSecondaryTone = "urgent" | "warning" | "neutral";
 
@@ -96,8 +106,8 @@ type PropertySummaryPanelProps = {
   /** Portfolio card: load org-wide signals for summary lines */
   portfolioSignals?: boolean;
   onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void;
-  /** Active Inflow · Tasks · Calendar tab (highlights phone summary entry cells). */
-  centreWorkbenchTab?: CentreWorkbenchTab;
+  /** Active primary destination for phone summary entry cells. */
+  centreWorkbenchTab?: CentreWorkbenchTab | "home";
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   /**
    * Home-hub phone: show summary stats as entry to Inflow · Tasks · Calendar.
@@ -108,8 +118,29 @@ type PropertySummaryPanelProps = {
 };
 
 type StatCentreNav = {
-  tab: CentreWorkbenchTab;
+  tab: PropertyStatNavTarget;
   isActive?: boolean;
+};
+
+const STAT_NAV_META: Record<
+  PropertyStatNavTarget,
+  { label: string; illustrationSrc: string; fill: string }
+> = {
+  home: {
+    label: "Review",
+    illustrationSrc: "/centre-workbench/inflow.png",
+    fill: "hsl(16 78% 84%)",
+  },
+  tasks: {
+    label: CENTRE_WORKBENCH_TAB_META.tasks.label,
+    illustrationSrc: CENTRE_WORKBENCH_TAB_META.tasks.illustrationSrc,
+    fill: CENTRE_WORKBENCH_TAB_META.tasks.fill,
+  },
+  calendar: {
+    label: "Signals",
+    illustrationSrc: "/centre-workbench/inflow.png",
+    fill: "hsl(16 78% 84%)",
+  },
 };
 
 function StatColumn({
@@ -130,12 +161,12 @@ function StatColumn({
   secondaryTone?: StatSecondaryTone;
   onActivate?: () => void;
   /**
-   * Phone home: metric cell doubles as entry to a work screen
-   * (to review → Inflow, open tasks → Tasks, upcoming events → Calendar).
+   * Phone home: metric cell doubles as entry to Home / Tasks / Found signals.
+   * (needs review → Home, open tasks → Tasks, found signals → Home signals)
    */
   centreNav?: StatCentreNav;
 }) {
-  const centreMeta = centreNav ? CENTRE_WORKBENCH_TAB_META[centreNav.tab] : null;
+  const centreMeta = centreNav ? STAT_NAV_META[centreNav.tab] : null;
   const displayValue = Math.round(useCountUp(value));
 
   const inner = centreMeta ? (
@@ -345,10 +376,10 @@ export function PropertySummaryPanel({
   peopleCount = 0,
   urgentOpenTaskCount = 0,
   loading = false,
-  onOpenUrgent,
-  onOpenTasks,
-  onOpenCompliance,
-  onOpenInspections,
+  onOpenUrgent: _onOpenUrgent,
+  onOpenTasks: _onOpenTasks,
+  onOpenCompliance: _onOpenCompliance,
+  onOpenInspections: _onOpenInspections,
   onOpenSpaces,
   onOpenAssets,
   onOpenPeople,
@@ -390,7 +421,7 @@ export function PropertySummaryPanel({
   });
 
   const openCentreTab = useCallback(
-    (tab: CentreWorkbenchTab) => {
+    (tab: PropertyStatNavTarget) => {
       const params =
         typeof window === "undefined"
           ? new URLSearchParams(searchParams)
@@ -402,25 +433,24 @@ export function PropertySummaryPanel({
         params.set("property", property.id);
       }
 
-      if (routeCentreNavToWorkSurface || showPhoneWorkEntries) {
-        navigate(centreWorkbenchTasksPath(tab, params));
+      if (tab === "home") {
+        params.delete("inflow");
+        const qs = params.toString();
+        navigate(qs ? `/?${qs}` : "/");
         return;
       }
-      if (onCentreWorkbenchTabChange) {
-        onCentreWorkbenchTabChange(tab);
+
+      // "Found signals" reuses the calendar slot in the 3-up — land on Home signals.
+      if (tab === "calendar") {
+        params.set("inflow", "signals");
+        const qs = params.toString();
+        navigate(qs ? `/?${qs}` : "/?inflow=signals");
         return;
       }
+
       navigate(centreWorkbenchTasksPath(tab, params));
     },
-    [
-      navigate,
-      searchParams,
-      portfolioSignals,
-      property.id,
-      routeCentreNavToWorkSurface,
-      showPhoneWorkEntries,
-      onCentreWorkbenchTabChange,
-    ]
+    [navigate, searchParams, portfolioSignals, property.id]
   );
 
   const metrics = useMemo(
@@ -493,43 +523,38 @@ export function PropertySummaryPanel({
     return { count: 0, label: "DUE SOON", tone: "neutral" as const };
   }, [metrics.complianceDueSoon, property.expired_compliance_count]);
 
-  const eventsSecondary = useMemo(() => {
-    if (metrics.overdueInspections > 0) {
-      return { count: metrics.overdueInspections, label: "OVERDUE", tone: "urgent" as const };
+  const signalsSecondary = useMemo(() => {
+    const count = scopedSignals.length;
+    if (count > 0) {
+      return { count, label: "OPEN", tone: "warning" as const };
     }
-    if (metrics.dueSoonInspections > 0) {
-      return { count: metrics.dueSoonInspections, label: "DUE SOON", tone: "warning" as const };
-    }
-    return { count: 0, label: "SCHEDULED", tone: "neutral" as const };
-  }, [metrics.dueSoonInspections, metrics.overdueInspections]);
+    return { count: 0, label: "FOUND", tone: "neutral" as const };
+  }, [scopedSignals]);
 
   if (loading) {
     return <Skeleton className={cn("h-[320px] w-full rounded-xl", className)} />;
   }
 
+  const foundSignalsValue =
+    scopedSignals.length > 0 ? scopedSignals.length : Math.max(metrics.upcomingInspections, 0);
+
   const desktopStats = [
     {
       value: metrics.complianceReviews,
-      line1: "to",
-      line2: "review",
+      ...STAT_LABELS.home,
       secondary: complianceSecondary,
-      onActivate: onOpenCompliance,
       centreTab: STAT_CENTRE_TABS[0],
     },
     {
       value: metrics.openTasks,
-      line1: "open",
-      line2: "tasks",
+      ...STAT_LABELS.tasks,
       secondary: tasksSecondary,
-      onActivate: onOpenTasks,
       centreTab: STAT_CENTRE_TABS[1],
     },
     {
-      value: metrics.upcomingInspections,
-      line1: "upcoming",
-      line2: "events",
-      secondary: eventsSecondary,
-      onActivate: onOpenInspections,
+      value: foundSignalsValue,
+      ...STAT_LABELS.calendar,
+      secondary: signalsSecondary,
       centreTab: STAT_CENTRE_TABS[2],
     },
   ] as const;
@@ -546,7 +571,7 @@ export function PropertySummaryPanel({
             )}
             style={sectionRevealStyle(0)}
             role="navigation"
-            aria-label="Open Inflow, Tasks, or Calendar"
+            aria-label="Open Needs review, Open tasks, or Found signals"
           >
             {desktopStats.map((stat) => (
               <StatColumn
@@ -585,7 +610,7 @@ export function PropertySummaryPanel({
                 secondaryCount={stat.secondary.count}
                 secondaryLabel={stat.secondary.label}
                 secondaryTone={stat.secondary.tone}
-                onActivate={stat.onActivate}
+                onActivate={() => openCentreTab(stat.centreTab)}
               />
             ))}
           </div>
@@ -611,7 +636,7 @@ export function PropertySummaryPanel({
                       secondaryCount={stat.secondary.count}
                       secondaryLabel={stat.secondary.label}
                       secondaryTone={stat.secondary.tone}
-                      onActivate={stat.onActivate}
+                      onActivate={() => openCentreTab(stat.centreTab)}
                     />
                   ))}
                 </div>
@@ -679,7 +704,7 @@ export function PropertySummaryPanel({
                 secondaryCount={stat.secondary.count}
                 secondaryLabel={stat.secondary.label}
                 secondaryTone={stat.secondary.tone}
-                onActivate={stat.onActivate}
+                onActivate={() => openCentreTab(stat.centreTab)}
               />
             ))}
           </div>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useAssetFilesForAssets } from "@/hooks/useAssetFilesForAssets";
@@ -25,7 +25,7 @@ import { toast } from "sonner";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { StandardPageWithBack } from "@/components/design-system/StandardPageWithBack";
-import { propertyHubPath } from "@/lib/propertyRoutes";
+import { propertyHubPath, propertyActivityAssetsPath } from "@/lib/propertyRoutes";
 import { markQuickWinComplete } from "@/lib/quickWins";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
@@ -37,10 +37,15 @@ import { PropertyWorkspaceLayout, WorkspaceHealthGrid, WorkspaceSurfaceCard, Wor
 import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
 import { PropertyAssetGroupCarousel } from "@/components/assets/PropertyAssetGroupCarousel";
 import { AllAssetsDirectory } from "@/components/assets/AllAssetsDirectory";
+import { PropertyActivityTabStrip } from "@/components/property/PropertyActivityTabStrip";
+import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
-import { workbenchAskPlaceholder, WorkbenchCentreSearch } from "@/components/workbench/WorkbenchCentreSearch";
+import {
+  WorkbenchControlsProvider,
+  useWorkbenchControls,
+} from "@/contexts/WorkbenchControlsContext";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { defaultColorForAssetType } from "@/lib/assetIconDefaults";
 import type { Json, Tables } from "@/integrations/supabase/types";
@@ -77,15 +82,17 @@ function useWorkspaceWide() {
 
 const Assets = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const { data: assets = [], isLoading: loading, error } = useAssetsQuery();
   const { data: properties = [] } = usePropertiesQuery();
+  const showActivityTabs = location.pathname.startsWith("/property");
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
+  const { searchQuery } = useWorkbenchControls();
   const [filterPropertyId, setFilterPropertyId] = useState<string>("");
   const [filterSpaceId, setFilterSpaceId] = useState<string>("");
   const [propertyId, setPropertyId] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [statusFilters, setStatusFilters] = useState<string[]>([]);
   const [complianceOnly, setComplianceOnly] = useState(false);
   const [needsInspectionOnly, setNeedsInspectionOnly] = useState(false);
@@ -99,6 +106,29 @@ const Assets = () => {
   const railFormRef = useRef<HTMLDivElement>(null);
 
   const propertyFromUrl = searchParams.get("property") ?? "";
+  const assetIdFromUrl = searchParams.get("assetId")?.trim() || null;
+
+  // Deep links: `/property/assets?assetId=` (and legacy `/assets/:id` redirects).
+  useEffect(() => {
+    if (assetIdFromUrl) {
+      setSelectedAssetId(assetIdFromUrl);
+    }
+  }, [assetIdFromUrl]);
+
+  const openAsset = useCallback(
+    (assetId: string | null) => {
+      setSelectedAssetId(assetId);
+      const next = new URLSearchParams(searchParams);
+      if (assetId) {
+        next.set("assetId", assetId);
+      } else {
+        next.delete("assetId");
+      }
+      const qs = next.toString();
+      navigate(`${location.pathname}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [navigate, location.pathname, searchParams]
+  );
   const effectiveScopeId = propertyFromUrl || filterPropertyId;
   const scopedPropertyForChrome = useMemo(
     () => properties.find((p: { id: string }) => p.id === effectiveScopeId),
@@ -132,9 +162,7 @@ const Assets = () => {
   useEffect(() => {
     if (searchParams.get("add") !== "true") return;
     const propertyParam = searchParams.get("property");
-    const next = propertyParam
-      ? `/assets?property=${encodeURIComponent(propertyParam)}`
-      : "/assets";
+    const next = propertyActivityAssetsPath(propertyParam);
     navigate(next, { replace: true });
     if (typeof window !== "undefined" && window.matchMedia(WORKSPACE_WIDE_MQ).matches) {
       requestAnimationFrame(() => {
@@ -333,7 +361,7 @@ const Assets = () => {
       setIconColor(defaultColorForAssetType(null));
       setPendingFiles([]);
       await invalidateAssetQueries(queryClient);
-      setSelectedAssetId(newAsset.id);
+      openAsset(newAsset.id);
     } catch (err: unknown) {
       console.error("Error saving asset:", err);
       toast.error(err instanceof Error ? err.message : "Failed to save asset");
@@ -614,7 +642,6 @@ const Assets = () => {
           contentClassName="max-w-[1480px]"
           hideHeaderBack
           hideTitleInHeader
-          hideHeaderSearch
           className={propertyScopedShellClass}
         >
           <div className="max-w-[700px] w-full min-w-0">
@@ -629,8 +656,6 @@ const Assets = () => {
         title="Assets"
         icon={<Package className="h-6 w-6" />}
         maxWidth="md"
-        hideHeaderSearch
-        headerVariant="activity"
       >
         <LoadingState message="Loading assets…" />
       </StandardPage>
@@ -650,7 +675,6 @@ const Assets = () => {
           contentClassName="max-w-[1480px]"
           hideHeaderBack
           hideTitleInHeader
-          hideHeaderSearch
           className={propertyScopedShellClass}
         >
           <div className="max-w-[700px] w-full min-w-0">
@@ -670,8 +694,6 @@ const Assets = () => {
         title="Assets"
         icon={<Package className="h-6 w-6" />}
         maxWidth="md"
-        hideHeaderSearch
-        headerVariant="activity"
       >
         <ErrorState
           message={error?.message || String(error)}
@@ -712,10 +734,6 @@ const Assets = () => {
               : wideWorkColumnSubtitle
           }
           pageIcon={<Package />}
-          searchPlaceholder={workbenchAskPlaceholder("Assets")}
-          searchValue={searchQuery}
-          onSearchChange={setSearchQuery}
-          searchAccentColor={isPropertyScoped ? propertyHeaderAccent : undefined}
           contextColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-4">
@@ -729,7 +747,7 @@ const Assets = () => {
                 <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
                   <PropertyRecentAssetsList
                     propertyId={effectiveScopeId}
-                    onAssetClick={setSelectedAssetId}
+                    onAssetClick={openAsset}
                   />
                 </div>
               </div>
@@ -748,6 +766,9 @@ const Assets = () => {
           workColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-5">
+                {showActivityTabs ? (
+                  <PropertyActivityTabStrip activeTab="assets" propertyId={effectiveScopeId} />
+                ) : null}
                 {showAssetsOperationalView ? (
                   <div>
                     <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
@@ -778,7 +799,7 @@ const Assets = () => {
                         <li key={a.id}>
                           <button
                             type="button"
-                            onClick={() => a.id && setSelectedAssetId(a.id)}
+                            onClick={() => a.id && openAsset(a.id)}
                             className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
                           >
                             {a.name || "Unnamed asset"}
@@ -799,13 +820,13 @@ const Assets = () => {
                     <PropertyAssetGroupCarousel
                       propertyId={effectiveScopeId}
                       assetFilter={searchQuery}
-                      onViewAsset={setSelectedAssetId}
+                      onViewAsset={openAsset}
                     />
                     <div className="border-t border-border/30 pt-5">
                       <AllAssetsDirectory
                         propertyId={effectiveScopeId}
                         assetFilter={searchQuery}
-                        onAssetClick={setSelectedAssetId}
+                        onAssetClick={openAsset}
                       />
                     </div>
                   </div>
@@ -813,6 +834,14 @@ const Assets = () => {
               </div>
             ) : (
               <>
+                {showActivityTabs ? (
+                  <div className="mb-4">
+                    <PropertyActivityTabStrip
+                      activeTab="assets"
+                      propertyId={effectiveScopeId || undefined}
+                    />
+                  </div>
+                ) : null}
                 <div className="space-y-4 mb-6">
                   <div className="flex flex-wrap gap-3 items-center">
                     <Select
@@ -888,7 +917,7 @@ const Assets = () => {
                           property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
                           spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
                           imageUrl={imageMap.get(asset.id!)}
-                          onClick={() => setSelectedAssetId(asset.id!)}
+                          onClick={() => openAsset(asset.id!)}
                         />
                       ))}
                     {filteredAssets.length === 0 && assets.length > 0 && (
@@ -920,9 +949,10 @@ const Assets = () => {
                       ? contextAssets.filter((a) => a.id).map((a) => a.id!)
                       : filteredAssetIds
                   }
-                  onOpenAsset={setSelectedAssetId}
+                  onOpenAsset={openAsset}
                 />
               </div>
+              {showActivityTabs ? <ManageTagsPanel surface="assets" /> : null}
             </div>
           }
         />
@@ -944,14 +974,12 @@ const Assets = () => {
         <PropertyAssetsWorkColumnHeading subtitle={wideWorkColumnSubtitle} />
       ) : null}
 
-      <div className="mb-4 min-w-0">
-        <WorkbenchCentreSearch
-          placeholder={workbenchAskPlaceholder("Assets")}
-          value={searchQuery}
-          onChange={setSearchQuery}
-          accentColor={isPropertyScoped ? propertyHeaderAccent : undefined}
+      {showActivityTabs ? (
+        <PropertyActivityTabStrip
+          activeTab="assets"
+          propertyId={effectiveScopeId || undefined}
         />
-      </div>
+      ) : null}
 
       {/* Filters row */}
       <div className="mb-6 space-y-4 pt-1">
@@ -1021,7 +1049,7 @@ const Assets = () => {
                 property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
                 spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
                 imageUrl={imageMap.get(asset.id!)}
-                onClick={() => setSelectedAssetId(asset.id!)}
+                onClick={() => openAsset(asset.id!)}
               />
             ))}
           {filteredAssets.length === 0 && assets.length > 0 && (
@@ -1036,8 +1064,8 @@ const Assets = () => {
       {selectedAssetId && (
         <AssetDetailPanel
           assetId={selectedAssetId}
-          onClose={() => setSelectedAssetId(null)}
-          onOpenAsset={setSelectedAssetId}
+          onClose={() => openAsset(null)}
+          onOpenAsset={openAsset}
           siblingAssetIds={
             isPropertyScoped && assetsWorkTab === "issues"
               ? assetsForIssuesList.filter((a) => a.id).map((a) => a.id!)
@@ -1061,7 +1089,6 @@ const Assets = () => {
         contentClassName="max-w-[1480px]"
         hideHeaderBack
         hideTitleInHeader
-        hideHeaderSearch
         className={propertyScopedShellClass}
       >
         {mainInner}
@@ -1078,12 +1105,16 @@ const Assets = () => {
       maxWidth="full"
       contentClassName="max-w-[1480px]"
       hideTitle
-      hideHeaderSearch
-      headerVariant="activity"
     >
       {mainInner}
     </StandardPage>
   );
 };
 
-export default Assets;
+export default function AssetsPage() {
+  return (
+    <WorkbenchControlsProvider defaultPropertyId="all" initialFilters={new Set()}>
+      <Assets />
+    </WorkbenchControlsProvider>
+  );
+}

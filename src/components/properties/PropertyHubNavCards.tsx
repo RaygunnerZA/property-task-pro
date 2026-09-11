@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
 import { paperTexturedDiagonalFadeStyle } from "@/lib/paperTexture";
 import {
   PropertyHubTab,
@@ -168,9 +169,9 @@ const recentChipsScrollClass =
 
 function formatRecentChipLabel(name: string): string {
   const trimmed = name.trim();
-  if (/^sample:\s*/i.test(trimmed)) {
-    const withoutSamplePrefix = trimmed.replace(/^sample:\s*/i, "");
-    return `*${withoutSamplePrefix || trimmed}`;
+  if (/^sample:\s*/i.test(trimmed) || /\(\s*sample(?:\s*[-–—][^)]*)?\s*\)/i.test(trimmed)) {
+    const withoutSampleCue = displayNameWithoutSampleCue(trimmed);
+    return `*${withoutSampleCue || trimmed}`;
   }
   return trimmed;
 }

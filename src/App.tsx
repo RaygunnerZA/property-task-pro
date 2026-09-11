@@ -26,8 +26,9 @@ import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScree
 import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
 import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
 import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
-// Primary nav — work column opens via TasksWorkbenchPage (centre Inflow · Tasks · Calendar).
+// Primary nav — Tasks · Calendar · Records workspace.
 import TasksWorkbenchPage from "./pages/workbench/TasksWorkbenchPage";
+import CalendarWorkbenchPage from "./pages/workbench/CalendarWorkbenchPage";
 
 initAnalytics();
 
@@ -41,14 +42,25 @@ function RedirectPreserveQuery({ to }: { to: string }) {
   return <Navigate to={`${to}${search}`} replace />;
 }
 
-/** Legacy `/calendar` → centre Tab-Calendar (`/tasks?panelTab=calendar`). */
+/** Legacy `/assets/:id` (+ context tabs) → Property Assets with `?assetId=`. */
+function RedirectLegacyAssetDetail() {
+  const { pathname, search } = useLocation();
+  const match = pathname.match(/^\/assets\/([^/]+)/);
+  const assetId = match?.[1];
+  const params = new URLSearchParams(search);
+  if (assetId) params.set("assetId", assetId);
+  const qs = params.toString();
+  return <Navigate to={qs ? `/property/assets?${qs}` : "/property/assets"} replace />;
+}
+
+/** Legacy calendar deep-links that still append panelTab — strip to /calendar. */
 function RedirectToCentreCalendar() {
   const { search } = useLocation();
   const params = new URLSearchParams(search);
-  params.set("panelTab", "calendar");
+  params.delete("panelTab");
   params.delete("tab");
   const qs = params.toString();
-  return <Navigate to={qs ? `/tasks?${qs}` : "/tasks?panelTab=calendar"} replace />;
+  return <Navigate to={qs ? `/calendar?${qs}` : "/calendar"} replace />;
 }
 
 // Lazy load all page components (except Login and AppLayout which load instantly)
@@ -75,8 +87,9 @@ const ManageProperties = lazy(() => import("./pages/manage/ManageProperties"));
 const ManageVendors = lazy(() => import("./pages/manage/ManageVendors"));
 const ManageTemplates = lazy(() => import("./pages/manage/ManageTemplates"));
 const ManageSettings = lazy(() => import("./pages/manage/ManageSettings"));
-const Assets = lazy(() => import("./pages/Assets"));
-const SpacesEntryPage = lazy(() => import("./pages/SpacesEntryPage"));
+const PropertySpacesPage = lazy(() => import("./pages/property/PropertySpacesPage"));
+const PropertyAssetsPage = lazy(() => import("./pages/property/PropertyAssetsPage"));
+const PropertyPeoplePage = lazy(() => import("./pages/property/PropertyPeoplePage"));
 const TagsPage = lazy(() => import("./pages/TagsPage"));
 
 // RECORD pillar
@@ -351,31 +364,39 @@ const App = () => {
                                 <Route path="/" element={<Dashboard />} />
                                 <Route path="/dashboard" element={<ManagerDashboard />} />
 
-                                {/* Property home (scope chrome + Inflow · Tasks · Calendar) */}
+                                {/* Property home (scoped Inflow) */}
                                 <Route
                                   path="/home"
                                   element={
                                     <RouteBoundary title="Home">
-                                      <Dashboard workbenchPanel="issues" />
+                                      <Dashboard workbenchPanel="home" />
                                     </RouteBoundary>
                                   }
                                 />
                                 {/* Legacy Attention URLs → property home */}
                                 <Route path="/issues" element={<RedirectPreserveQuery to="/home" />} />
                                 <Route path="/attention" element={<RedirectPreserveQuery to="/home" />} />
-                                <Route path="/records" element={<RouteBoundary title="Records"><Dashboard workbenchPanel="records" /></RouteBoundary>} />
-                                <Route path="/agenda" element={<RouteBoundary title="Schedule"><Dashboard workbenchPanel="schedule" /></RouteBoundary>} />
+                                <Route path="/records" element={<RouteBoundary title="Records"><Dashboard workbenchPanel="workspace" defaultCentreTab="records" /></RouteBoundary>} />
+                                <Route path="/agenda" element={<RedirectPreserveQuery to="/calendar" />} />
                                 
                                 {/* Main Navigation */}
                                 <Route path="/properties" element={<RouteBoundary title="Properties"><Properties /></RouteBoundary>} />
                                 <Route path="/tasks" element={<RouteBoundary title="Work"><TasksWorkbenchPage /></RouteBoundary>} />
-                                <Route path="/calendar" element={<RedirectToCentreCalendar />} />
+                                <Route path="/calendar" element={<RouteBoundary title="Calendar"><CalendarWorkbenchPage /></RouteBoundary>} />
                                 <Route path="/schedule" element={<RedirectToCentreCalendar />} />
                                 <Route path="/knowledge" element={<RouteBoundary title="Knowledge"><Knowledge /></RouteBoundary>} />
                                 <Route path="/reports" element={<RouteBoundary title="Reports"><Reports /></RouteBoundary>} />
                                 <Route path="/reports/:id" element={<RouteBoundary title="Report"><ReportWorkspacePage /></RouteBoundary>} />
-                                <Route path="/assets" element={<RouteBoundary title="Assets"><Assets /></RouteBoundary>} />
-                                <Route path="/spaces" element={<RouteBoundary title="Spaces"><SpacesEntryPage /></RouteBoundary>} />
+                                {/* Property activity area — Spaces · Assets · People */}
+                                <Route path="/property" element={<Navigate to="/property/spaces" replace />} />
+                                <Route path="/property/spaces" element={<RouteBoundary title="Spaces"><PropertySpacesPage /></RouteBoundary>} />
+                                <Route path="/property/assets" element={<RouteBoundary title="Assets"><PropertyAssetsPage /></RouteBoundary>} />
+                                <Route path="/property/people" element={<RouteBoundary title="People"><PropertyPeoplePage /></RouteBoundary>} />
+                                {/* Legacy list routes → Property activity (preserve query) */}
+                                <Route path="/spaces" element={<RedirectPreserveQuery to="/property/spaces" />} />
+                                <Route path="/assets" element={<RedirectPreserveQuery to="/property/assets" />} />
+                                <Route path="/assets/:assetId/*" element={<RedirectLegacyAssetDetail />} />
+                                <Route path="/assets/:assetId" element={<RedirectLegacyAssetDetail />} />
                                 <Route path="/tags" element={<RouteBoundary title="Tags"><TagsPage /></RouteBoundary>} />
                                 <Route path="/compliance" element={<RouteBoundary title="Compliance"><Compliance /></RouteBoundary>} />
                                 
@@ -387,9 +408,8 @@ const App = () => {
                                 
                                 {/* MANAGE pillar */}
                                 <Route path="/manage/properties" element={<ManageProperties />} />
-                                <Route path="/manage/spaces" element={<Navigate to="/spaces" replace />} />
-                                <Route path="/assets" element={<Assets />} />
-                                <Route path="/manage/people" element={<Navigate to="/settings/team" replace />} />
+                                <Route path="/manage/spaces" element={<Navigate to="/property/spaces" replace />} />
+                                <Route path="/manage/people" element={<Navigate to="/property/people" replace />} />
                                 <Route path="/manage/vendors" element={<ManageVendors />} />
                                 <Route path="/manage/templates" element={<ManageTemplates />} />
                                 <Route path="/manage/settings" element={<ManageSettings />} />

@@ -282,14 +282,16 @@ Navigation
 
 Navigation describes activity.
 
-Examples:
+User activity areas:
 
-* Home
-* My Work
-* Calendar
-* Properties
-* Knowledge
-* Reports
+* Home (Inflow) — `/`
+* Tasks — `/tasks`
+* Calendar — `/calendar`
+* Records — `/records`
+* Property (Spaces · Assets · People) — `/property/spaces` · `/property/assets` · `/property/people`
+* Reports — `/reports`
+
+**Filla Admin** and **Dev Tools** are platform-only (not user nav).
 
 Not every role sees every activity area.
 
@@ -309,24 +311,28 @@ Examples:
 
 Changing scope filters activity areas.
 
-Scope should never create duplicate navigation structures.
+Scope should never create duplicate **task** navigation structures. Multi-property hover on Property sets scope then opens Spaces.
 
 Bad:
 
-Properties
+Property
 → The Bird
 → Tasks
 
 while also having:
 
-My Work
+Tasks
 
 Good:
 
-My Work
+Tasks
 
 filtered by:
 
+The Bird
+
+Property → Spaces
+filtered by:
 The Bird
 
 ⸻

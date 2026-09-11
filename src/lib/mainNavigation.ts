@@ -4,50 +4,65 @@ import {
   CheckSquare,
   Calendar,
   Building2,
-  BookOpen,
   BarChart3,
   Shield,
   MoreHorizontal,
-  Layers,
-  Box,
   FolderOpen,
-  Tags,
 } from "lucide-react";
-import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 
 export type MainNavItem = {
   title: string;
   url: string;
   icon: LucideIcon;
+  /** Optional raster icon override. */
+  iconSrc?: string;
+  /** When set, render a hover flyout of properties (multi-property orgs). */
+  expandPropertiesOnHover?: boolean;
 };
 
-/** Centre workbench Calendar tab (Inflow · Tasks · Calendar). */
-export const MAIN_NAV_CALENDAR_HREF = centreWorkbenchTasksPath("calendar");
+export type MainNavEntry =
+  | { type: "item"; item: MainNavItem }
+  | { type: "separator" };
+
+/** Primary workspace — Tasks · Calendar · Records */
+export const PROPERTY_SPACES_PATH = "/property/spaces";
+export const PROPERTY_ASSETS_PATH = "/property/assets";
+export const PROPERTY_PEOPLE_PATH = "/property/people";
 
 /**
  * Primary app navigation (desktop sidebar).
- * Work → place → evidence → classify → portfolio → insight.
+ * Home → work → place entities → insight. Separators match constitution §4.6.
  */
-export const MAIN_NAV_ITEMS: MainNavItem[] = [
-  { title: "Home", url: "/", icon: LayoutDashboard },
-  { title: "Tasks", url: "/tasks", icon: CheckSquare },
-  { title: "Calendar", url: MAIN_NAV_CALENDAR_HREF, icon: Calendar },
-  { title: "Spaces", url: "/spaces", icon: Layers },
-  { title: "Assets", url: "/assets", icon: Box },
-  { title: "Records", url: "/records", icon: FolderOpen },
-  { title: "Tags", url: "/tags", icon: Tags },
-  { title: "Properties", url: "/properties", icon: Building2 },
-  { title: "Knowledge", url: "/knowledge", icon: BookOpen },
-  { title: "Reports", url: "/reports", icon: BarChart3 },
+export const MAIN_NAV_ENTRIES: MainNavEntry[] = [
+  { type: "item", item: { title: "Home", url: "/", icon: LayoutDashboard } },
+  { type: "separator" },
+  { type: "item", item: { title: "Tasks", url: "/tasks", icon: CheckSquare } },
+  { type: "item", item: { title: "Calendar", url: "/calendar", icon: Calendar } },
+  { type: "item", item: { title: "Records", url: "/records", icon: FolderOpen } },
+  { type: "separator" },
+  {
+    type: "item",
+    item: {
+      title: "Property",
+      url: PROPERTY_SPACES_PATH,
+      icon: Building2,
+      expandPropertiesOnHover: true,
+    },
+  },
+  { type: "item", item: { title: "Reports", url: "/reports", icon: BarChart3 } },
 ];
+
+/** Flat list of clickable nav items (no separators). */
+export const MAIN_NAV_ITEMS: MainNavItem[] = MAIN_NAV_ENTRIES.filter(
+  (entry): entry is { type: "item"; item: MainNavItem } => entry.type === "item"
+).map((entry) => entry.item);
 
 /** Former workbench tabs — now standalone routes. */
 export const WORKBENCH_SECTION_ROUTES = {
-  /** Property home (Inflow · Tasks · Calendar with property scope). */
-  attention: "/home",
-  issues: "/home",
+  attention: "/",
+  issues: "/",
   records: "/records",
-  schedule: "/agenda",
+  schedule: "/calendar",
 } as const;
 
 function panelTabFromSearch(search: string): string | null {
@@ -61,46 +76,48 @@ export function isMainNavActive(
   search: string = ""
 ): boolean {
   const targetPath = url.split("?")[0];
-  const targetPanel = panelTabFromSearch(url.includes("?") ? url.slice(url.indexOf("?") + 1) : "");
   const currentPanel = panelTabFromSearch(search);
 
-  // Calendar → centre Tab-Calendar (`/tasks?panelTab=calendar`), plus legacy routes.
-  if (targetPanel === "calendar" || targetPath === "/calendar") {
-    if (pathname === "/calendar" || pathname === "/agenda") return true;
+  if (targetPath === "/") {
+    return pathname === "/" || pathname === "/home" || pathname === "/dashboard";
+  }
+
+  if (targetPath === "/tasks") {
+    if (pathname !== "/tasks") return false;
+    // Legacy: calendar used to live under /tasks?panelTab=calendar
+    return currentPanel !== "calendar" && currentPanel !== "records";
+  }
+
+  if (targetPath === "/calendar") {
+    if (pathname === "/calendar" || pathname === "/agenda" || pathname === "/schedule") {
+      return true;
+    }
     if (pathname === "/tasks" || pathname === "/home") {
       return currentPanel === "calendar";
     }
     return false;
   }
 
-  if (targetPath === "/") {
-    return (
-      pathname === "/" ||
-      pathname === "/home" ||
-      pathname === "/dashboard"
-    );
+  if (targetPath === "/records") {
+    return pathname === "/records" || pathname.startsWith("/records/");
   }
-  if (targetPath === "/tasks") {
-    if (pathname !== "/tasks") return false;
-    // Tasks nav stays inactive while the Calendar centre tab is selected.
-    return currentPanel !== "calendar";
-  }
-  if (targetPath === "/spaces") {
+
+  if (targetPath === PROPERTY_SPACES_PATH || targetPath.startsWith("/property")) {
     return (
+      pathname === "/property" ||
+      pathname.startsWith("/property/") ||
       pathname === "/spaces" ||
+      pathname === "/assets" ||
+      pathname.startsWith("/assets/") ||
       pathname === "/manage/spaces" ||
       /\/properties\/[^/]+\/spaces(?:\/|$)/.test(pathname)
     );
   }
-  if (targetPath === "/assets") {
-    return pathname === "/assets" || pathname.startsWith("/assets/");
+
+  if (targetPath === "/reports") {
+    return pathname === "/reports" || pathname.startsWith("/reports/");
   }
-  if (targetPath === "/records") {
-    return pathname === "/records" || pathname.startsWith("/records/");
-  }
-  if (targetPath === "/tags") {
-    return pathname === "/tags" || pathname.startsWith("/tags/");
-  }
+
   return pathname === targetPath || pathname.startsWith(`${targetPath}/`);
 }
 
@@ -128,31 +145,21 @@ export function isMobileNavActive(pathname: string, url: string): boolean {
     );
   }
   if (url === "/tasks") {
-    return (
-      pathname === "/tasks" ||
-      pathname.startsWith("/tasks/") ||
-      pathname === "/agenda" ||
-      pathname === "/calendar" ||
-      pathname.startsWith("/agenda/")
-    );
+    return pathname === "/tasks" || pathname.startsWith("/tasks/");
   }
   if (url === "/compliance") {
     return pathname === "/compliance" || pathname.startsWith("/compliance/");
   }
-  if (url === "/records") {
-    return pathname === "/records" || pathname.startsWith("/records/");
-  }
-  if (url === "/spaces") {
-    return isMainNavActive(pathname, "/spaces");
-  }
-  if (url === "/assets") {
-    return pathname === "/assets" || pathname.startsWith("/assets/");
-  }
-  if (url === "/tags") {
-    return pathname === "/tags" || pathname.startsWith("/tags/");
-  }
-  return pathname === url || pathname.startsWith(`${url}/`);
+  return isMainNavActive(pathname, url);
 }
+
+/** Items shown in the mobile “More” drawer. */
+export const MOBILE_MORE_NAV_ITEMS: MainNavItem[] = [
+  { title: "Calendar", url: "/calendar", icon: Calendar },
+  { title: "Records", url: "/records", icon: FolderOpen },
+  { title: "Property", url: PROPERTY_SPACES_PATH, icon: Building2 },
+  { title: "Reports", url: "/reports", icon: BarChart3 },
+];
 
 /** Routes that render their own mobile header (workbench gradient / calendar). */
 export const MOBILE_HEADER_EXCLUDED_PATHS = new Set([
@@ -165,13 +172,18 @@ export const MOBILE_HEADER_EXCLUDED_PATHS = new Set([
   "/agenda",
   "/calendar",
   "/tasks",
+  "/property",
+  PROPERTY_SPACES_PATH,
+  PROPERTY_ASSETS_PATH,
+  PROPERTY_PEOPLE_PATH,
 ]);
 
 /** @deprecated Use MOBILE_HEADER_EXCLUDED_PATHS */
 export const HUB_PATHS = MOBILE_HEADER_EXCLUDED_PATHS;
 
 export function isMobileHeaderExcludedPath(pathname: string): boolean {
-  return MOBILE_HEADER_EXCLUDED_PATHS.has(pathname);
+  if (MOBILE_HEADER_EXCLUDED_PATHS.has(pathname)) return true;
+  return pathname.startsWith("/property/");
 }
 
 /**
@@ -181,3 +193,6 @@ export function isMobileHeaderExcludedPath(pathname: string): boolean {
 export function isWorkbenchHeaderAboveNavPath(pathname: string): boolean {
   return isMobileHeaderExcludedPath(pathname);
 }
+
+/** @deprecated Prefer /calendar */
+export const MAIN_NAV_CALENDAR_HREF = "/calendar";

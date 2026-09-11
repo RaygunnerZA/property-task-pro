@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { propertySubPath } from "@/lib/propertyRoutes";
+import { propertySubPath, propertyActivitySpacesPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
@@ -9,8 +9,11 @@ import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
 import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
+import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
+import { PropertyActivityTabStrip } from "@/components/property/PropertyActivityTabStrip";
+import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
 import { Button } from "@/components/ui/button";
-import { FileUp, LayoutGrid, Plus } from "lucide-react";
+import { Building2, FileUp, LayoutGrid, Plus } from "lucide-react";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
@@ -20,27 +23,36 @@ import {
   WorkspaceTabTrigger,
 } from "@/components/property-workspace";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
-import { workbenchAskPlaceholder } from "@/components/workbench/WorkbenchCentreSearch";
+import {
+  WorkbenchControlsProvider,
+  useWorkbenchControls,
+} from "@/contexts/WorkbenchControlsContext";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
 
 type SpacesWorkTab = "groups" | "issues";
+type CreatePanelTab = "space" | "property";
 
 /**
  * Property-scoped Spaces workspace — shared 3-column shell with Documents / Assets / Compliance.
+ * Resolves property from route params (`/properties/:id/spaces/organise`) or `?property=`.
  */
-export default function SpaceOrganisationScreen() {
-  const { id: propertyId } = useParams<{ id: string }>();
+function SpaceOrganisationScreenInner() {
+  const { id: paramPropertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
+  const propertyId = paramPropertyId || searchParams.get("property") || undefined;
   const { property, loading: propertyLoading } = useProperty(propertyId);
   const { spaces } = useSpaces(propertyId);
   const { data: tasksData = [] } = useTasksQuery(propertyId);
+  const { searchQuery: spaceSearchQuery } = useWorkbenchControls();
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
   const [showAddSpace, setShowAddSpace] = useState(false);
-  const [spaceSearchQuery, setSpaceSearchQuery] = useState("");
+  const [showAddProperty, setShowAddProperty] = useState(false);
+  const [createPanelTab, setCreatePanelTab] = useState<CreatePanelTab>("space");
+  const showActivityTabs = !paramPropertyId;
 
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
@@ -131,9 +143,7 @@ export default function SpaceOrganisationScreen() {
     return <LoadingState />;
   }
 
-  const header = (
-    <GlobalAppHeader accentColor={headerAccent} hideSearch variant="activity" />
-  );
+  const header = <GlobalAppHeader accentColor={headerAccent} />;
 
   const contextColumn = (
     <div className="space-y-4">
@@ -189,6 +199,9 @@ export default function SpaceOrganisationScreen() {
 
   const workColumn = (
     <div className="space-y-5">
+      {showActivityTabs ? (
+        <PropertyActivityTabStrip activeTab="spaces" propertyId={propertyId} />
+      ) : null}
       {showOperationalView ? (
         <div>
           <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
@@ -258,18 +271,52 @@ export default function SpaceOrganisationScreen() {
     <div className="space-y-4">
       <div className="hidden workspace:block">
         <WorkspaceSurfaceCard
-          title="Create space"
-          description="Add a space when you already know the name and type."
+          title={createPanelTab === "space" ? "Create space" : "Add property"}
+          description={
+            createPanelTab === "space"
+              ? "Add a space when you already know the name and type."
+              : "Add another property to this organisation."
+          }
         >
-          <AddSpaceDialog
-            open
-            onOpenChange={() => {}}
-            properties={property ? [property] : []}
-            propertyId={propertyId}
-            variant="column"
-            headless
-            onCreated={invalidateSpaces}
-          />
+          <WorkspaceTabList className="mb-3">
+            <WorkspaceTabTrigger
+              selected={createPanelTab === "space"}
+              onClick={() => setCreatePanelTab("space")}
+            >
+              Create Space
+            </WorkspaceTabTrigger>
+            <WorkspaceTabTrigger
+              selected={createPanelTab === "property"}
+              onClick={() => setCreatePanelTab("property")}
+            >
+              Add Property
+            </WorkspaceTabTrigger>
+          </WorkspaceTabList>
+          {createPanelTab === "space" ? (
+            <AddSpaceDialog
+              open
+              onOpenChange={() => {}}
+              properties={property ? [property] : []}
+              propertyId={propertyId}
+              variant="column"
+              headless
+              onCreated={invalidateSpaces}
+            />
+          ) : (
+            <div className="space-y-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Create a permanent property for this organisation. You can organise its spaces next.
+              </p>
+              <Button
+                type="button"
+                className="w-full btn-accent-vibrant gap-2"
+                onClick={() => setShowAddProperty(true)}
+              >
+                <Building2 className="h-4 w-4" />
+                Add property
+              </Button>
+            </div>
+          )}
         </WorkspaceSurfaceCard>
       </div>
       <div className="workspace:hidden">
@@ -277,17 +324,29 @@ export default function SpaceOrganisationScreen() {
           title="Create space"
           description="Add a space when you already know the name and type."
         >
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full btn-neomorphic gap-2"
-            onClick={() => setShowAddSpace(true)}
-          >
-            <Plus className="h-4 w-4" />
-            Add space
-          </Button>
+          <div className="space-y-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full btn-neomorphic gap-2"
+              onClick={() => setShowAddSpace(true)}
+            >
+              <Plus className="h-4 w-4" />
+              Add space
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full btn-neomorphic gap-2"
+              onClick={() => setShowAddProperty(true)}
+            >
+              <Building2 className="h-4 w-4" />
+              Add property
+            </Button>
+          </div>
         </WorkspaceSurfaceCard>
       </div>
+      <ManageTagsPanel surface="spaces" />
     </div>
   );
 
@@ -300,10 +359,6 @@ export default function SpaceOrganisationScreen() {
           : "Organise your spaces"
       }
       pageIcon={<LayoutGrid />}
-      searchPlaceholder={workbenchAskPlaceholder("Spaces")}
-      searchValue={spaceSearchQuery}
-      onSearchChange={setSpaceSearchQuery}
-      searchAccentColor={headerAccent}
       contextColumn={contextColumn}
       workColumn={workColumn}
       actionColumn={actionColumn}
@@ -326,6 +381,22 @@ export default function SpaceOrganisationScreen() {
           }}
         />
       )}
+      <AddPropertyDialog
+        open={showAddProperty}
+        onOpenChange={setShowAddProperty}
+        onCreated={(created) => {
+          setShowAddProperty(false);
+          navigate(propertyActivitySpacesPath(created.id));
+        }}
+      />
     </div>
+  );
+}
+
+export default function SpaceOrganisationScreen() {
+  return (
+    <WorkbenchControlsProvider defaultPropertyId="all" initialFilters={new Set()}>
+      <SpaceOrganisationScreenInner />
+    </WorkbenchControlsProvider>
   );
 }

@@ -11,7 +11,7 @@ Navigation describes activity.
 
 Entities provide context.
 
-Properties provide scope.
+Properties provide scope. The **Property** activity area (`/property/spaces` · `/property/assets` · `/property/people`) manages place entities under that scope — it is not a nested task tree.
 
 Context panels should reveal entity-specific information without forcing navigation changes.
 
@@ -102,6 +102,8 @@ Audit history and changes.
 PERSON
 
 People represent staff, contractors, suppliers and contacts.
+
+Primary surface: `/property/people` (Property activity area). Organisation membership / invites may still use Settings Team where appropriate; People is not buried only under Settings.
 
 Context Areas
 

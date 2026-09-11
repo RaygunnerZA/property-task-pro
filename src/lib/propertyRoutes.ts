@@ -18,8 +18,8 @@ export const WORKBENCH_SPACE_QUERY = "space";
 
 export type WorkbenchPanelTab = "issues" | "records" | "schedule";
 
-/** Portfolio hub (`/`) vs property home (`/home`) vs dedicated workbench pages (`/records`, `/agenda`). */
-export type DashboardWorkbenchPanel = "home" | WorkbenchPanelTab;
+/** Portfolio hub (`/`) vs primary workspace (`/tasks`·`/calendar`·`/records`) vs legacy schedule. */
+export type DashboardWorkbenchPanel = "home" | "workspace" | WorkbenchPanelTab;
 
 /** Primary slices inside the Records workspace (URL-backed on the hub). */
 export type RecordsView =
@@ -141,9 +141,58 @@ export function propertyHubPath(propertyId: string, extra?: Record<string, strin
   return workbenchScopedPath("/home", propertyId, extra);
 }
 
-/** Property-scoped spaces organise screen. */
+/**
+ * Append optional `property` + extra query params to a Property activity path.
+ * Omits `?` when nothing is set (portfolio-level entry).
+ */
+function propertyActivityPath(
+  basePath: string,
+  propertyId?: string | null,
+  extra?: Record<string, string>
+): string {
+  const q = new URLSearchParams();
+  if (propertyId) q.set("property", propertyId);
+  if (extra) {
+    for (const [k, v] of Object.entries(extra)) {
+      if (v) q.set(k, v);
+    }
+  }
+  const qs = q.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
+/** Property activity — Spaces (`/property/spaces`). */
+export function propertyActivitySpacesPath(
+  propertyId?: string | null,
+  extra?: Record<string, string>
+): string {
+  return propertyActivityPath("/property/spaces", propertyId, extra);
+}
+
+/** Property activity — Assets (`/property/assets`). */
+export function propertyActivityAssetsPath(
+  propertyId?: string | null,
+  extra?: Record<string, string>
+): string {
+  return propertyActivityPath("/property/assets", propertyId, extra);
+}
+
+/** Property activity — People (`/property/people`). */
+export function propertyActivityPeoplePath(
+  propertyId?: string | null,
+  extra?: Record<string, string>
+): string {
+  return propertyActivityPath("/property/people", propertyId, extra);
+}
+
+/** Legacy deep-link: property spaces organise screen. Prefer activity paths for nav. */
+export function propertySpacesOrganisePath(propertyId: string): string {
+  return `/properties/${propertyId}/spaces/organise`;
+}
+
+/** Property-scoped spaces — canonical Property activity route. */
 export function propertyHubSpacesPath(propertyId: string): string {
-  return propertySubPath(propertyId, "spaces-organise");
+  return propertyActivitySpacesPath(propertyId);
 }
 
 /**
@@ -161,14 +210,14 @@ export function propertyComplianceSetupPath(
   return base;
 }
 
-/** Property-scoped assets list. */
+/** Property-scoped assets — canonical Property activity route. */
 export function propertyHubAssetsPath(propertyId: string): string {
-  return `/assets?property=${encodeURIComponent(propertyId)}`;
+  return propertyActivityAssetsPath(propertyId);
 }
 
-/** Org team settings — owners, contacts, and members (no per-property route yet). */
-export function propertyHubPeoplePath(_propertyId: string): string {
-  return "/settings/team";
+/** Property-scoped people — canonical Property activity route (outside Settings). */
+export function propertyHubPeoplePath(propertyId: string): string {
+  return propertyActivityPeoplePath(propertyId);
 }
 
 /**

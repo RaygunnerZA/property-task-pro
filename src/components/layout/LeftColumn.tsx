@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { PropertyDashboardCarousel } from "@/components/properties/PropertyDashboardCarousel";
 import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
+import { WorkspaceContextColumn } from "@/components/workbench/WorkspaceContextColumn";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -45,6 +46,7 @@ interface LeftColumnProps {
   selectedPropertyIds?: Set<string>;
   onPropertySelectionChange?: (propertyIds: Set<string>) => void;
   onOpenIntake?: (mode: IntakeMode) => void;
+  onTaskClick?: (taskId: string) => void;
   /** @deprecated Replaced by PropertySelectorStack in WorkbenchGradientHeader */
   scopeFilterBar?: ReactNode;
   workbenchPanel?: DashboardWorkbenchPanel;
@@ -75,6 +77,7 @@ export function LeftColumn({
   selectedPropertyIds: externalSelectedPropertyIds,
   onPropertySelectionChange,
   onOpenIntake,
+  onTaskClick,
   scopeFilterBar,
   workbenchPanel = "home",
   centreWorkbenchTab,
@@ -89,7 +92,23 @@ export function LeftColumn({
   const isRecordsWorkbench = workbenchPanel === "records";
   const isMobile = useIsMobile();
   const isScheduleMobile = isScheduleWorkbench && isMobile;
-  const showLeftColumnCalendar = !isRecordsWorkbench && (!isMobile || isScheduleWorkbench);
+  const isHomeSurface =
+    isHubHome || workbenchPanel === "home" || workbenchPanel === "issues";
+  const isPrimaryWorkspace =
+    workbenchPanel === "workspace" ||
+    workbenchPanel === "records" ||
+    workbenchPanel === "schedule";
+  const workspaceSection: CentreWorkbenchTab =
+    workbenchPanel === "records"
+      ? "records"
+      : workbenchPanel === "schedule"
+        ? "calendar"
+        : centreWorkbenchTab ?? "tasks";
+  /** Home/Inflow has no mini-calendar; primary workspace uses WorkspaceContextColumn (includes calendar). */
+  const showLeftColumnCalendar =
+    !isHomeSurface &&
+    !isPrimaryWorkspace &&
+    (!isMobile || isScheduleWorkbench);
   const workbenchControls = useOptionalWorkbenchControls();
   const { userId } = useDataContext();
   const [showAddProperty, setShowAddProperty] = useState(false);
@@ -257,6 +276,21 @@ export function LeftColumn({
       className="flex h-auto w-full max-w-full flex-col overflow-y-auto px-0 sm:overflow-visible [overflow-anchor:none]"
       style={{ backgroundColor: 'unset', background: 'unset', backgroundImage: 'none' }}
     >
+      {isPrimaryWorkspace ? (
+        <WorkspaceContextColumn
+          section={workspaceSection}
+          tasks={tasks}
+          properties={properties}
+          tasksLoading={tasksLoading}
+          selectedDate={selectedDate}
+          onDateSelect={onDateSelect}
+          selectedPropertyIds={selectedPropertyIds}
+          onFilterClick={onFilterClick}
+          onTaskClick={onTaskClick}
+          onOpenIntake={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
+        />
+      ) : (
+        <>
       {/* Properties: selector stack + identity strip */}
       <div className="flex-shrink-0 w-full">
         <div className="sticky top-0 z-10 bg-background py-0 pl-0 pr-0">
@@ -388,6 +422,8 @@ export function LeftColumn({
         </div>
       )}
       </div>
+        </>
+      )}
 
       {/* Add Property Dialog */}
       <AddPropertyDialog

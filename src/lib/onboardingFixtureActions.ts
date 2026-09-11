@@ -1,4 +1,4 @@
-import { propertyHubPath } from "@/lib/propertyRoutes";
+import { propertyHubPath, propertyActivityAssetsPath } from "@/lib/propertyRoutes";
 import { OPEN_PROPERTY_EDIT_EVENT } from "@/lib/quickWins";
 import type { IntakeMode } from "@/types/intake";
 
@@ -67,14 +67,10 @@ export function performOnboardingFixtureAction(
       return "navigate";
     }
     case "create-asset":
-      navigate(
-        propertyId
-          ? `/assets?add=true&property=${encodeURIComponent(propertyId)}`
-          : "/assets?add=true"
-      );
+      navigate(propertyActivityAssetsPath(propertyId, { add: "true" }));
       return "navigate";
     case "view-asset":
-      navigate(propertyId ? `/assets?property=${encodeURIComponent(propertyId)}` : "/assets");
+      navigate(propertyActivityAssetsPath(propertyId));
       return "navigate";
     case "ignore":
     case "dismiss":
