@@ -19,9 +19,9 @@ const ACTIVE_TAB_SHADOW = [
 ].join(", ");
 
 /**
- * Three-tab strip for the centre work column — Inflow · Tasks · Calendar.
+ * Three-tab strip for the centre work column — Tasks · Calendar · Records.
  *
- * Phone (&lt; md): compact horizontal bar — icon left of title, equal-width tabs.
+ * Phone (&lt; md): equal-width tabs — icon above centred title, slightly larger art.
  * Desktop (md+): illustrated tabs — icon above title.
  * The perforation lives in CentreWorkbench so it can align to the property-image column.
  */
@@ -51,7 +51,7 @@ export function CentreWorkbenchTabStrip({
             aria-selected={isActive}
             onClick={() => onTabChange(tabId)}
             className={cn(
-              "relative flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center gap-1.5 rounded-xl px-2 py-2 transition-all duration-200",
+              "relative flex min-w-0 flex-1 flex-col flex-nowrap items-center justify-center gap-1 rounded-xl px-1.5 py-2 transition-all duration-200",
               "md:h-[142px] md:w-[120px] md:flex-none md:shrink-0 md:flex-col md:items-center md:justify-start md:gap-2 md:px-2 md:pb-[22px] md:pt-3",
               isActive
                 ? "bg-black/[0.04]"
@@ -64,7 +64,7 @@ export function CentreWorkbenchTabStrip({
               alt=""
               className={cn(
                 "mx-auto shrink-0 object-contain drop-shadow-sm transition-opacity",
-                "h-8 w-8",
+                "h-10 w-10",
                 "md:h-[80px] md:w-[100px]",
                 isActive ? "opacity-100" : "opacity-70"
               )}
@@ -72,7 +72,7 @@ export function CentreWorkbenchTabStrip({
             />
             <span
               className={cn(
-                "min-w-0 truncate text-center font-semibold tracking-tight text-shadow-neu-pressed",
+                "min-w-0 w-full truncate text-center font-semibold tracking-tight text-shadow-neu-pressed",
                 "text-sm leading-tight",
                 "md:w-full md:overflow-visible md:whitespace-normal md:text-xl md:leading-none",
                 isActive ? "text-foreground" : "text-primary"
