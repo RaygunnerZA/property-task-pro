@@ -144,7 +144,7 @@ export function WorkbenchGradientHeader({
         style={headerStyle}
         accentColor={accentColor}
         className="page-header--workbench-mobile lg:hidden"
-        toolbarClassName="!top-[calc(env(safe-area-inset-top,0px)+35px)]"
+        toolbarClassName="!top-[calc(env(safe-area-inset-top,0px)+(var(--workbench-header-band,79px)/2))]"
         mobileSearchSlot={
           !showSearch ? undefined : (
             <MobileWorkbenchHeaderSearchTrigger
@@ -159,7 +159,6 @@ export function WorkbenchGradientHeader({
         <MobileWorkbenchHeaderRow
           searchOpen={!showSearch ? false : mobileSearchOpen}
           onSearchOpenChange={setMobileSearchOpen}
-          showPropertySelector={showPropertySelector}
           leftContent={mobileLeftContent}
           accentColor={accentColor}
           hideSearch={!showSearch}

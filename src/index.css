@@ -128,7 +128,8 @@
 
     .dashboard-workbench .page-header--workbench-mobile,
     .calendar-page .page-header--workbench-mobile {
-      min-height: var(--header-height);
+      /* Content band only; safe-area is padding so total height = --header-height */
+      min-height: var(--workbench-header-band);
       height: auto;
       padding-top: env(safe-area-inset-top, 0px);
       padding-left: 0;

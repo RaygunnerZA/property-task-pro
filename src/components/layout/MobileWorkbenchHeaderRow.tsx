@@ -22,7 +22,6 @@ type MobileWorkbenchHeaderRowProps = {
   searchOpen: boolean;
   onSearchOpenChange: (open: boolean) => void;
   leftContent: ReactNode;
-  showPropertySelector: boolean;
   accentColor?: string;
   /** When true, omit expandable header search (centre-column search is used instead). */
   hideSearch?: boolean;
@@ -78,7 +77,6 @@ export function MobileWorkbenchHeaderRow({
   searchOpen,
   onSearchOpenChange,
   leftContent,
-  showPropertySelector,
   accentColor = "#8EC9CE",
   hideSearch = false,
 }: MobileWorkbenchHeaderRowProps) {
@@ -115,10 +113,7 @@ export function MobileWorkbenchHeaderRow({
 
   return (
     <div
-      className={cn(
-        "relative flex h-[var(--workbench-header-band,70px)] w-full items-center overflow-hidden pl-[13px] lg:hidden",
-        !showPropertySelector && "h-[48px]"
-      )}
+      className="relative flex h-[var(--workbench-header-band,70px)] w-full items-center overflow-hidden pl-[13px] lg:hidden"
       style={{ paddingRight: toolbarInset }}
     >
       <div
