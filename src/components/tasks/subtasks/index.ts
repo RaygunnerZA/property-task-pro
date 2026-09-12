@@ -11,5 +11,6 @@ export {
   resolveIsSubStep,
   stepTypeToLegacy,
   showsExecuteCheckbox,
+  executeCheckboxCompletesStep,
   isStructureStepType,
 } from "./SubtaskCard";

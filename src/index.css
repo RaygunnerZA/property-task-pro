@@ -1087,6 +1087,28 @@
     animation: list-enter var(--duration-slow) var(--ease-out) both;
   }
 
+  /* Checklist: nudge dedicated action controls when the alignment circle is used */
+  @keyframes action-bump {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    28% {
+      transform: scale(1.07);
+    }
+    52% {
+      transform: scale(0.96);
+    }
+    74% {
+      transform: scale(1.035);
+    }
+  }
+
+  .animate-action-bump {
+    animation: action-bump 0.45s ease-out;
+    transform-origin: left center;
+  }
+
   /* Gradient mask for scroll indicators */
   .mask-gradient-right {
     mask-image: linear-gradient(to right, black 90%, transparent 100%);

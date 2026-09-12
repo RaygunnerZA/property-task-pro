@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Camera,
   Upload,
@@ -22,6 +22,8 @@ import { ImageLightbox } from "@/components/ui/ImageLightbox";
 type StepExecuteControlsProps = {
   subtask: SubtaskData;
   busy?: boolean;
+  /** Incremented when the alignment circle is hovered/clicked — bumps action controls. */
+  actionBumpKey?: number;
   onSubmit: (response: ChecklistStepResponseInput) => void | Promise<void>;
 };
 
@@ -31,6 +33,7 @@ type StepExecuteControlsProps = {
 export function StepExecuteControls({
   subtask,
   busy = false,
+  actionBumpKey = 0,
   onSubmit,
 }: StepExecuteControlsProps) {
   const stepType = getStepType(subtask);
@@ -46,10 +49,26 @@ export function StepExecuteControls({
   const [showSignature, setShowSignature] = useState(false);
   const [evidencePreviewOpen, setEvidencePreviewOpen] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [bumpActive, setBumpActive] = useState(false);
+
+  useEffect(() => {
+    if (!actionBumpKey) return;
+    setBumpActive(false);
+    let timer: number | undefined;
+    const frame = requestAnimationFrame(() => {
+      setBumpActive(true);
+      timer = window.setTimeout(() => setBumpActive(false), 450);
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [actionBumpKey]);
 
   const recorded = responseLabelForType(stepType, subtask.response_value);
   const done = Boolean(subtask.is_completed);
   const indentClass = showsExecuteCheckbox(stepType) ? "pl-[22px]" : "pl-0";
+  const bumpClass = bumpActive ? "animate-action-bump" : undefined;
 
   if (stepType === "title" || stepType === "note" || stepType === "divider") {
     return null;
@@ -129,7 +148,7 @@ export function StepExecuteControls({
   };
 
   return (
-    <div className={cn("mt-1 space-y-1.5", indentClass)}>
+    <div className={cn("mt-1 space-y-1.5", indentClass, bumpClass)}>
       {stepType === "yes_no" && (
         <div className="inline-flex items-center gap-1 rounded-lg bg-muted/40 p-0.5">
           <button

@@ -104,10 +104,19 @@ export const STEP_TYPES_ORDERED: StepType[] = [
 const STRUCTURE_STEP_TYPES: ReadonlySet<StepType> = new Set(["title", "note", "divider"]);
 
 /**
- * Execute-mode circle checkbox is only for plain check steps.
- * Signature / photo / yes-no / etc. use their dedicated action control instead.
+ * Execute-mode circle slot — shown for every interactive step so rows stay aligned.
+ * Structure-only types (title / note / divider) use a spacer or no circle.
  */
 export function showsExecuteCheckbox(stepType: StepType): boolean {
+  return !STRUCTURE_STEP_TYPES.has(stepType) && stepType !== "sub_step";
+}
+
+/**
+ * Only plain check steps complete/clear from the circle.
+ * Action types (yes/no, signature, …) keep the circle for alignment and nudge
+ * the dedicated control instead.
+ */
+export function executeCheckboxCompletesStep(stepType: StepType): boolean {
   return stepType === "check";
 }
 

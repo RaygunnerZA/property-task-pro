@@ -39,6 +39,7 @@ import {
   stepTypeToLegacy,
   STEP_TYPES_ORDERED,
   showsExecuteCheckbox,
+  executeCheckboxCompletesStep,
   isStructureStepType,
   type StepNote,
   type StepType,
@@ -52,6 +53,7 @@ export {
   stepTypeToLegacy,
   STEP_TYPES_ORDERED,
   showsExecuteCheckbox,
+  executeCheckboxCompletesStep,
   isStructureStepType,
 };
 
@@ -192,6 +194,7 @@ export function SubtaskCard({
   const [isHovered, setIsHovered] = useState(false);
   const [assignPickerOpen, setAssignPickerOpen] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
+  const [actionBumpKey, setActionBumpKey] = useState(0);
 
   const {
     attributes,
@@ -449,15 +452,29 @@ export function SubtaskCard({
             </div>
           ) : null}
 
-          {/* Circle checkbox — execute mode: check steps only. Action types (Sign, photo, …) use their own control. */}
+          {/* Circle — execute: all interactive steps (alignment). Only check completes from the circle. */}
           {(isCreator
             ? !isStructureStepType(currentType)
             : showsExecuteCheckbox(currentType)) && (
             <button
               type="button"
               disabled={isCreator || responseBusy}
+              onMouseEnter={() => {
+                if (
+                  isCreator ||
+                  executeCheckboxCompletesStep(currentType) ||
+                  responseRecorded
+                ) {
+                  return;
+                }
+                setActionBumpKey((k) => k + 1);
+              }}
               onClick={() => {
-                if (isCreator || currentType !== "check") return;
+                if (isCreator) return;
+                if (!executeCheckboxCompletesStep(currentType)) {
+                  if (!responseRecorded) setActionBumpKey((k) => k + 1);
+                  return;
+                }
                 if (responseRecorded) {
                   if (onClearResponse) {
                     void onClearResponse(subtask.id);
@@ -481,9 +498,13 @@ export function SubtaskCard({
                 isCreator && "cursor-default"
               )}
               aria-label={
-                responseRecorded
-                  ? `Clear ${subtask.title || "step"}`
-                  : `Mark ${subtask.title || "step"} complete`
+                executeCheckboxCompletesStep(currentType)
+                  ? responseRecorded
+                    ? `Clear ${subtask.title || "step"}`
+                    : `Mark ${subtask.title || "step"} complete`
+                  : responseRecorded
+                    ? `${subtask.title || "Step"} recorded`
+                    : `Use the action below for ${subtask.title || "this step"}`
               }
             >
               <Check
@@ -849,6 +870,7 @@ export function SubtaskCard({
           <StepExecuteControls
             subtask={subtask}
             busy={responseBusy}
+            actionBumpKey={actionBumpKey}
             onSubmit={(response) => onSubmitResponse(subtask.id, response)}
           />
         ) : null}
