@@ -30,6 +30,8 @@ export {
   instructionPanelStorageKey,
 } from './InstructionPanel';
 export type { InstructionPanelProps } from './InstructionPanel';
+export { FillaRecommends } from './FillaRecommends';
+export type { FillaRecommendsProps } from './FillaRecommends';
 
 // Mini Calendar - DEPRECATED: Use DashboardCalendar from @/components/dashboard/DashboardCalendar instead
 // export { MiniCalendar } from './MiniCalendar'; // DELETED

@@ -288,7 +288,9 @@ User activity areas:
 * Tasks — `/tasks`
 * Calendar — `/calendar`
 * Records — `/records`
-* Property (Spaces · Assets · People) — `/property/spaces` · `/property/assets` · `/property/people`
+* Spaces — `/property/spaces`
+* Assets — `/property/assets`
+* People — `/property/people`
 * Reports — `/reports`
 
 **Filla Admin** and **Dev Tools** are platform-only (not user nav).
@@ -311,7 +313,7 @@ Examples:
 
 Changing scope filters activity areas.
 
-Scope should never create duplicate **task** navigation structures. Multi-property hover on Property sets scope then opens Spaces.
+Scope should never create duplicate **task** navigation structures. Multi-property hover on Spaces / Assets / People sets scope then opens that same screen.
 
 Bad:
 
@@ -331,7 +333,7 @@ filtered by:
 
 The Bird
 
-Property → Spaces
+Spaces (or Assets / People)
 filtered by:
 The Bird
 

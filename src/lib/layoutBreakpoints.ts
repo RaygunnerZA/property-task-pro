@@ -7,10 +7,12 @@
  * - `phone` / Tailwind `md` (768px): nav-driven phone mode — home is left/scope only;
  *   `/tasks` is full-screen centre (Inflow | Tasks | Calendar). Prefer this over ad-hoc sm/md mixes.
  * - `sidebarRail` / Tailwind `md` (768px): persistent condensed nav rail vs offcanvas + bottom nav.
- * - `workspace` (1100px): property hub modules (three columns).
- * - `layout` (1280px): app shell three-column dashboard / property right rail.
- *   Sized for common laptop CSS widths (13″ Retina ~1440, 1366×768, 1280×800), not only large desktops.
+ * - `layout` (1280px): three-column workbench (left | centre | right). Sole desktop triple breakpoint.
+ * - `workspace`: deprecated alias of `layout` (same 1280px) — prefer `layout:` in new code.
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
+ *
+ * Column formula (DualPane / PropertyWorkspaceLayout):
+ *   rails 330 (min 260) | centre max 700 (min 420) | rails 330 (min 260)
  */
 export const LAYOUT_BREAKPOINTS = {
   /** Narrow inner panes (task rail, tight padding) */
@@ -28,8 +30,11 @@ export const LAYOUT_BREAKPOINTS = {
    * At/above: condensed icon rail with hover-expand — tablets and desktop.
    */
   sidebarRail: 768,
-  /** Property workspace / compliance: stacked → three-column */
-  workspace: 1100,
+  /**
+   * @deprecated Use {@link LAYOUT_BREAKPOINTS.layout}. Kept equal to `layout` so legacy
+   * `workspace:` utilities and media queries share the single triple-column breakpoint.
+   */
+  workspace: 1280,
   /**
    * App shell: two-column tablet → three-column desktop.
    * 1280 fits default 13″ laptop scaling and most Windows laptop widths; rails flex via
@@ -54,8 +59,10 @@ export const WORK_SURFACE_MAX_PX = 700;
 /** Soft minimum for the centre track when the triple grid compresses. */
 export const WORK_SURFACE_MIN_PX = 420;
 
-/** Property workspace action / AI rail max width beside the work surface */
-export const WORKSPACE_ACTION_RAIL_MAX_PX = 280;
+/**
+ * @deprecated Use {@link WORKBENCH_SIDE_RAIL_PX}. Action / AI rail shares the side-rail track.
+ */
+export const WORKSPACE_ACTION_RAIL_MAX_PX = WORKBENCH_SIDE_RAIL_PX;
 
 /** Content width inside work surface after `px-1` (4px × 2) gutters */
 export const WORK_SURFACE_CONTENT_MAX_PX = WORK_SURFACE_MAX_PX - 8;

@@ -39,9 +39,6 @@ export function mapSignalRowToAttentionItem(
 ): AttentionItem {
   const group = dispositionToGroup(row.disposition, row.severity);
   const kind = mapKind(row.kind);
-  const rec = row.recommendation;
-  const action = rec?.action as string | undefined;
-  const canCreateTask = action === "create_task";
 
   const isExternalEmail = row.subtype === "ingestion.external_email";
   const emailFrom = isExternalEmail ? String(row.payload?.from ?? "") : "";
@@ -87,8 +84,8 @@ export function mapSignalRowToAttentionItem(
         }
       : {
           primary: {
-            id: canCreateTask ? "signal-accept" : "signal-open",
-            label: canCreateTask ? "Create task" : "Review",
+            id: "signal-open",
+            label: "Review",
           },
           secondary: [
             { id: "signal-snooze", label: "Snooze" },

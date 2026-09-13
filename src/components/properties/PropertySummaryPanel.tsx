@@ -3,38 +3,30 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { ChevronRight, ChevronUp } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FillaIcon } from "@/components/filla/FillaIcon";
+import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
+import {
+  healthStatCellClass,
+  healthStatNumberClass,
+} from "@/components/property-workspace/WorkspaceHealthGrid";
 import { cn } from "@/lib/utils";
 import { useCountUp } from "@/hooks/useCountUp";
 import { computePropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import type { PropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
-import {
-  getAllPropertiesSummaryLines,
-  getPropertyAiSummaryLines,
-  type PropertyAiSummaryLine,
-  type PropertyAiSummaryTarget,
-} from "@/lib/propertyAiSummary";
+import type { PropertyAiSummaryLine, PropertyAiSummaryTarget } from "@/lib/propertyAiSummary";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { PropertyForStrip } from "@/components/properties/PropertyIdentityStrip";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
-import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import {
   CENTRE_WORKBENCH_TAB_META,
   centreWorkbenchTasksPath,
   type CentreWorkbenchTab,
 } from "@/lib/centreWorkbenchTabs";
 
-const statNumberClass =
-  "self-start pl-1.5 pb-1 font-display text-[32px] font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white sm:pb-[3px] sm:text-2xl";
-
-const statNumberInlineClass =
-  "shrink-0 font-display text-[28px] font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white";
-
 const statWordClass =
-  "font-mono text-caption font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
+  "block font-mono text-caption font-semibold uppercase leading-snug tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
-const statCellClass =
-  "group hover-ink-noise flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.98] sm:px-1.5 sm:pb-3";
+const statCellClass = cn(healthStatCellClass, "px-2 pb-3 pt-3 sm:px-1.5 sm:pb-3");
 
 /** Staggered section reveal on mount — fade + 2px rise, honours reduced motion. */
 const sectionRevealClass = "motion-safe:animate-fade-slide-in";
@@ -168,6 +160,16 @@ function StatColumn({
 }) {
   const centreMeta = centreNav ? STAT_NAV_META[centreNav.tab] : null;
   const displayValue = Math.round(useCountUp(value));
+  const numberClass = cn(
+    "shrink-0 -translate-y-[6px] font-display font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white",
+    healthStatNumberClass(displayValue)
+  );
+  const labelStack = (
+    <div className="min-w-0 flex-1 overflow-hidden pt-0.5 text-left [&>span+span]:-mt-[2px]">
+      <span className={statWordClass}>{line1}</span>
+      {line2 ? <span className={statWordClass}>{line2}</span> : null}
+    </div>
+  );
 
   const inner = centreMeta ? (
     <>
@@ -184,7 +186,7 @@ function StatColumn({
         />
         <span
           className={cn(
-            "min-w-0 text-left text-2xs font-semibold uppercase tracking-[0.08em] transition-colors",
+            "min-w-0 truncate text-left text-2xs font-semibold uppercase tracking-[0.08em] transition-colors",
             centreNav?.isActive
               ? "text-primary group-hover:text-white"
               : "text-muted-foreground group-hover:text-white/90"
@@ -193,36 +195,28 @@ function StatColumn({
           {centreMeta.label}
         </span>
       </div>
-      <div className="flex w-full min-w-0 items-start gap-1">
-        <span className={statNumberInlineClass}>{displayValue}</span>
-        <div className="flex min-w-0 flex-1 flex-col items-start pt-0.5 text-left text-foreground">
-          <span className={statWordClass}>{line1}</span>
-          <span className={statWordClass}>{line2}</span>
-        </div>
+      <div className="flex w-full min-w-0 items-start gap-1 overflow-hidden">
+        <span className={numberClass}>{displayValue}</span>
+        {labelStack}
       </div>
-      <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 tracking-[0.3px]">
+      <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 overflow-hidden tracking-[0.3px]">
         <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
-        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+        <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
+          {secondaryLabel}
+        </span>
       </div>
     </>
   ) : (
     <>
-      <span className={statNumberClass}>{displayValue}</span>
-      <div className="flex w-full min-w-0 items-stretch gap-0.5">
-        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left text-foreground">
-          <span className={statWordClass}>{line1}</span>
-          <span className={statWordClass}>{line2}</span>
-        </div>
-        {onActivate ? (
-          <ChevronRight
-            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-[color,transform] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-white"
-            aria-hidden
-          />
-        ) : null}
+      <div className="flex w-full min-w-0 items-start gap-1 overflow-hidden pl-0.5">
+        <span className={numberClass}>{displayValue}</span>
+        {labelStack}
       </div>
-      <div className="mt-1.5 flex w-[77px] items-center gap-0.5 tracking-[0.3px]">
+      <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden pl-0.5 tracking-[0.3px]">
         <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
-        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+        <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
+          {secondaryLabel}
+        </span>
       </div>
     </>
   );
@@ -308,67 +302,6 @@ function CountRow({
   );
 }
 
-function activateSummaryTarget(
-  target: PropertyAiSummaryTarget,
-  onSummaryLineActivate?: (target: PropertyAiSummaryTarget) => void
-) {
-  if (onSummaryLineActivate) {
-    onSummaryLineActivate(target);
-    return;
-  }
-
-  if (target.type === "task") {
-    window.dispatchEvent(
-      new CustomEvent("filla:assistant-open-task", { detail: { taskId: target.taskId } })
-    );
-    return;
-  }
-
-  if (target.type === "signal") {
-    const payload: WorkbenchAttentionSelectPayload = {
-      kind: "signal",
-      snapshot: target.snapshot,
-    };
-    window.dispatchEvent(
-      new CustomEvent("filla:workbench-open-attention", { detail: payload })
-    );
-    return;
-  }
-
-  if (target.type === "filter") {
-    window.dispatchEvent(
-      new CustomEvent("filla:workbench-apply-filter", { detail: { filterId: target.filterId } })
-    );
-    return;
-  }
-
-  window.dispatchEvent(
-    new CustomEvent("filla:workbench-open-records", { detail: { documentId: target.documentId } })
-  );
-}
-
-function SummarySuggestionLine({
-  line,
-  onActivate,
-}: {
-  line: PropertyAiSummaryLine;
-  onActivate?: (target: PropertyAiSummaryTarget) => void;
-}) {
-  if (!line.target) {
-    return <p>{line.text}</p>;
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => activateSummaryTarget(line.target!, onActivate)}
-      className="block w-full rounded-sm text-left underline-offset-2 transition-colors duration-150 hover:text-primary hover:underline hover:decoration-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25"
-    >
-      {line.text}
-    </button>
-  );
-}
-
 export function PropertySummaryPanel({
   property,
   tasks = [],
@@ -387,9 +320,9 @@ export function PropertySummaryPanel({
   className,
   variant = "full",
   metricsOverride,
-  summaryLinesOverride,
+  summaryLinesOverride: _summaryLinesOverride,
   portfolioSignals = false,
-  onSummaryLineActivate,
+  onSummaryLineActivate: _onSummaryLineActivate,
   centreWorkbenchTab,
   onCentreWorkbenchTabChange,
   showCentreNavBelowPhone = false,
@@ -404,7 +337,6 @@ export function PropertySummaryPanel({
   const [searchParams] = useSearchParams();
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const metricsAutoCollapsedRef = useRef(false);
-  const propertyName = property.nickname || property.address;
 
   useEffect(() => {
     if (variant !== "full" || metricsAutoCollapsedRef.current) return;
@@ -419,6 +351,12 @@ export function PropertySummaryPanel({
   const { data: scopedSignals = [] } = useSignalsQuery({
     propertyIds: portfolioSignals ? undefined : [property.id],
   });
+  const { suggestions, dismissSuggestion, snoozeSuggestion, runPrimaryAction } =
+    useActionableSuggestions({
+      tasks: tasks as Array<Record<string, unknown>>,
+      propertyIds: portfolioSignals ? undefined : [property.id],
+    });
+  const recommendation = suggestions[0] ?? null;
 
   const openCentreTab = useCallback(
     (tab: PropertyStatNavTarget) => {
@@ -466,38 +404,6 @@ export function PropertySummaryPanel({
     [property, tasks, documents, urgentOpenTaskCount, metricsOverride]
   );
 
-  const summaryLines = useMemo(() => {
-    if (summaryLinesOverride) return summaryLinesOverride;
-    if (portfolioSignals && metricsOverride) {
-      return getAllPropertiesSummaryLines(
-        tasks as Parameters<typeof getAllPropertiesSummaryLines>[0],
-        0,
-        scopedSignals
-      );
-    }
-    return getPropertyAiSummaryLines(
-      tasks as Parameters<typeof getPropertyAiSummaryLines>[0],
-      documents,
-      scopedSignals,
-      propertyName
-    );
-  }, [
-    tasks,
-    documents,
-    summaryLinesOverride,
-    scopedSignals,
-    propertyName,
-    portfolioSignals,
-    metricsOverride,
-  ]);
-
-  const handleSummaryLineActivate = useCallback(
-    (target: PropertyAiSummaryTarget) => {
-      activateSummaryTarget(target, onSummaryLineActivate);
-    },
-    [onSummaryLineActivate]
-  );
-
   const tasksSecondary = useMemo(() => {
     if (metrics.urgentItems > 0) {
       return { count: metrics.urgentItems, label: "URGENT", tone: "urgent" as const };
@@ -524,12 +430,12 @@ export function PropertySummaryPanel({
   }, [metrics.complianceDueSoon, property.expired_compliance_count]);
 
   const signalsSecondary = useMemo(() => {
-    const count = scopedSignals.length;
-    if (count > 0) {
-      return { count, label: "OPEN", tone: "warning" as const };
+    const upcoming = Math.max(metrics.upcomingInspections, 0);
+    if (upcoming > 0) {
+      return { count: upcoming, label: "DUE", tone: "warning" as const };
     }
-    return { count: 0, label: "FOUND", tone: "neutral" as const };
-  }, [scopedSignals]);
+    return { count: 0, label: "CLEAR", tone: "neutral" as const };
+  }, [metrics.upcomingInspections]);
 
   if (loading) {
     return <Skeleton className={cn("h-[320px] w-full rounded-xl", className)} />;
@@ -710,47 +616,30 @@ export function PropertySummaryPanel({
           </div>
         )}
 
-          <div
-            className={variant === "compact" ? "perforation-list" : "perforation-section"}
-            aria-hidden
-          />
-          <div
-            className={cn(
-              "grid grid-cols-[auto_1fr] items-start gap-2.5 px-3 py-3",
-              variant === "compact" &&
-                "gap-x-2.5 gap-y-[5px] pl-0 pr-1.5 pt-[2px] pb-3",
-              sectionRevealClass
-            )}
-            style={sectionRevealStyle(2)}
-            aria-label="Filla suggestion"
-          >
-          <div
-            className={cn(
-              "flex shrink-0 items-start justify-center rounded-2xl rounded-bl-sm",
-              variant === "compact" ? "h-[29px] w-[15px]" : "h-9 w-[21px]"
-            )}
-            aria-hidden
-          >
-            <FillaIcon size={24} className="opacity-90" />
-          </div>
-          <div
-            className={cn(
-              "min-w-0 space-y-1 text-sm leading-snug text-foreground/85",
-              variant === "compact" && "w-[208px] text-xs tracking-[-0.4px]"
-            )}
-          >
-            <p className="font-mono text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Suggested
-            </p>
-            {summaryLines.map((line, index) => (
-              <SummarySuggestionLine
-                key={`${line.text}-${index}`}
-                line={line}
-                onActivate={handleSummaryLineActivate}
+        {recommendation ? (
+          <>
+            <div
+              className={variant === "compact" ? "perforation-list" : "perforation-section"}
+              aria-hidden
+            />
+            <div
+              className={cn(
+                variant === "compact" ? "pl-0 pr-1.5 pt-[2px] pb-3" : "px-3 py-3",
+                sectionRevealClass
+              )}
+              style={sectionRevealStyle(2)}
+            >
+              <FillaRecommends
+                key={recommendation.id}
+                suggestion={recommendation}
+                variant={variant === "compact" ? "compact" : "rail"}
+                onPrimaryAction={runPrimaryAction}
+                onDismiss={dismissSuggestion}
+                onSnooze={snoozeSuggestion}
               />
-            ))}
-          </div>
-        </div>
+            </div>
+          </>
+        ) : null}
       </div>
     </div>
   );

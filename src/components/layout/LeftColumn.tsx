@@ -14,7 +14,7 @@ import { useEnsureOnboardingDemo } from "@/hooks/useEnsureOnboardingDemo";
 import { InstructionPanel, instructionPanelStorageKey } from "@/components/filla/InstructionPanel";
 import { Button } from "@/components/ui/button";
 import { PropertyDashboardCarousel } from "@/components/properties/PropertyDashboardCarousel";
-import type { DashboardWorkbenchPanel } from "@/lib/propertyRoutes";
+import type { DashboardWorkbenchPanel, RecordsView } from "@/lib/propertyRoutes";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { WorkspaceContextColumn } from "@/components/workbench/WorkspaceContextColumn";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
@@ -54,6 +54,8 @@ interface LeftColumnProps {
   onCentreWorkbenchTabChange?: (tab: CentreWorkbenchTab) => void;
   showCentreNavBelowPhone?: boolean;
   routeCentreNavToWorkSurface?: boolean;
+  recordsView?: RecordsView;
+  onRecordsViewChange?: (next: RecordsView) => void;
 }
 
 /**
@@ -84,6 +86,8 @@ export function LeftColumn({
   onCentreWorkbenchTabChange,
   showCentreNavBelowPhone = false,
   routeCentreNavToWorkSurface = false,
+  recordsView,
+  onRecordsViewChange,
 }: LeftColumnProps) {
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -236,12 +240,15 @@ export function LeftColumn({
       <PageContentTitle
         title="Records"
         subtitle="Certificates, documents, and evidence for your properties."
+        illustrationSrc="/centre-workbench/records.png"
         className="mb-0 border-b-0 px-1 pb-0 pt-2"
       />
       <RecordsContextColumn
         properties={properties}
         selectedPropertyIds={selectedPropertyIds}
         className="pt-3"
+        recordsView={recordsView}
+        onRecordsViewChange={onRecordsViewChange}
       />
     </>
   ) : null;

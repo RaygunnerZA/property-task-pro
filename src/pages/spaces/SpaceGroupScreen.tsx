@@ -26,7 +26,7 @@ import { FILLA_TURQUOISE } from "@/lib/brandColors";
 
 /**
  * Space Group Screen - Template for all space groups (Circulation, Service Areas, etc.)
- * Same layout as Property Detail: 265px left, 700px middle, third column concertina on wide screens.
+ * Same layout as Property Detail: DualPane 330 | 700 | 330, third column at layout (1280px).
  */
 export default function SpaceGroupScreen() {
   const { id: propertyId, groupSlug } = useParams<{

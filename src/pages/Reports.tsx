@@ -186,15 +186,13 @@ export default function Reports() {
         title="Reports"
         icon={<BarChart3 className="h-6 w-6" />}
         maxWidth="full"
-        contentClassName="w-full max-w-[1480px]"
+        contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
         hideTitle
-        hideHeaderSearch
-        headerVariant="activity"
       >
         <PropertyWorkspaceLayout
           pageTitle="Reports"
           pageSubtitle="Browse packs — open a workspace, then download"
-          pageIcon={<BarChart3 />}
+          pageIllustrationSrc="/reports/report-board.png"
           searchPlaceholder={workbenchAskPlaceholder("Reports")}
           contextColumn={null}
           workColumn={<LoadingState message="Loading reports…" />}
@@ -515,7 +513,7 @@ export default function Reports() {
     <PropertyWorkspaceLayout
       pageTitle="Reports"
       pageSubtitle={`${live.scopeLabel} · browse packs, open a workspace`}
-      pageIcon={<BarChart3 />}
+      pageIllustrationSrc="/reports/report-board.png"
       searchPlaceholder={workbenchAskPlaceholder("Reports")}
       searchValue={searchQuery}
       onSearchChange={setSearchQuery}
@@ -531,10 +529,8 @@ export default function Reports() {
       subtitle="Browse packs — open a workspace, then download"
       icon={<BarChart3 className="h-6 w-6" />}
       maxWidth="full"
-      contentClassName="w-full max-w-[1480px]"
+      contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
       hideTitle
-      hideHeaderSearch
-      headerVariant="activity"
     >
       {workspace}
     </StandardPage>

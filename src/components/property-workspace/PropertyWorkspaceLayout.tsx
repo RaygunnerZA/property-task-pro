@@ -1,8 +1,7 @@
 import type { ReactNode } from "react";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
-import {
-  WorkbenchCentreSearch,
-} from "@/components/workbench/WorkbenchCentreSearch";
+import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
+import { WorkbenchCentreSearch } from "@/components/workbench/WorkbenchCentreSearch";
 import { cn } from "@/lib/utils";
 
 export interface PropertyWorkspaceLayoutProps {
@@ -20,6 +19,8 @@ export interface PropertyWorkspaceLayoutProps {
   pageTitle?: string;
   pageSubtitle?: string;
   pageIcon?: ReactNode;
+  /** Large paper-craft art beside the title (preferred over pageIcon). */
+  pageIllustrationSrc?: string;
   pageTitleAction?: ReactNode;
   /** Centre-column pressed search. When set, also use {@link hideHeaderSearch} on the page chrome. */
   searchPlaceholder?: string;
@@ -28,19 +29,15 @@ export interface PropertyWorkspaceLayoutProps {
   onSearchSubmit?: (query: string) => void;
   searchAccentColor?: string;
   /**
-   * When true (default), render a mobile column stack under `workspace`.
+   * When true (default), render a phone column stack below `md` and DualPane from `md+`.
    * Set false when the parent already owns mobile layout (e.g. Settings).
    */
   embedMobileStack?: boolean;
 }
 
 /**
- * Shared 3-column shell for property-scoped / activity-area modules
- * (Documents, Assets, Reports, Knowledge, Spaces, …).
- *
- * Aligns with Hub spatial grammar: ~265px context, capped work surface (700px),
- * flexible action rail (≤280px). Below `workspace` (1100px) columns stack:
- * title → search → work → context → action (when {@link embedMobileStack}).
+ * Activity-area shell — thin DualPane wrapper (330 | 700 | 330 @ layout 1280).
+ * Title / illustration sit in the left rail; centre search sits above the work column.
  */
 export function PropertyWorkspaceLayout({
   contextColumn,
@@ -50,6 +47,7 @@ export function PropertyWorkspaceLayout({
   pageTitle,
   pageSubtitle,
   pageIcon,
+  pageIllustrationSrc,
   pageTitleAction,
   searchPlaceholder,
   searchValue,
@@ -62,9 +60,10 @@ export function PropertyWorkspaceLayout({
     <PageContentTitle
       title={pageTitle}
       subtitle={pageSubtitle}
-      icon={pageIcon}
+      icon={pageIllustrationSrc ? undefined : pageIcon}
+      illustrationSrc={pageIllustrationSrc}
       action={pageTitleAction}
-      className="mb-0 border-b-0 pb-0 workspace:mb-4 workspace:border-b workspace:border-border/15 workspace:pb-4"
+      className="mb-0"
     />
   ) : null;
 
@@ -79,62 +78,46 @@ export function PropertyWorkspaceLayout({
       />
     ) : null;
 
+  // Match WorkspaceContextColumn / CentreWorkbench insets so Assets · Spaces · People
+  // sit on the same column padding as Tasks · Calendar · Records.
   const leftColumn = (
-    <div className="flex w-full min-w-0 flex-col gap-4">
+    <div className="flex w-full min-w-0 flex-col gap-4 px-1">
       {titleBlock}
       {contextColumn}
     </div>
   );
 
   const centreColumn = (
-    <div className="flex w-full min-w-0 flex-col gap-5">
+    <div className="flex w-full min-w-0 flex-col gap-5 md:px-2">
       {searchBlock}
       {workColumn}
     </div>
   );
 
+  const desktop = (
+    <DualPaneLayout
+      embedded
+      leftColumn={leftColumn}
+      rightColumn={centreColumn}
+      thirdColumn={actionColumn}
+    />
+  );
+
+  if (!embedMobileStack) {
+    return <div className={cn("w-full min-w-0", className)}>{desktop}</div>;
+  }
+
   return (
     <>
-      <div
-        className={cn(
-          "w-full max-w-full min-w-0 grid-cols-1 gap-6 items-start",
-          embedMobileStack
-            ? "hidden workspace:grid workspace:grid-cols-[265px_minmax(0,700px)_minmax(0,280px)] workspace:gap-[44px]"
-            : "grid workspace:grid-cols-[265px_minmax(0,700px)_minmax(0,280px)] workspace:gap-[44px]",
-          className
-        )}
-      >
-        <aside
-          className={cn(
-            "relative z-[1] flex w-full min-w-0 flex-col px-1",
-            "workspace:sticky workspace:top-[calc(var(--header-height)+12px)]"
-          )}
-        >
-          {leftColumn}
-        </aside>
-
-        <section className="min-w-0 max-w-[700px] w-full">{centreColumn}</section>
-
-        <aside
-          className={cn(
-            "min-w-0 space-y-4",
-            "workspace:max-h-[calc(100vh-var(--header-height)-48px)] workspace:sticky workspace:top-[calc(var(--header-height)+12px)]",
-            "workspace:overflow-y-auto workspace:overflow-x-visible workspace:px-1.5 workspace:pb-3 workspace:pt-0.5"
-          )}
-        >
-          {actionColumn}
-        </aside>
+      <div className={cn("hidden w-full min-w-0 md:block", className)}>{desktop}</div>
+      {/* Phone: DualPane hidden — single 15px page inset (--gutter-page); header / bottom nav stay full-bleed. */}
+      <div className={cn("flex flex-col gap-6 px-gutter-page md:hidden", className)}>
+        {titleBlock}
+        {searchBlock}
+        {workColumn}
+        {contextColumn}
+        {actionColumn}
       </div>
-
-      {embedMobileStack ? (
-        <div className={cn("flex flex-col gap-6 workspace:hidden", className)}>
-          {titleBlock}
-          {searchBlock}
-          {workColumn}
-          {contextColumn}
-          {actionColumn}
-        </div>
-      ) : null}
     </>
   );
 }

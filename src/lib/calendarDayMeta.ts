@@ -324,6 +324,10 @@ export function applyCalendarDisplayFilters(
     list = list.filter((task) => taskMatchesDayPredicate(task, (day) => day < today));
   }
 
+  if (filters.has("filter-date-unscheduled")) {
+    list = list.filter((task) => !task.due_date && !task.due_at);
+  }
+
   if (filters.has("filter-urgent")) {
     list = list.filter((t) => t.priority === "urgent" || t.priority === "high");
   }

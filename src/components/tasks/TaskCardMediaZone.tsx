@@ -3,7 +3,9 @@ import { cn } from "@/lib/utils";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
 
 const UPLOADED_INSET_SHADOW_HORIZONTAL =
-  "inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset -1px -1px 2px 0px rgba(0, 0, 0, 0.1), 3px 0px 6px 0px rgba(0, 0, 0, 0.15)";
+  // No right-edge cast/inset — that reads as a hard seam against the card body.
+  // Depth stays on the top/left (and a soft bottom), so the right can fade out.
+  "inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.08)";
 
 const UPLOADED_INSET_SHADOW_VERTICAL =
   "inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 0px 3px 6px rgba(0, 0, 0, 0.15)";
@@ -110,9 +112,40 @@ export function TaskCardMediaZone({
           }
         }}
       />
+      {/*
+        User photos: fade into the card surface. One masked strip carries the
+        same fill + paper noise as bg-card/60, so the grain continues through
+        the blend instead of sitting as a separate wash.
+      */}
+      {!isIllustration && (variant === "horizontal" || fixedSize != null) ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 overflow-hidden"
+          style={{
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 100%)",
+            maskImage: "linear-gradient(to right, transparent 0%, black 100%)",
+          }}
+        >
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundColor:
+                "color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)) 40%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "var(--paper-texture)",
+              backgroundSize: "100%",
+              opacity: 0.3,
+            }}
+          />
+        </div>
+      ) : null}
       {!isIllustration ? (
         <div
-          className="pointer-events-none absolute inset-0"
+          className="pointer-events-none absolute inset-0 z-[1]"
           style={{
             boxShadow:
               variant === "horizontal"

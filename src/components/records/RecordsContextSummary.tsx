@@ -1,4 +1,6 @@
 import { cn } from "@/lib/utils";
+import { WorkspaceHealthGrid } from "@/components/property-workspace/WorkspaceHealthGrid";
+import type { RecordsView } from "@/lib/propertyRoutes";
 import type { ComplianceRecord } from "./complianceRecordModel";
 
 export function RecordsContextSummary({
@@ -6,54 +8,67 @@ export function RecordsContextSummary({
   documentTotal,
   docUnlinked,
   className,
-  /** Tighter type/padding for narrow rails. */
-  dense = false,
+  /** Kept for call-site compatibility; strip uses the shared Tasks density. */
+  dense: _dense = false,
+  recordsView,
+  onRecordsViewChange,
 }: {
   complianceRecords: ComplianceRecord[];
   documentTotal?: number;
   docUnlinked?: number;
   className?: string;
   dense?: boolean;
+  recordsView?: RecordsView;
+  onRecordsViewChange?: (next: RecordsView) => void;
 }) {
-  const healthy = complianceRecords.filter((r) => r.status === "healthy").length;
   const expiring = complianceRecords.filter((r) => r.status === "expiring").length;
   const overdue = complianceRecords.filter((r) => r.status === "overdue").length;
   const missing = complianceRecords.filter((r) => r.status === "missing").length;
 
-  const cells = [
-    { label: "Healthy", value: healthy, color: "rgba(16, 185, 129, 1)" },
-    { label: "Expiring", value: expiring, color: "rgba(255, 184, 77, 1)" },
-    { label: "Overdue", value: overdue, color: "rgba(235, 104, 52, 1)" },
-    { label: "Missing", value: missing, color: "rgba(100, 116, 139, 1)" },
+  const activate = (view: Extract<RecordsView, "expiring" | "overdue" | "missing">) => {
+    if (!onRecordsViewChange) return;
+    onRecordsViewChange(recordsView === view ? "all" : view);
+  };
+
+  const stats = [
+    {
+      line1: "expiring",
+      line2: "soon",
+      value: expiring,
+      color: "rgba(255, 184, 77, 1)",
+      secondaryCount: overdue,
+      secondaryLabel: "LATE",
+      secondaryTone: (overdue > 0 ? "urgent" : "neutral") as const,
+      onClick: onRecordsViewChange ? () => activate("expiring") : undefined,
+      selected: recordsView === "expiring",
+    },
+    {
+      line1: "overdue",
+      line2: "items",
+      value: overdue,
+      color: "rgba(235, 104, 52, 1)",
+      secondaryCount: missing,
+      secondaryLabel: "GAP",
+      secondaryTone: (missing > 0 ? "warning" : "neutral") as const,
+      onClick: onRecordsViewChange ? () => activate("overdue") : undefined,
+      selected: recordsView === "overdue",
+    },
+    {
+      line1: "missing",
+      line2: "files",
+      value: missing,
+      color: "rgba(100, 116, 139, 1)",
+      secondaryCount: expiring,
+      secondaryLabel: "WATCH",
+      secondaryTone: (expiring > 0 ? "warning" : "neutral") as const,
+      onClick: onRecordsViewChange ? () => activate("missing") : undefined,
+      selected: recordsView === "missing",
+    },
   ];
 
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="grid grid-cols-4 gap-1">
-        {cells.map((metric) => (
-          <div
-            key={metric.label}
-            className={cn(
-              "flex min-w-0 flex-col items-center justify-center rounded-xl bg-transparent text-center",
-              dense ? "px-0.5 py-1.5" : "px-0.5 py-2",
-              "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]"
-            )}
-          >
-            <p
-              className={cn(
-                "font-display font-medium leading-none tabular-nums text-shadow-neu-pressed",
-                dense ? "text-[18px]" : "text-[22px]"
-              )}
-              style={{ color: metric.color }}
-            >
-              {metric.value}
-            </p>
-            <p className="mt-0.5 max-w-full truncate text-2xs leading-tight text-muted-foreground">
-              {metric.label}
-            </p>
-          </div>
-        ))}
-      </div>
+      <WorkspaceHealthGrid stats={stats} ariaLabel="Property health" dense={false} />
       {documentTotal != null && (
         <p className="px-0.5 text-caption text-muted-foreground">
           <span className="font-medium text-foreground">{documentTotal}</span> stored documents

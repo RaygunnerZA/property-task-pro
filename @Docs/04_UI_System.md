@@ -50,7 +50,7 @@ Examples:
 
 * Home (Inflow)
 * Tasks · Calendar · Records (primary workspace)
-* Property (Spaces · Assets · People)
+* Spaces · Assets · People (place entities)
 * Reports
 
 This is the primary focus area.
@@ -59,7 +59,7 @@ This is the primary focus area.
 
 **Home & Primary Workspace Decision (V2.2)**
 
-Filla separates **signal intake** (Home / Inflow) from **work execution** (Tasks · Calendar · Records) and **place entities** (Property).
+Filla separates **signal intake** (Home / Inflow) from **work execution** (Tasks · Calendar · Records) and **place entities** (Spaces · Assets · People).
 
 **Home (Inflow)**
 
@@ -69,7 +69,7 @@ Home is the standalone homepage. Route: `/`.
 
 *Content:* Needs review · Found signals · Suggested tasks · Records to organise.
 
-Home has **no** Tasks · Calendar · Records tab strip. Left column keeps property / portfolio context and suggested actions; the expandable mini-calendar is **not** on Home.
+Home has **no** centre tab strip. Left column keeps property / portfolio context and suggested actions; the expandable mini-calendar is **not** on Home.
 
 Inflow is **signal-driven**.
 
@@ -77,35 +77,35 @@ Inflow is **signal-driven**.
 
 The primary operational workspace for staff, technicians, caretakers and contractors.
 
-| Tab | Route | Purpose |
-|-----|-------|---------|
+| Nav item | Route | Purpose |
+|----------|-------|---------|
 | Tasks | `/tasks` | Execute work — overdue, today, assigned, completed |
 | Calendar | `/calendar` | Month grid and day schedule for planned work |
 | Records | `/records` | Evidence, certificates, documents, compliance artefacts |
 
-Centre tabs **Tasks · Calendar · Records** are the titles of this workspace. Task cards prioritise checklist progress, evidence status, property/location context, and due urgency.
+These are **separate primary nav destinations**. The centre column shows page content only — section art appears as a large illustration beside the left-column title (not a centre tab strip). Task cards prioritise checklist progress, evidence status, property/location context, and due urgency.
 
 Tasks is **work-driven**. Records is **evidence-driven**.
 
-**Property activity area — Spaces · Assets · People**
+**Place entities — Spaces · Assets · People**
 
-Property is an **activity area for place entities**, not a duplicate task tree.
+Spaces, Assets, and People are **separate primary nav destinations** for place entities (not a nested Property → Tasks tree). Routes stay under `/property/*` for continuity.
 
-| Tab | Route | Purpose |
-|-----|-------|---------|
+| Nav item | Route | Purpose |
+|----------|-------|---------|
 | Spaces | `/property/spaces` | Spaces and space groups |
 | Assets | `/property/assets` | Equipment and maintainable items |
 | People | `/property/people` | Staff, contractors, suppliers, contacts (outside Settings) |
 
-Left-nav **Property**:
-* Single property: opens Spaces for the current scope.
-* Multiple properties: hover expands a property list; click a property sets scope and opens Spaces; click Property itself opens Spaces for the current scope.
+Left-nav **Spaces · Assets · People**:
+* Each item opens its own screen for the current property scope.
+* Multiple properties: hover on any of these items expands a property list; choosing a property sets scope and opens that same screen for the chosen property.
 
 **Add Property** is a secondary tab on the Create Space action panel (not a primary nav item).
 
 **Tags** are not a primary nav item. A compact **Manage Tags** panel sits below action panels on Spaces, Assets, and People, explaining how tags (including Teams-as-tags) assist that surface.
 
-**Filla Admin** (orgs, utilisation, AI, Knowledge) and **Dev Tools** are platform-only. They do **not** appear in primary user nav (Home · Tasks · Calendar · Records · Property · Reports). Dev Tools sits at the **bottom of the left nav rail** when the signed-in user is allowlisted on a local/dev build; Filla Admin / Knowledge admin links remain platform-gated at the rail footer.
+**Filla Admin** (orgs, utilisation, AI, Knowledge) and **Dev Tools** are platform-only. They do **not** appear in primary user nav (Home · Tasks · Calendar · Records · Spaces · Assets · People · Reports). Dev Tools sits at the **bottom of the left nav rail** when the signed-in user is allowlisted on a local/dev build; Filla Admin / Knowledge admin links remain platform-gated at the rail footer.
 
 Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
@@ -121,29 +121,44 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
 | Column | Role |
 |--------|------|
-| Left | Title image block (160px) · section health tabs (no radial) · perforation · expandable calendar (Tasks & Records only, collapsed by default) · ≤3 suggested actions · Recent |
-| Centre | Tasks · Calendar · Records + page content |
+| Left | Title image block (~160px) · section health tabs (no radial) · perforation · expandable calendar (Tasks & Records only, collapsed by default) · ≤3 suggested actions · Recent |
+| Centre | Page content for the active nav destination |
 | Right | Create Task / Add Record / relevant detail (≥1280px) |
 
-**Desktop — Property (Spaces · Assets · People)**
+**Desktop — Spaces · Assets · People**
 
 | Column | Role |
 |--------|------|
 | Left | Title image block (160px) · section health tabs (no radial) · perforation · ≤3 suggested · Recent (spaces / assets / people / contractors / teams) |
-| Centre | Spaces · Assets · People · sub-tabs · collection slider · filter/sort · lists |
+| Centre | Active entity screen · sub-tabs · collection slider · filter/sort · lists |
 | Right | Create Space / Add Asset / Invite Member · Manage Tags below |
+
+**Workbench column geometry (single system)**
+
+All primary screens and activity-area modules use **DualPaneLayout** (PropertyWorkspaceLayout is a DualPane convenience wrapper for title / search / action slots):
+
+| Track | Preferred | Soft min | Notes |
+|-------|-----------|----------|-------|
+| Left / right rails | 330px | 260px | `WORKBENCH_SIDE_RAIL_*` |
+| Centre | max 700px | 420px | Cap list / work surface |
+
+Breakpoints: dual from `sm` (640) / `md` (768) per phone contract; **third column from `layout` (1280px)**. Do not introduce a second rail geometry or a separate triple breakpoint.
+
+**Gutters & column gaps**
+
+DualPane owns horizontal insets and column gaps — do not wrap it in a centering `max-w-[1480px]` shell or an extra `px-gutter-page` (activity chrome uses full-bleed + `pt-[20px]` like the hub). Column gap is `gutter-rail` between tracks. Every rail uses **12px** horizontal inset at `sm+` / `layout+` (do not drop to `pl-2` in triple mode). PropertyWorkspaceLayout adds the same inner insets as the hub (`px-1` left, `md:px-2` centre). On phone (`max-width: 767px`), `--gutter-page` / `--gutter-pane` / `--gutter-rail` are **15px**; apply that inset to the content stack only. Gradient header and mobile bottom nav stay full-bleed with their own chrome padding.
 
 **Mobile**
 
-Primary destinations: Home, Tasks, Calendar / Records as capacity allows. Property entity surfaces remain available; complex coordination may defer to desktop.
+Primary destinations: Home, Tasks, Calendar / Records as capacity allows. Spaces · Assets · People remain available via More; complex coordination may defer to desktop.
 
 **Gradient header (all primary screens)**
 
-At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Property screens.
+At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Spaces / Assets / People screens.
 
 **Properties (scope)**
 
-Properties remain a **scope** mechanism. Property selection filters Home, Tasks, Calendar, Records, and Property entity lists. It does **not** create `Property → {name} → Tasks` navigation trees.
+Properties remain a **scope** mechanism. Property selection filters Home, Tasks, Calendar, Records, and Spaces / Assets / People lists. It does **not** create `Property → {name} → Tasks` navigation trees.
 
 ⸻
 
@@ -187,7 +202,7 @@ Primary flows:
 * Calendar / Records
 * Report Issue
 
-Additional activity areas (Property, Reports) may appear depending on role and permissions.
+Additional activity areas (Spaces · Assets · People, Reports) may appear depending on role and permissions.
 
 All mobile interactions should favour:
 
@@ -210,7 +225,7 @@ Examples:
 
 Changing scope filters content across activity areas.
 
-The left-nav **Property** item opens the Property activity area (Spaces · Assets · People). Hover-listing properties for multi-property orgs sets **scope** then opens Spaces — it must not nest Tasks under each property.
+Left-nav **Spaces · Assets · People** open those place-entity screens. Hover-listing properties for multi-property orgs sets **scope** then opens the same screen — it must not nest Tasks under each property.
 
 Scope must not create duplicate task navigation structures.
 
@@ -228,7 +243,7 @@ The Bird
 
 and separately:
 
-Property → Spaces
+Spaces (or Assets / People)
 filtered by:
 The Bird
 
@@ -286,22 +301,22 @@ All design tokens are defined in:
 
 **4.3b — ACTIVITY-AREA CHROME & LEFT-COLUMN FORMULA (desktop workbench)**
 
-**Primary chrome (Home, Tasks · Calendar · Records, Property):** Filla logo top-left; Search on the gradient; **Create Task** / **Add Record** between Search and Profile at middle widths; account avatar top-right. Settings is **not** in the left nav rail.
+**Primary chrome (Home, Tasks · Calendar · Records, Spaces · Assets · People):** Filla logo top-left; Search on the gradient; **Create Task** / **Add Record** between Search and Profile at middle widths; account avatar top-right. Settings is **not** in the left nav rail.
 
 **Left column — Home (Inflow):** property / portfolio context + suggested actions; **no** expandable mini-calendar.
 
-**Left column — Tasks · Calendar · Records and Property (Spaces · Assets · People), top to bottom:**
+**Left column — Tasks · Calendar · Records and Spaces · Assets · People, top to bottom:**
 
-1. **Title image block** (~160px) — H1 (`font-display` / Fraunces) + short description on imagery
+1. **Title block** — large section illustration to the left of H1 (`font-display` / Fraunces) + short description
 2. **Section health dashboard** — three informational tabs styled like the Inflow property card stats (**omit** the radial completion graph)
 3. **Perforation** line
-4. **Expandable calendar** — **Tasks** and **Records** only; **collapsed by default**. Omitted on **Calendar** (centre owns the calendar) and on Property / Home
+4. **Expandable calendar** — **Tasks** and **Records** only; **collapsed by default**. Omitted on **Calendar** (centre owns the calendar) and on Spaces / Assets / People / Home
 5. **Filla suggested actions** — up to 3
-6. **Recent** — compact list of recent task activity / messages / events / records (workspace) or spaces / assets / people / contractors / teams (Property)
+6. **Recent** — compact list of recent task activity / messages / events / records (workspace) or spaces / assets / people / contractors / teams (place-entity screens)
 
-**Centre — Property:** Spaces · Assets · People tabs → perforation → page sub-tabs → collection slider (no collection title/description above; match Spaces Groups / Records slider patterns for Assets and People) → filter bar + sort → responsive lists.
+**Centre — Spaces · Assets · People:** page sub-tabs → collection slider (no collection title/description above; match Spaces Groups / Records slider patterns for Assets and People) → filter bar + sort → responsive lists. No centre Spaces/Assets/People tab strip — left-nav + left-column illustration identify the screen.
 
-**Reports / Settings / Knowledge (admin):** may retain Back + activity header variants as needed. Knowledge is under **Filla Admin**, not user nav.
+**Reports / Settings / Knowledge (admin):** Settings may retain Back + activity header. Reports and Knowledge use the same primary workbench chrome (logo · Search · Create Task / Add Record) as Spaces · Assets · People. Knowledge is under **Filla Admin**, not user nav.
 
 Placeholder pattern: `Ask about {Topic} or anything else.` (opens Ask Filla on submit; `onChange` may also filter the page). Pressed search fields carry the Filla AI icon on the left.
 
@@ -514,7 +529,10 @@ User left navigation (desktop), in order:
 * Calendar
 * Records
 * — separator —
-* Property
+* Spaces
+* Assets
+* People
+* — separator —
 * Reports
 
 **Filla Admin** (The Org, utilisation, AI, Knowledge) and **Dev Tools** are platform-only and never appear in primary user nav. Dev Tools lives at the bottom of the left rail (dev/allowlisted builds only).
@@ -527,11 +545,11 @@ Navigation should remain as consistent as possible across user types.
 
 PROPERTY SCOPE
 
-Properties are a scope mechanism. The **Property** activity area manages place entities (Spaces · Assets · People) under that scope.
+Properties are a **scope** mechanism. **Spaces · Assets · People** are primary nav destinations for place entities under that scope.
 
 Property selection filters all activity areas.
 
-Property selection must never create duplicate **task** navigation trees (e.g. Property → {name} → Tasks). Hover-to-list properties only sets scope and opens the Property activity area.
+Property selection must never create duplicate **task** navigation trees (e.g. Property → {name} → Tasks). Multi-property hover on Spaces / Assets / People only sets scope and opens that same place-entity screen.
 
 ⸻
 
@@ -569,13 +587,17 @@ Property Manager:
 * Tasks
 * Calendar
 * Records
-* Property
+* Spaces
+* Assets
+* People
 * Reports
 
 Portfolio Manager:
 
 * Home
-* Property
+* Spaces
+* Assets
+* People
 * Reports
 * Intelligence
 

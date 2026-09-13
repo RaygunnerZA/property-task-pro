@@ -10,12 +10,15 @@ import {
   buildComplianceRecordsFromPortfolio,
   type ComplianceRecord,
 } from "./complianceRecordModel";
+import type { RecordsView } from "@/lib/propertyRoutes";
 import { cn } from "@/lib/utils";
 
 type RecordsContextColumnProps = {
   properties: { id: string }[];
   selectedPropertyIds?: Set<string>;
   className?: string;
+  recordsView?: RecordsView;
+  onRecordsViewChange?: (next: RecordsView) => void;
 };
 
 /**
@@ -25,6 +28,8 @@ export function RecordsContextColumn({
   properties,
   selectedPropertyIds,
   className,
+  recordsView,
+  onRecordsViewChange,
 }: RecordsContextColumnProps) {
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
@@ -100,6 +105,8 @@ export function RecordsContextColumn({
           dense
           complianceRecords={scopedComplianceRecords}
           documentTotal={scopedPropertyId ? documents.length : undefined}
+          recordsView={recordsView}
+          onRecordsViewChange={onRecordsViewChange}
         />
       </WorkspaceSurfaceCard>
 

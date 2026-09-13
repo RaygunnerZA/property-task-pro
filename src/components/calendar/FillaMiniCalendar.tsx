@@ -878,7 +878,7 @@ export function FillaMiniCalendar({
       className={cn(
         "filla-mini-calendar w-full",
         variant === "sidebar" &&
-          "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 p-3",
+          "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 px-3 pt-3 pb-0",
         className
       )}
       data-collapsed={showWeekStrip ? "true" : "false"}
@@ -1099,7 +1099,7 @@ export function FillaMiniCalendar({
           onClick={handleToggleExpanded}
           aria-expanded={isExpanded}
           aria-label={isExpanded ? "Collapse calendar" : "Expand calendar"}
-          className="mt-1 flex w-full items-center justify-center rounded-lg py-1 text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
+          className="mt-0.5 flex w-full items-center justify-center rounded-lg pt-0.5 pb-0 text-muted-foreground transition-colors hover:bg-muted/30 hover:text-foreground"
         >
           <ChevronUp
             className={cn(

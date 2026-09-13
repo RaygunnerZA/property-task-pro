@@ -60,7 +60,7 @@ export function PropertyRecordGroupCarousel({
       <p className="text-sm text-muted-foreground">
         Browse by category — select a group to focus the directory below.
       </p>
-      <SpaceGroupCarousel>
+      <SpaceGroupCarousel autoHeight>
         {groups.map(({ group, count }) => (
           <RecordGroupCard
             key={group.id}

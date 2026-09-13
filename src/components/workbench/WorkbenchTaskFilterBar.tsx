@@ -141,7 +141,11 @@ export function WorkbenchTaskFilterBar({
     if (!calendarListScope) return selectedFilters;
     const next = new Set(selectedFilters);
     Object.values(CALENDAR_SCOPE_FILTER_IDS).forEach((id) => next.delete(id));
-    next.add(CALENDAR_SCOPE_FILTER_IDS[calendarListScope.value]);
+    // "All" is the unfiltered default — keep it unselected so the chip and
+    // FunnelX clear control stay inactive until Urgent / My tasks (or other filters) apply.
+    if (calendarListScope.value !== "all") {
+      next.add(CALENDAR_SCOPE_FILTER_IDS[calendarListScope.value]);
+    }
     return next;
   }, [calendarListScope, selectedFilters]);
 
@@ -184,6 +188,11 @@ export function WorkbenchTaskFilterBar({
             label: "Overdue",
             icon: <AlertTriangle className="h-4 w-4" />,
             color: "#EB6834",
+          },
+          {
+            id: "filter-date-unscheduled",
+            label: "No date",
+            icon: <Calendar className="h-4 w-4" />,
           },
         ],
       },
@@ -259,7 +268,8 @@ export function WorkbenchTaskFilterBar({
           Object.entries(CALENDAR_SCOPE_FILTER_IDS) as Array<[CalendarListScope, string]>
         ).find(([, id]) => id === filterId);
         if (scopeEntry) {
-          if (selected) calendarListScope.onChange(scopeEntry[0]);
+          // Selecting a scope activates it; clearing / deselecting returns to default "all".
+          calendarListScope.onChange(selected ? scopeEntry[0] : "all");
           return;
         }
       }

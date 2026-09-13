@@ -9,8 +9,8 @@ export interface WorkspaceScopeStripProps {
 }
 
 /**
- * Full-width band under the property gradient header: at `workspace` breakpoint the inner
- * grid matches {@link PropertyWorkspaceLayout} so Back + property scope sit in column 1 only.
+ * Full-width band under the property gradient header. At `layout` (1280px) the inner
+ * grid matches DualPane / workbench-triple so Back + property scope sit in column 1 only.
  */
 export function WorkspaceScopeStrip({
   children,
@@ -29,8 +29,7 @@ export function WorkspaceScopeStrip({
           "mx-auto min-w-0 px-gutter-page py-2",
           containerMaxWidthClass,
           "grid w-full max-w-full min-w-0 grid-cols-1 gap-6 items-center",
-          "workspace:grid-cols-[265px_minmax(0,700px)_minmax(260px,300px)]",
-          "workspace:gap-[44px]"
+          "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
         )}
       >
         <div className="min-w-0 flex justify-start">{children}</div>

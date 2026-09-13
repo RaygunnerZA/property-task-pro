@@ -22,8 +22,12 @@ import {
 import { filterTasksForScheduleAgenda } from "@/lib/calendarTaskSchedule";
 import { CALENDAR_TYPES, type CalendarTypeId } from "@/lib/calendarTypes";
 import {
-  workbenchPageTitleClassName,
-  workbenchSectionTitleInactiveClassName,
+  WORKBENCH_CENTRE_TAB_ACTIVE_COLOR,
+  WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
+  workbenchCentreTabActiveClassName,
+  workbenchCentreTabInactiveClassName,
+  workbenchTitleBandLabelOffsetClassName,
+  workbenchTitleBandPtClassName,
 } from "@/lib/workbenchSectionTitle";
 import { cn } from "@/lib/utils";
 import type { CentreCalendarView } from "@/lib/centreWorkbenchTabs";
@@ -38,7 +42,7 @@ const VIEW_TABS: {
 }[] = [
   {
     id: "calendar",
-    label: "Calendar",
+    label: "Planner",
     subtitle: "Month view of due dates, repeats, and milestones.",
   },
   {
@@ -230,8 +234,13 @@ export function CalendarWorkbenchPanel({
   return (
     <div className="flex min-w-0 w-full flex-col pt-0">
       <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
-        <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
-          <div className="min-w-0 flex-1">
+        <div
+          className={cn(
+            "relative flex w-full min-w-0 items-start gap-3 px-0 md:px-2",
+            workbenchTitleBandPtClassName
+          )}
+        >
+          <div className={cn("min-w-0 flex-1", workbenchTitleBandLabelOffsetClassName)}>
             <div
               role="tablist"
               aria-label="Calendar views"
@@ -246,7 +255,7 @@ export function CalendarWorkbenchPanel({
                   >
                     {index > 0 ? (
                       <span
-                        className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
+                        className="font-display text-2xl font-light leading-tight text-muted-foreground/35"
                         aria-hidden
                       >
                         |
@@ -260,9 +269,14 @@ export function CalendarWorkbenchPanel({
                       className={cn(
                         "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
-                          ? workbenchPageTitleClassName
-                          : workbenchSectionTitleInactiveClassName
+                          ? workbenchCentreTabActiveClassName
+                          : workbenchCentreTabInactiveClassName
                       )}
+                      style={{
+                        color: selected
+                          ? WORKBENCH_CENTRE_TAB_ACTIVE_COLOR
+                          : WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
+                      }}
                     >
                       {tab.label}
                     </button>
@@ -277,7 +291,7 @@ export function CalendarWorkbenchPanel({
           </div>
         </div>
 
-        <div className="mt-3 px-2 md:mt-5 md:mb-5">
+        <div className="mt-3 px-0 md:mt-5 md:mb-5 md:px-2">
           <WorkbenchTaskFilterBar
             tasks={tasksProp}
             properties={properties}
@@ -288,7 +302,7 @@ export function CalendarWorkbenchPanel({
       </section>
 
       {view === "calendar" ? (
-        <section className="flex w-full flex-col gap-3 px-2">
+        <section className="flex w-full flex-col gap-3 px-0 md:px-2">
           <div
             className={cn(
               "flex flex-wrap items-center justify-between gap-2 rounded-xl",
@@ -322,7 +336,7 @@ export function CalendarWorkbenchPanel({
             </Button>
           </div>
 
-          <div className="h-fit w-full rounded-xl bg-card/60 p-1 shadow-sm">
+          <div className="h-fit w-full rounded-xl bg-transparent p-0 shadow-none">
             {tasksLoading ? (
               <div className="space-y-3 p-4">
                 <div className="h-20 animate-pulse rounded-xl bg-muted/50" />
@@ -344,7 +358,7 @@ export function CalendarWorkbenchPanel({
           </div>
         </section>
       ) : (
-        <section className="flex min-h-0 flex-1 flex-col px-2">
+        <section className="flex min-h-0 flex-1 flex-col px-0 md:px-2">
           <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl bg-muted/10">
             {tasksLoading ? (
               <div className="space-y-3 p-4">

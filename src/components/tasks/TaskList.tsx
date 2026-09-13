@@ -426,6 +426,10 @@ export function TaskList({
       });
     }
 
+    if (selectedFilters.has("filter-date-unscheduled")) {
+      filtered = filtered.filter((task) => !task.due_date && !task.due_at);
+    }
+
     if (selectedFilters.has("filter-task-missing-info")) {
       filtered = filtered.filter((task) => isTaskMissingInfo(task));
     }
@@ -550,6 +554,11 @@ export function TaskList({
           label: "Overdue",
           icon: <AlertTriangle className="h-4 w-4" />,
           color: "#EB6834",
+        },
+        {
+          id: "filter-date-unscheduled",
+          label: "No date",
+          icon: <Calendar className="h-4 w-4" />,
         },
       ],
     },

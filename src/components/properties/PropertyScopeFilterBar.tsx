@@ -22,7 +22,7 @@ type PrimaryProps = {
   selectedPropertyIds: Set<string>;
   onSelectionChange: (next: Set<string>) => void;
   onFilterClick?: (filterId: string) => void;
-  /** Full-width band under the gradient (secondary pages) vs narrow strip in the 265px workbench column. */
+  /** Full-width band under the gradient (secondary pages) vs narrow strip in the workbench side rail. */
   placement?: "fullWidth" | "leftColumn";
 };
 

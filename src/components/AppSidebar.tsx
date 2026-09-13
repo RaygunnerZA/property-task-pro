@@ -15,7 +15,6 @@ import { FillaIcon } from "@/components/filla/FillaIcon";
 import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
 import {
   MAIN_NAV_ENTRIES,
-  PROPERTY_SPACES_PATH,
   isMainNavActive,
   type MainNavItem,
 } from "@/lib/mainNavigation";
@@ -212,10 +211,11 @@ export function AppSidebar() {
     return <IconComponent className={iconClass} />;
   };
 
-  const propertySpacesUrl = (propertyId: string) => {
+  const propertyScopedUrl = (basePath: string, propertyId: string) => {
+    const path = basePath.split("?")[0];
     const params = new URLSearchParams();
     params.set("property", propertyId);
-    return `${PROPERTY_SPACES_PATH}?${params.toString()}`;
+    return `${path}?${params.toString()}`;
   };
 
   const renderPropertyNavItem = (item: MainNavItem) => {
@@ -273,7 +273,7 @@ export function AppSidebar() {
               {properties.map((property) => (
                 <li key={property.id}>
                   <Link
-                    to={propertySpacesUrl(property.id)}
+                    to={propertyScopedUrl(item.url, property.id)}
                     className={cn(
                       "block rounded-lg px-2 py-1.5 text-sm text-foreground/80 no-underline transition-colors hover:bg-muted/50 hover:text-foreground",
                       scopedProperty === property.id &&

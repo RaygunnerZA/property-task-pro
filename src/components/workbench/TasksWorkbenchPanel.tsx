@@ -7,8 +7,12 @@ import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import { useAllTasksIllustrationSrc } from "@/hooks/useAllTasksIllustration";
 import {
-  workbenchPageTitleClassName,
-  workbenchSectionTitleInactiveClassName,
+  WORKBENCH_CENTRE_TAB_ACTIVE_COLOR,
+  WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
+  workbenchCentreTabActiveClassName,
+  workbenchCentreTabInactiveClassName,
+  workbenchTitleBandLabelOffsetClassName,
+  workbenchTitleBandPtClassName,
 } from "@/lib/workbenchSectionTitle";
 import { useDataContext } from "@/contexts/DataContext";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
@@ -335,14 +339,17 @@ export function TasksWorkbenchPanel({
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
       <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-transparent pt-0 pb-1">
-        {/*
-          items-start so the illustration doesn’t push “All” down (was items-end).
-          CentreWorkbench owns equal space above/below the tab perforation (pt-[22px]).
-        */}
-        <div className="relative flex w-full min-w-0 items-start gap-3 px-2">
+        {/* Align All / Urgent / My with left-rail section H1 (shared title-band pt). */}
+        <div
+          className={cn(
+            "relative flex w-full min-w-0 items-start gap-3 px-0 md:px-2",
+            workbenchTitleBandPtClassName
+          )}
+        >
           <div
             className={cn(
               "min-w-0 flex-1",
+              workbenchTitleBandLabelOffsetClassName,
               // Reserve space for the illustration only from md up (hidden on mobile).
               listTab === "all"
                 ? "md:pr-[min(7.8rem,33%)]"
@@ -364,7 +371,7 @@ export function TasksWorkbenchPanel({
                   >
                     {index > 0 ? (
                       <span
-                        className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
+                        className="font-display text-2xl font-light leading-tight text-muted-foreground/35"
                         aria-hidden
                       >
                         |
@@ -378,9 +385,14 @@ export function TasksWorkbenchPanel({
                       className={cn(
                         "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
-                          ? workbenchPageTitleClassName
-                          : workbenchSectionTitleInactiveClassName
+                          ? workbenchCentreTabActiveClassName
+                          : workbenchCentreTabInactiveClassName
                       )}
+                      style={{
+                        color: selected
+                          ? WORKBENCH_CENTRE_TAB_ACTIVE_COLOR
+                          : WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
+                      }}
                     >
                       {tab.label}
                       <span
@@ -398,7 +410,7 @@ export function TasksWorkbenchPanel({
 
               <div className="flex shrink-0 items-center gap-x-1.5 md:gap-x-2">
                 <span
-                  className="font-display text-2xl font-normal leading-tight text-muted-foreground/35"
+                  className="font-display text-2xl font-light leading-tight text-muted-foreground/35"
                   aria-hidden
                 >
                   |
@@ -416,13 +428,19 @@ export function TasksWorkbenchPanel({
                   className={cn(
                     "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                     listTab === "messages"
-                      ? workbenchPageTitleClassName
-                      : workbenchSectionTitleInactiveClassName
+                      ? workbenchCentreTabActiveClassName
+                      : workbenchCentreTabInactiveClassName
                   )}
+                  style={{
+                    color:
+                      listTab === "messages"
+                        ? WORKBENCH_CENTRE_TAB_ACTIVE_COLOR
+                        : WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
+                  }}
                 >
                   <MessagesIcon
-                    className="h-[calc(1.3cap+4px)] w-[calc(1.3cap+4px)] shrink-0 translate-y-[1px]"
-                    strokeWidth={listTab === "messages" ? 2.25 : 2}
+                    className="icon-shadow-neu-pressed h-[calc(1.3cap+4px)] w-[calc(1.3cap+4px)] shrink-0 translate-y-[1px]"
+                    strokeWidth={listTab === "messages" ? 2 : 1.75}
                     aria-hidden
                   />
                   <span
@@ -447,6 +465,7 @@ export function TasksWorkbenchPanel({
           <div
             className={cn(
               "pointer-events-none absolute right-2 top-0 hidden aspect-square items-start justify-end md:flex",
+              workbenchTitleBandPtClassName,
               // All-tasks art: +20% vs other tab illustrations (grows upward from the header).
               listTab === "all"
                 ? "mt-[-6px] md:w-[min(7.5rem,31%)] md:max-h-[7.5rem]"
@@ -464,7 +483,7 @@ export function TasksWorkbenchPanel({
           </div>
         </div>
 
-        <div className="mt-3 px-2 md:mt-5 md:mb-5">
+        <div className="mt-3 px-0 md:mt-5 md:mb-5 md:px-2">
           <WorkbenchTaskFilterBar
             tasks={tasks}
             properties={properties}
@@ -478,7 +497,7 @@ export function TasksWorkbenchPanel({
         </div>
 
         {/* Only the list scrolls — header/tabs/filters above stay put. */}
-        <MagneticScrollArea className="mt-3 min-h-0 flex-1 md:mt-0" viewportClassName="px-2 pt-0.5 pb-4">
+        <MagneticScrollArea className="mt-3 min-h-0 flex-1 md:mt-0" viewportClassName="px-0 pt-0.5 pb-4 md:px-2">
           {listTab === "messages" ? (
             <TasksMessagesCardGrid
               tasks={visibleTasks}

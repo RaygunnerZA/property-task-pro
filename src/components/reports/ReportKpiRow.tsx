@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import type { ReportKpis } from "@/lib/reports/types";
+import { WorkspaceHealthGrid } from "@/components/property-workspace/WorkspaceHealthGrid";
 
 const KPI_META = [
   {
@@ -7,12 +8,6 @@ const KPI_META = [
     label: "Attention",
     seed: "attention" as const,
     color: "rgba(255, 184, 77, 1)",
-  },
-  {
-    key: "completed" as const,
-    label: "Done",
-    seed: "completed" as const,
-    color: "rgba(16, 185, 129, 1)",
   },
   {
     key: "overdue" as const,
@@ -28,12 +23,24 @@ const KPI_META = [
   },
 ];
 
+/** Full four-metric set for the larger card variant only. */
+const KPI_META_CARDS = [
+  ...KPI_META.slice(0, 1),
+  {
+    key: "completed" as const,
+    label: "Done",
+    seed: "completed" as const,
+    color: "rgba(16, 185, 129, 1)",
+  },
+  ...KPI_META.slice(1),
+];
+
 type Props = {
   kpis: ReportKpis;
   previousKpis?: ReportKpis;
   onSelect?: (seed: "attention" | "completed" | "overdue" | "upcoming") => void;
   className?: string;
-  /** Match Records Property Health — inset neomorphic cells, one row. */
+  /** Match workspace Property Health — inset neomorphic cells, one row of three. */
   variant?: "cards" | "health";
 };
 
@@ -47,56 +54,26 @@ export function ReportKpiRow({
   if (variant === "health") {
     return (
       <div className={cn("space-y-2", className)}>
-        <div className="grid grid-cols-4 gap-1">
-          {KPI_META.map(({ key, label, seed, color }) => {
+        <WorkspaceHealthGrid
+          ariaLabel="Property health"
+          dense
+          stats={KPI_META.map(({ key, label, seed, color }) => {
             const value = kpis[key];
-            const prev = previousKpis?.[key];
-            const delta =
-              prev !== undefined && prev !== value ? value - prev : null;
-            const interactive = Boolean(onSelect);
-            const Comp = interactive ? "button" : "div";
-            return (
-              <Comp
-                key={key}
-                type={interactive ? "button" : undefined}
-                onClick={interactive ? () => onSelect?.(seed) : undefined}
-                className={cn(
-                  "flex min-w-0 flex-col items-center justify-center rounded-xl bg-transparent px-0.5 py-1.5 text-center",
-                  "shadow-[inset_2px_2px_5px_0px_rgba(0,0,0,0.1),inset_-2px_-2px_6px_0px_rgba(255,255,255,0.88)]",
-                  interactive &&
-                    "transition-transform hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                )}
-              >
-                <p
-                  className="font-display text-[18px] font-medium leading-none tabular-nums text-shadow-neu-pressed"
-                  style={{ color }}
-                >
-                  {value}
-                </p>
-                <p className="mt-0.5 max-w-full truncate text-2xs leading-tight text-muted-foreground">
-                  {label}
-                </p>
-                {delta !== null ? (
-                  <p
-                    className={cn(
-                      "mt-0.5 text-2xs tabular-nums",
-                      delta > 0 ? "text-[#EB6834]" : "text-muted-foreground"
-                    )}
-                  >
-                    {delta > 0 ? `+${delta}` : delta}
-                  </p>
-                ) : null}
-              </Comp>
-            );
+            return {
+              label,
+              value,
+              color,
+              onClick: onSelect ? () => onSelect(seed) : undefined,
+            };
           })}
-        </div>
+        />
       </div>
     );
   }
 
   return (
-    <div className={cn("grid grid-cols-4 gap-3", className)}>
-      {KPI_META.map(({ key, label, seed, color }) => {
+    <div className={cn("grid grid-cols-2 gap-3 sm:grid-cols-4", className)}>
+      {KPI_META_CARDS.map(({ key, label, seed, color }) => {
         const value = kpis[key];
         const prev = previousKpis?.[key];
         const delta =

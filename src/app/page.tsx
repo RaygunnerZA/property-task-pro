@@ -25,6 +25,7 @@ import type { IntakeMode } from "@/types/intake";
 import {
   ISSUES_OPEN_TASK_FILTER_IDS,
   propertyActivitySpacesPath,
+  propertyActivityAssetsPath,
   propertyComplianceSetupPath,
   propertyHubAssetsPath,
   propertyHubIssuesPath,
@@ -614,7 +615,10 @@ export default function Dashboard({
       const taskId = customEvent.detail?.taskId;
       if (!taskId) return;
 
-      handleWorkbenchTabChange("issues");
+      const onHome = pathname === "/" || pathname === "/home";
+      if (onHome) {
+        handleWorkbenchTabChange("issues");
+      }
       setSelectedItem({ type: "task", id: taskId });
       if (isLargeScreen) {
         setExpandedSection("details");
@@ -625,7 +629,7 @@ export default function Dashboard({
 
     window.addEventListener("filla:assistant-open-task", onOpenTask);
     return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
-  }, [isLargeScreen, handleWorkbenchTabChange, pinThirdColumnTop]);
+  }, [isLargeScreen, handleWorkbenchTabChange, pathname, pinThirdColumnTop]);
 
   const handleTaskClick = useCallback((taskId: string) => {
     setOpenTaskChecklistCollapsed(false);
@@ -834,21 +838,29 @@ export default function Dashboard({
         navigateCentreWorkbenchFromHome("tasks", ["filter-urgent"]);
         return;
       }
-      if (
-        filterId === "show-to-review" ||
-        filterId === "filter-date-overdue" ||
-        filterId === "show-records"
-      ) {
-        navigateCentreWorkbenchFromHome("home", []);
+      if (filterId === "show-records" || filterId === "show-to-review") {
+        navigateCentreWorkbenchFromHome("records", []);
         return;
       }
-      if (filterId === "show-upcoming-events" || filterId === "filter-date-this-week") {
+      // Property card “upcoming” still opens Home signals; date chips filter the work list.
+      if (filterId === "show-upcoming-events") {
         const params = workbenchSearchParamsFromBrowser(searchParams);
         params.set("inflow", "signals");
         params.delete(WORKBENCH_PANEL_TAB_QUERY);
         params.delete(WORKBENCH_TAB_ALIAS_QUERY);
         const qs = params.toString();
         navigate(qs ? `/?${qs}` : "/?inflow=signals");
+        return;
+      }
+      if (
+        filterId === "filter-date-overdue" ||
+        filterId === "filter-date-this-week" ||
+        filterId === "filter-date-today" ||
+        filterId === "filter-date-tomorrow" ||
+        filterId === "filter-date-unscheduled"
+      ) {
+        const tab = centreWorkbenchTab === "calendar" ? "calendar" : "tasks";
+        navigateCentreWorkbenchFromHome(tab, [filterId]);
         return;
       }
       navigateCentreWorkbenchFromHome("tasks", [filterId]);
@@ -930,21 +942,36 @@ export default function Dashboard({
     };
 
     const onOpenRecords = (event: Event) => {
-      const pid = resolveScopedPropertyId();
+      const detail = (event as CustomEvent<{ documentId?: string; propertyId?: string }>).detail;
+      const pid = detail?.propertyId || resolveScopedPropertyId();
       if (pid) {
-        navigate(propertyHubRecordsPath(pid, "compliance"));
+        navigate(propertyHubRecordsPath(pid, "expiring"));
         return;
       }
       handleFilterClick("show-records");
     };
 
+    const onOpenAsset = (event: Event) => {
+      const detail = (event as CustomEvent<{ assetId?: string; propertyId?: string; href?: string }>).detail;
+      if (detail?.href) {
+        navigate(detail.href);
+        return;
+      }
+      const pid = detail?.propertyId || resolveScopedPropertyId();
+      if (pid && detail?.assetId) {
+        navigate(propertyActivityAssetsPath(pid, { assetId: detail.assetId }));
+      }
+    };
+
     window.addEventListener("filla:workbench-open-attention", onOpenAttention);
     window.addEventListener("filla:workbench-apply-filter", onApplyFilter);
     window.addEventListener("filla:workbench-open-records", onOpenRecords);
+    window.addEventListener("filla:workbench-open-asset", onOpenAsset);
     return () => {
       window.removeEventListener("filla:workbench-open-attention", onOpenAttention);
       window.removeEventListener("filla:workbench-apply-filter", onApplyFilter);
       window.removeEventListener("filla:workbench-open-records", onOpenRecords);
+      window.removeEventListener("filla:workbench-open-asset", onOpenAsset);
     };
   }, [
     applyCentreWorkbenchNavigation,
@@ -1242,6 +1269,8 @@ export default function Dashboard({
             onCentreWorkbenchTabChange={handleCentreWorkbenchTabChange}
             showCentreNavBelowPhone={workbenchLayout.propertyCentreNav.showBelowPhone}
             routeCentreNavToWorkSurface={workbenchLayout.propertyCentreNav.routeToWorkSurface}
+            recordsView={recordsView}
+            onRecordsViewChange={handleRecordsViewChange}
           />
           </ErrorBoundary>
         }

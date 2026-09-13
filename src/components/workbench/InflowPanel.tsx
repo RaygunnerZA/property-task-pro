@@ -25,6 +25,8 @@ import {
 import { isPropertyProfileId } from "@/lib/propertyProfiles";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
+import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
 import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 import type { RecordsView } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
@@ -199,6 +201,17 @@ export function InflowPanel({
     onOpenAddToFilla,
   });
 
+  const scopedPropertyIds = useMemo(
+    () => (selectedPropertyIds && selectedPropertyIds.size > 0 ? Array.from(selectedPropertyIds) : undefined),
+    [selectedPropertyIds]
+  );
+  const { suggestions, dismissSuggestion, snoozeSuggestion, runPrimaryAction } =
+    useActionableSuggestions({
+      tasks: displayTasks as Array<Record<string, unknown>>,
+      propertyIds: scopedPropertyIds,
+    });
+  const furtherSuggestions = suggestions.slice(1, 3);
+
   const reviewItems = useMemo(
     () => pickTopReviewSignals(groupedAttentionItems.review),
     [groupedAttentionItems.review]
@@ -322,6 +335,25 @@ export function InflowPanel({
                 />
               </div>
             </section>
+          ) : suggestions.length > 0 ? (
+            <div className="mt-3 space-y-2">
+              {suggestions.slice(0, 2).map((suggestion) => (
+                <FillaRecommends
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  variant="feed"
+                  onPrimaryAction={(item) => {
+                    if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
+                      onTaskClick(item.action.taskId);
+                      return;
+                    }
+                    runPrimaryAction(item);
+                  }}
+                  onDismiss={dismissSuggestion}
+                  onSnooze={snoozeSuggestion}
+                />
+              ))}
+            </div>
           ) : (
             <div className="mt-1 space-y-2 rounded-xl bg-muted/20 px-3 py-3">
               <p className="text-xs font-medium text-foreground/90">{STAFF_INFLOW_EMPTY.title}</p>
@@ -391,6 +423,27 @@ export function InflowPanel({
               </div>
             )}
           </section>
+
+          {furtherSuggestions.length > 0 && (
+            <section className="min-w-0 space-y-2 rounded-2xl bg-transparent py-1">
+              {furtherSuggestions.map((suggestion) => (
+                <FillaRecommends
+                  key={suggestion.id}
+                  suggestion={suggestion}
+                  variant="feed"
+                  onPrimaryAction={(item) => {
+                    if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
+                      onTaskClick(item.action.taskId);
+                      return;
+                    }
+                    runPrimaryAction(item);
+                  }}
+                  onDismiss={dismissSuggestion}
+                  onSnooze={snoozeSuggestion}
+                />
+              ))}
+            </section>
+          )}
 
           <section
             ref={foundSignalsRef}

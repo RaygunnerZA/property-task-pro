@@ -227,7 +227,7 @@ export default function ReportWorkspacePage() {
       title="Report"
       backTo="/reports"
       maxWidth="full"
-      contentClassName="w-full max-w-[1480px]"
+      contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
     >
       {body}
     </StandardPageWithBack>
@@ -428,7 +428,7 @@ export default function ReportWorkspacePage() {
       }`}
       backTo="/reports"
       maxWidth="full"
-      contentClassName="w-full max-w-[1480px]"
+      contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
       icon={<BarChart3 className="h-6 w-6" />}
     >
       {workspace}

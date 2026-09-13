@@ -3,7 +3,9 @@ import {
   LayoutDashboard,
   CheckSquare,
   Calendar,
-  Building2,
+  Layers,
+  Package,
+  Users,
   BarChart3,
   Shield,
   MoreHorizontal,
@@ -24,7 +26,7 @@ export type MainNavEntry =
   | { type: "item"; item: MainNavItem }
   | { type: "separator" };
 
-/** Primary workspace — Tasks · Calendar · Records */
+/** Place-entity screens — Spaces · Assets · People */
 export const PROPERTY_SPACES_PATH = "/property/spaces";
 export const PROPERTY_ASSETS_PATH = "/property/assets";
 export const PROPERTY_PEOPLE_PATH = "/property/people";
@@ -43,12 +45,31 @@ export const MAIN_NAV_ENTRIES: MainNavEntry[] = [
   {
     type: "item",
     item: {
-      title: "Property",
+      title: "Spaces",
       url: PROPERTY_SPACES_PATH,
-      icon: Building2,
+      icon: Layers,
       expandPropertiesOnHover: true,
     },
   },
+  {
+    type: "item",
+    item: {
+      title: "Assets",
+      url: PROPERTY_ASSETS_PATH,
+      icon: Package,
+      expandPropertiesOnHover: true,
+    },
+  },
+  {
+    type: "item",
+    item: {
+      title: "People",
+      url: PROPERTY_PEOPLE_PATH,
+      icon: Users,
+      expandPropertiesOnHover: true,
+    },
+  },
+  { type: "separator" },
   { type: "item", item: { title: "Reports", url: "/reports", icon: BarChart3 } },
 ];
 
@@ -102,16 +123,27 @@ export function isMainNavActive(
     return pathname === "/records" || pathname.startsWith("/records/");
   }
 
-  if (targetPath === PROPERTY_SPACES_PATH || targetPath.startsWith("/property")) {
+  if (targetPath === PROPERTY_SPACES_PATH) {
     return (
+      pathname === PROPERTY_SPACES_PATH ||
       pathname === "/property" ||
-      pathname.startsWith("/property/") ||
       pathname === "/spaces" ||
-      pathname === "/assets" ||
-      pathname.startsWith("/assets/") ||
       pathname === "/manage/spaces" ||
       /\/properties\/[^/]+\/spaces(?:\/|$)/.test(pathname)
     );
+  }
+
+  if (targetPath === PROPERTY_ASSETS_PATH) {
+    return (
+      pathname === PROPERTY_ASSETS_PATH ||
+      pathname === "/assets" ||
+      pathname.startsWith("/assets/") ||
+      pathname.startsWith("/asset/")
+    );
+  }
+
+  if (targetPath === PROPERTY_PEOPLE_PATH) {
+    return pathname === PROPERTY_PEOPLE_PATH || pathname.startsWith(`${PROPERTY_PEOPLE_PATH}/`);
   }
 
   if (targetPath === "/reports") {
@@ -157,7 +189,9 @@ export function isMobileNavActive(pathname: string, url: string): boolean {
 export const MOBILE_MORE_NAV_ITEMS: MainNavItem[] = [
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Records", url: "/records", icon: FolderOpen },
-  { title: "Property", url: PROPERTY_SPACES_PATH, icon: Building2 },
+  { title: "Spaces", url: PROPERTY_SPACES_PATH, icon: Layers },
+  { title: "Assets", url: PROPERTY_ASSETS_PATH, icon: Package },
+  { title: "People", url: PROPERTY_PEOPLE_PATH, icon: Users },
   { title: "Reports", url: "/reports", icon: BarChart3 },
 ];
 

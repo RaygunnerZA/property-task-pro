@@ -1,9 +1,15 @@
 import { useMemo } from "react";
-import { ChevronRight, MessageSquare, CalendarDays, FileText, CheckSquare } from "lucide-react";
+import { MessageSquare, CalendarDays, FileText, CheckSquare } from "lucide-react";
 import { formatDistanceToNow, isToday, isThisWeek, parseISO, isValid } from "date-fns";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
-import { FillaIcon } from "@/components/filla/FillaIcon";
+import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { WorkbenchSectionHero } from "@/components/workbench/WorkbenchSectionHero";
+import {
+  healthStatCellClass,
+  healthStatNumberClass,
+} from "@/components/property-workspace/WorkspaceHealthGrid";
 import { cn } from "@/lib/utils";
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
@@ -15,14 +21,10 @@ import { useCountUp } from "@/hooks/useCountUp";
 
 const TERMINAL = new Set(["completed", "archived", "done"]);
 
-const statNumberClass =
-  "self-start pl-1.5 pb-1 font-display text-[32px] font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white sm:pb-[3px] sm:text-2xl";
-
 const statWordClass =
-  "font-mono text-caption font-semibold uppercase leading-tight tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
+  "block font-mono text-caption font-semibold uppercase leading-snug tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
-const statCellClass =
-  "group hover-ink-noise flex min-w-0 w-full flex-col items-start justify-start self-start rounded-xl bg-background/55 px-2 pb-3 pt-3 text-left shadow-[inset_1px_2px_2px_0px_rgba(0,0,0,0.08),inset_-1px_-2px_2px_0px_rgba(255,255,255,0.7)] transition-[background-color,box-shadow,transform] duration-150 ease-out active:scale-[0.98] sm:px-1.5 sm:pb-3";
+const statCellClass = cn(healthStatCellClass, "px-1.5 pb-2.5 pt-2.5 sm:px-1.5 sm:pb-2.5");
 
 type SecondaryTone = "urgent" | "warning" | "neutral";
 
@@ -52,12 +54,6 @@ type HealthStat = {
   secondaryCount: number;
   secondaryLabel: string;
   secondaryTone: SecondaryTone;
-  onActivate?: () => void;
-};
-
-type SuggestedAction = {
-  id: string;
-  text: string;
   onActivate?: () => void;
 };
 
@@ -117,22 +113,25 @@ function HealthStatCell({
   const displayValue = Math.round(useCountUp(value));
   const inner = (
     <>
-      <span className={statNumberClass}>{displayValue}</span>
-      <div className="flex w-full min-w-0 items-stretch gap-0.5">
-        <div className="flex min-w-0 flex-1 flex-col items-start pl-1.5 text-left text-foreground">
+      <div className="flex w-full min-w-0 items-start gap-1 overflow-hidden pl-0.5">
+        <span
+          className={cn(
+            "shrink-0 -translate-y-[6px] font-display font-medium tabular-nums leading-none text-primary-deep text-shadow-neu-pressed transition-colors group-hover:text-white",
+            healthStatNumberClass(displayValue)
+          )}
+        >
+          {displayValue}
+        </span>
+        <div className="min-w-0 flex-1 overflow-hidden pt-0.5 text-left [&>span+span]:-mt-[2px]">
           <span className={statWordClass}>{line1}</span>
-          <span className={statWordClass}>{line2}</span>
+          {line2 ? <span className={statWordClass}>{line2}</span> : null}
         </div>
-        {onActivate ? (
-          <ChevronRight
-            className="mt-0.5 h-3 w-3 shrink-0 self-start text-muted-foreground/60 transition-[color,transform] duration-150 ease-out group-hover:translate-x-0.5 group-hover:text-white"
-            aria-hidden
-          />
-        ) : null}
       </div>
-      <div className="mt-1.5 flex w-[77px] items-center gap-0.5 tracking-[0.3px]">
+      <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden pl-0.5 tracking-[0.3px]">
         <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
-        <span className={secondaryLabelClass[secondaryTone]}>{secondaryLabel}</span>
+        <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
+          {secondaryLabel}
+        </span>
       </div>
     </>
   );
@@ -200,6 +199,12 @@ export function WorkspaceContextColumn({
       });
       const overdue = openTasks.filter((t) => getTaskDueUrgency(t) === "overdue");
       const unscheduled = openTasks.filter((t) => !t.due_date && !t.due_at);
+      const overdueUrgent = overdue.filter(
+        (t) => (t.priority ?? "").toLowerCase() === "urgent"
+      ).length;
+      const unscheduledUrgent = unscheduled.filter(
+        (t) => (t.priority ?? "").toLowerCase() === "urgent"
+      ).length;
       return [
         {
           id: "week",
@@ -219,9 +224,9 @@ export function WorkspaceContextColumn({
           value: overdue.length,
           line1: "overdue",
           line2: "events",
-          secondaryCount: overdue.length,
-          secondaryLabel: "LATE",
-          secondaryTone: overdue.length > 0 ? "urgent" : "neutral",
+          secondaryCount: overdueUrgent,
+          secondaryLabel: "HOT",
+          secondaryTone: overdueUrgent > 0 ? "urgent" : "neutral",
           onActivate: () => onFilterClick?.("filter-date-overdue"),
         },
         {
@@ -229,10 +234,10 @@ export function WorkspaceContextColumn({
           value: unscheduled.length,
           line1: "no",
           line2: "date",
-          secondaryCount: unscheduled.length,
-          secondaryLabel: "OPEN",
-          secondaryTone: "neutral",
-          onActivate: () => onFilterClick?.("show-tasks"),
+          secondaryCount: unscheduledUrgent,
+          secondaryLabel: "HOT",
+          secondaryTone: unscheduledUrgent > 0 ? "urgent" : "neutral",
+          onActivate: () => onFilterClick?.("filter-date-unscheduled"),
         },
       ];
     }
@@ -243,25 +248,35 @@ export function WorkspaceContextColumn({
       const reviewish = openTasks.filter((t) =>
         /cert|document|record|compliance|upload/i.test(String(t.title ?? ""))
       );
+      const dueSoonToday = dueSoon.filter((t) => {
+        const d = parseTaskDate(t.due_date || t.due_at);
+        return d ? isToday(d) : false;
+      }).length;
+      const reviewOverdue = reviewish.filter(
+        (t) => getTaskDueUrgency(t) === "overdue"
+      ).length;
+      const overdueUrgent = overdue.filter(
+        (t) => (t.priority ?? "").toLowerCase() === "urgent"
+      ).length;
       return [
         {
           id: "expiring",
           value: dueSoon.length,
           line1: "due",
           line2: "soon",
-          secondaryCount: dueSoon.length,
-          secondaryLabel: "WATCH",
-          secondaryTone: dueSoon.length > 0 ? "warning" : "neutral",
-          onActivate: () => onFilterClick?.("show-records"),
+          secondaryCount: dueSoonToday,
+          secondaryLabel: "TODAY",
+          secondaryTone: dueSoonToday > 0 ? "warning" : "neutral",
+          onActivate: () => onFilterClick?.("filter-date-this-week"),
         },
         {
           id: "overdue",
           value: overdue.length,
           line1: "overdue",
           line2: "items",
-          secondaryCount: overdue.length,
-          secondaryLabel: "LATE",
-          secondaryTone: overdue.length > 0 ? "urgent" : "neutral",
+          secondaryCount: overdueUrgent,
+          secondaryLabel: "HOT",
+          secondaryTone: overdueUrgent > 0 ? "urgent" : "neutral",
           onActivate: () => onFilterClick?.("filter-date-overdue"),
         },
         {
@@ -269,9 +284,9 @@ export function WorkspaceContextColumn({
           value: reviewish.length,
           line1: "to",
           line2: "organise",
-          secondaryCount: reviewish.length,
-          secondaryLabel: "FILE",
-          secondaryTone: reviewish.length > 0 ? "warning" : "neutral",
+          secondaryCount: reviewOverdue,
+          secondaryLabel: "LATE",
+          secondaryTone: reviewOverdue > 0 ? "urgent" : "neutral",
           onActivate: () => onFilterClick?.("show-records"),
         },
       ];
@@ -285,20 +300,24 @@ export function WorkspaceContextColumn({
       const d = parseTaskDate(t.due_date || t.due_at);
       return d ? isToday(d) : false;
     });
+    const overdueUrgent = overdue.filter(
+      (t) => (t.priority ?? "").toLowerCase() === "urgent"
+    ).length;
+    const urgentOverdue = urgent.filter((t) => getTaskDueUrgency(t) === "overdue").length;
     return [
       {
         id: "overdue",
         value: overdue.length,
         line1: "overdue",
         line2: "tasks",
-        secondaryCount: overdue.length,
-        secondaryLabel: "LATE",
-        secondaryTone: overdue.length > 0 ? "urgent" : "neutral",
+        secondaryCount: overdueUrgent,
+        secondaryLabel: "HOT",
+        secondaryTone: overdueUrgent > 0 ? "urgent" : "neutral",
         onActivate: () => onFilterClick?.("filter-date-overdue"),
       },
       {
         id: "today",
-        value: dueToday.length || dueSoon.length,
+        value: dueSoon.length,
         line1: "due",
         line2: "soon",
         secondaryCount: dueToday.length,
@@ -311,68 +330,23 @@ export function WorkspaceContextColumn({
         value: urgent.length,
         line1: "urgent",
         line2: "open",
-        secondaryCount: urgent.length,
-        secondaryLabel: "HOT",
-        secondaryTone: urgent.length > 0 ? "urgent" : "neutral",
+        secondaryCount: urgentOverdue,
+        secondaryLabel: "LATE",
+        secondaryTone: urgentOverdue > 0 ? "urgent" : "neutral",
         onActivate: () => onFilterClick?.("show-tasks-urgent"),
       },
     ];
   }, [section, openTasks, onFilterClick]);
 
-  const suggested = useMemo((): SuggestedAction[] => {
-    const lines: SuggestedAction[] = [];
-    const overdue = openTasks.filter((t) => getTaskDueUrgency(t) === "overdue");
-    const urgent = openTasks.filter((t) => (t.priority ?? "").toLowerCase() === "urgent");
-
-    if (urgent.length > 0) {
-      const first = urgent[0];
-      lines.push({
-        id: "urgent",
-        text:
-          urgent.length === 1
-            ? `1 urgent task is open. Start with “${first?.title ?? "task"}”.`
-            : `${urgent.length} urgent tasks are open. Start with “${first?.title ?? "task"}”.`,
-        onActivate: first?.id ? () => onTaskClick?.(first.id!) : () => onFilterClick?.("show-tasks-urgent"),
-      });
-    }
-    if (overdue.length > 0 && lines.length < 3) {
-      lines.push({
-        id: "overdue",
-        text:
-          overdue.length === 1
-            ? "1 task is overdue — clear it before new work piles up."
-            : `${overdue.length} tasks are overdue — clear the oldest first.`,
-        onActivate: () => onFilterClick?.("filter-date-overdue"),
-      });
-    }
-    if (section === "records" && lines.length < 3) {
-      lines.push({
-        id: "records-organise",
-        text: "File new uploads so certificates stay visible before they expire.",
-        onActivate: () => onFilterClick?.("show-records"),
-      });
-    }
-    if (section === "calendar" && lines.length < 3) {
-      lines.push({
-        id: "calendar-plan",
-        text: "Pick a day on the calendar to focus today’s schedule.",
-      });
-    }
-    if (lines.length < 3 && onOpenIntake) {
-      lines.push({
-        id: "create",
-        text: "Capture something new — create a task or add a record.",
-        onActivate: onOpenIntake,
-      });
-    }
-    if (lines.length === 0) {
-      lines.push({
-        id: "clear",
-        text: "You’re clear for now. Check back when new work lands.",
-      });
-    }
-    return lines.slice(0, 3);
-  }, [openTasks, section, onFilterClick, onTaskClick, onOpenIntake]);
+  const scopedPropertyIds = useMemo(
+    () => (selectedPropertyIds && selectedPropertyIds.size > 0 ? Array.from(selectedPropertyIds) : undefined),
+    [selectedPropertyIds]
+  );
+  const { topSuggestion, dismissSuggestion, snoozeSuggestion, runPrimaryAction } =
+    useActionableSuggestions({
+      tasks: scopedTasks as Array<Record<string, unknown>>,
+      propertyIds: scopedPropertyIds,
+    });
 
   const recent = useMemo((): RecentItem[] => {
     const items: RecentItem[] = scopedTasks
@@ -394,24 +368,12 @@ export function WorkspaceContextColumn({
   }, [scopedTasks, onTaskClick]);
 
   return (
-    <div className={cn("flex w-full min-w-0 flex-col gap-0 px-[3px] pb-4", className)}>
-      {/* 160px title + description on image */}
-      <div
-        className="relative h-[160px] w-full overflow-hidden rounded-2xl"
-        style={{
-          backgroundImage: `linear-gradient(135deg, hsl(40 12% 92% / 0.92), hsl(40 10% 88% / 0.75)), url(${meta.illustrationSrc})`,
-          backgroundSize: "cover, 140px",
-          backgroundPosition: "center, right 12px bottom 8px",
-          backgroundRepeat: "no-repeat",
-        }}
-      >
-        <div className="relative z-[1] flex h-full flex-col justify-end gap-1.5 p-4 pr-24">
-          <h1 className="font-display text-2xl font-medium leading-tight tracking-tight text-foreground">
-            {meta.label}
-          </h1>
-          <p className="text-xs leading-relaxed text-muted-foreground">{meta.description}</p>
-        </div>
-      </div>
+    <div className={cn("flex w-full min-w-0 flex-col gap-0 px-1 pb-4", className)}>
+      <WorkbenchSectionHero
+        title={meta.label}
+        description={meta.description}
+        illustrationSrc={meta.illustrationSrc}
+      />
 
       {/* Section health — three tabs, no radial / vertical counters */}
       <div
@@ -443,33 +405,24 @@ export function WorkspaceContextColumn({
         </div>
       ) : null}
 
-      {/* Filla suggested — up to 3 */}
-      <div className="grid grid-cols-[auto_1fr] items-start gap-2.5 px-1 py-3" aria-label="Filla suggestions">
-        <div className="flex h-9 w-[21px] shrink-0 items-start justify-center rounded-2xl rounded-bl-sm" aria-hidden>
-          <FillaIcon size={24} className="opacity-90" />
+      {topSuggestion ? (
+        <div className="px-1 py-3">
+              <FillaRecommends
+            key={topSuggestion.id}
+            suggestion={topSuggestion}
+            variant="rail"
+            onPrimaryAction={(item) => {
+              if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
+                onTaskClick(item.action.taskId);
+                return;
+              }
+              runPrimaryAction(item);
+            }}
+            onDismiss={dismissSuggestion}
+            onSnooze={snoozeSuggestion}
+          />
         </div>
-        <div className="min-w-0 space-y-2 text-sm leading-snug text-foreground/85">
-          <p className="font-mono text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Suggested
-          </p>
-          {suggested.map((line) =>
-            line.onActivate ? (
-              <button
-                key={line.id}
-                type="button"
-                onClick={line.onActivate}
-                className="block w-full text-left text-sm leading-snug text-foreground/85 transition-colors hover:text-foreground"
-              >
-                {line.text}
-              </button>
-            ) : (
-              <p key={line.id} className="text-sm leading-snug text-foreground/85">
-                {line.text}
-              </p>
-            )
-          )}
-        </div>
-      </div>
+      ) : null}
 
       {/* Recent */}
       <div className="mt-4 px-1">

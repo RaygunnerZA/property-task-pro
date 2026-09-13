@@ -276,6 +276,10 @@ export function filterTasksByWorkbenchFilters(
     });
   }
 
+  if (selectedFilters.has("filter-date-unscheduled")) {
+    filtered = filtered.filter((task) => !task.due_date && !task.due_at);
+  }
+
   if (selectedFilters.has("filter-task-missing-info")) {
     filtered = filtered.filter((task) => isTaskMissingInfo(task));
   }

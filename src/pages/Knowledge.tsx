@@ -156,7 +156,6 @@ export default function Knowledge() {
         {metrics ? (
           <WorkspaceHealthGrid
             stats={[
-              { label: "Created", value: metrics.knowledge_created },
               {
                 label: "Verified",
                 value: metrics.knowledge_verified,
@@ -407,10 +406,8 @@ export default function Knowledge() {
       icon={<BookOpen className="h-6 w-6" />}
       subtitle="Verified policies, playbooks, and guidance for your organisation."
       maxWidth="full"
-      contentClassName="max-w-[1480px]"
+      contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
       hideTitle
-      hideHeaderSearch
-      headerVariant="activity"
     >
       <PropertyWorkspaceLayout
         pageTitle="Knowledge"

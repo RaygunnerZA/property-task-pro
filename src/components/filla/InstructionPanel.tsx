@@ -37,7 +37,7 @@ export type InstructionPanelProps = {
   className?: string;
   /**
    * When true, layout stays stacked (no side‑by‑side row at `sm` viewport).
-   * Use inside fixed narrow rails (e.g. 265px hub column) so copy is not squeezed beside the illustration.
+   * Use inside fixed narrow rails (e.g. workbench side rail ~330px) so copy is not squeezed beside the illustration.
    */
   denseRail?: boolean;
 };

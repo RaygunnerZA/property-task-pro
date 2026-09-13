@@ -21,6 +21,8 @@ type RecordGroupCardProps = {
 /**
  * Your Cabinet group card — illustration sits on transparent paper (no light panel);
  * title block keeps the original card fill + shadow-e1.
+ * Description expands on hover/focus only (no selected outline).
+ * Height is content-sized so the parent slider can flex with the expand.
  */
 export function RecordGroupCard({
   group,
@@ -37,10 +39,9 @@ export function RecordGroupCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "flex h-[295px] w-[230px] shrink-0 flex-col bg-transparent text-left",
-        "transition-all duration-200 hover:scale-[1.02] active:scale-[0.99]",
+        "group flex w-[230px] shrink-0 flex-col self-start bg-transparent text-left",
+        "transition-transform duration-200 hover:scale-[1.02] active:scale-[0.99]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-        selected && "ring-2 ring-primary/50",
         className
       )}
     >
@@ -55,8 +56,14 @@ export function RecordGroupCard({
         <span className="sr-only">{group.label}</span>
       </div>
 
-      {/* Original card face under the image — flat top so it meets the art without a radius lip */}
-      <div className="flex min-h-0 flex-1 flex-col space-y-3 rounded-b-card bg-card px-3 pb-3 pt-0.5 shadow-e1">
+      {/* Content-sized face — no flex-1 stretch into the old 310px carousel void */}
+      <div
+        className={cn(
+          "flex flex-col gap-2 rounded-b-card bg-card px-3 pb-2.5 pt-0.5 shadow-e1",
+          "transition-shadow duration-200",
+          selected && "shadow-md"
+        )}
+      >
         <div className="flex items-start justify-between gap-2">
           <h3 className="text-lg font-semibold leading-tight text-foreground">
             {group.label}
@@ -68,13 +75,22 @@ export function RecordGroupCard({
             {count}
           </span>
         </div>
-        <div className="-mx-1 pt-0.5" style={DASHED_LINE_STYLE} aria-hidden />
-        <p className="line-clamp-4 text-xs leading-relaxed text-muted-foreground">
-          {group.description}
-        </p>
-        <p className="mt-auto text-2xs font-mono uppercase tracking-wider text-muted-foreground">
+        <div className="-mx-1" style={DASHED_LINE_STYLE} aria-hidden />
+        <p className="text-2xs font-mono uppercase tracking-wider text-muted-foreground">
           {countLabel}
         </p>
+        <div
+          className={cn(
+            "grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
+            "grid-rows-[0fr] group-hover:grid-rows-[1fr] group-focus-visible:grid-rows-[1fr]"
+          )}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <p className="pb-0.5 pt-0.5 text-xs leading-relaxed text-muted-foreground">
+              {group.description}
+            </p>
+          </div>
+        </div>
       </div>
     </button>
   );

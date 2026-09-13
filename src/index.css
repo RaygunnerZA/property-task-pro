@@ -27,6 +27,13 @@
     --gutter-pane: 1.25rem;
     --gutter-rail: 0.75rem;
 
+    /* Phone: consistent 15px page edge inset across workbench + StandardPage shells */
+    @media (max-width: 767px) {
+      --gutter-page: 15px;
+      --gutter-pane: 15px;
+      --gutter-rail: 15px;
+    }
+
     /* Motion tokens — feedback 120ms, state change 200ms, panels/modals 320ms.
        Enter = ease-out, exit = ease-in, in-place change = ease-in-out. */
     --duration-fast: 120ms;
@@ -787,6 +794,43 @@
     background-size: 100%;
   }
 
+  /* Month planner day cells — raised inset; hover = pressed + create affordance */
+  .calendar-day-cell {
+    border-radius: 5px;
+    border: none;
+    background-color: hsl(var(--card) / 0.5);
+    background-image: var(--paper-texture);
+    background-size: 100%;
+    background-blend-mode: soft-light;
+    box-shadow:
+      inset -1px -1px 1px rgba(255, 255, 255, 0.8),
+      inset 1px 1px 1px rgba(0, 0, 0, 0.12);
+    transition: box-shadow 150ms var(--ease-out, ease-out), background-color 150ms var(--ease-out, ease-out);
+  }
+
+  .calendar-day-cell:hover,
+  .calendar-day-cell:focus-within {
+    box-shadow:
+      inset -1px -1px 1px rgba(0, 0, 0, 0.16),
+      inset 1px 1px 1px rgba(255, 255, 255, 0.8);
+    background-color: hsl(var(--card) / 0.5);
+    background-image: var(--paper-texture);
+    background-size: 100%;
+    background-blend-mode: soft-light;
+  }
+
+  .calendar-day-cell__add {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 150ms var(--ease-out, ease-out);
+  }
+
+  .calendar-day-cell:hover .calendar-day-cell__add,
+  .calendar-day-cell:focus-within .calendar-day-cell__add {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   /*
    * Ink-paper hover — property / asset summary tabs.
    * Mid dusty cardstock (not wet ink) so fibre grain can read; overlay blend
@@ -932,18 +976,18 @@
     text-shadow: 2px 2px 3px rgba(255, 255, 255, 0.9), -1px -1px 2px rgba(0, 0, 0, 0.15);
   }
 
-  /* Debossed / pressed typography (dark TL + light BR) — Daily Brief title, radial numerals, graph labels */
+  /* Debossed / pressed typography (dark TL + light BR) — tight inset, minimal blur */
   .text-shadow-neu-pressed {
     text-shadow:
-      -1px -2px 2px rgba(0, 0, 0, 0.15),
-      1px 2px 2px rgba(255, 255, 255, 0.3);
+      -1px -1px 0.5px rgba(0, 0, 0, 0.12),
+      1px 1px 0.5px rgba(255, 255, 255, 0.42);
   }
 
-  /* Pressed/debossed stroke icons (Lucide SVG) — shadow follows icon shape, not the tap target */
+  /* Pressed/debossed stroke icons (Lucide SVG) — matches text-shadow-neu-pressed */
   .icon-shadow-neu-pressed {
     filter:
-      drop-shadow(-1px -2px 1px rgba(0, 0, 0, 0.15))
-      drop-shadow(1px 2px 1px rgba(255, 255, 255, 0.3));
+      drop-shadow(-1px -1px 0.5px rgba(0, 0, 0, 0.12))
+      drop-shadow(1px 1px 0.5px rgba(255, 255, 255, 0.42));
   }
   
   /* Global Heading Styles - Single source of truth */

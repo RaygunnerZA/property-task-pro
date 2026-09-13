@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Navigate, useSearchParams, Link } from "react-router-dom";
-import { Users, UserPlus } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import {
@@ -11,8 +11,8 @@ import {
   PropertyWorkspaceLayout,
   WorkspaceSurfaceCard,
   WorkspaceSectionHeading,
+  WorkspaceHealthGrid,
 } from "@/components/property-workspace";
-import { PropertyActivityTabStrip } from "@/components/property/PropertyActivityTabStrip";
 import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,11 @@ import { propertyActivityPeoplePath } from "@/lib/propertyRoutes";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { cn } from "@/lib/utils";
 
+const PEOPLE_ILLUSTRATION = "/centre-workbench/people.png";
+const PEOPLE_DESCRIPTION = "Staff, contractors, and contacts for this property.";
+
+type PeopleHealthFilter = "all" | "scope" | "leads";
+
 function roleLabel(role: string): string {
   const r = role.toLowerCase();
   if (r === "owner") return "Owner";
@@ -31,6 +36,11 @@ function roleLabel(role: string): string {
   if (r === "staff" || r === "member") return "Staff";
   if (r === "external" || r === "guest") return "External";
   return role;
+}
+
+function isLeadMember(m: { role: string; is_primary_owner?: boolean }): boolean {
+  const role = m.role.toLowerCase();
+  return role === "owner" || role === "manager" || Boolean(m.is_primary_owner);
 }
 
 /**
@@ -43,6 +53,7 @@ function PropertyPeoplePageInner() {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
   const { members, loading: membersLoading, error } = useOrgMembers();
   const { searchQuery } = useWorkbenchControls();
+  const [peopleFilter, setPeopleFilter] = useState<PeopleHealthFilter>("scope");
 
   const scopedProperty = useMemo(
     () => properties.find((p) => p.id === propertyFromUrl),
@@ -85,6 +96,55 @@ function PropertyPeoplePageInner() {
     });
   }, [filteredMembers, resolvedPropertyId]);
 
+  const displayedMembers = useMemo(() => {
+    if (peopleFilter === "all") return filteredMembers;
+    if (peopleFilter === "leads") {
+      return scopedMembers.filter(isLeadMember);
+    }
+    return scopedMembers;
+  }, [peopleFilter, filteredMembers, scopedMembers]);
+
+  const peopleHealthStats = useMemo(() => {
+    const owners = members.filter((m) => m.role.toLowerCase() === "owner" || m.is_primary_owner)
+      .length;
+    const managers = members.filter((m) => m.role.toLowerCase() === "manager").length;
+    const leads = owners + managers;
+    const inScope = resolvedPropertyId ? scopedMembers.length : members.length;
+    const staff = Math.max(0, members.length - leads);
+    return [
+      {
+        line1: "total",
+        line2: "people",
+        value: members.length,
+        secondaryCount: inScope,
+        secondaryLabel: "HERE",
+        secondaryTone: "neutral" as const,
+        onClick: () => setPeopleFilter("all"),
+        selected: peopleFilter === "all",
+      },
+      {
+        line1: "in",
+        line2: "scope",
+        value: inScope,
+        secondaryCount: leads,
+        secondaryLabel: "LEAD",
+        secondaryTone: (leads > 0 ? "warning" : "neutral") as const,
+        onClick: () => setPeopleFilter("scope"),
+        selected: peopleFilter === "scope",
+      },
+      {
+        line1: "owners",
+        line2: "mgrs",
+        value: leads,
+        secondaryCount: staff,
+        secondaryLabel: "TEAM",
+        secondaryTone: "neutral" as const,
+        onClick: () => setPeopleFilter("leads"),
+        selected: peopleFilter === "leads",
+      },
+    ];
+  }, [members, scopedMembers.length, resolvedPropertyId, peopleFilter]);
+
   if (orgLoading || propertiesLoading) {
     return <LoadingState message="Loading people…" />;
   }
@@ -97,43 +157,30 @@ function PropertyPeoplePageInner() {
 
   const contextColumn = (
     <div className="space-y-4">
-      <WorkspaceSurfaceCard title="Overview" description="Who can work on this organisation">
-        <ul className="text-xs text-muted-foreground space-y-2">
-          <li>
-            <span className="font-semibold text-foreground">{members.length}</span> people
-          </li>
-          {resolvedPropertyId ? (
-            <li>
-              <span className="font-semibold text-foreground">{scopedMembers.length}</span> visible
-              for this property scope
-            </li>
-          ) : null}
-          <li className="text-2xs pt-1">
-            Owners and Managers coordinate; Staff perform assigned work. Invite from Settings → Team.
-          </li>
-        </ul>
-      </WorkspaceSurfaceCard>
+      <WorkspaceHealthGrid stats={peopleHealthStats} ariaLabel="People health" />
+      <div className="perforation-section pointer-events-none" aria-hidden />
     </div>
   );
 
   const workColumn = (
     <div className="space-y-5">
-      <PropertyActivityTabStrip activeTab="people" propertyId={resolvedPropertyId} />
       <div>
         <WorkspaceSectionHeading>Team members</WorkspaceSectionHeading>
         {error ? (
           <p className="text-sm text-destructive mt-2">{error}</p>
         ) : membersLoading ? (
           <LoadingState message="Loading members…" />
-        ) : scopedMembers.length === 0 ? (
+        ) : displayedMembers.length === 0 ? (
           <p className="text-sm text-muted-foreground mt-3 py-6">
             {searchQuery.trim()
               ? "No people match your search."
-              : "No team members yet. Invite someone from Settings → Team."}
+              : peopleFilter === "leads"
+                ? "No owners or managers in this scope."
+                : "No team members yet. Invite someone from Settings → Team."}
           </p>
         ) : (
           <ul className="mt-3 space-y-2">
-            {scopedMembers.map((member) => (
+            {displayedMembers.map((member) => (
               <li
                 key={member.id}
                 className={cn(
@@ -185,14 +232,8 @@ function PropertyPeoplePageInner() {
   const workspace = (
     <PropertyWorkspaceLayout
       pageTitle="People"
-      pageSubtitle={
-        scopedProperty
-          ? `${scopedProperty.nickname || scopedProperty.address}`
-          : orgId
-            ? "Organisation team"
-            : "People"
-      }
-      pageIcon={<Users />}
+      pageSubtitle={PEOPLE_DESCRIPTION}
+      pageIllustrationSrc={PEOPLE_ILLUSTRATION}
       contextColumn={contextColumn}
       workColumn={workColumn}
       actionColumn={actionColumn}
@@ -202,7 +243,7 @@ function PropertyPeoplePageInner() {
   return (
     <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
-      <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
+      <div className="w-full pt-[20px]">{workspace}</div>
     </div>
   );
 }

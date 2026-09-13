@@ -1,6 +1,14 @@
-import { useMemo, useState, useCallback, useEffect, useRef } from "react";
+import {
+  useMemo,
+  useState,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type TransitionEvent,
+} from "react";
 import { createPortal } from "react-dom";
-import { Repeat } from "lucide-react";
+import { Plus, Repeat } from "lucide-react";
 import {
   addDays,
   endOfMonth,
@@ -44,7 +52,22 @@ import {
   type CalendarTaskPlacement,
 } from "@/lib/calendarTaskSchedule";
 
-const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const WEEKDAY_LABELS_SHORT = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
+const WEEKDAY_LABELS_FULL = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
+
+/** Show full weekday names when a day column is at least this wide. */
+const WEEKDAY_FULL_NAME_MIN_PX = 65;
+
+/** Flush task chips to the cell edges at this width or below. */
+const DAY_CELL_FLUSH_MAX_PX = 65;
 
 /**
  * Week row: minimise when events sit in only morning or only afternoon.
@@ -54,13 +77,38 @@ const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 const CALENDAR_ROW_MINIMAL_PX = 48;
 const CALENDAR_ROW_EXPANDED_PX = 118;
 
+const HAND_CHIP_HEIGHT = 42;
+const HAND_CHIP_COMPACT_HEIGHT = 22;
+
+/** Shared neo chip chrome — height is animated in px for a smooth slide-open. */
+const CALENDAR_TASK_CHIP_BASE_CLASS =
+  "relative flex shrink-0 w-full min-w-0 cursor-grab touch-none rounded text-left text-2xs active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)] overflow-hidden transition-[height,padding,box-shadow] duration-200 ease-out motion-reduce:transition-none";
+
 /** Fixed size for every task chip in the month grid (title + property rows). */
-const CALENDAR_TASK_CHIP_CLASS =
-  "relative flex h-[42px] min-h-[42px] shrink-0 w-full min-w-0 flex-col overflow-hidden cursor-grab touch-none rounded pt-[3px] pb-0.5 pl-3 pr-0.5 text-left text-2xs leading-tight active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
+const CALENDAR_TASK_CHIP_CLASS = cn(
+  CALENDAR_TASK_CHIP_BASE_CLASS,
+  "flex-col pt-[3px] pb-0.5 leading-tight"
+);
 
 /** Single-line chip while click-and-hold / dragging (morning ↔ afternoon). */
-const CALENDAR_TASK_CHIP_COMPACT_CLASS =
-  "relative flex h-[22px] min-h-[22px] shrink-0 w-full min-w-0 items-center overflow-hidden cursor-grab touch-none rounded py-0 pl-3 pr-0.5 text-left text-2xs leading-none active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)]";
+const CALENDAR_TASK_CHIP_COMPACT_CLASS = cn(
+  CALENDAR_TASK_CHIP_BASE_CLASS,
+  "items-center py-0 leading-none"
+);
+
+const CALENDAR_TASK_CHIP_COMPACT_REVEAL_CLASS = cn(
+  CALENDAR_TASK_CHIP_BASE_CLASS,
+  "items-start py-0.5 leading-snug"
+);
+
+/** Gap between stacked hand cards while expanded (Tailwind gap-0.5). */
+const HAND_STACK_GAP_PX = 2;
+
+/** Fan → stack geometry + title grow. */
+const HAND_EXPAND_MS = 200;
+
+/** Title reveal slide-open (matches --duration-default). */
+const CHIP_REVEAL_MS = 200;
 
 /** Match TouchSensor delay so the chip collapses as drag arms. */
 const CALENDAR_CHIP_HOLD_MS = 150;
@@ -130,6 +178,12 @@ type CalendarTaskChipProps = {
   opaque?: boolean;
   /** Deeper neo shadow while a hand is expanded on hover. */
   elevated?: boolean;
+  /** Force full title wrap (stacked hand expanded). */
+  revealFullTitle?: boolean;
+  /** Solo chips: hover expands truncated titles. Off inside a fanned hand. */
+  allowHoverReveal?: boolean;
+  /** Narrow day cells: drop horizontal chip padding so cards sit edge-to-edge. */
+  flushEdges?: boolean;
   /** Position in a same-period hand (0 = furthest back / earliest). */
   stackIndex?: number;
   stackCount?: number;
@@ -146,6 +200,9 @@ function CalendarTaskChip({
   singleLine = false,
   opaque = false,
   elevated = false,
+  revealFullTitle: revealFullTitleProp = false,
+  allowHoverReveal = true,
+  flushEdges = false,
   stackIndex = 0,
   stackCount = 1,
   onHoldStart,
@@ -165,6 +222,23 @@ function CalendarTaskChip({
   const { baseColor, isSeriesColor } = resolveCalendarChipColor(placement.task);
   const isRepeat = placement.source === "repeat";
   const compact = singleLine || isRepeat;
+  const collapsedHeight = compact ? HAND_CHIP_COMPACT_HEIGHT : HAND_CHIP_HEIGHT;
+
+  const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const titleRef = useRef<HTMLSpanElement | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  /** Unclamp title while open / while collapsing so height can slide. */
+  const [unwrapTitle, setUnwrapTitle] = useState(false);
+  const [animHeight, setAnimHeight] = useState(collapsedHeight);
+
+  const wantsReveal =
+    Boolean(revealFullTitleProp) ||
+    (allowHoverReveal &&
+      hovered &&
+      isTruncated &&
+      !isDragOverlay &&
+      !singleLine);
 
   // When a DragOverlay is active, leave the source chip in place (dimmed) —
   // applying `transform` here AND rendering an overlay causes a cursor offset.
@@ -174,6 +248,14 @@ function CalendarTaskChip({
     disabled: isDragOverlay,
   });
 
+  const setButtonRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      buttonRef.current = node;
+      if (!isDragOverlay) setNodeRef(node);
+    },
+    [isDragOverlay, setNodeRef]
+  );
+
   const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat, {
     opaque,
     stackIndex,
@@ -181,11 +263,99 @@ function CalendarTaskChip({
   });
   const title = task.title || "Task";
 
+  // Detect clipped title only while collapsed — hover expand only when text is hidden.
+  useLayoutEffect(() => {
+    if (unwrapTitle || isDragOverlay) return;
+    const titleEl = titleRef.current;
+    if (!titleEl) {
+      setIsTruncated(false);
+      return;
+    }
+    const clipped =
+      titleEl.scrollHeight > titleEl.clientHeight + 1 ||
+      titleEl.scrollWidth > titleEl.clientWidth + 1;
+    setIsTruncated(clipped);
+  }, [
+    title,
+    propertyLabel,
+    compact,
+    flushEdges,
+    unwrapTitle,
+    isDragOverlay,
+    collapsedHeight,
+  ]);
+
+  // Unwrap first (still at collapsed height), then measure and slide open after paint.
+  useLayoutEffect(() => {
+    if (wantsReveal) {
+      setUnwrapTitle(true);
+      return;
+    }
+    setAnimHeight(collapsedHeight);
+  }, [wantsReveal, collapsedHeight]);
+
+  useEffect(() => {
+    if (!wantsReveal || !unwrapTitle) return;
+    const el = buttonRef.current;
+    if (!el) return;
+
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      const fullHeight = el.scrollHeight;
+      raf2 = requestAnimationFrame(() => {
+        setAnimHeight(Math.max(fullHeight, collapsedHeight));
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [wantsReveal, unwrapTitle, title, propertyLabel, compact, flushEdges, collapsedHeight]);
+
+  // Keep collapsed height in sync when compact mode toggles mid-drag.
+  useEffect(() => {
+    if (!wantsReveal && !unwrapTitle) {
+      setAnimHeight(collapsedHeight);
+    }
+  }, [collapsedHeight, wantsReveal, unwrapTitle]);
+
+  // Re-clamp after close; timeout covers prefers-reduced-motion (no transitionend).
+  useEffect(() => {
+    if (wantsReveal || !unwrapTitle) return;
+    const timer = window.setTimeout(() => {
+      setUnwrapTitle(false);
+    }, CHIP_REVEAL_MS + 40);
+    return () => window.clearTimeout(timer);
+  }, [wantsReveal, unwrapTitle]);
+
+  const handleRevealTransitionEnd = useCallback(
+    (event: TransitionEvent<HTMLButtonElement>) => {
+      if (event.propertyName !== "height") return;
+      if (event.target !== event.currentTarget) return;
+      if (!wantsReveal) {
+        setUnwrapTitle(false);
+      }
+    },
+    [wantsReveal]
+  );
+
+  const shellClass = compact
+    ? unwrapTitle
+      ? CALENDAR_TASK_CHIP_COMPACT_REVEAL_CLASS
+      : CALENDAR_TASK_CHIP_COMPACT_CLASS
+    : cn(CALENDAR_TASK_CHIP_CLASS, unwrapTitle && "pb-1");
+
+  const revealFullTitle = unwrapTitle;
+
   return (
     <button
-      ref={isDragOverlay ? undefined : setNodeRef}
+      ref={setButtonRef}
       type="button"
-      style={{ backgroundColor: chipBackground }}
+      style={{
+        backgroundColor: chipBackground,
+        height: animHeight,
+        transitionDuration: `${CHIP_REVEAL_MS}ms`,
+      }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
@@ -193,17 +363,26 @@ function CalendarTaskChip({
       }}
       onPointerUp={() => onHoldEnd?.()}
       onPointerCancel={() => onHoldEnd?.()}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setHovered(true)}
+      onBlur={() => setHovered(false)}
+      onTransitionEnd={handleRevealTransitionEnd}
       onClick={(e) => {
         e.stopPropagation();
         onTaskClick?.(task.id);
       }}
       className={cn(
-        compact ? CALENDAR_TASK_CHIP_COMPACT_CLASS : CALENDAR_TASK_CHIP_CLASS,
-        "transition-[height,min-height,opacity,box-shadow] duration-200 ease-out",
+        shellClass,
+        flushEdges ? "px-0.5" : "pl-3 pr-0.5",
         isRepeat &&
-          "pl-1.5 shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
+          cn(
+            "shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
+            !flushEdges && "pl-1.5"
+          ),
         elevated &&
           "shadow-[3px_4px_8px_-2px_rgba(0,0,0,0.18),1px_1px_1px_0px_rgba(0,0,0,0.1),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]",
+        revealFullTitle && "z-30",
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -211,19 +390,27 @@ function CalendarTaskChip({
       {priorityDotClass && !isRepeat ? (
         <span
           className={cn(
-            "pointer-events-none absolute left-1 rounded-full",
-            compact ? "top-1/2 h-[4px] w-[4px] -translate-y-1/2" : "top-1.5 h-[5px] w-[5px]",
+            "pointer-events-none absolute rounded-full",
+            flushEdges ? "left-0.5" : "left-1",
+            compact && !revealFullTitle
+              ? "top-1/2 h-[4px] w-[4px] -translate-y-1/2"
+              : "top-1.5 h-[5px] w-[5px]",
             priorityDotClass
           )}
           aria-hidden
         />
       ) : null}
       {compact ? (
-        <span className="flex min-w-0 flex-1 items-center gap-0.5">
+        <span
+          className={cn(
+            "flex min-w-0 flex-1 items-start gap-0.5",
+            priorityDotClass && !isRepeat && (flushEdges ? "pl-2" : "pl-0")
+          )}
+        >
           {isRepeat ? (
             <Repeat
               className={cn(
-                "h-2.5 w-2.5 shrink-0",
+                "mt-0.5 h-2.5 w-2.5 shrink-0",
                 isSeriesColor ? "text-ink/55" : "text-ink/35"
               )}
               style={isSeriesColor ? { color: baseColor } : undefined}
@@ -231,8 +418,10 @@ function CalendarTaskChip({
             />
           ) : null}
           <span
+            ref={titleRef}
             className={cn(
-              "min-w-0 flex-1 truncate",
+              "min-w-0 flex-1",
+              revealFullTitle ? "whitespace-normal break-words" : "truncate",
               isRepeat
                 ? isSeriesColor
                   ? "font-medium text-ink/75"
@@ -247,7 +436,14 @@ function CalendarTaskChip({
       ) : (
         <>
           <span
-            className="min-h-0 flex-1 overflow-hidden font-medium leading-[11px] line-clamp-2 text-ink"
+            ref={titleRef}
+            className={cn(
+              "min-h-0 flex-1 font-medium leading-[11px] text-ink",
+              priorityDotClass && (flushEdges ? "pl-2" : "pl-0"),
+              revealFullTitle
+                ? "overflow-visible whitespace-normal break-words"
+                : "overflow-hidden line-clamp-2"
+            )}
             title={title}
           >
             {title}
@@ -290,10 +486,6 @@ function DayDropZone({ dateKey, period, isDragging }: DayDropZoneProps) {
   );
 }
 
-const HAND_CHIP_HEIGHT = 42;
-const HAND_CHIP_COMPACT_HEIGHT = 22;
-const HAND_EXPANDED_GAP = 2;
-
 function handChipHeight(placement: CalendarTaskPlacement): number {
   return placement.source === "repeat" ? HAND_CHIP_COMPACT_HEIGHT : HAND_CHIP_HEIGHT;
 }
@@ -325,12 +517,14 @@ type CalendarEventHandProps = {
   selectedTaskId?: string | null;
   onTaskClick?: (taskId: string) => void;
   isDragging: boolean;
+  flushEdges?: boolean;
   onExpandedChange?: (expanded: boolean) => void;
 };
 
 /**
  * Same-period multi-event layout: opaque chips fanned horizontally inside the cell;
- * on hover, deal into a vertical stack centred on the rest height (may spill above/below).
+ * on hover, deal into a vertical stack with each card sized to its full title.
+ * Geometry stays on one DOM tree so fan → stack can ease instead of remounting.
  */
 function CalendarEventHand({
   items,
@@ -338,6 +532,7 @@ function CalendarEventHand({
   selectedTaskId,
   onTaskClick,
   isDragging,
+  flushEdges = false,
   onExpandedChange,
 }: CalendarEventHandProps) {
   const [expanded, setExpanded] = useState(false);
@@ -347,10 +542,8 @@ function CalendarEventHand({
   const peekFraction = Math.min(0.14, 0.36 / Math.max(n - 1, 1));
   const fanWidthPercent = 100 - (n - 1) * peekFraction * 100;
 
-  const heights = items.map(handChipHeight);
-  const stackTotal =
-    heights.reduce((sum, h) => sum + h, 0) + HAND_EXPANDED_GAP * Math.max(n - 1, 0);
-  const stackOrigin = (restHeight - stackTotal) / 2;
+  const chipWrapRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const [chipHeights, setChipHeights] = useState(() => items.map(handChipHeight));
 
   const setExpandedSafe = useCallback(
     (next: boolean) => {
@@ -376,13 +569,66 @@ function CalendarEventHand({
     [onExpandedChange]
   );
 
+  useLayoutEffect(() => {
+    chipWrapRefs.current = chipWrapRefs.current.slice(0, n);
+    const measure = () => {
+      setChipHeights((prev) => {
+        const next = items.map((placement, index) => {
+          const el = chipWrapRefs.current[index];
+          return el?.offsetHeight || handChipHeight(placement);
+        });
+        if (
+          prev.length === next.length &&
+          prev.every((height, index) => height === next[index])
+        ) {
+          return prev;
+        }
+        return next;
+      });
+    };
+
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observers = items.map((_, index) => {
+      const el = chipWrapRefs.current[index];
+      if (!el) return null;
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return ro;
+    });
+
+    return () => {
+      observers.forEach((ro) => ro?.disconnect());
+    };
+  }, [items, n, expanded]);
+
+  const stackTops = useMemo(() => {
+    const tops: number[] = [];
+    let cursor = 0;
+    for (let i = 0; i < n; i++) {
+      tops.push(cursor);
+      cursor += chipHeights[i] ?? handChipHeight(items[i]);
+      if (i < n - 1) cursor += HAND_STACK_GAP_PX;
+    }
+    return tops;
+  }, [chipHeights, items, n]);
+
+  const stackHeight =
+    n === 0
+      ? restHeight
+      : (stackTops[n - 1] ?? 0) + (chipHeights[n - 1] ?? restHeight);
+
   return (
     <div
       className={cn(
-        "relative w-full",
+        "relative w-full overflow-visible transition-[height] duration-200 ease-out motion-reduce:transition-none",
         expanded ? "z-40" : "z-[1]"
       )}
-      style={{ height: restHeight }}
+      style={{
+        height: expanded ? stackHeight : restHeight,
+        transitionDuration: `${HAND_EXPAND_MS}ms`,
+      }}
       onMouseEnter={() => setExpandedSafe(true)}
       onMouseLeave={() => setExpandedSafe(false)}
       onFocusCapture={() => setExpandedSafe(true)}
@@ -392,47 +638,36 @@ function CalendarEventHand({
         }
       }}
     >
-      {items.map((placement, index) => {
-        let top = 0;
-        if (expanded) {
-          top = stackOrigin;
-          for (let i = 0; i < index; i++) {
-            top += heights[i] + HAND_EXPANDED_GAP;
-          }
-        }
-        return (
-          <div
-            key={placement.id}
-            className="absolute transition-[top,left,width,transform,box-shadow] duration-200 ease-out"
-            style={
-              expanded
-                ? {
-                    top,
-                    left: 0,
-                    width: "100%",
-                    zIndex: 20 + index,
-                  }
-                : {
-                    top: 0,
-                    left: `${index * peekFraction * 100}%`,
-                    width: `${fanWidthPercent}%`,
-                    zIndex: index + 1,
-                  }
-            }
-          >
-            <CalendarTaskChip
-              placement={placement}
-              propertyMap={propertyMap}
-              selectedTaskId={selectedTaskId}
-              onTaskClick={onTaskClick}
-              opaque
-              elevated={expanded}
-              stackIndex={index}
-              stackCount={n}
-            />
-          </div>
-        );
-      })}
+      {items.map((placement, index) => (
+        <div
+          key={placement.id}
+          ref={(el) => {
+            chipWrapRefs.current[index] = el;
+          }}
+          className="absolute top-0 transition-[top,left,width] duration-200 ease-out motion-reduce:transition-none"
+          style={{
+            top: expanded ? stackTops[index] : 0,
+            left: expanded ? 0 : `${index * peekFraction * 100}%`,
+            width: expanded ? "100%" : `${fanWidthPercent}%`,
+            zIndex: index + 1,
+            transitionDuration: `${HAND_EXPAND_MS}ms`,
+          }}
+        >
+          <CalendarTaskChip
+            placement={placement}
+            propertyMap={propertyMap}
+            selectedTaskId={selectedTaskId}
+            onTaskClick={onTaskClick}
+            opaque
+            elevated={expanded}
+            revealFullTitle={expanded}
+            allowHoverReveal={false}
+            flushEdges={flushEdges}
+            stackIndex={index}
+            stackCount={n}
+          />
+        </div>
+      ))}
     </div>
   );
 }
@@ -453,6 +688,8 @@ type CalendarDayCellProps = {
   compact?: boolean;
   /** Compact week whose timed events are afternoon-only — pin chips to the bottom half. */
   afternoonOnly?: boolean;
+  /** Narrow cells: flush task cards to the cell edges. */
+  flushEdges?: boolean;
 };
 
 function CalendarDayCell({
@@ -469,6 +706,7 @@ function CalendarDayCell({
   isWeekendColumn = false,
   compact = false,
   afternoonOnly = false,
+  flushEdges = false,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
@@ -547,11 +785,9 @@ function CalendarDayCell({
   return (
     <div
       className={cn(
-        "relative flex flex-col border-b border-r border-white/60 px-[3px] pt-[3px] text-left select-none",
+        "calendar-day-cell group relative flex flex-col text-left select-none",
+        flushEdges ? "px-0 pt-[3px]" : "px-[3px] pt-[3px]",
         fillRow ? "h-full pb-1.5" : "h-auto pb-0.5",
-        !inMonth && "bg-muted/10 text-muted-foreground/50",
-        isDragging && "hover:bg-muted/20",
-        isWeekendColumn && "opacity-50",
         // Let hover stacks paint above neighbouring days.
         handExpanded && "z-30 overflow-visible"
       )}
@@ -582,39 +818,61 @@ function CalendarDayCell({
         }
         title={occupied && onCreateForDate ? "Create task" : undefined}
         className={cn(
-          "relative -mx-px inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+          "relative inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+          flushEdges ? "mx-0.5" : "-mx-px",
           // Below expanded hands so stacked cards aren't clipped by the date badge.
           handExpanded ? "z-[1]" : "z-[2]",
-          compact ? "h-5 w-5" : "h-6 w-6"
+          compact ? "h-5 w-5" : "h-6 w-6",
+          // Mute date chrome only — task chips must keep full colour on weekends / out-of-month.
+          (isWeekendColumn || !inMonth) && "opacity-50"
         )}
       >
         <span
           className={cn(
             "inline-flex items-center justify-center rounded-sharp",
             compact ? "h-5 w-5" : "h-6 w-6",
-            isSelected && "bg-white text-foreground",
-            isTodayDate && !isSelected && "ring-1 ring-accent/60"
+            isSelected && "bg-white text-foreground opacity-100",
+            isTodayDate && !isSelected && "ring-1 ring-accent/60",
+            !inMonth && !isSelected && "text-muted-foreground/50"
           )}
         >
           {date.getDate()}
         </span>
       </button>
 
+      {onCreateForDate ? (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCreate();
+          }}
+          className={cn(
+            "calendar-day-cell__add absolute bottom-1 right-1 z-[4] inline-flex h-5 w-5 items-center justify-center rounded-[4px]",
+            "bg-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+          )}
+          aria-label={`Create task on ${dateLabel}`}
+          title={`Create task on ${dateLabel}`}
+        >
+          <Plus className="h-3.5 w-3.5 text-white" strokeWidth={2.75} aria-hidden />
+        </button>
+      ) : null}
       <div
         className={cn(
           "relative flex flex-col",
           fillRow ? "min-h-0 flex-1" : "min-h-[22px]",
-          // Above the date numeral while a hand is dealt out on hover.
-          handExpanded ? "z-20 overflow-visible" : "z-[1]"
+          // Title reveal / stacked hands may spill past the cell.
+          "z-[1] overflow-visible",
+          handExpanded && "z-20"
         )}
       >
         <DayDropZone dateKey={dateKey} period="morning" isDragging={isDragging} />
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
         <div
           className={cn(
-            "relative flex flex-col gap-0.5",
+            "relative flex flex-col gap-0.5 overflow-visible",
             fillRow ? "min-h-0 flex-1" : "min-h-0",
-            handExpanded ? "z-20 overflow-visible" : "z-[1] overflow-hidden",
+            handExpanded ? "z-20" : "z-[1]",
             collapseForPeriodMove && fillRow && "h-full",
             // Source chips must not steal the drop target under the pointer.
             isDragging && "pointer-events-none"
@@ -630,6 +888,7 @@ function CalendarDayCell({
                   selectedTaskId={selectedTaskId}
                   onTaskClick={onTaskClick}
                   isDragging={isDragging}
+                  flushEdges={flushEdges}
                   onExpandedChange={onHandExpandedChange}
                 />
               );
@@ -660,6 +919,7 @@ function CalendarDayCell({
                   selectedTaskId={selectedTaskId}
                   onTaskClick={onTaskClick}
                   singleLine={collapseForPeriodMove}
+                  flushEdges={flushEdges}
                   onHoldStart={startHold}
                   onHoldEnd={endHold}
                 />
@@ -690,6 +950,33 @@ export function CalendarMonthGrid({
   const [activePlacement, setActivePlacement] = useState<CalendarTaskPlacement | null>(null);
   /** Lock overlay width to the source chip so it doesn't jump size under the cursor. */
   const [activeChipWidth, setActiveChipWidth] = useState<number | null>(null);
+  const [showFullWeekdayNames, setShowFullWeekdayNames] = useState(false);
+  const [flushEdges, setFlushEdges] = useState(false);
+  const weekdayHeaderRef = useRef<HTMLDivElement>(null);
+  const daysGridRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const headerEl = weekdayHeaderRef.current;
+    const daysEl = daysGridRef.current;
+    if ((!headerEl && !daysEl) || typeof ResizeObserver === "undefined") return;
+
+    const update = () => {
+      const sample =
+        (daysEl?.firstElementChild as HTMLElement | null) ??
+        (headerEl?.firstElementChild as HTMLElement | null);
+      const cellWidth =
+        sample?.getBoundingClientRect().width ??
+        (daysEl ?? headerEl)!.clientWidth / 7;
+      setShowFullWeekdayNames(cellWidth >= WEEKDAY_FULL_NAME_MIN_PX);
+      setFlushEdges(cellWidth <= DAY_CELL_FLUSH_MAX_PX);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    if (headerEl) ro.observe(headerEl);
+    if (daysEl) ro.observe(daysEl);
+    return () => ro.disconnect();
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -802,22 +1089,28 @@ export function CalendarMonthGrid({
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="flex w-full flex-col rounded-xl border border-white/60 shadow-e1">
-        <div className="grid shrink-0 grid-cols-7 border-b border-white/60 px-2 py-2">
-          {WEEKDAY_LABELS.map((label, index) => (
-            <div
-              key={label}
-              className={cn(
-                "text-center font-mono text-2xs font-semibold uppercase tracking-wider",
-                index < 5 ? "text-foreground" : "opacity-50"
-              )}
-            >
-              {label}
-            </div>
-          ))}
+      <div className="flex w-full flex-col bg-transparent">
+        <div
+          ref={weekdayHeaderRef}
+          className="grid shrink-0 grid-cols-7 gap-[3px] px-2 pb-1.5 pt-2"
+        >
+          {(showFullWeekdayNames ? WEEKDAY_LABELS_FULL : WEEKDAY_LABELS_SHORT).map(
+            (label, index) => (
+              <div
+                key={WEEKDAY_LABELS_SHORT[index]}
+                className={cn(
+                  "min-w-0 truncate text-center font-mono text-2xs font-semibold uppercase tracking-wider",
+                  index < 5 ? "text-foreground" : "opacity-50"
+                )}
+              >
+                {label}
+              </div>
+            )
+          )}
         </div>
         <div
-          className="grid shrink-0 grid-cols-7 overflow-visible"
+          ref={daysGridRef}
+          className="grid shrink-0 grid-cols-7 gap-[3px] overflow-visible px-2 pb-2"
           style={{ gridTemplateRows }}
         >
           {flatDays.map((date, index) => {
@@ -841,6 +1134,7 @@ export function CalendarMonthGrid({
                 isWeekendColumn={isWeekendColumn}
                 compact={compact}
                 afternoonOnly={compact && weekAfternoonOnly[weekIndex]}
+                flushEdges={flushEdges}
               />
             );
           })}

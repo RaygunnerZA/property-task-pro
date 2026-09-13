@@ -27,10 +27,15 @@ interface DualPaneLayoutProps {
    */
   stackOnPhone?: boolean;
   /**
-   * Stretch the centre column to the tallest workbench sibling (usually the left
-   * rail), with a viewport-height floor. Inner panes own list scrolling.
+   * Cap the centre column to the viewport height (and stretch to the tallest
+   * sibling floor). Inner panes (MagneticScrollArea, TaskPanel) own list scrolling.
    */
   viewportBoundCentre?: boolean;
+  /**
+   * Nest inside an existing page shell (StandardPage, etc.): no min-h-screen, tighter
+   * top padding. Activity-area modules use this via PropertyWorkspaceLayout.
+   */
+  embedded?: boolean;
 }
 
 /**
@@ -42,6 +47,7 @@ interface DualPaneLayoutProps {
  *   with gutter-rail column-gap so the centre list and detail pane stay separated.
  *   Centre must not use overflow-x-hidden on the grid cell — that couples
  *   overflow-y to `auto` and parks a native scrollbar on the column seam.
+ * - `embedded`: same tracks inside StandardPage (PropertyWorkspaceLayout); no min-h-screen.
  *
  * Home-hub phone (`collapseCentreOnPhone`):
  * - < md: left only — centre (Quick Wins / Inflow…) hidden
@@ -62,6 +68,7 @@ export function DualPaneLayout({
   collapseLeftOnPhone = false,
   stackOnPhone = false,
   viewportBoundCentre = false,
+  embedded = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
@@ -76,24 +83,27 @@ export function DualPaneLayout({
     collapseCentreOnPhone || collapseLeftOnPhone || stackOnPhone;
 
   const stickyColClass = cn(
-    hasHeader
-      ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
-      : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
+    embedded
+      ? "sm:sticky sm:top-[calc(var(--header-height,70px)+12px)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+      : hasHeader
+        ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+        : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
     dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
-    // Triple grid: fill the track and allow compression below the 330px preferred rail.
+    // Triple grid: fill the track; keep the same 12px rail inset as dual (do not drop to pl-2).
     hasThirdColumn &&
-      "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-2 layout:pr-2",
+      "layout:w-full layout:min-w-0 layout:max-w-workbench-side-rail layout:pl-[12px] layout:pr-[12px]",
     "[overflow-anchor:none]"
   );
 
-  // Stretch with the tallest grid sibling (usually the left rail). Floor at
-  // viewport height so a short left rail still fills the screen; inner panes scroll.
+  // Stretch with the tallest grid sibling (usually the left rail). Cap at
+  // viewport height so MagneticScrollArea / inner panes can own vertical scroll —
+  // min-height alone lets the centre grow with the list and disables scrolling.
   const boundCentreMd = hasHeader
-    ? "md:self-stretch md:min-h-[calc(100dvh-var(--header-height,0px)-20px)]"
-    : "md:self-stretch md:min-h-[calc(100dvh-20px)]";
+    ? "md:self-stretch md:h-[calc(100dvh-var(--header-height,0px)-20px)] md:max-h-[calc(100dvh-var(--header-height,0px)-20px)] md:min-h-0"
+    : "md:self-stretch md:h-[calc(100dvh-20px)] md:max-h-[calc(100dvh-20px)] md:min-h-0";
   const boundCentreSm = hasHeader
-    ? "sm:self-stretch sm:min-h-[calc(100dvh-var(--header-height,0px)-20px)]"
-    : "sm:self-stretch sm:min-h-[calc(100dvh-20px)]";
+    ? "sm:self-stretch sm:h-[calc(100dvh-var(--header-height,0px)-20px)] sm:max-h-[calc(100dvh-var(--header-height,0px)-20px)] sm:min-h-0"
+    : "sm:self-stretch sm:h-[calc(100dvh-20px)] sm:max-h-[calc(100dvh-20px)] sm:min-h-0";
 
   const centreShellClass = cn(
     "min-h-0 min-w-0 w-full max-w-full flex-1 px-1 pb-4",
@@ -115,15 +125,21 @@ export function DualPaneLayout({
             "sm:flex sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
             viewportBoundCentre ? boundCentreSm : "sm:h-full sm:self-stretch"
           ),
+    // Same horizontal inset whether dual or triple — matches CentreWorkbench md:px-2 stack.
     hasThirdColumn
       ? "layout:min-w-0 layout:max-w-[700px] layout:overflow-x-clip layout:px-2 layout:pb-5"
-      : "layout:max-w-none layout:px-1 layout:pb-5",
-    /** Phone work-surface: centre is the only column — no leftover left-rail gutter. */
-    collapseLeftOnPhone && "px-gutter-rail pt-0 md:px-1 md:pt-0"
+      : "layout:max-w-none layout:px-2 layout:pb-5",
+    /** Phone work-surface: single 15px edge inset (--gutter-page); avoid stacking rail + pane padding. */
+    collapseLeftOnPhone && "px-gutter-page pt-0 md:px-1 md:pt-0"
   );
 
   return (
-    <div className="flex min-h-screen w-full min-w-0 flex-col">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-col",
+        embedded ? "min-h-0" : "min-h-screen"
+      )}
+    >
       {hasHeader && (
         <div className="w-full shrink-0 min-h-[var(--header-height,70px)] lg:min-h-0">
           {header}
@@ -132,7 +148,8 @@ export function DualPaneLayout({
 
       <div
         className={cn(
-          "flex min-h-0 w-full min-w-0 flex-1 flex-col pt-[20px]",
+          "flex min-h-0 w-full min-w-0 flex-1 flex-col",
+          embedded ? "pt-0" : "pt-[20px]",
           dualGridFromPhone
             ? [
                 "md:grid md:min-h-0 md:grid-cols-workbench-dual",
@@ -146,10 +163,11 @@ export function DualPaneLayout({
                   ? "layout:grid layout:grid-cols-workbench-triple"
                   : "layout:grid layout:grid-cols-workbench-center-max",
               ],
-          collapseLeftOnPhone && "pt-2 md:pt-[20px]",
-          // gap-y only: the `gap` shorthand would reset layout column-gap to 0.
+          !embedded && collapseLeftOnPhone && "pt-2 md:pt-[20px]",
+          // gap-y only for phone stack: the `gap` shorthand would reset column-gap to 0.
           stackOnPhone && "gap-y-4 md:gap-y-0",
-          hasThirdColumn && "layout:gap-x-gutter-rail"
+          // Same column gap as Tasks / Calendar / Records (DualPane + workbench-triple).
+          dualGridFromPhone ? "md:gap-x-gutter-rail" : "sm:gap-x-gutter-rail"
         )}
       >
         <div
@@ -168,7 +186,11 @@ export function DualPaneLayout({
         {hasThirdColumn && (
           <div
             data-workbench-third-column
-            className="hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-clip layout:overflow-y-auto layout:self-start layout:px-2 layout:[overflow-anchor:none]"
+            className={cn(
+              "hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-clip layout:overflow-y-auto layout:self-start layout:px-[12px] layout:[overflow-anchor:none]",
+              embedded &&
+                "layout:sticky layout:top-[calc(var(--header-height,70px)+12px)] layout:max-h-[calc(100dvh-var(--header-height,70px)-48px)]"
+            )}
           >
             {thirdColumn}
           </div>

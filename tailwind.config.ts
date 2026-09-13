@@ -43,7 +43,7 @@ export default {
         "workbench-triple": `minmax(${WORKBENCH_SIDE_RAIL_MIN_PX}px, ${WORKBENCH_SIDE_RAIL_PX}px) minmax(${WORK_SURFACE_MIN_PX}px, ${WORK_SURFACE_MAX_PX}px) minmax(${WORKBENCH_SIDE_RAIL_MIN_PX}px, ${WORKBENCH_SIDE_RAIL_PX}px)`,
       },
       screens: {
-        /** Property workspace / compliance: stacked → three-column */
+        /** @deprecated Alias of `layout` (1280). Prefer `layout:`. */
         workspace: `${LAYOUT_BREAKPOINTS.workspace}px`,
         /** App shell: two-column tablet → three-column desktop */
         layout: `${LAYOUT_BREAKPOINTS.layout}px`,

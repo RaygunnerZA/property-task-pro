@@ -5,6 +5,6 @@ export type { WorkspaceScopeStripProps } from "./WorkspaceScopeStrip";
 export { WorkspaceSurfaceCard } from "./WorkspaceSurfaceCard";
 export type { WorkspaceSurfaceCardProps } from "./WorkspaceSurfaceCard";
 export { WorkspaceSectionHeading } from "./WorkspaceSectionHeading";
-export { WorkspaceHealthGrid } from "./WorkspaceHealthGrid";
+export { WorkspaceHealthGrid, healthStatNumberClass, healthStatCellClass } from "./WorkspaceHealthGrid";
 export type { WorkspaceHealthGridProps, WorkspaceHealthStat } from "./WorkspaceHealthGrid";
 export { WorkspaceTabList, WorkspaceTabTrigger } from "./WorkspaceTabList";

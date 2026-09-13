@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import {
-  Building2,
   Calendar,
   BarChart3,
   HelpCircle,
   Settings,
   FolderOpen,
+  Layers,
+  Package,
+  Users,
 } from "lucide-react";
 import {
   Drawer,
@@ -16,11 +18,18 @@ import {
   DrawerDescription,
 } from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
+import {
+  PROPERTY_ASSETS_PATH,
+  PROPERTY_PEOPLE_PATH,
+  PROPERTY_SPACES_PATH,
+} from "@/lib/mainNavigation";
 
 const MORE_MENU_ITEMS = [
   { to: "/calendar", label: "Calendar", icon: Calendar, description: "Month and schedule" },
   { to: "/records", label: "Records", icon: FolderOpen, description: "Compliance and documents" },
-  { to: "/property/spaces", label: "Property", icon: Building2, description: "Spaces, assets, and people" },
+  { to: PROPERTY_SPACES_PATH, label: "Spaces", icon: Layers, description: "Rooms and space groups" },
+  { to: PROPERTY_ASSETS_PATH, label: "Assets", icon: Package, description: "Equipment and maintainables" },
+  { to: PROPERTY_PEOPLE_PATH, label: "People", icon: Users, description: "Staff, contractors, contacts" },
   { to: "/reports", label: "Reports", icon: BarChart3, description: "Insights and exports" },
   { to: "/help", label: "Help", icon: HelpCircle, description: "Guides and support" },
   { to: "/settings", label: "Settings", icon: Settings, description: "Account and organisation" },

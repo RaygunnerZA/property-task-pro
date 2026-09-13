@@ -57,7 +57,7 @@ function SettingsNavLinks({
       className={cn(
         horizontal
           ? cn(
-              "sticky top-0 z-20 -mx-gutter-page border-b border-border/15 bg-background/80 px-gutter-page py-2 backdrop-blur-md",
+              "sticky top-0 z-20 border-b border-border/15 bg-background/80 py-2 backdrop-blur-md",
               "flex min-w-0 snap-x snap-mandatory flex-row gap-1 overflow-x-auto overscroll-x-contain pb-2 pt-0.5",
               "scrollbar-hz-teal touch-pan-x"
             )
@@ -150,7 +150,7 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
 
   return (
     <>
-      <div className="mb-4 workspace:hidden">
+      <div className="mb-4 px-gutter-page workspace:hidden">
         <PageContentTitle
           title="Settings"
           subtitle="Manage your organisation"
@@ -176,7 +176,7 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
         />
       </div>
 
-      <div className="flex flex-col gap-6 workspace:hidden">
+      <div className="flex flex-col gap-6 px-gutter-page workspace:hidden">
         {workColumn}
         {hasContextualPanel ? actionColumn : null}
       </div>
@@ -208,7 +208,7 @@ export function SettingsLayout() {
       subtitle="Manage your organization"
       icon={<Settings className="h-6 w-6" />}
       maxWidth="full"
-      contentClassName="max-w-[1480px] overflow-x-hidden py-4 sm:py-6"
+      contentClassName="w-full max-w-none overflow-x-hidden px-0 py-0 pt-[20px]"
       hideHeaderSearch
       headerVariant="activity"
       hideTitle

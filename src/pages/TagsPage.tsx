@@ -116,7 +116,6 @@ export default function TagsPage() {
       >
         <WorkspaceHealthGrid
           stats={[
-            { label: "Total", value: tags.length },
             { label: "Categories", value: categoryCount },
             { label: "Tags", value: plainTagCount },
             {
@@ -256,10 +255,8 @@ export default function TagsPage() {
       subtitle="Labels for organising tasks across your properties"
       icon={<TagsIcon className="h-6 w-6" />}
       maxWidth="full"
-      contentClassName="max-w-[1480px]"
+      contentClassName="w-full max-w-none px-0 py-0 pt-[20px]"
       hideTitle
-      hideHeaderSearch
-      headerVariant="activity"
     >
       <PropertyWorkspaceLayout
         pageTitle="Tags"

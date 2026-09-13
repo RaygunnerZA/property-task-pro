@@ -10,10 +10,9 @@ import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGro
 import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
-import { PropertyActivityTabStrip } from "@/components/property/PropertyActivityTabStrip";
 import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
 import { Button } from "@/components/ui/button";
-import { Building2, FileUp, LayoutGrid, Plus } from "lucide-react";
+import { Building2, FileUp, Plus } from "lucide-react";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
@@ -21,6 +20,7 @@ import {
   WorkspaceSectionHeading,
   WorkspaceTabList,
   WorkspaceTabTrigger,
+  WorkspaceHealthGrid,
 } from "@/components/property-workspace";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import {
@@ -28,6 +28,8 @@ import {
   useWorkbenchControls,
 } from "@/contexts/WorkbenchControlsContext";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
+
+const SPACES_ILLUSTRATION = "/centre-workbench/spaces.png";
 
 type SpacesWorkTab = "groups" | "issues";
 type CreatePanelTab = "space" | "property";
@@ -52,7 +54,6 @@ function SpaceOrganisationScreenInner() {
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [createPanelTab, setCreatePanelTab] = useState<CreatePanelTab>("space");
-  const showActivityTabs = !paramPropertyId;
 
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
@@ -125,6 +126,52 @@ function SpaceOrganisationScreenInner() {
   /** Operational chrome only when a space actually needs work (or a deep link asks for it). */
   const showOperationalView = spacesWithIssuesCount > 0 || issuesRequested;
 
+  const clearSpacesCount = Math.max(0, spaces.length - spacesWithIssuesCount);
+
+  const spacesHealthStats = useMemo(() => {
+    const urgentWithIssues = spaces.filter(
+      (s) => openTaskSpaceIds.has(s.id) && urgentPrioritySpaceIds.has(s.id)
+    ).length;
+    return [
+      {
+        line1: "total",
+        line2: "spaces",
+        value: spaces.length,
+        secondaryCount: spacesWithIssuesCount,
+        secondaryLabel: "OPEN",
+        secondaryTone: (spacesWithIssuesCount > 0 ? "urgent" : "neutral") as const,
+        onClick: () => setWorkTab("groups"),
+        selected: workTab === "groups",
+      },
+      {
+        line1: "with",
+        line2: "issues",
+        value: spacesWithIssuesCount,
+        secondaryCount: urgentWithIssues,
+        secondaryLabel: "HOT",
+        secondaryTone: (urgentWithIssues > 0 ? "urgent" : "neutral") as const,
+        onClick: spacesWithIssuesCount > 0 ? () => setWorkTab("issues") : undefined,
+        selected: workTab === "issues",
+      },
+      {
+        line1: "clear",
+        line2: "spaces",
+        value: clearSpacesCount,
+        secondaryCount: spacesWithIssuesCount,
+        secondaryLabel: "WATCH",
+        secondaryTone: (spacesWithIssuesCount > 0 ? "warning" : "neutral") as const,
+        onClick: () => setWorkTab("groups"),
+      },
+    ];
+  }, [
+    spaces,
+    openTaskSpaceIds,
+    urgentPrioritySpaceIds,
+    spacesWithIssuesCount,
+    clearSpacesCount,
+    workTab,
+  ]);
+
   useEffect(() => {
     if (issuesRequested) {
       setWorkTab("issues");
@@ -147,20 +194,8 @@ function SpaceOrganisationScreenInner() {
 
   const contextColumn = (
     <div className="space-y-4">
-      <WorkspaceSurfaceCard title="Overview" description="How this property is organised">
-        <ul className="text-xs text-muted-foreground space-y-2">
-          <li>
-            <span className="font-semibold text-foreground">{spaces.length}</span> spaces
-          </li>
-          <li>
-            <span className="font-semibold text-foreground">{spacesWithIssuesCount}</span> with open
-            tasks
-          </li>
-          <li className="text-2xs pt-1">
-            Groups: Circulation, Habitable / Working, Service — use the work column to open each.
-          </li>
-        </ul>
-      </WorkspaceSurfaceCard>
+      <WorkspaceHealthGrid stats={spacesHealthStats} ariaLabel="Spaces health" />
+      <div className="perforation-section pointer-events-none" aria-hidden />
       <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
         <PropertySpacesList
           propertyId={propertyId}
@@ -199,9 +234,6 @@ function SpaceOrganisationScreenInner() {
 
   const workColumn = (
     <div className="space-y-5">
-      {showActivityTabs ? (
-        <PropertyActivityTabStrip activeTab="spaces" propertyId={propertyId} />
-      ) : null}
       {showOperationalView ? (
         <div>
           <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
@@ -353,12 +385,8 @@ function SpaceOrganisationScreenInner() {
   const workspace = (
     <PropertyWorkspaceLayout
       pageTitle="Spaces"
-      pageSubtitle={
-        property
-          ? `${property.nickname || property.address}`
-          : "Organise your spaces"
-      }
-      pageIcon={<LayoutGrid />}
+      pageSubtitle="Rooms and areas organised for work and inspections."
+      pageIllustrationSrc={SPACES_ILLUSTRATION}
       contextColumn={contextColumn}
       workColumn={workColumn}
       actionColumn={actionColumn}
@@ -368,7 +396,7 @@ function SpaceOrganisationScreenInner() {
   return (
     <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
-      <div className="mx-auto max-w-[1480px] px-gutter-page py-6 w-full">{workspace}</div>
+      <div className="w-full pt-[20px]">{workspace}</div>
       {showAddSpace && (
         <AddSpaceDialog
           open={showAddSpace}
