@@ -1,7 +1,11 @@
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { MoreHorizontal } from "lucide-react";
 import { FillaIcon } from "@/components/filla/FillaIcon";
-import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { performSuggestionAction } from "@/lib/signals/performSuggestionAction";
 import type { ActionableSuggestion } from "@/lib/signals/actionableSuggestionTypes";
@@ -16,7 +20,8 @@ export type FillaRecommendsProps = {
 };
 
 /**
- * Operational “Filla recommends” callout. Hidden when there is no actionable suggestion.
+ * Operational “Filla suggests” callout: one short message, one text action.
+ * Matching details and evidence live in the destination flow, not on the card.
  * Distinct from InstructionPanel, which is for usage tutorials.
  */
 export function FillaRecommends({
@@ -27,12 +32,11 @@ export function FillaRecommends({
   variant = "rail",
   className,
 }: FillaRecommendsProps) {
-  const [evidenceOpen, setEvidenceOpen] = useState(false);
-
   if (!suggestion) return null;
 
   const compact = variant === "compact";
   const feed = variant === "feed";
+  const hasMenu = Boolean(onSnooze || onDismiss);
 
   const handlePrimary = () => {
     if (onPrimaryAction) {
@@ -49,7 +53,7 @@ export function FillaRecommends({
         feed && "rounded-xl bg-card/70 px-3 py-3 shadow-e1",
         className
       )}
-      aria-label="Filla recommends"
+      aria-label="Filla suggests"
     >
       <div
         className={cn(
@@ -66,92 +70,64 @@ export function FillaRecommends({
         >
           <FillaIcon size={compact ? 20 : 24} className="opacity-90" />
         </div>
-        <div className={cn("min-w-0", compact ? "space-y-1" : "space-y-2")}>
-          <p className="font-mono text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Filla recommends
-          </p>
-          <h3
-            className={cn(
-              "font-semibold leading-snug text-ink",
-              compact ? "text-xs tracking-[-0.4px]" : "text-sm"
-            )}
-          >
-            {suggestion.headline}
-          </h3>
+        <div className={cn("min-w-0", compact ? "space-y-1" : "space-y-1.5")}>
+          <div className="flex items-start justify-between gap-2">
+            <p className="font-mono text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Filla suggests
+            </p>
+            {hasMenu ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Suggestion options"
+                    className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                  >
+                    <MoreHorizontal className="h-4 w-4" aria-hidden />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-[8.5rem] border-0 bg-card shadow-e2">
+                  {onSnooze ? (
+                    <DropdownMenuItem
+                      className="text-xs"
+                      onSelect={() => onSnooze(suggestion)}
+                    >
+                      Snooze
+                    </DropdownMenuItem>
+                  ) : null}
+                  {onDismiss ? (
+                    <DropdownMenuItem
+                      className="text-xs"
+                      onSelect={() => onDismiss(suggestion)}
+                    >
+                      Dismiss
+                    </DropdownMenuItem>
+                  ) : null}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
+          </div>
+
           <p
             className={cn(
-              "leading-snug text-foreground/85",
+              "leading-snug text-foreground/90",
               compact ? "text-xs" : "text-sm"
             )}
           >
             {suggestion.message}
           </p>
-          {suggestion.confidence === "qualified" && suggestion.kind === "duplicate_report" ? (
-            <p className="text-2xs text-muted-foreground">
-              Match is based on related wording in Filla, not a linked asset.
-            </p>
-          ) : null}
 
-          <div className="flex flex-wrap items-center gap-2 pt-1">
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 px-3 text-xs"
-              onClick={handlePrimary}
-            >
-              {suggestion.action.label}
-            </Button>
-            {onSnooze ? (
-              <button
-                type="button"
-                className="text-2xs font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => onSnooze(suggestion)}
-              >
-                Snooze
-              </button>
-            ) : null}
-            {onDismiss ? (
-              <button
-                type="button"
-                className="text-2xs font-medium text-muted-foreground hover:text-foreground"
-                onClick={() => onDismiss(suggestion)}
-              >
-                Dismiss
-              </button>
-            ) : null}
-          </div>
-
-          {suggestion.evidence.length > 0 && !compact ? (
-            <div className="pt-1">
-              <button
-                type="button"
-                className="flex items-center gap-1 text-2xs font-medium text-muted-foreground hover:text-foreground"
-                aria-expanded={evidenceOpen}
-                onClick={() => setEvidenceOpen((open) => !open)}
-              >
-                Evidence
-                <ChevronDown
-                  className={cn("h-3 w-3 transition-transform", evidenceOpen && "rotate-180")}
-                  aria-hidden
-                />
-              </button>
-              {evidenceOpen ? (
-                <ul className="mt-1.5 space-y-1">
-                  {suggestion.evidence.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className="block max-w-full truncate text-left text-xs text-foreground/80 underline-offset-2 hover:text-primary hover:underline"
-                        onClick={() => performSuggestionAction(item.action)}
-                      >
-                        {item.label}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </div>
-          ) : null}
+          <button
+            type="button"
+            className={cn(
+              "inline-flex items-center gap-0.5 pt-0.5 font-medium text-primary hover:underline",
+              compact ? "text-xs" : "text-sm"
+            )}
+            onClick={handlePrimary}
+          >
+            {suggestion.action.label}
+            <span aria-hidden>→</span>
+          </button>
         </div>
       </div>
     </section>

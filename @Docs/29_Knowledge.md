@@ -88,6 +88,10 @@ After Knowledge is verified/published: `/admin/knowledge` → **Outputs** (Conte
 
 Stages: Knowledge → SEO → Brief → Outputs (`core_article`, `faq`, `in_app_tip`) → Creative/Publishing stubs.
 
+**In-app seasonal packages** skip SEO. Path: published Knowledge → approved tip wording (item `tip_text` and/or `in_app_tip` output) → `seasonal_packages` / `seasonal_package_items` → Home / Living Knowledge surfaces. Packages are presentation + scheduling only; they must not introduce factual claims absent from linked Knowledge. Soft personalisation may rank CTAs from known inventory gaps (e.g. no heating asset recorded → prefer “Add asset”) but must never treat absence of data as proof that work is incomplete.
+
+**Public / SEO path** remains: Knowledge + sources → SEO → Brief → article/FAQ.
+
 **Research missing evidence (Content Tree):** When SEO lands with knowledge gaps (or source unavailable after a reachable URL exists), Content Tree runs **one** grounded `knowledge-evidence-pack` on the **linked** Knowledge row (optional short discovery only if no URL; fetch via SSRF-safe path; propose `extracted`/`unknown` claims — never invent page text). Then **one** mandatory `knowledge-critic` call. Progress is stored on SEO `current` (`research_status`, `research_fingerprint`, …). Auto-kick is idempotent per gap fingerprint and stops after human verify. On the SEO panel: **Verify claims** promotes `extracted` → `verified`, clears soft SEO gap/warning strings (source issues remain), and unlocks **Approve SEO** on the same panel — no Knowledge bounce and no auto-regen. Optional: regenerate SEO manually later. Never auto-verify, auto-publish, or auto-approve. GAPS matrix overnight research still creates **new Review candidates** — do not use that path for Content Tree enrichment.
 
 Approved outputs are not silently overwritten; upstream changes mark `needs_update`. Ungrounded SEO/output needs become Knowledge gaps (same GAPS queue), not orphaned content-only notes.

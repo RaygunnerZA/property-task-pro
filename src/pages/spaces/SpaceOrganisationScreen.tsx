@@ -196,15 +196,13 @@ function SpaceOrganisationScreenInner() {
     <div className="space-y-4">
       <WorkspaceHealthGrid stats={spacesHealthStats} ariaLabel="Spaces health" />
       <div className="perforation-section pointer-events-none" aria-hidden />
-      <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
-        <PropertySpacesList
-          propertyId={propertyId}
-          tasks={tasks}
-          onSpaceClick={setSelectedSpaceId}
-          selectedSpaceId={selectedSpaceId}
-          defaultView="list"
-        />
-      </div>
+      <PropertySpacesList
+        propertyId={propertyId}
+        tasks={tasks}
+        onSpaceClick={setSelectedSpaceId}
+        selectedSpaceId={selectedSpaceId}
+        defaultView="list"
+      />
       <WorkspaceSurfaceCard
         className="hover:shadow-e1"
         title="Floor plans"

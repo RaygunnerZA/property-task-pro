@@ -219,9 +219,9 @@ describe("compileActionableSuggestions", () => {
       })
     );
     const duplicate = suggestions.find((item) => item.kind === "duplicate_report");
-    expect(duplicate?.action.label).toBe("Review matching task");
+    expect(duplicate?.action.label).toBe("Compare repairs");
     expect(duplicate?.action.taskId).toBe("t-old");
-    expect(duplicate?.message).toContain("already open");
+    expect(duplicate?.message).toContain("Kitchen leak repair");
     expect(duplicate?.confidence).toBe("observed");
   });
 
@@ -329,8 +329,8 @@ describe("compileActionableSuggestions", () => {
     const duplicate = suggestions.find((item) => item.kind === "duplicate_report");
     expect(duplicate?.confidence).toBe("qualified");
     expect(duplicate?.headline).toBe("Check a possible duplicate");
-    expect(duplicate?.message).toContain("similar fault to an open repair at this property");
-    expect(duplicate?.action.label).toBe("Check possible duplicate");
+    expect(duplicate?.message).toBe("This may relate to ‘Lounge heating repair’.");
+    expect(duplicate?.action.label).toBe("Compare repairs");
   });
 
   it("opens the inspection when a certificate is missing rather than promising a request", () => {

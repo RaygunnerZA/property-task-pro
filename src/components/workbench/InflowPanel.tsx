@@ -26,7 +26,9 @@ import { isPropertyProfileId } from "@/lib/propertyProfiles";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import { pickTopRecentSignals, pickTopReviewSignals } from "@/lib/issuesSignalOrdering";
 import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { SeasonalGuidanceCard } from "@/components/filla/SeasonalGuidanceCard";
 import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
+import { useActiveSeasonalPackages } from "@/hooks/useActiveSeasonalPackages";
 import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 import type { RecordsView } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
@@ -211,6 +213,9 @@ export function InflowPanel({
       propertyIds: scopedPropertyIds,
     });
   const furtherSuggestions = suggestions.slice(1, 3);
+  const { topPackage: seasonalPackage } = useActiveSeasonalPackages({
+    enabled: showManagerTriage,
+  });
 
   const reviewItems = useMemo(
     () => pickTopReviewSignals(groupedAttentionItems.review),
@@ -534,6 +539,16 @@ export function InflowPanel({
                   {RECORDS_TO_ORGANISE_SECTION.ctaLabel}
                 </button>
               </div>
+            </section>
+          ) : null}
+
+          {seasonalPackage ? (
+            <section className="min-w-0 py-1">
+              <SeasonalGuidanceCard
+                package={seasonalPackage}
+                onOpenIntake={onOpenIntake}
+                variant="feed"
+              />
             </section>
           ) : null}
         </>

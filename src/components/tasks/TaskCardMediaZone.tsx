@@ -102,7 +102,11 @@ export function TaskCardMediaZone({
           isIllustration
             ? "max-h-full max-w-full object-contain p-2"
             : "absolute inset-0 h-full w-full object-cover",
-          dimmed && "opacity-50"
+          dimmed && "opacity-50",
+          // Fade photo into the shared card surface (bg-card/60 + paper) — no painted overlay.
+          !isIllustration &&
+            (variant === "horizontal" || fixedSize != null) &&
+            "[mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)]"
         )}
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
@@ -112,40 +116,13 @@ export function TaskCardMediaZone({
           }
         }}
       />
-      {/*
-        User photos: fade into the card surface. One masked strip carries the
-        same fill + paper noise as bg-card/60, so the grain continues through
-        the blend instead of sitting as a separate wash.
-      */}
-      {!isIllustration && (variant === "horizontal" || fixedSize != null) ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-y-0 right-0 z-[1] w-5 overflow-hidden"
-          style={{
-            WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 100%)",
-            maskImage: "linear-gradient(to right, transparent 0%, black 100%)",
-          }}
-        >
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundColor:
-                "color-mix(in srgb, hsl(var(--card)) 60%, hsl(var(--background)) 40%)",
-            }}
-          />
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage: "var(--paper-texture)",
-              backgroundSize: "100%",
-              opacity: 0.3,
-            }}
-          />
-        </div>
-      ) : null}
       {!isIllustration ? (
         <div
-          className="pointer-events-none absolute inset-0 z-[1]"
+          className={cn(
+            "pointer-events-none absolute inset-0 z-[1]",
+            (variant === "horizontal" || fixedSize != null) &&
+              "[mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)]"
+          )}
           style={{
             boxShadow:
               variant === "horizontal"

@@ -10,6 +10,7 @@ import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
 import { toSentenceCaseSpaceName } from "@/lib/spaceNameUtils";
 import { LayoutGrid, List, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { RecentPanel, RecentPanelRow } from "@/components/property-workspace";
 import { cn } from "@/lib/utils";
 
 type SpacesListView = "cards" | "list";
@@ -147,10 +148,10 @@ export function PropertySpacesList({
 
   return (
     <>
-      {!headless && (
-        <div className="border-b border-border/40 px-2 pb-3 pt-3">
-          <div className="flex items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-foreground">{sectionTitle}</h2>
+      <div className={cn("w-full max-w-full overflow-x-hidden", headless ? "pt-2" : "pt-1")}>
+        <RecentPanel
+          title={sectionTitle}
+          action={
             <div className="flex items-center gap-1">
               {viewToggle}
               <button
@@ -162,80 +163,55 @@ export function PropertySpacesList({
                 <Plus className="h-4 w-4" />
               </button>
             </div>
-          </div>
-        </div>
-      )}
-      <div className={cn("w-full max-w-full overflow-x-hidden px-2 pb-3", headless ? "pt-2" : "pt-[2px]")}>
-        {headless && (
-          <div className="flex items-center justify-between gap-2 pb-2">
-            {viewToggle}
-            <button
-              type="button"
-              onClick={() => setShowAddSpace(true)}
-              className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              aria-label="Add space"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add space
-            </button>
-          </div>
-        )}
-        {spacesLoading ? (
-          <div className="space-y-2">
-            <Skeleton className="h-12 w-full rounded-lg" />
-            <Skeleton className="h-12 w-full rounded-lg" />
-          </div>
-        ) : displaySpaces.length === 0 ? (
-          <div className="py-6 text-center">
-            <p className="text-xs text-muted-foreground">No spaces yet</p>
-          </div>
-        ) : view === "list" ? (
-          <ul className="flex flex-col gap-1.5">
-            {displaySpaces.map((space) => {
-              const spaceWithTypes = space as {
-                space_types?: { default_icon?: string | null; name?: string | null } | null;
-                thumbnail_url?: string | null;
-              };
-              const thumb = getSpaceDisplayIllustration({
-                name: space.name,
-                thumbnail_url: spaceWithTypes.thumbnail_url,
-                spaceTypeName: spaceWithTypes.space_types?.name,
-              });
-              const taskCount = spaceTaskCounts.counts[space.id] || 0;
-              const isSelected = selectedSpaceId === space.id;
-              return (
-                <li key={space.id}>
-                  <button
-                    type="button"
+          }
+          empty={
+            spacesLoading || (view === "cards" && displaySpaces.length > 0) ? null : (
+              <div className="py-6 text-center">
+                <p className="text-xs text-muted-foreground">No spaces yet</p>
+              </div>
+            )
+          }
+        >
+          {!spacesLoading && view === "list" && displaySpaces.length > 0
+            ? displaySpaces.map((space) => {
+                const spaceWithTypes = space as {
+                  space_types?: { default_icon?: string | null; name?: string | null } | null;
+                  thumbnail_url?: string | null;
+                };
+                const thumb = getSpaceDisplayIllustration({
+                  name: space.name,
+                  thumbnail_url: spaceWithTypes.thumbnail_url,
+                  spaceTypeName: spaceWithTypes.space_types?.name,
+                });
+                const taskCount = spaceTaskCounts.counts[space.id] || 0;
+                const isSelected = selectedSpaceId === space.id;
+                return (
+                  <RecentPanelRow
+                    key={space.id}
+                    selected={isSelected}
                     onClick={() => handleSpaceOpen(space)}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-card px-2 py-1.5 text-left transition-shadow",
-                      "bg-card/70 shadow-e1 hover:shadow-md",
-                      isSelected && "ring-1 ring-primary/60"
-                    )}
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-[6px] bg-muted/40">
-                      <img src={thumb} alt="" className="h-9 w-9 object-contain" loading="lazy" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-medium text-foreground">
-                        {toSentenceCaseSpaceName(space.name)}
-                      </span>
-                      {taskCount > 0 ? (
-                        <span className="text-caption text-muted-foreground">
-                          {taskCount} open task{taskCount === 1 ? "" : "s"}
-                        </span>
-                      ) : (
-                        <span className="text-caption text-muted-foreground/70">No open tasks</span>
-                      )}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : (
-          <div ref={spacesRef} className="relative h-[145px] w-full max-w-full overflow-hidden">
+                    icon={
+                      <img src={thumb} alt="" className="h-8 w-8 object-contain" loading="lazy" />
+                    }
+                    title={toSentenceCaseSpaceName(space.name)}
+                    caption={
+                      taskCount > 0
+                        ? `${taskCount} open task${taskCount === 1 ? "" : "s"}`
+                        : "No open tasks"
+                    }
+                  />
+                );
+              })
+            : null}
+        </RecentPanel>
+        {spacesLoading ? (
+          <div className="mt-1.5 space-y-2">
+            <Skeleton className="h-12 w-full rounded-[5px]" />
+            <Skeleton className="h-12 w-full rounded-[5px]" />
+          </div>
+        ) : null}
+        {!spacesLoading && view === "cards" && displaySpaces.length > 0 ? (
+          <div ref={spacesRef} className="relative mt-1.5 h-[145px] w-full max-w-full overflow-hidden">
             <div
               className="scrollbar-hz-teal -ml-4 h-[145px] min-w-0 overflow-x-auto pl-4 pr-4"
               style={{ width: "calc(100% + 15px)" }}
@@ -282,7 +258,7 @@ export function PropertySpacesList({
               aria-hidden
             />
           </div>
-        )}
+        ) : null}
       </div>
 
       <AddSpaceDialog

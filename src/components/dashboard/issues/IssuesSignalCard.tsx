@@ -147,6 +147,7 @@ export function IssuesSignalCard({
     title: item.title,
     context: item.context,
     signalKind: item.signalKind,
+    seed: item.id,
   });
 
   if (item.group === "urgent") {

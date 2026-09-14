@@ -5,6 +5,7 @@ import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { ComplianceRecord } from "@/components/records/complianceRecordModel";
 import { SampleContentLessonDialog } from "@/components/onboarding/SampleContentLessonDialog";
 import { DemoContentLabel } from "@/components/dashboard/issues/IssuesSignalListParts";
+import { RecentPanel, RecentPanelRow } from "@/components/property-workspace";
 import { getRecordGroup } from "@/lib/records/recordGroups";
 import {
   dismissOnboardingSample,
@@ -44,9 +45,7 @@ type PropertyRecentRecordsListProps = {
 };
 
 /**
- * Recent records list — same row language as PropertySpacesList (thumb + name + caption).
- * Seeded samples open an instructive lesson and phase out on confirm (or when real
- * records exist).
+ * Recent records — same pressed Recent rows as Spaces / Assets / Tasks.
  */
 export function PropertyRecentRecordsList({
   documents,
@@ -133,25 +132,26 @@ export function PropertyRecentRecordsList({
       return true;
     })
     .slice(0, limit);
+
   return (
-    <div className={cn("space-y-2", className)}>
-      {!headless ? (
-        <div className="flex items-center justify-between gap-2 px-0.5">
-          <h3 className="text-sm font-semibold text-foreground">Recent records</h3>
-        </div>
-      ) : null}
-      {items.length === 0 ? (
-        <p className="rounded-card bg-card/70 px-3 py-4 text-xs text-muted-foreground shadow-e1">
-          Recent documents and obligations will appear here.
-        </p>
-      ) : (
-        <ul className="space-y-1.5">
-          {items.map((item) => {
-            const Icon = item.kind === "compliance" ? Shield : FileText;
-            return (
-              <li key={`${item.kind}-${item.id}`}>
-                <button
-                  type="button"
+    <div className={cn("w-full min-w-0", className)}>
+      <RecentPanel
+        title={headless ? "Recent" : "Recent records"}
+        empty={
+          <p className="px-0.5 py-3 text-caption text-muted-foreground">
+            Recent documents and obligations will appear here.
+          </p>
+        }
+      >
+        {items.length > 0
+          ? items.map((item) => {
+              const Icon = item.kind === "compliance" ? Shield : FileText;
+              const when = item.at
+                ? formatDistanceToNow(new Date(item.at), { addSuffix: true })
+                : "";
+              return (
+                <RecentPanelRow
+                  key={`${item.kind}-${item.id}`}
                   onClick={() => {
                     if (item.isSample) {
                       setLessonItem(item);
@@ -160,42 +160,23 @@ export function PropertyRecentRecordsList({
                     if (item.kind === "document") onOpenDocument?.(item.id);
                     else onOpenCompliance?.(item.id);
                   }}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-card bg-card/70 px-2.5 py-2 text-left shadow-e1",
-                    "transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                  )}
-                >
-                  <span
-                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-white"
-                    style={{ backgroundColor: item.accent }}
-                    aria-hidden
-                  >
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex min-w-0 items-center gap-1.5">
-                      <span className="block truncate text-sm font-medium text-foreground">
-                        {item.title}
-                      </span>
+                  icon={<Icon className="h-4 w-4" style={{ color: item.accent }} aria-hidden />}
+                  title={
+                    <span className="inline-flex min-w-0 items-center gap-1.5">
+                      <span className="truncate">{item.title}</span>
                       {item.isSample ? (
                         <span className="shrink-0">
                           <DemoContentLabel />
                         </span>
                       ) : null}
                     </span>
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {item.subtitle}
-                      {item.at
-                        ? ` · ${formatDistanceToNow(new Date(item.at), { addSuffix: true })}`
-                        : ""}
-                    </span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                  }
+                  caption={`${item.subtitle}${when ? ` · ${when}` : ""}`}
+                />
+              );
+            })
+          : null}
+      </RecentPanel>
 
       <SampleContentLessonDialog
         open={lessonItem != null}

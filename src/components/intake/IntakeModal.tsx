@@ -85,6 +85,8 @@ import { mergeAiPeopleIntoChips } from "@/services/ai/mergeAiPeopleChips";
 import { enrichSuggestionChipsWithEntities } from "@/services/ai/enrichSuggestionChipsWithEntities";
 import type { GhostCategory, SuggestedChip } from "@/types/chip-suggestions";
 import { cn } from "@/lib/utils";
+import { FILLA_TURQUOISE } from "@/lib/brandColors";
+import { paperTexturedColorStyle } from "@/lib/paperTexture";
 import { toErrorMessage } from "@/lib/error";
 import {
   intakeFooterSubmitAddRecordClassName,
@@ -4175,9 +4177,15 @@ export function IntakeModal({
       className={cn(
         "flex w-full min-w-0 flex-nowrap gap-1",
         isColumnComposerOpen
-          ? "h-14 w-full items-end overflow-visible rounded-t-[13px] rounded-b-[5px] bg-[rgba(0,0,0,0.03)] pl-3 pr-3 pt-3 pb-0 shadow-[0_-1px_1px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
-          : "h-12 items-stretch rounded-[15px] bg-[rgba(0,0,0,0.03)] p-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
+          ? cn(
+              // Active tab sits 15px from top + nearest side of the turquoise track.
+              "h-[calc(3.5rem+15px)] w-full items-end overflow-visible rounded-t-[13px] rounded-b-[5px] pb-0 shadow-[0_-1px_1px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]",
+              "pt-[15px]",
+              intakeMode === "report_issue" ? "pl-[15px] pr-3" : "pl-3 pr-[15px]"
+            )
+          : "h-12 items-stretch rounded-[15px] py-1.5 pl-1 pr-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
       )}
+      style={paperTexturedColorStyle(FILLA_TURQUOISE)}
       role="tablist"
       aria-label="Intake type"
     >
@@ -4192,21 +4200,21 @@ export function IntakeModal({
           aria-selected={selected}
           onClick={() => trySetIntakeMode(m)}
           className={cn(
-            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 text-xs font-medium transition-all sm:gap-2 sm:text-sm",
+            "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 font-medium transition-all sm:gap-2",
+            isCreate ? "text-sm sm:text-[15px]" : "text-xs sm:text-sm",
             isColumnComposerOpen
               ? cn(
-                  "px-3 py-2",
+                  "px-2 py-2",
                   selected
                     ? "intake-folder-tab relative z-10 rounded-t-[9px] rounded-b-none bg-background py-2.5 font-bold text-foreground"
-                    : "rounded-card text-muted-foreground hover:text-foreground/90"
+                    : "rounded-card text-white hover:text-white/90"
                 )
               : cn(
-                  "rounded-card px-2.5 py-2",
+                  "rounded-card py-2",
+                  isCreate ? "pl-1.5 pr-2.5" : "px-2.5",
                   selected
-                    ? isCreate
-                      ? "bg-primary text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.35)]"
-                      : "bg-[hsl(16_82%_56%)] text-white intake-cta-grain shadow-[2px_4px_6px_0px_rgba(0,0,0,0.15),inset_1px_1px_2px_0px_rgba(255,255,255,0.4)]"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-background font-semibold text-foreground shadow-[2px_4px_6px_0px_rgba(0,0,0,0.12),inset_1px_1px_2px_0px_rgba(255,255,255,0.55)]"
+                    : "text-white hover:text-white/90"
                 )
           )}
         >
@@ -4215,12 +4223,12 @@ export function IntakeModal({
             className={cn(
               "inline-flex shrink-0 items-center [&>svg]:h-3.5 [&>svg]:w-3.5 sm:[&>svg]:h-4 sm:[&>svg]:w-4",
               collapseIntakeTabIcons && "hidden",
-              isColumnComposerOpen &&
-                selected &&
-                cn(
-                  "intake-folder-tab-label",
-                  isCreate ? "text-primary" : "text-[hsl(16_82%_56%)]"
-                )
+              selected
+                ? isCreate
+                  ? "text-primary"
+                  : "text-[hsl(16_82%_56%)]"
+                : "text-white",
+              isColumnComposerOpen && selected && "intake-folder-tab-label"
             )}
             aria-hidden
           >
@@ -4267,7 +4275,11 @@ export function IntakeModal({
     <div
       className={cn(
         "relative w-full min-w-0",
-        collapseComposer ? "h-9" : isColumnComposerOpen ? "h-14" : "h-12"
+        collapseComposer
+          ? "h-9"
+          : isColumnComposerOpen
+            ? "h-[calc(3.5rem+15px)]"
+            : "h-12"
       )}
     >
       <div
@@ -4521,7 +4533,8 @@ export function IntakeModal({
         <div
           className={cn(
             "shrink-0",
-            isColumnComposerOpen ? "relative z-10 mx-2 mt-0 overflow-visible p-0" : "px-2 pt-2 pb-1"
+            // Full-bleed track — same outer edges as upload / textarea / Add to Filla.
+            isColumnComposerOpen ? "relative z-10 w-full overflow-visible p-0" : "px-0 pt-2 pb-1"
           )}
         >
           {intakeModeSwitcher}
@@ -4536,12 +4549,13 @@ export function IntakeModal({
                 "overflow-visible",
                 isColumnComposerOpen
                   ? cn(
-                      "relative z-0 -mt-2 mx-2 bg-background px-2 py-3",
+                      // Full width with tab track / Add to Filla; CTA insets another 15px.
+                      "relative z-0 -mt-2 w-full bg-background px-0 py-3",
                       intakeMode === "report_issue"
                         ? "rounded-b-[23px] rounded-tr-[20px]"
                         : "rounded-b-[23px] rounded-tl-[20px]"
                     )
-                  : "px-2 rounded-[23px]"
+                  : "px-0 rounded-[23px]"
               )
             : "overflow-y-auto overscroll-contain px-4",
           variant === "column" &&
@@ -5050,6 +5064,11 @@ export function IntakeModal({
           "px-4 pt-3 pb-5 border-t border-border/30 space-y-2",
           variant === "column" &&
             headless &&
+            !collapseComposer &&
+            // Match outer column gutter; primary CTA sits another 15px in (= active tab edge).
+            "border-0 px-0 pt-1 pb-4",
+          variant === "column" &&
+            headless &&
             collapseComposer &&
             "max-h-0 overflow-hidden border-0 p-0 opacity-0 pointer-events-none transition-[max-height,opacity,padding] duration-300 ease-out",
           variant === "column" &&
@@ -5059,7 +5078,12 @@ export function IntakeModal({
         )}
         aria-hidden={variant === "column" && headless && collapseComposer}
       >
-        <div className="flex gap-2">
+        <div
+          className={cn(
+            "flex gap-2",
+            isColumnComposerOpen && "mx-[15px]"
+          )}
+        >
           <div
             className={cn(
               "min-w-0 overflow-hidden transition-[flex-grow,flex-basis,opacity,max-width] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",
@@ -5096,8 +5120,8 @@ export function IntakeModal({
                 : primaryLabel}
           </Button>
         </div>
-        {!fromIntakeReview && (
-        <div className="flex flex-col gap-1.5 text-center">
+          {!fromIntakeReview && (
+        <div className={cn("flex flex-col gap-1.5 text-center", isColumnComposerOpen && "mx-[15px]")}>
           <div
             className={cn(
               "overflow-hidden transition-[max-height,opacity,padding] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none",

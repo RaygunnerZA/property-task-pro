@@ -718,7 +718,7 @@ const Assets = () => {
               <div className="space-y-4">
                 <WorkspaceHealthGrid stats={assetsHealthStats} ariaLabel="Asset health" />
                 <div className="perforation-section pointer-events-none" aria-hidden />
-                <div className="flex flex-col overflow-hidden rounded-xl bg-card/60 shadow-e1">
+                <div className="flex flex-col overflow-hidden">
                   <PropertyRecentAssetsList
                     propertyId={effectiveScopeId}
                     onAssetClick={openAsset}

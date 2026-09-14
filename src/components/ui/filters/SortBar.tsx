@@ -85,15 +85,14 @@ export function SortBar({
         aria-label={expanded ? "Sort — collapse options" : "Sort — open options"}
         title="Sort"
         className={cn(
-          "inline-flex items-center justify-start gap-1.5 py-1 pl-2 pr-2.5 rounded-[8px] flex-shrink-0 overflow-hidden h-[28px]",
-          "font-mono text-2xs uppercase tracking-wide",
+          "inline-flex items-center justify-start gap-1.5 py-0 pl-2 pr-2.5 rounded-[8px] flex-shrink-0 overflow-hidden h-[28px]",
+          "font-mono text-2xs uppercase tracking-wide leading-none",
           "select-none cursor-pointer",
           "bg-background",
           expanded
             ? "shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] bg-card"
             : "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)] hover:bg-card"
         )}
-        style={{ letterSpacing: "0.325px" }}
       >
         <ArrowUpDown className="h-[14px] w-[14px] text-foreground shrink-0" />
         <span className="whitespace-nowrap">SORT</span>

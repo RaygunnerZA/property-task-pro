@@ -312,7 +312,7 @@ All design tokens are defined in:
 3. **Perforation** line
 4. **Expandable calendar** — **Tasks** and **Records** only; **collapsed by default**. Omitted on **Calendar** (centre owns the calendar) and on Spaces / Assets / People / Home
 5. **Filla suggested actions** — up to 3
-6. **Recent** — compact list of recent task activity / messages / events / records (workspace) or spaces / assets / people / contractors / teams (place-entity screens)
+6. **Recent** — compact list via shared `RecentPanel` / `RecentPanelRow`: calendar day-cell **pressed paper** on each row, mono uppercase section label, `text-sm` title + caption. **No outer card wrapping rows** (no boxes on boxes).
 
 **Centre — Spaces · Assets · People:** page sub-tabs → collection slider (no collection title/description above; match Spaces Groups / Records slider patterns for Assets and People) → filter bar + sort → responsive lists. No centre Spaces/Assets/People tab strip — left-nav + left-column illustration identify the screen.
 

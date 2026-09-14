@@ -339,6 +339,16 @@ function illustrationFromKeywords(label: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Keyword-only match against free text (task titles, signal copy).
+ * Skips fuzzy catalog matching so long sentences do not collapse onto a nearby slug.
+ */
+export function getSpaceIllustrationFromCopy(text: string | null | undefined): string | undefined {
+  const raw = text?.trim();
+  if (!raw) return undefined;
+  return illustrationFromKeywords(raw);
+}
+
 function isExplicitOfficeLabel(label: string | null | undefined): boolean {
   const slug = spaceTypeIllustrationSlug(label);
   if (!slug) return false;

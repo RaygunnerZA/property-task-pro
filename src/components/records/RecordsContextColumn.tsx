@@ -110,15 +110,13 @@ export function RecordsContextColumn({
         />
       </WorkspaceSurfaceCard>
 
-      <div className="overflow-hidden rounded-xl bg-card/60 p-3 shadow-e1">
-        <PropertyRecentRecordsList
-          documents={documents}
-          complianceRecords={scopedComplianceRecords}
-          onOpenDocument={(id) => setSelectedDocId(id)}
-          onOpenCompliance={(id) => setSelectedComplianceId(id)}
-          propertyId={scopedPropertyId}
-        />
-      </div>
+      <PropertyRecentRecordsList
+        documents={documents}
+        complianceRecords={scopedComplianceRecords}
+        onOpenDocument={(id) => setSelectedDocId(id)}
+        onOpenCompliance={(id) => setSelectedComplianceId(id)}
+        propertyId={scopedPropertyId}
+      />
 
       <ComplianceDetailDrawer
         open={Boolean(selectedComplianceRecord)}

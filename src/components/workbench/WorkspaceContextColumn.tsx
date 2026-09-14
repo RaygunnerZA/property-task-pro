@@ -3,16 +3,21 @@ import { MessageSquare, CalendarDays, FileText, CheckSquare } from "lucide-react
 import { formatDistanceToNow, isToday, isThisWeek, parseISO, isValid } from "date-fns";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
 import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { SeasonalGuidanceCard } from "@/components/filla/SeasonalGuidanceCard";
 import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
+import { useActiveSeasonalPackages } from "@/hooks/useActiveSeasonalPackages";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkbenchSectionHero } from "@/components/workbench/WorkbenchSectionHero";
 import {
   healthStatCellClass,
   healthStatNumberClass,
-} from "@/components/property-workspace/WorkspaceHealthGrid";
+  RecentPanel,
+  RecentPanelRow,
+} from "@/components/property-workspace";
 import { cn } from "@/lib/utils";
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
+import type { IntakeMode } from "@/types/intake";
 import {
   CENTRE_WORKBENCH_TAB_META,
   type CentreWorkbenchTab,
@@ -87,7 +92,7 @@ export type WorkspaceContextColumnProps = {
   selectedPropertyIds?: Set<string>;
   onFilterClick?: (filterId: string) => void;
   onTaskClick?: (taskId: string) => void;
-  onOpenIntake?: () => void;
+  onOpenIntake?: (mode: IntakeMode) => void;
   className?: string;
 };
 
@@ -347,6 +352,9 @@ export function WorkspaceContextColumn({
       tasks: scopedTasks as Array<Record<string, unknown>>,
       propertyIds: scopedPropertyIds,
     });
+  const { topPackage: seasonalPackage } = useActiveSeasonalPackages({
+    enabled: !topSuggestion,
+  });
 
   const recent = useMemo((): RecentItem[] => {
     const items: RecentItem[] = scopedTasks
@@ -422,18 +430,24 @@ export function WorkspaceContextColumn({
             onSnooze={snoozeSuggestion}
           />
         </div>
+      ) : seasonalPackage ? (
+        <div className="px-1 py-3">
+          <SeasonalGuidanceCard
+            package={seasonalPackage}
+            onOpenIntake={onOpenIntake}
+            variant="rail"
+          />
+        </div>
       ) : null}
 
-      {/* Recent */}
-      <div className="mt-4 px-1">
-        <p className="mb-2 font-mono text-2xs font-semibold uppercase tracking-[0.14em] text-muted-foreground/70">
-          Recent
-        </p>
-        {recent.length === 0 ? (
-          <p className="text-caption text-muted-foreground">No recent activity yet.</p>
-        ) : (
-          <ul className="space-y-1.5">
-            {recent.map((item) => {
+      {/* Recent — same pressed rows as Spaces / Assets / Records */}
+      <RecentPanel
+        className="mt-4 px-1"
+        title="Recent"
+        empty={<p className="px-0.5 text-caption text-muted-foreground">No recent activity yet.</p>}
+      >
+        {recent.length > 0
+          ? recent.map((item) => {
               const Icon = kindIcon(item.kind);
               const when = (() => {
                 try {
@@ -443,38 +457,19 @@ export function WorkspaceContextColumn({
                   return "";
                 }
               })();
-              const row = (
-                <>
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-muted/50 text-muted-foreground">
-                    <Icon className="h-3.5 w-3.5" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-foreground/90">{item.title}</span>
-                    {when ? (
-                      <span className="block text-2xs text-muted-foreground/70">{when}</span>
-                    ) : null}
-                  </span>
-                </>
-              );
               return (
-                <li key={item.id}>
-                  {item.onActivate ? (
-                    <button
-                      type="button"
-                      onClick={item.onActivate}
-                      className="flex w-full items-center gap-2 rounded-xl px-1.5 py-1.5 text-left transition-colors hover:bg-muted/40"
-                    >
-                      {row}
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 rounded-xl px-1.5 py-1.5">{row}</div>
-                  )}
-                </li>
+                <RecentPanelRow
+                  key={item.id}
+                  icon={<Icon className="h-3.5 w-3.5" aria-hidden />}
+                  title={item.title}
+                  caption={when || undefined}
+                  onClick={item.onActivate}
+                  nonInteractive={!item.onActivate}
+                />
               );
-            })}
-          </ul>
-        )}
-      </div>
+            })
+          : null}
+      </RecentPanel>
     </div>
   );
 }

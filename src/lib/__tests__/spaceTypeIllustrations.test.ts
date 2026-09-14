@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   getSpaceDisplayIllustration,
+  getSpaceIllustrationFromCopy,
   resolveSpaceMiniCardIllustration,
 } from "@/lib/spaceTypeIllustrations";
 
@@ -36,6 +37,15 @@ describe("resolveSpaceMiniCardIllustration", () => {
     expect(resolveSpaceMiniCardIllustration("Zone 1")).toBe(
       "/spaces/mini-cards/lobby.png"
     );
+  });
+});
+
+describe("getSpaceIllustrationFromCopy", () => {
+  it("matches space words inside longer titles without falling back to office", () => {
+    expect(getSpaceIllustrationFromCopy("Fix the gate")).toBe(
+      "/spaces/mini-cards/exterior-gate.png"
+    );
+    expect(getSpaceIllustrationFromCopy("Unable to upload floor plan")).toBeUndefined();
   });
 });
 

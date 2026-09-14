@@ -8,7 +8,8 @@ export interface IconButtonProps {
   icon: React.ReactNode;
   onClick?: () => void;
   active?: boolean; // Only for filter-toggle
-  size?: 24 | 35 | 40;
+  /** Filter-bar controls use 28 to match FilterChip / FILTER / SORT. */
+  size?: 24 | 28 | 35 | 40;
   className?: string;
   tooltip?: string;
   disabled?: boolean;
@@ -34,11 +35,21 @@ export function IconButton({
   disabled = false,
   'aria-label': ariaLabel,
 }: IconButtonProps) {
-  const sizeClass = size === 24 ? "h-6 w-6" : size === 35 ? "h-[35px] w-[35px]" : "h-10 w-10";
+  const sizeClass =
+    size === 24
+      ? "h-6 w-6"
+      : size === 28
+        ? "h-[28px] w-[28px]"
+        : size === 35
+          ? "h-[35px] w-[35px]"
+          : "h-10 w-10";
+
+  const radiusClass = size === 28 ? "rounded-[8px]" : "rounded-sharp";
   
   const baseStyles = cn(
     sizeClass,
-    "rounded-sharp flex items-center justify-center gap-0",
+    radiusClass,
+    "flex items-center justify-center gap-0",
     "transition-all duration-150",
     "bg-background",
     "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",

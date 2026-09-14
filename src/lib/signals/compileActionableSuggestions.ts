@@ -314,25 +314,24 @@ function tasksShareIssue(a: SuggestionTask, b: SuggestionTask, ctx: SuggestionCo
   return { matched: false, qualified: false };
 }
 
-function duplicateCopy(qualified: boolean, leakLanguage: boolean): {
+function duplicateCopy(
+  qualified: boolean,
+  existingTitle?: string | null
+): {
   headline: string;
   message: string;
   label: string;
 } {
-  if (qualified) {
-    return {
-      headline: "Check a possible duplicate",
-      message:
-        "This report describes a similar fault to an open repair at this property. Check whether they concern the same issue.",
-      label: "Check possible duplicate",
-    };
-  }
+  const named = (existingTitle ?? "").trim().replace(/\s+/g, " ");
+  const displayName = named.length > 64 ? `${named.slice(0, 61).trimEnd()}…` : named;
+  const message = displayName
+    ? `This may relate to ‘${displayName}’.`
+    : "This may be the same issue as an existing repair.";
   return {
-    headline: "A matching repair is already open",
-    message: leakLanguage
-      ? "A task for this leak is already open. Link the new report so updates stay together."
-      : "A task for this issue is already open. Link the new report so updates stay together.",
-    label: "Review matching task",
+    // Headline kept for fingerprint stability; the card shows message only.
+    headline: qualified ? "Check a possible duplicate" : "A matching repair is already open",
+    message,
+    label: "Compare repairs",
   };
 }
 
@@ -365,8 +364,7 @@ function duplicateReportSuggestions(ctx: SuggestionCompileContext): ActionableSu
     used.add(pairKey);
 
     const qualified = best.match.qualified;
-    const leakLanguage = /\bleak/i.test(`${incoming.title ?? ""} ${best.existing.title ?? ""}`);
-    const copy = duplicateCopy(qualified, leakLanguage);
+    const copy = duplicateCopy(qualified, best.existing.title);
     out.push({
       id: `duplicate-report:${pairKey}`,
       kind: "duplicate_report",
@@ -419,8 +417,7 @@ function duplicateReportSuggestions(ctx: SuggestionCompileContext): ActionableSu
       .filter((row) => row.match.matched)[0];
     if (!match) continue;
     const qualified = match.match.qualified;
-    const leakLanguage = /\bleak/i.test(`${signal.title} ${match.task.title ?? ""}`);
-    const copy = duplicateCopy(qualified, leakLanguage);
+    const copy = duplicateCopy(qualified, match.task.title);
     out.push({
       id: `duplicate-report:signal:${signal.id}:${match.task.id}`,
       kind: "duplicate_report",

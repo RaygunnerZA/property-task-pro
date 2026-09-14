@@ -294,7 +294,7 @@ export function LeftColumn({
           selectedPropertyIds={selectedPropertyIds}
           onFilterClick={onFilterClick}
           onTaskClick={onTaskClick}
-          onOpenIntake={onOpenIntake ? () => onOpenIntake("report_issue") : undefined}
+          onOpenIntake={onOpenIntake}
         />
       ) : (
         <>

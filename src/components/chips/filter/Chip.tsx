@@ -65,10 +65,10 @@ export function FilterChip({
       className={cn(
         "inline-flex items-center",
         isIconOnly ? "justify-center gap-0" : "gap-1.5",
-        "px-2 py-1",
+        "px-2.5 py-0",
         chipHeight,
         "rounded-[8px]",
-        "font-mono uppercase tracking-wide",
+        "font-mono uppercase tracking-wide leading-none",
         textSize,
         "transition-all duration-150 cursor-pointer select-none",
         "bg-background text-muted-foreground",

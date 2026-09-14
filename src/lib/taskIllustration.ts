@@ -1,5 +1,8 @@
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
-import { getSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
+import {
+  getSpaceIllustrationFromCopy,
+  getSpaceMiniCardIllustration,
+} from "@/lib/spaceTypeIllustrations";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 import type { SignalKind } from "@/types/workbenchSignals";
 
@@ -48,18 +51,64 @@ function resolveSpaceIllustrationLabel(space: TaskSpaceRef): string | null {
 }
 
 /**
- * Task title keywords → canonical space type when linked space labels do not resolve.
- * Keeps maintenance tasks visually grounded (e.g. temperature checks → boiler room art).
+ * Operational title keywords that are not space names.
+ * Space-word matching (gate, kitchen, loft…) lives in getSpaceIllustrationFromCopy.
  */
 const TASK_TITLE_SPACE_HINTS: ReadonlyArray<{ pattern: RegExp; spaceType: string }> = [
-  { pattern: /\b(boiler|temperature|thermostat|heating|hvac)\b/i, spaceType: "Boiler Room" },
-  { pattern: /\b(server|rack|datacentre|datacenter)\b/i, spaceType: "Server Room" },
-  { pattern: /\b(kitchen|cooker|oven|dishwasher|sink)\b/i, spaceType: "Kitchen" },
-  { pattern: /\b(bathroom|toilet|wc|shower|mould|mold)\b/i, spaceType: "Bathroom" },
-  { pattern: /\b(parking|car park|garage)\b/i, spaceType: "Car Park" },
-  { pattern: /\b(pool|pump)\b/i, spaceType: "Garden" },
-  { pattern: /\b(compliance|document|record)\b/i, spaceType: "Archive" },
+  { pattern: /\b(floor.?plan|blueprint|site.?plan)\b/i, spaceType: "Building Exterior" },
+  { pattern: /\b(boiler|temperature|thermostat|heating)\b/i, spaceType: "Boiler Room" },
+  { pattern: /\b(cooker|oven|dishwasher|sink)\b/i, spaceType: "Kitchen" },
+  { pattern: /\b(mould|mold|damp)\b/i, spaceType: "Bathroom" },
+  { pattern: /\b(leak|plumb|pipe|drain)\b/i, spaceType: "Plant Room" },
+  { pattern: /\b(light|lighting|bulb|fuse)\b/i, spaceType: "Electrical Room" },
+  { pattern: /\b(door|doorbell|lock|keys?)\b/i, spaceType: "Entrance" },
+  { pattern: /\b(window|glazing)\b/i, spaceType: "Building Exterior" },
+  { pattern: /\b(building|buildings)\b/i, spaceType: "Building Exterior" },
+  { pattern: /\b(fence)\b/i, spaceType: "Exterior Gate" },
+  { pattern: /\b(gutter|chimney)\b/i, spaceType: "Roof" },
+  { pattern: /\b(alarm|smoke|detector)\b/i, spaceType: "Fire Alarm Panel" },
+  { pattern: /\b(wifi|network|cctv|camera|rack)\b/i, spaceType: "Server Room" },
+  { pattern: /\b(datacentre|datacenter)\b/i, spaceType: "Server Room" },
+  { pattern: /\b(asset|assets|equipment|appliance|machinery)\b/i, spaceType: "Workshop" },
+  { pattern: /\b(clean|cleaning|cleaner)\b/i, spaceType: "Cupboard" },
+  { pattern: /\b(paint|painting|decorat)/i, spaceType: "Creative Studio" },
+  { pattern: /\b(pump)\b/i, spaceType: "Garden" },
+  { pattern: /\b(compliance|document|record|upload|file|pdf)\b/i, spaceType: "Archive" },
 ];
+
+/**
+ * Generic scenes for unmatched tasks — visually distinct, not office.png.
+ * Stable per seed so the same task does not flicker between renders.
+ */
+export const GENERIC_TASK_ILLUSTRATION_POOL = [
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}lobby.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}workshop.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}building-exterior.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}meeting-room.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}breakout-area.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}archive-room.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}entrance.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}creative-studio.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}reception.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}staircase.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}lounge.png`,
+  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}loading-bay.png`,
+] as const;
+
+function hashSeedIndex(seed: string, modulo: number): number {
+  if (modulo <= 0) return 0;
+  let hash = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    hash ^= seed.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0) % modulo;
+}
+
+export function pickGenericTaskIllustration(seed: string | null | undefined): string {
+  const key = seed?.trim() || "task";
+  return GENERIC_TASK_ILLUSTRATION_POOL[hashSeedIndex(key, GENERIC_TASK_ILLUSTRATION_POOL.length)];
+}
 
 function illustrationFromTitle(taskTitle: string | null | undefined): string | undefined {
   const title = taskTitle?.trim();
@@ -69,12 +118,12 @@ function illustrationFromTitle(taskTitle: string | null | undefined): string | u
     const src = getSpaceMiniCardIllustration(spaceType);
     if (src) return src;
   }
-  return undefined;
+  return getSpaceIllustrationFromCopy(title);
 }
 
 /**
  * Mini-card illustration for tasks without uploaded images.
- * Prefers linked space context; falls back to task-title keyword hints.
+ * Prefers linked space context; then title/copy hints; no generic default here.
  */
 export function getTaskSpaceIllustration(
   spaces: TaskSpaceRef[] | null | undefined,
@@ -150,8 +199,14 @@ function firstUploadedTaskImageUrl(task: Record<string, unknown> | null | undefi
   );
 }
 
-function defaultMiniCardIllustration(): string {
-  return getSpaceMiniCardIllustration("Office") ?? `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}office.png`;
+function taskIllustrationSeed(
+  task: Record<string, unknown> | null | undefined,
+  title: string | null | undefined
+): string {
+  const id = task?.id;
+  if (typeof id === "string" && id.trim()) return id.trim();
+  if (typeof id === "number" && Number.isFinite(id)) return String(id);
+  return title?.trim() || "task";
 }
 
 /** Uploaded task image, else the best-matching space mini-card illustration. */
@@ -163,7 +218,10 @@ export function resolveTaskDisplayImageUrl(
   if (uploaded) return uploaded;
 
   const title = taskTitle ?? (typeof task?.title === "string" ? task.title : null);
-  return getTaskSpaceIllustration(parseTaskSpaces(task), title) ?? defaultMiniCardIllustration();
+  return (
+    getTaskSpaceIllustration(parseTaskSpaces(task), title) ??
+    pickGenericTaskIllustration(taskIllustrationSeed(task, title))
+  );
 }
 
 const SIGNAL_KIND_ILLUSTRATION_HINT: Partial<Record<SignalKind, string>> = {
@@ -186,6 +244,7 @@ export function resolveAttentionStreamThumbnail(options: {
   context?: string | null;
   signalKind?: SignalKind;
   spaces?: TaskSpaceRef[] | null;
+  seed?: string | null;
 }): string {
   const uploaded = options.imageUrl?.trim();
   if (uploaded) return uploaded;
@@ -202,5 +261,7 @@ export function resolveAttentionStreamThumbnail(options: {
     if (kindArt) return kindArt;
   }
 
-  return defaultMiniCardIllustration();
+  return pickGenericTaskIllustration(
+    options.seed?.trim() || titleContext || options.signalKind || "signal"
+  );
 }

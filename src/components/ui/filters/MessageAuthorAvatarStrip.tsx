@@ -17,7 +17,7 @@ type MessageAuthorAvatarStripProps = {
 
 /**
  * Replaces status chips on the Messages tab filter bar with unique recent-message authors.
- * Matches StatusFilterIconStrip footprint (24×24) so FILTER / SORT spacing stays stable.
+ * Matches StatusFilterIconStrip / FilterChip footprint (28×28).
  */
 export function MessageAuthorAvatarStrip({
   authors,
@@ -29,7 +29,7 @@ export function MessageAuthorAvatarStrip({
     return (
       <span
         className={cn(
-          "inline-flex h-6 items-center px-1 text-2xs text-muted-foreground/60",
+          "inline-flex h-[28px] items-center px-1 text-2xs text-muted-foreground/60",
           className
         )}
       >
@@ -40,7 +40,7 @@ export function MessageAuthorAvatarStrip({
 
   return (
     <div
-      className={cn("inline-flex shrink-0 items-center gap-[6px]", className)}
+      className={cn("inline-flex shrink-0 items-center gap-[5px]", className)}
       role="group"
       aria-label="Filter by recent message author"
       data-messages-author-strip
@@ -58,7 +58,7 @@ export function MessageAuthorAvatarStrip({
               onSelectAuthor(selected ? null : author.authorKey)
             }
             className={cn(
-              "inline-flex h-6 w-6 items-center justify-center overflow-hidden rounded-full",
+              "inline-flex h-[28px] w-[28px] items-center justify-center overflow-hidden rounded-full",
               "select-none cursor-pointer transition-[box-shadow,opacity,transform] duration-200",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
               selected
@@ -70,7 +70,7 @@ export function MessageAuthorAvatarStrip({
               imageUrl={author.authorAvatarUrl}
               name={author.authorName}
               propertyColor={author.accentColor}
-              size={24}
+              size={28}
               shape="circle"
             />
           </button>

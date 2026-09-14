@@ -8,3 +8,5 @@ export { WorkspaceSectionHeading } from "./WorkspaceSectionHeading";
 export { WorkspaceHealthGrid, healthStatNumberClass, healthStatCellClass } from "./WorkspaceHealthGrid";
 export type { WorkspaceHealthGridProps, WorkspaceHealthStat } from "./WorkspaceHealthGrid";
 export { WorkspaceTabList, WorkspaceTabTrigger } from "./WorkspaceTabList";
+export { RecentPanel, RecentPanelRow } from "./RecentPanel";
+export type { RecentPanelRowProps } from "./RecentPanel";

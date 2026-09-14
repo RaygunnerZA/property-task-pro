@@ -4,7 +4,9 @@ import { ChevronRight, ChevronUp } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaRecommends } from "@/components/filla/FillaRecommends";
+import { SeasonalGuidanceCard } from "@/components/filla/SeasonalGuidanceCard";
 import { useActionableSuggestions } from "@/hooks/useActionableSuggestions";
+import { useActiveSeasonalPackages } from "@/hooks/useActiveSeasonalPackages";
 import {
   healthStatCellClass,
   healthStatNumberClass,
@@ -357,6 +359,9 @@ export function PropertySummaryPanel({
       propertyIds: portfolioSignals ? undefined : [property.id],
     });
   const recommendation = suggestions[0] ?? null;
+  const { topPackage: seasonalPackage } = useActiveSeasonalPackages({
+    enabled: !recommendation,
+  });
 
   const openCentreTab = useCallback(
     (tab: PropertyStatNavTarget) => {
@@ -636,6 +641,25 @@ export function PropertySummaryPanel({
                 onPrimaryAction={runPrimaryAction}
                 onDismiss={dismissSuggestion}
                 onSnooze={snoozeSuggestion}
+              />
+            </div>
+          </>
+        ) : seasonalPackage ? (
+          <>
+            <div
+              className={variant === "compact" ? "perforation-list" : "perforation-section"}
+              aria-hidden
+            />
+            <div
+              className={cn(
+                variant === "compact" ? "pl-0 pr-1.5 pt-[2px] pb-3" : "px-3 py-3",
+                sectionRevealClass
+              )}
+              style={sectionRevealStyle(2)}
+            >
+              <SeasonalGuidanceCard
+                package={seasonalPackage}
+                variant={variant === "compact" ? "rail" : "rail"}
               />
             </div>
           </>

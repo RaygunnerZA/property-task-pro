@@ -21,6 +21,7 @@ const EXPAND_EASE = "duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]";
 /**
  * Status toggles between FILTER and SORT.
  * Idle: icon-only. Hover/focus: expands to show the status name.
+ * Footprint matches FilterChip / FILTER / SORT at 28px.
  */
 export function StatusFilterIconStrip({
   selectedFilters,
@@ -29,7 +30,7 @@ export function StatusFilterIconStrip({
 }: StatusFilterIconStripProps) {
   return (
     <div
-      className={cn("inline-flex shrink-0 items-center gap-[6px]", className)}
+      className={cn("inline-flex shrink-0 items-center gap-[5px]", className)}
       role="group"
       aria-label="Filter by status"
     >
@@ -46,7 +47,7 @@ export function StatusFilterIconStrip({
             aria-pressed={selected}
             onClick={() => onFilterChange(visual.filterId, !selected)}
             className={cn(
-              "group/status inline-flex h-6 min-w-6 items-center overflow-hidden rounded-[8px]",
+              "group/status inline-flex h-[28px] min-w-[28px] items-center overflow-hidden rounded-[8px]",
               "select-none cursor-pointer",
               "transition-[padding,gap,background-color,box-shadow]",
               EXPAND_EASE,
@@ -66,10 +67,10 @@ export function StatusFilterIconStrip({
                   )
             )}
           >
-            <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center">
+            <span className="inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center">
               <Icon
                 className={cn(
-                  "h-3.5 w-3.5",
+                  "h-[14px] w-[14px]",
                   selected && status !== "open" ? "text-white" : visual.filterIconClassName
                 )}
                 strokeWidth={2.25}

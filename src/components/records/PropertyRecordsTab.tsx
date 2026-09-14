@@ -711,19 +711,19 @@ export function PropertyRecordsTab({
             <div className="flex items-center gap-1" role="group" aria-label="Records view">
               <IconButton
                 role="filter-toggle"
-                size={24}
+                size={28}
                 active={workTab === "groups"}
                 onClick={() => setWorkTab("groups")}
-                icon={<LayoutGrid className="h-3.5 w-3.5" />}
+                icon={<LayoutGrid className="h-[14px] w-[14px]" />}
                 tooltip="By group"
                 aria-label="By group"
               />
               <IconButton
                 role="filter-toggle"
-                size={24}
+                size={28}
                 active={workTab === "attention"}
                 onClick={() => setWorkTab("attention")}
-                icon={<AlertTriangle className="h-3.5 w-3.5" />}
+                icon={<AlertTriangle className="h-[14px] w-[14px]" />}
                 tooltip={
                   attentionCount > 0
                     ? `Needs attention (${attentionCount})`

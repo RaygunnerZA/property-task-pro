@@ -32,6 +32,8 @@ export {
 export type { InstructionPanelProps } from './InstructionPanel';
 export { FillaRecommends } from './FillaRecommends';
 export type { FillaRecommendsProps } from './FillaRecommends';
+export { SeasonalGuidanceCard } from './SeasonalGuidanceCard';
+export type { SeasonalGuidanceCardProps } from './SeasonalGuidanceCard';
 
 // Mini Calendar - DEPRECATED: Use DashboardCalendar from @/components/dashboard/DashboardCalendar instead
 // export { MiniCalendar } from './MiniCalendar'; // DELETED

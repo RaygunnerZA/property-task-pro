@@ -794,8 +794,9 @@
     background-size: 100%;
   }
 
-  /* Month planner day cells — raised inset; hover = pressed + create affordance */
-  .calendar-day-cell {
+  /* Month planner day cells — pressed paper; hover inverts the inset */
+  .calendar-day-cell,
+  .recent-panel-row {
     border-radius: 5px;
     border: none;
     background-color: hsl(var(--card) / 0.5);
@@ -809,7 +810,9 @@
   }
 
   .calendar-day-cell:hover,
-  .calendar-day-cell:focus-within {
+  .calendar-day-cell:focus-within,
+  .recent-panel-row:hover,
+  .recent-panel-row:focus-visible {
     box-shadow:
       inset -1px -1px 1px rgba(0, 0, 0, 0.16),
       inset 1px 1px 1px rgba(255, 255, 255, 0.8);
@@ -817,6 +820,13 @@
     background-image: var(--paper-texture);
     background-size: 100%;
     background-blend-mode: soft-light;
+  }
+
+  .recent-panel-row[data-selected="true"] {
+    box-shadow:
+      inset -1px -1px 1px rgba(0, 0, 0, 0.16),
+      inset 1px 1px 1px rgba(255, 255, 255, 0.8),
+      0 0 0 1px hsl(var(--primary) / 0.45);
   }
 
   .calendar-day-cell__add {

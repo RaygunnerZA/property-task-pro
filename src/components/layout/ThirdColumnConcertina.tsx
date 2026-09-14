@@ -53,7 +53,7 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
             <div
               key={section.id}
               className={cn(
-                "px-1 py-[5px]",
+                "px-0 py-[5px]",
                 !isFirst && "border-t border-border/10"
               )}
             >

@@ -344,13 +344,13 @@ export function FilterBar({
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-2 min-h-[28px]", className)}>
-      {/* Single Row Container - horizontally scrollable */}
-      <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 min-w-0 h-[32px] px-[5px]">
+    <div className={cn("flex items-center justify-between gap-2 min-h-[36px]", className)}>
+      {/* Scroll track: a few px inset so neumorphic outer shadows are not clipped */}
+      <div className="flex flex-1 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar px-1 py-1">
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
-            "flex items-center gap-[5px] flex-nowrap min-w-max",
+            "flex h-[28px] items-center gap-[5px] flex-nowrap min-w-max",
             navigationLevel === "primary" && "transition-[gap] duration-300 ease-out",
             getAnimationClass()
           )}
@@ -367,8 +367,8 @@ export function FilterBar({
                   aria-label={filterChipCollapsed ? "Filter — open categories" : "Filter by category"}
                   title="Filter"
                   className={cn(
-                    "inline-flex items-center py-1 rounded-[8px] flex-shrink-0 overflow-hidden h-[28px]",
-                    "font-mono text-2xs uppercase tracking-wide",
+                    "inline-flex items-center py-0 rounded-[8px] flex-shrink-0 overflow-hidden h-[28px]",
+                    "font-mono text-2xs uppercase tracking-wide leading-none",
                     "select-none cursor-pointer",
                     "bg-background",
                     "shadow-[1px_2px_2px_0px_rgba(0,0,0,0.15),-1px_-2px_2px_0px_rgba(255,255,255,0.9)]",
@@ -385,7 +385,6 @@ export function FilterBar({
                       "whitespace-nowrap overflow-hidden transition-[max-width,opacity] duration-300 ease-out",
                       filterChipCollapsed ? "max-w-0 opacity-0" : "max-w-[5rem] opacity-100"
                     )}
-                    style={{ letterSpacing: filterChipCollapsed ? 0 : "0.325px" }}
                   >
                     FILTER
                   </span>
@@ -415,8 +414,8 @@ export function FilterBar({
                   key={group.id}
                   onClick={() => handleCategoryClick(group.id)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] flex-shrink-0 h-[28px]",
-                    "font-mono text-2xs uppercase tracking-wide",
+                    "inline-flex items-center gap-1.5 px-2.5 py-0 rounded-[8px] flex-shrink-0 h-[28px]",
+                    "font-mono text-2xs uppercase tracking-wide leading-none",
                     "select-none cursor-pointer transition-all",
                     "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
                   )}

@@ -127,10 +127,12 @@ Do not build a separate distribution engine.
 Use existing identity, applicability and notification rules for:
 
 - in-app guidance
+- **seasonal packages** (`seasonal_packages` — curated views over published Knowledge; see `@Docs/03_Data_Model.md` / `@Docs/29_Knowledge.md`)
 - website
 - newsletters
 - future channels
 
+Seasonal packages are editorial distribution, not a second Knowledge store and not Signals.
 ---
 
 ## Development Rule
