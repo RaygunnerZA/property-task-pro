@@ -14,6 +14,97 @@ Add verified Knowledge as a first-class capability without duplicating Complianc
 
 Knowledge is linked into org-scoped entities via `knowledge_links`. It is **not** a property-graph node.
 
+---
+
+## Constitutional principle (Admin Knowledge)
+
+**Admin Knowledge is not a content-production system. It is a decision system.**
+
+The system's job is to continuously discover potentially valuable knowledge, establish what is true, decide whether it matters, and get an approved expression into the world when warranted. Everything else is machinery.
+
+> **The system continuously discovers, verifies, contextualises and propagates Knowledge; humans intervene only where judgement, accountability or publication risk requires them.**
+
+> **No human should perform a task merely because the system has not yet automated it.**
+
+If a temporary implementation detail appears as an admin workflow (choose topic → approve strategy → review brief → …), it belongs on the **automation backlog**, not in the constitution as a permanent human duty.
+
+### Pipeline (machine)
+
+```text
+WATCH → UNDERSTAND → JUDGEMENT → DISTRIBUTE
+```
+
+Only **Judgement** is primarily human.
+
+### Operational human interventions
+
+For **expression and distribution**, the administrator experiences only:
+
+```text
+Schedule → Review package → Approve distribution
+```
+
+Everything else is machine work or an Exception.
+
+| Step | Question | Human action |
+|------|----------|--------------|
+| **1. Review package** | Is this topic worth expressing, with correct layers and content family? | Accept for production (authorises generation) / Correct / Narrow / Do nothing |
+| **2. Approve distribution** | Is the finished package ready for a channel? | Approve all eligible outputs (hold individuals as exceptions). **Does not** publish or execute channels. |
+| **3. Exception** | Does risk demand a second opinion? | Expert / dual review only |
+
+**Accept for production** authorises generation of the expression family. **Approve distribution** marks the completed package approved and ready for a channel — it must not imply anything was distributed or published while channel execution remains out of scope.
+
+**Verify** and **Publish** are **system states** (and DB status values), not user workflow steps. Do not use “Publish” for earlier machine states.
+
+Raw Knowledge deltas (new claims before a topic package exists) still require **Accept Knowledge** where judgement demands it — preferably inside Review package Judgement, not as a separate CMS craft.
+
+A schedule row / review card should look like a **topic package**, not an article factory:
+
+> Chimney and flue sweeping — Autumn · High priority  
+> International ready · FR ready · DE research gap · UK N/A  
+> Article · Social carousel · Image family · Scheduled 18 Sep → **Review package**
+
+Not a CMS of topics, strategies, and briefs for the admin to shepherd.
+
+### Target control-room surface: Knowledge (one page)
+
+**One Knowledge page.** No routine Schedule / Review / Ready to publish / Advanced / Overview tab bar.
+
+| Element | Role |
+|---------|------|
+| **Header** | Knowledge · Search · Filter · **Add source** · Overflow (Pilot / advanced machinery / reporting) |
+| **Filters** | Needs attention · Scheduled · Monitoring · Complete |
+| **Queue groups** | Now only when many decisions; otherwise a flat decision list |
+| **Row unit** | **Subject package** (aggregated Knowledge + optional content_topic) — not atomic jurisdiction rows, not individual articles |
+| **Primary actions** | Context-sensitive when a decision exists: **Accept plan** · **Review drafts** · **Resolve gap** · **Approve distribution** · **View**. No button when the machine is still working. |
+
+**Needs attention** may only contain genuine human decisions. Do **not** put an item there because planning, drafting, visuals, or topic creation has not run — that is Monitoring (“Planning queued”) and machine continuation. “Subject ready to plan” is never a human stopping state.
+
+**Accept plan** authorises generation (machine then drafts). **Approve distribution** marks channel-ready — does not publish or execute channels. Do not use “Ready to publish”.
+
+Compact queue rows: title · coverage · state/reason · one action if required. Forms show only after a recommendation exists (“Assessing opportunity” before that).
+
+---
+
+## Truth hierarchy (non-negotiable)
+
+```text
+SOURCE
+  → EVIDENCE
+  → CLAIMS
+  → KNOWLEDGE
+  → EXPRESSION
+  → DISTRIBUTION
+```
+
+**Never** invert this to `Sources → AI article → website`.
+
+The content generator must never become the source of truth. Published content is a **projection** of verified Knowledge. One Knowledge change can update many expressions; when Knowledge goes stale, lineage knows which projections may be wrong.
+
+**Not every Knowledge event produces content.** The machine decides: new? reliable? important? does anyone need to know? does existing content need changing? → create / update / **do nothing**. An enormous amount of work should terminate before any writing LLM job.
+
+---
+
 ## Axes
 
 | Axis | Values |
@@ -23,78 +114,188 @@ Knowledge is linked into org-scoped entities via `knowledge_links`. It is **not*
 
 Source kinds (provenance): `filla_curated` \| `org_upload` \| `operational_discovery` \| `community_brain`.
 
+Status values remain in the schema. Product UI emphasises **Schedule / Review package / Approve distribution**, not “Verify” and “Publish” as separate crafts.
+
 ## Flows
 
 ```
-Existing inputs (uploads, messages, compliance, tasks, docs, Filla Brain)
-  → Knowledge candidates
-  → Extractor (reuse ai-doc-analyse / intake where possible; create_knowledge opt-in)
-  → Second-model critic (knowledge-critic) — mandatory
-  → Admin or org Owner/Manager review
-  → Published Knowledge
-  → /knowledge, assistant-reasoner, Content Tree (internal), future checklists
+WATCH / ADD source / GAPS research / UPDATE detect
+  → Evidence + atomic claims
+  → Compare existing Knowledge, critic, score importance
+  → Accept Knowledge when judgement requires (often inside Review package)
+  → Score into Knowledge Schedule (Now / Next / Later / Monitoring)
+  → Review package (Understanding · Judgement · Expression · image concept)
+  → Produce finished family (machine)
+  → Approve distribution
+  → Channels (in-app, seasonal, web, social) as machinery
 ```
 
-## Internal Knowledge operations
+Customer / org surfaces: `/knowledge`, assistant-reasoner, Living Knowledge, seasonal guidance — consume **published** Knowledge and approved expressions only.
+
+---
+
+## Internal Knowledge operations (implementation)
 
 Platform admin surface: `/admin/knowledge`.
 
-**Desktop layout (layout breakpoint, 1280px+):** Review is the default centre surface. The Knowledge ops canvas is full-width (not a centred max-width cage). Add Knowledge is a **reserved right action column** (330px, same job as the workbench Create / Add to Filla rail) — Add | Gaps | Update — sitting beside Review, never overlapping it. Ready to publish, Outputs, and Overview remain centre tabs. Gaps and Update occupy the centre when selected from the rail (coverage matrix needs width); the Add source panel stays in the rail.
+**Target default centre:** **Knowledge Schedule** (ordered topic packages). Knowledge **Review** remains for Accept Knowledge on candidates. **Advanced** retains Outputs / stage trees as escape hatches. Desktop (1280px+): full-width Knowledge canvas; Add Knowledge in a reserved right action column (Add | Gaps | Update). Gaps and Update occupy the centre when selected from the rail.
 
-**Tablet and mobile:** Add knowledge is a tab in the same row as Review, Ready to publish, Outputs, and Overview. Default tab is Review.
+### Intake machinery — ADD | GAPS | UPDATE
 
-**Top-level order:** Review → Ready to publish → Add Knowledge → Outputs → Overview.
+These are **machine and override paths** that feed Schedule preparation / Accept Knowledge — not three equal “jobs” the admin must live in daily.
 
-### Add Knowledge — ADD | GAPS | UPDATE
+| Path | Question | Behaviour |
+|------|----------|-----------|
+| **ADD** | Manual / override capture | One **Add source** surface (file, paste, URL). Spreadsheets / docs / URLs → claims → applicability → critic → Accept path. Manual create secondary. |
+| **GAPS** | What don't we know? | Coverage matrix + research queue. Discovery → URL intake → candidates → critic. Never auto-distributed. Expression `evidence_gaps` feed this same gap system. |
+| **UPDATE** | What might have changed? | Monitor authoritative sources. Detection creates **update candidates** (no silent rewrite). Critic → Accept / new Knowledge version → Schedule impact. |
 
-Three distinct jobs under Add Knowledge:
-
-| Job | Question | Behaviour |
-|-----|----------|-----------|
-| **ADD** | What are we learning? | Dedicated intake: one **Add source** surface (drag/select file, paste text, or URL). Spreadsheets use workbook interpretation; documents/URLs extract claims → applicability → critic → Review. Manual create remains secondary. |
-| **GAPS** | What don't we know? | Coverage matrix over Knowledge (v1: topic × jurisdiction from live rows) plus a prioritised research queue. Admins can research a cell, a selected row/column, or the queue: one discovery pass finds official URLs; unique URLs are fetched via `knowledge-intake-url` and created as Review candidates (critic + human review; never auto-published). Future axes: property type, audience, claim completeness, affected property counts, market-expansion programmes. Content `evidence_gaps` must feed this same gap system — not a separate dead-end. |
-| **UPDATE** | What might have changed? | Monitor authoritative sources on verified/published Knowledge. Detection creates **update candidates** (no silent rewrite of v1). Triage: no material change / potential material change / material claim supersession → critic → human review → new Knowledge version. |
-
-```
-ADD:    Source → extract claims → applicability → critic → Review
-GAPS:   Coverage matrix → select missing/partial → batched source discovery → unique URL intake → critic → Review
-UPDATE: Monitor → detect → compare claims → critic → human review → new version
-```
-
-Closed loop with Outputs: Content that cannot substantiate a fact records a Knowledge gap; research closes it; published Knowledge powers Content again.
-
-**Gap research batching:** Bulk research (selected cells, topic/column, or Begin research queue) enqueues a durable `ai_batch_jobs` row and one Gemini Batch discovery call (max 20 cells, ~50% of interactive token price, typical wait 1–4h / up to 24h). When discovery completes, status is `intake_pending`; opening Knowledge fetches each unique URL through `knowledge-intake-url` (SSRF-safe, interactive document-analysis price) into Review. A single-cell click still runs discovery now. Never auto-published.
+**Gap research batching:** Bulk research enqueues durable `ai_batch_jobs` (Gemini Batch discovery; max 20 cells). Intake of unique URLs remains SSRF-safe via `knowledge-intake-url`. Never auto-distributed.
 
 | Route | Behaviour |
 |-------|-----------|
-| **Add source (file)** | CSV/XLSX → deterministic workbook parse + AI sheet interpretation → mapping for Knowledge sheets. PDF/DOCX/TXT/images → `ai-doc-analyse` with `knowledge_intake` → proposed candidates → bulk import. |
-| **Add source (URL)** | `knowledge-intake-url` (safe fetch, SSRF controls) → storage snapshot + `ai-doc-analyse` → same proposal review. Gap research discovers official URLs in one batched call, then reuses this path per unique URL. |
-| **Add source (paste)** | Pasted URL analysed as URL; pasted prose analysed as a text document. |
-| **Manual** | Secondary form; single candidate with required applicability → create → critic. |
+| **Add source (file)** | CSV/XLSX → workbook parse + interpretation. PDF/DOCX/TXT/images → `ai-doc-analyse` (`knowledge_intake`) → candidates. |
+| **Add source (URL)** | `knowledge-intake-url` → snapshot + analyse → same proposal path. |
+| **Add source (paste)** | URL-as-URL or prose-as-document. |
+| **Manual** | Secondary; single candidate with required applicability → critic. |
 
-**Document ≠ one Knowledge row:** extraction may propose multiple distinct candidates. Admin selects/edits before import.
+**Document ≠ one Knowledge row:** extraction may propose multiple candidates.
 
-**Hard rules:** Upload never publishes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) is required. Spreadsheet retained as `knowledge_sources` metadata (filename, sheet, row). Structured spreadsheet columns land in `knowledge.attributes` (jsonb) and are also preserved as `knowledge_claims` (source-backed facts). Skip means explicit discard only. Do **not** assume every worksheet represents Knowledge rows: only `knowledge_data` sheets create candidates by default; `reference_context` sheets may inform interpretation and remain attached as provenance; `not_for_knowledge` sheets are excluded unless an admin overrides. If interpretation confidence is low, default to `reference_context`, not `knowledge_data`.
+**Hard rules:** Upload never distributes. Every create runs `knowledge-critic`. Applicability (jurisdictions or explicit `unscoped`) required. Spreadsheet provenance in `knowledge_sources` metadata. Structured columns → `knowledge.attributes` and `knowledge_claims`. Skip = explicit discard. Only `knowledge_data` sheets create candidates by default; low-confidence interpretation defaults to `reference_context`.
 
-**Claims (depth under the headline):** Title/summary stay concise. Extractors write atomic claims with category, optional source location, and verification status — preserve all materially useful source facts (no fixed claim-count target). Missing source detail becomes `unknown` — never invented from general knowledge. Review UI lists each claim with status and source link; **Extract claims from sources** re-reads linked URLs/documents into claim rows. Critic reviews claims with guidance; human verify promotes `extracted` → `verified` while unknowns remain gaps. Content SEO/brief/output packages **verified claims only**; after each output draft, a separate grounding critic flags unsupported factual additions. Authoritative source URLs are editable on the Knowledge detail Sources section and on Content Tree → Knowledge (`admin_update_knowledge_source` / `admin_add_knowledge_source`); changing a source invalidates the critic until re-run.
+**Claims:** Title/summary stay concise. Extractors write atomic claims; missing detail is `unknown` — never invented. Human Accept promotes `extracted` → `verified`; unknowns remain gaps. Expressions consume **verified claims only**. Grounding critic on drafts flags unsupported additions. Editing authoritative sources invalidates critic until re-run.
 
-**Org uploads (future/customer):** same `ai-doc-analyse` extraction; default scope `organisation` via `create_knowledge_candidate` — not platform admin bulk RPCs.
+**Org uploads (future):** same extraction; default `organisation` scope via `create_knowledge_candidate`.
 
-**Standard attribute keys (conventions, not columns):** `category`, `legal_status`, `applies_when`, `action`, `frequency`, `timing`, `evidence`, `responsible_party`, `professional_required`, `insurance_relevance`, `risk_or_consequence`, `priority`, `lead_time_days`, `app_logic`, plus custom slug keys from source headers.
+**Standard attribute keys (conventions, not columns):** `category`, `legal_status`, `applies_when`, `action`, `frequency`, `timing`, `evidence`, `responsible_party`, `professional_required`, `insurance_relevance`, `risk_or_consequence`, `priority`, `lead_time_days`, `app_logic`, plus custom slug keys.
 
-## Content Tree (internal)
+### Overnight machine (target)
 
-After Knowledge is verified/published: `/admin/knowledge` → **Outputs** (Content tree).
+Region by region (watch profiles for CH / UK / FR / …):
 
-Stages: Knowledge → SEO → Brief → Outputs (`core_article`, `faq`, `in_app_tip`) → Creative/Publishing stubs.
+**Watch → detect → compare → investigate → cross-check → score → prepare Schedule**
 
-**In-app seasonal packages** skip SEO. Path: published Knowledge → approved tip wording (item `tip_text` and/or `in_app_tip` output) → `seasonal_packages` / `seasonal_package_items` → Home / Living Knowledge surfaces. Packages are presentation + scheduling only; they must not introduce factual claims absent from linked Knowledge. Soft personalisation may rank CTAs from known inventory gaps (e.g. no heating asset recorded → prefer “Add asset”) but must never treat absence of data as proof that work is incomplete.
+By morning the admin should not see hundreds of discoveries. They see an ordered **Knowledge Schedule** (Now / Next / Later / Monitoring). Everything else discarded, merged, scheduled, incorporated, or deemed irrelevant — without writing LLM jobs where scoring says “do nothing.”
 
-**Public / SEO path** remains: Knowledge + sources → SEO → Brief → article/FAQ.
+AI economics: batch/overnight for watch, extraction, research, draft expressions, concept grids; stronger interactive models for critic and high-risk Judgement paths only. Prefer **update existing expression** over new article when related content exists.
 
-**Research missing evidence (Content Tree):** When SEO lands with knowledge gaps (or source unavailable after a reachable URL exists), Content Tree runs **one** grounded `knowledge-evidence-pack` on the **linked** Knowledge row (optional short discovery only if no URL; fetch via SSRF-safe path; propose `extracted`/`unknown` claims — never invent page text). Then **one** mandatory `knowledge-critic` call. Progress is stored on SEO `current` (`research_status`, `research_fingerprint`, …). Auto-kick is idempotent per gap fingerprint and stops after human verify. On the SEO panel: **Verify claims** promotes `extracted` → `verified`, clears soft SEO gap/warning strings (source issues remain), and unlocks **Approve SEO** on the same panel — no Knowledge bounce and no auto-regen. Optional: regenerate SEO manually later. Never auto-verify, auto-publish, or auto-approve. GAPS matrix overnight research still creates **new Review candidates** — do not use that path for Content Tree enrichment.
+---
 
-Approved outputs are not silently overwritten; upstream changes mark `needs_update`. Ungrounded SEO/output needs become Knowledge gaps (same GAPS queue), not orphaned content-only notes.
+## Expression & Distribution (machinery under Knowledge)
+
+**Not a CMS.** Tables such as `content_topics`, `strategy`, SEO envelopes, `content_format_briefs`, and `content_outputs` are **implementation metadata** under Expression / Distribution. Administrators must not shepherd Topic → strategy → brief → article as a permanent workflow.
+
+Visible workflow:
+
+```text
+Knowledge Schedule
+  → Review package
+  → Approve distribution
+```
+
+Canonical machine order:
+
+```text
+Verified Knowledge
+  → (score) deserve expression? / do nothing?
+  → Topic package on Schedule (importance order)
+  → Review package (human)
+  → Draft family + image flow (machine)
+  → Approve distribution (human)
+  → Derivatives + channels
+```
+
+### Topic package layers
+
+Each scheduled topic may contain:
+
+```text
+Topic
+├── International expression
+├── France layer
+├── UK layer
+├── Germany layer
+└── Property-specific guidance (in-app only — not a scheduled marketing deliverable)
+```
+
+| Layer | Rules |
+|-------|--------|
+| **International** | Universal property-care principle; why it matters; 3–5 meaningful regional distinctions; location-neutral preparation; links into regional guides; **never** present one country’s rule as universal |
+| **Regional** | Exact applicable rule; official sources; frequency, responsibility, evidence; exceptions/local variation; regional CTA; unsupported gaps explicit. Supports the international expression; **not required** to become a separate published article every time |
+| **Property-specific** | Generated only in-app when jurisdiction + property attributes are known. Never a scheduled international marketing output |
+
+### Content scope (expression policy)
+
+| Scope | Intent |
+|-------|--------|
+| `international_overview` | Concise cross-region framing; cautious comparisons; no false precision |
+| `regional_comparison` | Explicit multi-jurisdiction comparison |
+| `country_guide` | One country / jurisdiction in depth |
+| `local_guide` | Sub-national precision when sources support it |
+| `property_specific` | Exact jurisdiction + known property context (in-app only) |
+
+International marketing uses representative distinctions only. In-app / property-specific requires exact jurisdiction — exclude until known (`not_applicable`, not a Knowledge defect). Gap semantics: **`not_yet_researched`** vs **`not_applicable`**.
+
+SEO opportunity fields (query clusters, market, confidence, search-evidence vs factual grounding) are **machine inputs to Schedule ranking and honesty**, not a human SEO craft. Without live search data, label **Editorial SEO hypothesis** — never claim search-backed evidence that was not consulted.
+
+### Review package (one workspace)
+
+Opening a scheduled topic shows **one** coherent review — not several stage screens.
+
+| Section | Contents |
+|---------|----------|
+| **Understanding** | Why selected; audience/objective; international angle; regional distinctions; sources; missing or conflicting information |
+| **Judgement** | Approved claims; claims permitted internationally; region-restricted claims; excluded claims; machine recommendation: proceed / narrow / do nothing |
+| **Expression** | Content family together: international article; regional guide where warranted; social carousel; short post; newsletter excerpt; in-app eligibility; visual direction |
+
+Reviewer may edit the plan, add/remove a region or format, request regeneration, or accept the package for production. **Do not** require separate manual approval of SEO, parent strategy, or every child brief when automated checks pass.
+
+**Review package gate:** topic worth expressing; international/regional boundaries correct; content family appropriate; selected image concept directionally right.
+
+**Approve distribution gate:** finished copy, regional distinctions, sources, final image family, channels, dates — one primary action for all eligible items; hold individuals as exceptions. Machine states (source check, critic, render, derivatives) visible **only when something fails**.
+
+### Image flow (inside the topic package)
+
+Images belong to the topic package, not an isolated creative module. Sequence:
+
+```text
+Expression approved for drafting
+  → Generate 2×2 low-resolution concept grid
+  → Select or revise one concept
+  → Generate square master
+  → Review master
+  → Generate vertical + horizontal derivatives (+ thumbnail from square)
+  → Approve image family with the content package
+```
+
+**Concept grid inputs:** topic + communication objective; paper-cut brand specification; required/prohibited elements; international sensitivity; text-safe requirements; approved style references.
+
+**Derivatives:** Square = primary reusable composition. Vertical = subject high; darker quiet lower text-safe area. Horizontal = subject right; darker quiet left text-safe area. Thumbnail from approved square. **Do not bake marketing text into artwork** — add text at distribution/application layer.
+
+**Paper-cut style:** limited illustrative detail; visible paper texture and subtle noise; highlights on top and left paper edges; fine consistent drop shadows toward bottom right; no sculptural/inflated 3D; no transparency; no baked-in text.
+
+Reuse one visual family internationally unless a regional difference makes the illustration inaccurate or culturally inappropriate. Regional image variants are **exceptions**, not the default.
+
+### Pilot mode (before full automation)
+
+For early topics, expose **tuning controls** inside Review package — not permanent workflow stages:
+
+- Regenerate understanding
+- Add or remove a region
+- Generate drafts
+- Generate image concepts
+- Regenerate selected format
+- Run checks again
+
+**Pilot three flows before automating transitions:** (1) international topic with one strong regional layer (e.g. chimney + France); (2) multi-region comparison; (3) regional-only topic that must **not** become international content.
+
+**Transitional UI:** `/admin/knowledge` → Outputs / stage trees remain escape hatches / debug until Schedule ships. Prefer collapsing them into Schedule → Review package → Approve distribution.
+
+**In-app seasonal packages** are a **distribution channel**, not Knowledge and not a CMS. Path: published Knowledge → approved tip wording → `seasonal_packages` → Home / Living Knowledge. Packages own presentation and timing only. Customer gate: `list_active_seasonal_packages`. DB status remains `draft | approved | archived`; Live/Scheduled are derived from approved + display window.
+
+**Grounding loop:** Ungrounded expression needs become Knowledge gaps (same GAPS system). Upstream Knowledge changes mark expressions `needs_update` / stale via lineage — never silently invent facts.
+
+---
 
 ## Review ownership
 
@@ -102,7 +303,11 @@ Approved outputs are not silently overwritten; upstream changes mark `needs_upda
 * Platform + community: platform admins in `/admin`.
 * Platform admins may override org rows via audited admin RPCs.
 
-**Admin review UX:** Review is the default centre tab (dense workbench). On layout+ (1280px) Add Knowledge lives in the persistent right action column; below that it is a tab beside Review / Ready to publish. Default view is **All** (Needs work + Awaiting critic + Ready to verify in one list); those three remain filters. Ready-to-publish and detail sheet stay meaning-first. Draft guidance may be imported from owner action/task text or AI-proposed; drafts remain unverified until critic + human verify. Guidance quality states: Missing → Needs improvement → Meaningful draft → Verified. Short circular imports (e.g. “as required” without conditions) need **Improve guidance**. Editing critic-relevant fields invalidates the prior critic (`stale_after_guidance_edit`); primary action becomes **Run critic**, never Verify against a stale result. Batch actions: **Generate all** (missing) and **Improve guidance** (weak) enqueue eligible rows on Gemini Batch via `ai-batch-submit` (durable `ai_batch_jobs`, max 80 per job, ~50% token price, drafts unverified). Row-level Generate/Improve and selected-into-editor still use interactive `knowledge-generate-guidance`. Run critic for eligible — never batch Verify/Publish. Content Tree **Queue overnight** uses the same job table; submit returns not-enabled until `content-generate` processes those capabilities. Lifecycle: Candidate → draft guidance → critic → human verification → ready to publish → publish. Critic and human verification are mandatory; nothing auto-verifies or auto-publishes. `admin_set_knowledge_status` gates verify/publish server-side (quality guidance, authoritative source, current critic pass, applicability, human verifier) and rejects `candidate → published` (`verify_before_publish`). Check states: Passed / Failed / Incomplete / Not run / Required — never mark Passed when a check did not run. `trust_score` is ranking-only and never overrides mandatory gates.
+**Judgement gates (server):** Critic and human Accept are mandatory for adopting Knowledge. Nothing auto-accepts or auto-distributes high-risk / legal content without the configured gate. `admin_set_knowledge_status` remains fail-closed (quality guidance, authoritative source, current critic pass, applicability, human actor) and rejects `candidate → published` (`verify_before_publish`). Check states: Passed / Failed / Incomplete / Not run / Required — never mark Passed when a check did not run. `trust_score` is ranking-only (and feeds Schedule ranking, never replaces human gates).
+
+**Batch:** Guidance / improve / gap research / overnight expression drafts / concept grids use `ai_batch_jobs` where enabled; drafts stay unverified until Judgement. Never batch-Accept or batch-Approve distribution.
+
+**Low-risk vs high-risk:** Maintenance tips and non-legal innovation may allow a single Approve distribution after Review package. High-impact legal/regulatory changes may require Exception (second reviewer).
 
 ## Privacy
 
@@ -110,24 +315,29 @@ Community candidates extend Filla Brain only. No community statistic may be publ
 
 ## Metrics
 
-Measure Knowledge alongside tasks, AI requests, and organisations:
-
 | Metric | Definition |
 |--------|------------|
 | Knowledge created | Rows in `knowledge` (org or platform) |
 | Knowledge verified | Rows with `status` in `verified` \| `published` |
-| Knowledge reused | `knowledge_usage_events` type `reused` (assistant cite, link, etc.) |
-| Questions answered | Assistant turns that cited published Knowledge (`question_answered`) |
-| Automation created | Discovery/`operational_discovery` candidates (`automation_created`) |
-| Time saved | Sum of `estimated_minutes` on `time_saved` events (defaults: 5m answered, 2m reuse, 10m automation) |
+| Knowledge reused | `knowledge_usage_events` type `reused` |
+| Questions answered | Assistant turns that cited published Knowledge |
+| Automation created | Discovery/`operational_discovery` candidates |
+| Time saved | Sum of `estimated_minutes` on `time_saved` events |
 
-Admin: `/admin/knowledge` → Metrics tab (`admin_knowledge_metrics_snapshot`).  
-Org: `/knowledge` metric chips (`org_knowledge_metrics`).  
-Product analytics: PostHog events `knowledge_*` via `src/lib/knowledge/knowledgeTelemetry.ts`.
+Admin: Overview / metrics snapshot. Org: `/knowledge` chips. PostHog: `knowledge_*` telemetry.
+
+Prefer control-room metrics: discoveries discarded automatically, Schedule Now count, time-to-Review-package, time-to-Approve-distribution, expressions skipped by score (“do nothing”).
 
 ## Non-goals
 
 * Parallel “Knowledge Engine” or second admin app
+* Treating Admin Knowledge as a CMS or article factory
+* Exposing strategy / SEO / brief / critic / image / output machines as separate human workflow stages
+* Permanent human workflows that exist only because automation is incomplete
+* Treating property-specific guidance as a scheduled marketing deliverable
+* Requiring every regional layer to become a separate published article
+* Baking marketing text into final artwork
 * Assistant knowledge-only mode
-* Auto-publish
+* Unconditional auto-distribute of high-risk legal content
 * Injecting Knowledge into `property_graph_edges`
+* Requiring every Knowledge event to produce public content

@@ -823,7 +823,7 @@ export function TaskList({
           "flex-1 flex flex-col min-h-0 rounded-xl",
           embeddedSliderOnly || embeddedVerticalList
             ? "max-h-none overflow-visible"
-            : "max-h-[calc(100vh-280px)] overflow-y-auto"
+            : "max-h-[calc(100vh-280px)] overflow-y-auto overscroll-y-none"
         )}
       >
         {/* Show empty state if filters are active but no tasks match */}

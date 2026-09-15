@@ -29,8 +29,15 @@ interface DualPaneLayoutProps {
   /**
    * Cap the centre column to the viewport height (and stretch to the tallest
    * sibling floor). Inner panes (MagneticScrollArea, TaskPanel) own list scrolling.
+   * Ignored when {@link pageScroll} is true.
    */
   viewportBoundCentre?: boolean;
+  /**
+   * One scroll for the whole workbench: left · centre · right grow with content and
+   * move together under the main page scroll. Disables sticky left rail, centre
+   * viewport binding, and independent third-column scrolling.
+   */
+  pageScroll?: boolean;
   /**
    * Nest inside an existing page shell (StandardPage, etc.): no min-h-screen, tighter
    * top padding. Activity-area modules use this via PropertyWorkspaceLayout.
@@ -68,10 +75,12 @@ export function DualPaneLayout({
   collapseLeftOnPhone = false,
   stackOnPhone = false,
   viewportBoundCentre = false,
+  pageScroll = false,
   embedded = false,
 }: DualPaneLayoutProps) {
   const hasThirdColumn = !!thirdColumn;
   const hasHeader = !!header;
+  const bindCentre = viewportBoundCentre && !pageScroll;
 
   useEffect(() => {
     // Distinct workbench days drive All-tasks header art rotation.
@@ -83,11 +92,13 @@ export function DualPaneLayout({
     collapseCentreOnPhone || collapseLeftOnPhone || stackOnPhone;
 
   const stickyColClass = cn(
-    embedded
-      ? "sm:sticky sm:top-[calc(var(--header-height,70px)+12px)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
-      : hasHeader
-        ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
-        : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
+    pageScroll
+      ? "sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+      : embedded
+        ? "sm:sticky sm:top-[calc(var(--header-height,70px)+12px)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+        : hasHeader
+          ? "sm:sticky sm:top-[var(--header-height)] sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]"
+          : "sm:sticky sm:top-0 sm:self-start sm:h-auto sm:px-0 sm:pl-[12px] sm:pr-[12px]",
     dualGridFromPhone ? "md:w-workbench-side-rail" : "sm:w-workbench-side-rail",
     // Triple grid: fill the track; keep the same 12px rail inset as dual (do not drop to pl-2).
     hasThirdColumn &&
@@ -114,16 +125,28 @@ export function DualPaneLayout({
     collapseCentreOnPhone
       ? cn(
           "hidden md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
-          viewportBoundCentre ? boundCentreMd : "md:h-full md:self-stretch"
+          bindCentre
+            ? boundCentreMd
+            : pageScroll
+              ? "md:h-auto md:self-start"
+              : "md:h-full md:self-stretch"
         )
       : dualGridFromPhone
         ? cn(
             "md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
-            viewportBoundCentre ? boundCentreMd : "md:h-full md:self-stretch"
+            bindCentre
+              ? boundCentreMd
+              : pageScroll
+                ? "md:h-auto md:self-start"
+                : "md:h-full md:self-stretch"
           )
         : cn(
             "sm:flex sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
-            viewportBoundCentre ? boundCentreSm : "sm:h-full sm:self-stretch"
+            bindCentre
+              ? boundCentreSm
+              : pageScroll
+                ? "sm:h-auto sm:self-start"
+                : "sm:h-full sm:self-stretch"
           ),
     // Same horizontal inset whether dual or triple — matches CentreWorkbench md:px-2 stack.
     hasThirdColumn
@@ -187,8 +210,12 @@ export function DualPaneLayout({
           <div
             data-workbench-third-column
             className={cn(
-              "hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-clip layout:overflow-y-auto layout:self-start layout:px-[12px] layout:[overflow-anchor:none]",
-              embedded &&
+              "hidden layout:block layout:min-h-0 layout:min-w-0 layout:w-full layout:max-w-workbench-side-rail layout:overflow-x-clip layout:self-start layout:px-[12px] layout:[overflow-anchor:none]",
+              pageScroll
+                ? "layout:overflow-y-visible"
+                : "layout:overflow-y-auto",
+              !pageScroll &&
+                embedded &&
                 "layout:sticky layout:top-[calc(var(--header-height,70px)+12px)] layout:max-h-[calc(100dvh-var(--header-height,70px)-48px)]"
             )}
           >

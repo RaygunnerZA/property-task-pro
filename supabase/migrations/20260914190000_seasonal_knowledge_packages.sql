@@ -550,10 +550,10 @@ INSERT INTO public.seasonal_packages (
     'audiences', jsonb_build_array('owner', 'manager'),
     'unscoped', true
   ),
-  'approved',
+  'draft',
   1,
   NULL,
-  now()
+  NULL
 )
 ON CONFLICT (slug) DO NOTHING;
 

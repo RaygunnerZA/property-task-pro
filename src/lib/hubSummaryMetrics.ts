@@ -1,15 +1,11 @@
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { computeTodayActionGauge } from "@/lib/todayActionGauge";
 
 const TERMINAL_STATUSES = new Set(["completed", "archived", "done"]);
 
 function isOpenTask(task: { status?: string | null }): boolean {
   const status = (task.status ?? "").toLowerCase();
   return !TERMINAL_STATUSES.has(status);
-}
-
-function isCompletedTask(task: { status?: string | null }): boolean {
-  const status = (task.status ?? "").toLowerCase();
-  return status === "completed" || status === "done";
 }
 
 /** Open work missing due date, assignee, or location context. */
@@ -33,7 +29,9 @@ export type HubSummaryMetrics = {
   spacesCount: number;
   assetsCount: number;
   completionPct: number;
+  gaugeEyebrow: string;
   completedLabel: string;
+  gaugeHint: string | null;
   dueSoonCount: number;
   overdueCount: number;
   missingInfoCount: number;
@@ -44,6 +42,8 @@ type HubTask = {
   priority?: string | null;
   property_id?: string | null;
   due_date?: string | null;
+  due_at?: string | null;
+  completed_at?: string | null;
   assigned_user_id?: string | null;
   spaces?: unknown;
 };
@@ -74,10 +74,6 @@ export function computeHubSummaryMetrics(
 
   const activeTasks = scopedTasks.filter((t) => (t.status ?? "").toLowerCase() !== "archived");
   const openTasks = activeTasks.filter(isOpenTask);
-  const doneCount = activeTasks.filter(isCompletedTask).length;
-  const totalForCompletion = openTasks.length + doneCount;
-  const completionPct =
-    totalForCompletion > 0 ? Math.round((doneCount / totalForCompletion) * 100) : 0;
 
   const urgentCount = openTasks.filter((t) => {
     const pr = (t.priority ?? "").toLowerCase();
@@ -103,13 +99,17 @@ export function computeHubSummaryMetrics(
   const spacesCount = scopedProperties.reduce((sum, p) => sum + (p.spaces_count ?? 0), 0);
   const assetsCount = scopedProperties.reduce((sum, p) => sum + (p.assets_count ?? 0), 0);
 
+  const todayGauge = computeTodayActionGauge(activeTasks, openTasksCount);
+
   return {
     openTasksCount,
     urgentCount,
     spacesCount,
     assetsCount,
-    completionPct,
-    completedLabel: `${doneCount} of ${totalForCompletion} complete`,
+    completionPct: todayGauge.completionPct,
+    gaugeEyebrow: todayGauge.gaugeEyebrow,
+    completedLabel: todayGauge.completedLabel,
+    gaugeHint: todayGauge.gaugeHint,
     dueSoonCount,
     overdueCount,
     missingInfoCount,

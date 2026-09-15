@@ -4,10 +4,14 @@ import type { ContentOutputKind, ContentOutputRow } from "@/types/knowledge";
 export const CONTENT_TOPIC_WORKFLOW_STATUSES = [
   "generating_seo",
   "seo_review",
+  "generating_plan",
+  "plan_review",
   "generating_brief",
   "brief_review",
   "ready_for_outputs",
+  "generating_content",
   "generating_outputs",
+  "content_review",
   "output_review",
   "visual_concept_review",
   "generating_final_assets",
@@ -33,6 +37,17 @@ export type ContentGenerationProvenance = {
   source_content_unavailable?: boolean;
 };
 
+export type SeoQueryCluster = {
+  intent: string;
+  label: string;
+  queries: string[];
+};
+
+export type SeoOpportunityConfidence = "low" | "medium" | "high" | "";
+
+/** Editorial hypothesis until live search / keyword evidence is wired. */
+export type SeoOpportunityKind = "editorial_hypothesis" | "search_backed";
+
 export type SeoProposal = {
   primary_search_theme: string;
   primary_keyword: string;
@@ -46,6 +61,25 @@ export type SeoProposal = {
   evidence_gaps: string[];
   research_warnings: string[];
   source_content_unavailable: boolean;
+  /** Search market + language, e.g. English-speaking owners in France. */
+  search_market: string;
+  language_market: string;
+  /** Intent-grouped query clusters (not a flat keyword dump). */
+  query_clusters: SeoQueryCluster[];
+  /** What typically ranks today: guide, government page, checklist, FAQ, etc. */
+  existing_result_pattern: string;
+  /** What this output adds beyond the source corpus. */
+  content_gap: string;
+  recommended_content_form: string;
+  suggested_title: string;
+  meta_title: string;
+  meta_description: string;
+  opportunity_confidence: SeoOpportunityConfidence;
+  /** True only when keyword volume or live SERP evidence was consulted. */
+  search_evidence_available: boolean;
+  live_search_consulted: boolean;
+  rejected_queries: string[];
+  opportunity_kind: SeoOpportunityKind;
 };
 
 export type SeoReadinessStatus =
@@ -143,23 +177,122 @@ export function asBooleanFlag(value: unknown): boolean {
   return false;
 }
 
+function normalizeOpportunityConfidence(value: unknown): SeoOpportunityConfidence {
+  const raw = asEditorialText(value).toLowerCase();
+  if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  return "";
+}
+
+function normalizeQueryClusters(raw: unknown, fallbackQueries: string[]): SeoQueryCluster[] {
+  if (Array.isArray(raw)) {
+    const clusters: SeoQueryCluster[] = [];
+    for (const item of raw) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const rec = item as Record<string, unknown>;
+      const queries = asStringList(rec.queries ?? rec.keywords);
+      const intent = asEditorialText(rec.intent ?? rec.id);
+      const label = asEditorialText(rec.label ?? rec.name ?? intent);
+      if (!intent && !label && queries.length === 0) continue;
+      clusters.push({
+        intent: intent || "related",
+        label: label || intent || "Related",
+        queries,
+      });
+    }
+    if (clusters.length > 0) return clusters;
+  }
+  if (fallbackQueries.length > 0) {
+    return [{ intent: "related", label: "Related queries", queries: fallbackQueries }];
+  }
+  return [];
+}
+
 export function normalizeSeoProposal(raw: unknown): SeoProposal {
   const obj = raw && typeof raw === "object" && !Array.isArray(raw)
     ? (raw as Record<string, unknown>)
     : {};
+  const secondary_keywords = asStringList(obj.secondary_keywords);
+  const live_search_consulted = asBooleanFlag(obj.live_search_consulted);
+  const search_evidence_available =
+    asBooleanFlag(obj.search_evidence_available) && live_search_consulted;
+  const kindRaw = asEditorialText(obj.opportunity_kind).toLowerCase();
+  const opportunity_kind: SeoOpportunityKind =
+    kindRaw === "search_backed" && search_evidence_available
+      ? "search_backed"
+      : "editorial_hypothesis";
+
+  const suggested_title =
+    asEditorialText(obj.suggested_title) || asEditorialText(obj.primary_search_theme);
+  const primary_search_theme =
+    asEditorialText(obj.primary_search_theme) || suggested_title;
+
   return {
-    primary_search_theme: asEditorialText(obj.primary_search_theme),
+    primary_search_theme,
     primary_keyword: asEditorialText(obj.primary_keyword),
-    secondary_keywords: asStringList(obj.secondary_keywords),
+    secondary_keywords,
     search_intent: asEditorialText(obj.search_intent),
     target_audience: asEditorialText(obj.target_audience),
     user_problem: asEditorialText(obj.user_problem),
     jurisdiction: asEditorialText(obj.jurisdiction),
-    content_angle: asEditorialText(obj.content_angle),
+    content_angle: asEditorialText(obj.content_angle) || asEditorialText(obj.content_gap),
     source_coverage_summary: asEditorialText(obj.source_coverage_summary),
     evidence_gaps: asStringList(obj.evidence_gaps),
     research_warnings: asStringList(obj.research_warnings),
     source_content_unavailable: asBooleanFlag(obj.source_content_unavailable),
+    search_market: asEditorialText(obj.search_market),
+    language_market: asEditorialText(obj.language_market),
+    query_clusters: normalizeQueryClusters(obj.query_clusters, secondary_keywords),
+    existing_result_pattern: asEditorialText(obj.existing_result_pattern),
+    content_gap:
+      asEditorialText(obj.content_gap) || asEditorialText(obj.content_angle),
+    recommended_content_form: asEditorialText(obj.recommended_content_form),
+    suggested_title,
+    meta_title: asEditorialText(obj.meta_title) || suggested_title,
+    meta_description: asEditorialText(obj.meta_description),
+    opportunity_confidence: normalizeOpportunityConfidence(obj.opportunity_confidence),
+    search_evidence_available,
+    live_search_consulted,
+    rejected_queries: asStringList(obj.rejected_queries),
+    opportunity_kind,
+  };
+}
+
+export type SeoOpportunityIndicators = {
+  factuallyGrounded: boolean;
+  searchEvidenceAvailable: boolean;
+  opportunityConfidence: SeoOpportunityConfidence;
+  sourceCoverage: string;
+  opportunityKind: SeoOpportunityKind;
+  /** UI label — never call a hypothesis “SEO approved”. */
+  opportunityLabel: string;
+};
+
+/**
+ * Separate indicators: factual grounding ≠ search evidence ≠ opportunity quality.
+ * Approval of an editorial hypothesis is still allowed when factually grounded.
+ */
+export function getSeoOpportunityIndicators(
+  proposal: SeoProposal,
+  readiness: Pick<SeoReadiness, "sourceUnavailable" | "knowledgeGaps" | "sourceIssues">
+): SeoOpportunityIndicators {
+  const factuallyGrounded =
+    !readiness.sourceUnavailable &&
+    readiness.sourceIssues.length === 0 &&
+    readiness.knowledgeGaps.length === 0 &&
+    !proposal.source_content_unavailable;
+  const searchEvidenceAvailable = proposal.search_evidence_available && proposal.live_search_consulted;
+  const opportunityKind: SeoOpportunityKind = searchEvidenceAvailable
+    ? "search_backed"
+    : "editorial_hypothesis";
+  return {
+    factuallyGrounded,
+    searchEvidenceAvailable,
+    opportunityConfidence: proposal.opportunity_confidence,
+    sourceCoverage: proposal.source_coverage_summary || (factuallyGrounded ? "Source corpus available" : "Coverage incomplete"),
+    opportunityKind,
+    opportunityLabel: searchEvidenceAvailable
+      ? "Search-backed SEO opportunity"
+      : "Editorial SEO hypothesis",
   };
 }
 
@@ -431,13 +564,17 @@ export function getWorkflowStep(status: ContentTopicWorkflowStatus): ContentWork
   switch (status) {
     case "generating_seo":
     case "seo_review":
+    case "generating_plan":
+    case "plan_review":
     case "generation_failed":
       return "seo";
     case "generating_brief":
     case "brief_review":
       return "brief";
     case "ready_for_outputs":
+    case "generating_content":
     case "generating_outputs":
+    case "content_review":
     case "output_review":
       return "outputs";
     case "visual_concept_review":
@@ -735,7 +872,7 @@ export function getPrimaryAction(input: {
   if (seoReviewing) {
     const readiness = getSeoReadiness(seo);
     if (readiness.canApprove) {
-      return { kind: "approve_seo", label: "Approve SEO" };
+      return { kind: "approve_seo", label: "Approve SEO opportunity" };
     }
     return { kind: "resolve_grounding", label: "Resolve grounding" };
   }
@@ -813,8 +950,13 @@ export function seoSummary(seo: ContentStageEnvelope): string {
   const keyword = proposal.primary_keyword || proposal.primary_search_theme;
   const intent = proposal.search_intent;
   if (!keyword) return "No SEO proposal yet";
-  const prefix = seo.approval_status === "approved" ? "Approved · " : "";
-  return prefix + (intent ? `${keyword} · ${intent}` : keyword);
+  const indicators = getSeoOpportunityIndicators(proposal, getSeoReadiness(seo));
+  const kindTag =
+    indicators.opportunityKind === "editorial_hypothesis" ? " · Editorial hypothesis" : "";
+  if (seo.approval_status === "approved") {
+    return `Approved opportunity${kindTag} · ${intent ? `${keyword} · ${intent}` : keyword}`;
+  }
+  return `${indicators.opportunityLabel} · ${intent ? `${keyword} · ${intent}` : keyword}`;
 }
 
 export function briefSummary(brief: ContentStageEnvelope): string {

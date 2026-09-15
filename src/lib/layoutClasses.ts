@@ -70,6 +70,13 @@ export const slideOverPanelWideClass =
 /** Workbench / property column shell — prevents flex/grid overflow on narrow viewports. */
 export const columnShellClass = "flex min-h-0 min-w-0 w-full max-w-full flex-1 flex-col";
 
+/**
+ * Horizontal inset for the header Search cell so its left edge matches centre-column
+ * content (DualPane centre shell `px-1`/`layout:px-2` + Home/CentreWorkbench `px-2`).
+ * Do not add extra section-header padding on top of that stack.
+ */
+export const workbenchHeaderCentrePadClass = "px-3 sm:px-3 layout:px-4";
+
 /** Side sheet content override when a fixed desktop width is needed. */
 export const sideSheetDesktopWidthClass =
   "w-full max-w-full min-w-0 sm:w-[420px] sm:max-w-[480px]";

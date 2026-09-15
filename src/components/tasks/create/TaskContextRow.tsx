@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 import { SemanticChip } from "@/components/chips/semantic";
 import { PerforationLine } from "./PerforationLine";
 import type { SuggestedChip, ChipType } from '@/types/chip-suggestions';
-import fillaAISrc from "@/assets/filla-ai.svg";
+import { FillaAiMark } from "@/components/brand/FillaAiMark";
 
 const sections = [
   { id: "who", icon: User, label: "Who is responsible", tooltip: "Person / Assignee" },
@@ -94,12 +94,7 @@ export function TaskContextRow({
         <div className="space-y-2">
           {/* FILLA SET Header */}
           <label className="text-xs font-mono uppercase tracking-wider text-primary flex items-center gap-1.5 py-1">
-            <img 
-              src={fillaAISrc} 
-              alt="Filla AI" 
-              className="inline-block"
-              style={{ width: 12, height: 12 }}
-            />
+            <FillaAiMark size={12} className="opacity-100" />
             FILLA SET
           </label>
           

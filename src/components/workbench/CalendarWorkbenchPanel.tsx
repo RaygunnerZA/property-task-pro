@@ -236,7 +236,7 @@ export function CalendarWorkbenchPanel({
       <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
         <div
           className={cn(
-            "relative flex w-full min-w-0 items-start gap-3 px-0 md:px-2",
+            "relative flex w-full min-w-0 items-start gap-3 px-0",
             workbenchTitleBandPtClassName
           )}
         >
@@ -291,7 +291,7 @@ export function CalendarWorkbenchPanel({
           </div>
         </div>
 
-        <div className="mt-3 px-0 md:mt-5 md:mb-5 md:px-2">
+        <div className="mt-3 px-0 md:mt-5 md:mb-5">
           <WorkbenchTaskFilterBar
             tasks={tasksProp}
             properties={properties}
@@ -302,7 +302,7 @@ export function CalendarWorkbenchPanel({
       </section>
 
       {view === "calendar" ? (
-        <section className="flex w-full flex-col gap-3 px-0 md:px-2">
+        <section className="flex w-full flex-col gap-3 px-0">
           <div
             className={cn(
               "flex flex-wrap items-center justify-between gap-2 rounded-xl",
@@ -358,7 +358,7 @@ export function CalendarWorkbenchPanel({
           </div>
         </section>
       ) : (
-        <section className="flex min-h-0 flex-1 flex-col px-0 md:px-2">
+        <section className="flex min-h-0 flex-1 flex-col px-0">
           <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl bg-muted/10">
             {tasksLoading ? (
               <div className="space-y-3 p-4">

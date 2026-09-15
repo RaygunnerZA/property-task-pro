@@ -41,6 +41,10 @@ export type SeasonalPackage = {
   version: number;
   org_id: string | null;
   items: SeasonalPackageItem[];
+  /** Intended surfaces — present on admin rows; optional on customer payload. */
+  surfaces?: string[];
+  /** Creative envelope — present on admin rows; optional on customer payload. */
+  creative?: Record<string, unknown>;
 };
 
 /** Soft ranking only — never implies missing work from absent inventory. */
@@ -60,6 +64,17 @@ export function packageIsInDisplayWindow(
   const d = String(today.getUTCDate()).padStart(2, "0");
   const day = `${y}-${m}-${d}`;
   return day >= pkg.display_from && day <= pkg.display_until;
+}
+
+/**
+ * Mirrors list_active_seasonal_packages customer gate (status + window).
+ * Dismissal is applied separately per user/version.
+ */
+export function isCustomerVisibleSeasonalPackage(
+  pkg: Pick<SeasonalPackage, "status" | "display_from" | "display_until">,
+  today: Date = new Date()
+): boolean {
+  return pkg.status === "approved" && packageIsInDisplayWindow(pkg, today);
 }
 
 /**

@@ -26,6 +26,7 @@ type MagneticScrollAreaProps = {
  * Scroll container for workbench lists (Tasks, Messages, Schedule).
  *
  * - The list scrolls internally instead of the page.
+ * - At the top/bottom limit, wheel/trackpad deltas are trapped so the page does not scroll.
  * - Cards compress vertically and fade as they enter/exit the viewport edges
  *   (scroll-linked, no transitions — stays glued to the finger/wheel).
  * - A 10px shadow gradient appears at the top/bottom while content is hidden
@@ -105,7 +106,27 @@ export const MagneticScrollArea = forwardRef<HTMLDivElement, MagneticScrollAreaP
         rafRef.current = requestAnimationFrame(update);
       };
 
+      /**
+       * Trap wheel/trackpad at the scroll limits. `overscroll-behavior` alone still
+       * lets some browsers chain into `<main>` / the document once the list ends.
+       */
+      const onWheel = (event: WheelEvent) => {
+        if (event.ctrlKey) return; // pinch-zoom
+        const maxScroll = viewport.scrollHeight - viewport.clientHeight;
+        if (maxScroll <= 1) return;
+
+        const { scrollTop } = viewport;
+        const deltaY = event.deltaY;
+        const atTop = scrollTop <= 0;
+        const atBottom = scrollTop >= maxScroll - 1;
+        if ((atTop && deltaY < 0) || (atBottom && deltaY > 0)) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      };
+
       viewport.addEventListener("scroll", schedule, { passive: true });
+      viewport.addEventListener("wheel", onWheel, { passive: false });
       const resizeObserver = new ResizeObserver(schedule);
       resizeObserver.observe(viewport);
       // childList only — our own style writes (attribute mutations) don't retrigger.
@@ -115,11 +136,12 @@ export const MagneticScrollArea = forwardRef<HTMLDivElement, MagneticScrollAreaP
 
       return () => {
         viewport.removeEventListener("scroll", schedule);
+        viewport.removeEventListener("wheel", onWheel);
         resizeObserver.disconnect();
         mutationObserver.disconnect();
         if (rafRef.current) {
           cancelAnimationFrame(rafRef.current);
-          // Must reset — StrictMode re-runs this effect, and a stale id would
+          // Must reset — Strict Mode re-runs this effect, and a stale id would
           // make `schedule` think a frame is forever pending.
           rafRef.current = 0;
         }
@@ -135,7 +157,8 @@ export const MagneticScrollArea = forwardRef<HTMLDivElement, MagneticScrollAreaP
             else if (ref) ref.current = node;
           }}
           className={cn(
-            "magnetic-scroll-viewport min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            // overscroll-y-none: do not chain into the page when the list hits a limit.
+            "magnetic-scroll-viewport min-h-0 flex-1 overflow-y-auto overscroll-y-none touch-pan-y",
             viewportClassName
           )}
         >

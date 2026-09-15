@@ -4178,9 +4178,9 @@ export function IntakeModal({
         "flex w-full min-w-0 flex-nowrap gap-1",
         isColumnComposerOpen
           ? cn(
-              // Active tab sits 15px from top + nearest side of the turquoise track.
-              "h-[calc(3.5rem+15px)] w-full items-end overflow-visible rounded-t-[13px] rounded-b-[5px] pb-0 shadow-[0_-1px_1px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]",
-              "pt-[15px]",
+              // Active tab: 5px above in the track; flush to bottom (no mb).
+              "h-[calc(3.5rem+5px)] w-full items-end overflow-visible rounded-t-[13px] rounded-b-[5px] pb-0 shadow-[0_-1px_1px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]",
+              "pt-[5px]",
               intakeMode === "report_issue" ? "pl-[15px] pr-3" : "pl-3 pr-[15px]"
             )
           : "h-12 items-stretch rounded-[15px] py-1.5 pl-1 pr-1.5 shadow-[1px_1px_1px_0px_rgb(255,255,255),inset_-1.9px_8.9px_10.7px_-1.9px_rgba(0,0,0,0.31)]"
@@ -4201,13 +4201,21 @@ export function IntakeModal({
           onClick={() => trySetIntakeMode(m)}
           className={cn(
             "inline-flex min-w-0 flex-1 basis-0 items-center justify-center gap-1.5 font-medium transition-all sm:gap-2",
-            isCreate ? "text-sm sm:text-[15px]" : "text-xs sm:text-sm",
+            // Same label size for both tabs in the column folder strip.
+            isColumnComposerOpen
+              ? "text-sm"
+              : isCreate
+                ? "text-sm sm:text-[15px]"
+                : "text-xs sm:text-sm",
             isColumnComposerOpen
               ? cn(
-                  "px-2 py-2",
                   selected
-                    ? "intake-folder-tab relative z-10 rounded-t-[9px] rounded-b-none bg-background py-2.5 font-bold text-foreground"
-                    : "rounded-card text-white hover:text-white/90"
+                    ? cn(
+                        // Square bottom corners so the tab joins the paper panel flush.
+                        "intake-folder-tab relative z-10 mb-0 rounded-tl-[9px] rounded-tr-[9px] rounded-bl-none rounded-br-none bg-background font-semibold text-foreground",
+                        "pt-2.5 pl-[5px] pr-2 pb-[15px]"
+                      )
+                    : "mb-0 rounded-card px-2 pt-2.5 pb-[15px] font-semibold text-white hover:text-white/90"
                 )
               : cn(
                   "rounded-card py-2",
@@ -4227,8 +4235,7 @@ export function IntakeModal({
                 ? isCreate
                   ? "text-primary"
                   : "text-[hsl(16_82%_56%)]"
-                : "text-white",
-              isColumnComposerOpen && selected && "intake-folder-tab-label"
+                : "text-white"
             )}
             aria-hidden
           >
@@ -4236,9 +4243,9 @@ export function IntakeModal({
           </span>
           <span
             className={cn(
-              "min-w-0 whitespace-nowrap text-center",
+              "min-w-0 whitespace-nowrap text-center leading-none",
               truncateIntakeTabLabels && "truncate",
-              isColumnComposerOpen && selected && "intake-folder-tab-label font-bold text-foreground"
+              isColumnComposerOpen && selected && "text-foreground"
             )}
           >
             {isCreate ? "Create Task" : "Add Record"}
@@ -4278,7 +4285,7 @@ export function IntakeModal({
         collapseComposer
           ? "h-9"
           : isColumnComposerOpen
-            ? "h-[calc(3.5rem+15px)]"
+            ? "h-[calc(3.5rem+5px)]"
             : "h-12"
       )}
     >

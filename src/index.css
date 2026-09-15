@@ -1129,6 +1129,7 @@
      take over once it finishes — `both` would pin the final keyframe forever. */
   .magnetic-scroll-viewport {
     scroll-snap-type: y proximity;
+    overscroll-behavior-y: none;
   }
 
   .magnetic-scroll-viewport .list-stagger > * {

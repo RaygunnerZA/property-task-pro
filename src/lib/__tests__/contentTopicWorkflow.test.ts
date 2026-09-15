@@ -6,6 +6,7 @@ import {
   canGenerateBrief,
   canGenerateOutputs,
   getPrimaryAction,
+  getSeoOpportunityIndicators,
   getSeoReadiness,
   getWorkflowStatusDisplay,
   getWorkflowStep,
@@ -74,7 +75,7 @@ describe("contentTopicWorkflow", () => {
     expect(action.label).toBe("Generate SEO opportunity");
   });
 
-  it("offers Approve SEO when proposal exists but not approved", () => {
+  it("offers Approve SEO opportunity when proposal exists but not approved", () => {
     expect(hasSeoProposal(pendingSeo)).toBe(true);
     expect(isSeoApproved(pendingSeo)).toBe(false);
     const action = getPrimaryAction({
@@ -84,6 +85,7 @@ describe("contentTopicWorkflow", () => {
       outputs: [],
     });
     expect(action.kind).toBe("approve_seo");
+    expect(action.label).toBe("Approve SEO opportunity");
   });
 
   it("offers Generate brief after SEO approval", () => {
@@ -405,7 +407,64 @@ describe("SEO readiness and approval gating", () => {
         search_intent: "Informational",
       },
     });
-    expect(seoSummary(approved)).toBe("Approved · smoke alarm installation France · Informational");
+    expect(seoSummary(approved)).toBe(
+      "Approved opportunity · Editorial hypothesis · smoke alarm installation France · Informational"
+    );
     expect(isStepComplete("seo", "brief_review", approved, emptyBrief)).toBe(true);
+  });
+});
+
+describe("SEO opportunity indicators", () => {
+  it("keeps search-backed only when live evidence flags are both true", () => {
+    const backed = normalizeSeoProposal({
+      primary_keyword: "is chimney sweeping mandatory in France",
+      search_intent: "informational",
+      query_clusters: [
+        {
+          intent: "obligation",
+          label: "Obligation",
+          queries: ["is chimney sweeping mandatory in France"],
+        },
+        {
+          intent: "frequency",
+          label: "Frequency",
+          queries: ["how often chimney sweep France"],
+        },
+      ],
+      live_search_consulted: true,
+      search_evidence_available: true,
+      opportunity_kind: "search_backed",
+    });
+    expect(backed.query_clusters).toHaveLength(2);
+    expect(backed.live_search_consulted).toBe(true);
+    expect(backed.search_evidence_available).toBe(true);
+    expect(backed.opportunity_kind).toBe("search_backed");
+
+    const hypothesis = normalizeSeoProposal({
+      primary_keyword: "chimney sweeping France",
+      live_search_consulted: false,
+      search_evidence_available: true,
+      opportunity_kind: "search_backed",
+    });
+    expect(hypothesis.search_evidence_available).toBe(false);
+    expect(hypothesis.opportunity_kind).toBe("editorial_hypothesis");
+  });
+
+  it("separates factual grounding from search evidence", () => {
+    const proposal = normalizeSeoProposal({
+      primary_keyword: "attestation de ramonage",
+      source_content_unavailable: false,
+      evidence_gaps: [],
+      source_coverage_summary: "Verified claims cover obligation and attestation",
+      opportunity_confidence: "medium",
+    });
+    const indicators = getSeoOpportunityIndicators(proposal, {
+      sourceUnavailable: false,
+      knowledgeGaps: [],
+      sourceIssues: [],
+    });
+    expect(indicators.factuallyGrounded).toBe(true);
+    expect(indicators.searchEvidenceAvailable).toBe(false);
+    expect(indicators.opportunityLabel).toBe("Editorial SEO hypothesis");
   });
 });

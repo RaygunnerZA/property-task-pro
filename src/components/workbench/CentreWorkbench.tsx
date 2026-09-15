@@ -10,7 +10,7 @@ import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 import type { RecordsView } from "@/lib/propertyRoutes";
 
 const centreScrollClass =
-  "box-border flex min-h-0 min-w-0 w-full max-w-[700px] flex-1 flex-col overflow-x-clip overflow-y-hidden px-0 pb-4 md:px-2 max-pane:md:px-2";
+  "box-border flex min-h-0 min-w-0 w-full max-w-[700px] flex-1 flex-col overflow-x-clip overflow-y-visible px-0 pb-4 md:px-2 max-pane:md:px-2";
 
 export type CentreWorkbenchProps = MyWorkPanelProps & {
   activeTab: CentreWorkbenchTab;

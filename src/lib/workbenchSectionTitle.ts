@@ -21,14 +21,14 @@ export const workbenchTitleBandLabelOffsetClassName = "pt-1 sm:pt-1.5";
 
 /** Active centre list tab fill — darker Filla turquoise. */
 export const WORKBENCH_CENTRE_TAB_ACTIVE_COLOR = "#5A9499";
-/** Inactive centre list tab fill — cool gray (halfway between light and prior darker). */
-export const WORKBENCH_CENTRE_TAB_INACTIVE_COLOR = "#AFB5BE";
+/** Inactive centre list tab fill — light turquoise. */
+export const WORKBENCH_CENTRE_TAB_INACTIVE_COLOR = "#A2CED1";
 
 /** Active centre list tab (All / Urgent / Planner…) — turquoise + deboss. */
 export const workbenchCentreTabActiveClassName =
   "font-display text-2xl font-medium leading-tight tracking-tight text-shadow-neu-pressed [text-wrap:balance]";
 
-/** Inactive centre list tab — light cool gray + softer deboss. */
+/** Inactive centre list tab — light turquoise + softer deboss. */
 export const workbenchCentreTabInactiveClassName =
   "font-display text-2xl font-light leading-tight tracking-tight text-shadow-neu-pressed";
 

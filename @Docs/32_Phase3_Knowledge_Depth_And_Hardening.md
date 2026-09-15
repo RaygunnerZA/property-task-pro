@@ -4,11 +4,11 @@
 **Defers to:** `@Docs/03_Data_Model.md`, `@Docs/07_AI_Intelligence.md`, `@Docs/20_Billing.md`, `@Docs/29_Knowledge.md`, `@Docs/30_Phase2_Knowledge_First.md`, `@Docs/Schema_Discrepancy_Register.md`  
 **On conflict, constitution wins.**
 
-Phase 2 finishes the **admin Knowledge loop** (intake, guidance quality, critic gates, review workbench, org published library polish). Phase 3 holds **harder** incomplete work. Do not reopen these as drive-bys in unrelated PRs.
+Phase 2 finishes the **admin Knowledge judgement loop** (intake, guidance quality, critic gates, Needs review workbench, org published library polish). Phase 3 holds **harder** incomplete work — especially automation that must not become permanent human CMS steps (`@Docs/29_Knowledge.md`). Do not reopen these as drive-bys in unrelated PRs.
 
 ---
 
-## 1. Knowledge depth
+## 1. Knowledge depth & decision-system automation
 
 | Item | Notes |
 |------|--------|
@@ -17,11 +17,15 @@ Phase 2 finishes the **admin Knowledge loop** (intake, guidance quality, critic 
 | Paste intake | Manual-equivalent paste and/or paste → `ai-doc-analyse` multi-candidate proposals. |
 | Richer search | Beyond org ILIKE — FTS/embeddings if product requires. |
 | Assistant citations | Published Knowledge only in assistant-reasoner answers. |
-| Reuse / stale / superseded metrics | Product surfaces + instrumentation on existing `knowledge_usage_events` / admin & org metric RPCs. |
-| Discovery → candidates | Quality, dedupe, Filla Brain cohort rules before creating Knowledge candidates. |
-| Content Tree generation | AI/editorial generation beyond manual SEO/Brief/Outputs; Creative & Publishing remain stubs until this ships. |
+| Reuse / stale / superseded metrics | Product surfaces + instrumentation on existing `knowledge_usage_events` / admin & org metric RPCs. Prefer control-room metrics: auto-discarded discoveries, Schedule Now count, expressions skipped by score. |
+| Discovery → candidates | Quality, dedupe, Filla Brain cohort rules before creating Knowledge candidates → Schedule preparation / Accept. |
+| Overnight Watch machine | Region-by-region Watch → detect → compare → investigate → cross-check → score → prepare **Knowledge Schedule**. Morning surface is Now / Next / Later / Monitoring — not hundreds of raw discoveries. |
+| Expression automation | Machine decides create / update / **do nothing**; builds topic packages (international + regional layers + visual family). `content_topics` / strategy / SEO / briefs / outputs stay **metadata**. Collapse transitional Outputs UI toward Schedule → Review package → Approve distribution. |
+| Knowledge Schedule + Review package UI | **Superseded by one control room:** subject-package queue (Needs attention / Scheduled / Complete); package workspace What we know / making / Review; Accept plan → Generate drafts → Approve distribution. Legacy Review table + Content Tree behind overflow only. Image family + overnight ranking remain backlog. |
+| Image family flow | Concept 2×2 → select → square master → vertical/horizontal + thumbnail; paper-cut style; no baked text; approve with package. Regional image variants are exceptions. |
+| Pilot mode | Tuning controls inside Review package until three pilot flows are consistently acceptable (international+one region; multi-region; regional-only). |
 | Org customer upload intake | Organisation-scoped upload path (not only platform admin bulk). |
-| Distribution | In-app tips, website, newsletters using existing identity/applicability/notification rules — no separate distribution engine. |
+| Distribution | In-app tips, seasonal packages, website, newsletters using existing identity/applicability/notification rules — no separate CMS or distribution engine. |
 
 ---
 

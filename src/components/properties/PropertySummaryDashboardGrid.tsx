@@ -96,6 +96,8 @@ export type PropertySummaryDashboardGridProps = {
   urgentOpenTaskCount: number;
   completionPct: number;
   completedLabel: string;
+  gaugeEyebrow?: string;
+  gaugeHint?: string | null;
   onOpenTasks: () => void;
   /** Lists urgent/high-priority open tasks (Issues → Open + urgent filter). */
   onOpenUrgentTasks?: () => void;
@@ -125,6 +127,8 @@ export function PropertySummaryDashboardGrid({
   urgentOpenTaskCount,
   completionPct,
   completedLabel,
+  gaugeEyebrow = "Today",
+  gaugeHint = null,
   onOpenTasks,
   onOpenUrgentTasks,
   onAddTask,
@@ -179,7 +183,10 @@ export function PropertySummaryDashboardGrid({
           OPEN TASKS
         </span>
         <DashedRule className="my-0 max-w-[72px] py-1" />
-        <div className="flex h-[99px] w-[84px] min-h-0 shrink-0 flex-col items-center justify-center gap-1 px-0">
+        <div className="flex h-[99px] w-[84px] min-h-0 shrink-0 flex-col items-center justify-center gap-0.5 px-0">
+          <span className="font-mono text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+            {gaugeEyebrow}
+          </span>
           <RadialProgress
             value={completionPct}
             size={72}
@@ -188,11 +195,16 @@ export function PropertySummaryDashboardGrid({
             labelMarginLeft={6}
             embed
             visualWeight="soft"
-            aria-label={`${completedLabel}, ${completionPct}%`}
+            aria-label={`${gaugeEyebrow}: ${completedLabel}, ${completionPct}%`}
           />
-          <span className="max-w-[88px] pb-1 text-center font-sans text-2xs font-medium tabular-nums leading-tight tracking-[0.1px] text-muted-foreground">
+          <span className="max-w-[88px] text-center font-sans text-2xs font-semibold tabular-nums leading-tight tracking-[0.1px] text-foreground/80">
             {completedLabel}
           </span>
+          {gaugeHint ? (
+            <span className="max-w-[88px] text-center font-sans text-2xs font-medium leading-tight text-muted-foreground">
+              {gaugeHint}
+            </span>
+          ) : null}
         </div>
         <DashedRule className="my-0 max-w-[72px] py-1" />
         <div className="mt-1.5 flex w-full justify-center px-0.5">

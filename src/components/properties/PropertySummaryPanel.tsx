@@ -243,6 +243,72 @@ function StatColumn({
   );
 }
 
+function TaskCompletionGauge({
+  completionPct,
+  gaugeEyebrow,
+  completedLabel,
+  gaugeHint,
+  onOpenTasks,
+}: {
+  completionPct: number;
+  gaugeEyebrow: string;
+  completedLabel: string;
+  gaugeHint?: string | null;
+  onOpenTasks?: () => void;
+}) {
+  const body = (
+    <>
+      <span className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+        {gaugeEyebrow}
+      </span>
+      <RadialProgress
+        value={completionPct}
+        size={100}
+        thickness={7}
+        innerDiscSize={74}
+        labelMarginLeft={6}
+        embed
+        visualWeight="soft"
+        aria-label={`${gaugeEyebrow}: ${completedLabel}, ${completionPct}%`}
+      />
+      <p className="mt-1 max-w-[120px] text-center text-2xs font-semibold leading-tight text-foreground/80">
+        {completedLabel}
+      </p>
+      {gaugeHint ? (
+        <p className="mt-0.5 max-w-[120px] text-center text-2xs font-medium leading-tight text-muted-foreground">
+          {gaugeHint}
+        </p>
+      ) : null}
+    </>
+  );
+  const className =
+    "flex w-[52%] min-w-[118px] shrink-0 flex-col items-center justify-center rounded-lg px-0.5 py-0.5";
+  const ariaLabel = `${gaugeEyebrow}: ${completedLabel}${gaugeHint ? `, ${gaugeHint}` : ""}, ${completionPct}%`;
+
+  if (onOpenTasks) {
+    return (
+      <button
+        type="button"
+        className={cn(
+          className,
+          "cursor-pointer outline-none transition-colors",
+          "hover:bg-muted/25 focus-visible:ring-2 focus-visible:ring-primary/25"
+        )}
+        onClick={onOpenTasks}
+        aria-label={ariaLabel}
+      >
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <div className={className} role="group" aria-label={ariaLabel}>
+      {body}
+    </div>
+  );
+}
+
 function CountRow({
   label,
   count,
@@ -312,7 +378,7 @@ export function PropertySummaryPanel({
   urgentOpenTaskCount = 0,
   loading = false,
   onOpenUrgent: _onOpenUrgent,
-  onOpenTasks: _onOpenTasks,
+  onOpenTasks,
   onOpenCompliance: _onOpenCompliance,
   onOpenInspections: _onOpenInspections,
   onOpenSpaces,
@@ -552,21 +618,13 @@ export function PropertySummaryPanel({
                   ))}
                 </div>
                 <div className="flex items-start gap-1 border-b border-dashed border-border/40 px-1 pb-2 pt-[7px]">
-                  <div className="flex w-[52%] min-w-[118px] shrink-0 flex-col items-center justify-center">
-                    <RadialProgress
-                      value={metrics.completionPct}
-                      size={100}
-                      thickness={7}
-                      innerDiscSize={74}
-                      labelMarginLeft={6}
-                      embed
-                      visualWeight="soft"
-                      aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
-                    />
-                    <p className="mt-1.5 max-w-[112px] text-center text-2xs font-medium leading-tight text-muted-foreground">
-                      {metrics.completedLabel}
-                    </p>
-                  </div>
+                  <TaskCompletionGauge
+                    completionPct={metrics.completionPct}
+                    gaugeEyebrow={metrics.gaugeEyebrow}
+                    completedLabel={metrics.completedLabel}
+                    gaugeHint={metrics.gaugeHint}
+                    onOpenTasks={onOpenTasks}
+                  />
 
                   <div className="flex min-w-0 flex-1 flex-col items-stretch justify-center gap-0.5 border-l border-dashed border-border/35 py-1 pl-1.5 pr-0.5">
                     <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />

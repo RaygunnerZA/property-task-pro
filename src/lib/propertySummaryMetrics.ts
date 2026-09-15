@@ -1,6 +1,12 @@
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { isTaskMissingInfo } from "@/lib/hubSummaryMetrics";
+import {
+  computeTodayActionGauge,
+  type TodayActionGauge,
+} from "@/lib/todayActionGauge";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
+
+export { computeTodayActionGauge } from "@/lib/todayActionGauge";
 
 const TERMINAL_STATUSES = new Set(["completed", "archived", "done"]);
 
@@ -10,6 +16,7 @@ type TaskLike = {
   title?: string | null;
   due_date?: string | null;
   due_at?: string | null;
+  completed_at?: string | null;
   property_id?: string | null;
 };
 
@@ -36,9 +43,7 @@ export type PropertySummaryMetrics = {
   assetsCount: number;
   documentsCount: number;
   messagesCount: number;
-  completionPct: number;
-  completedLabel: string;
-};
+} & TodayActionGauge;
 
 function isOpenTask(task: TaskLike): boolean {
   const status = (task.status ?? "").toLowerCase();
@@ -158,13 +163,7 @@ export function computePropertySummaryMetrics(
 
   const { dueSoonInspections, overdueInspections } = countInspectionUrgency(tasks, documents);
 
-  const doneCount = tasks.filter((t) => {
-    const status = (t.status ?? "").toLowerCase();
-    return status === "completed" || status === "done";
-  }).length;
-  const totalForCompletion = openTasks + doneCount;
-  const completionPct =
-    totalForCompletion > 0 ? Math.round((doneCount / totalForCompletion) * 100) : 0;
+  const todayGauge = computeTodayActionGauge(tasks, openTasks);
 
   return {
     urgentItems,
@@ -180,8 +179,7 @@ export function computePropertySummaryMetrics(
     assetsCount: property.assets_count ?? 0,
     documentsCount: documents.length,
     messagesCount,
-    completionPct,
-    completedLabel: `${doneCount} of ${totalForCompletion} complete`,
+    ...todayGauge,
   };
 }
 
@@ -220,13 +218,7 @@ export function computeAllPropertiesSummaryMetrics(
 
   const { dueSoonInspections, overdueInspections } = countInspectionUrgency(scopedTasks, []);
 
-  const doneCount = scopedTasks.filter((t) => {
-    const status = (t.status ?? "").toLowerCase();
-    return status === "completed" || status === "done";
-  }).length;
-  const totalForCompletion = openTasks + doneCount;
-  const completionPct =
-    totalForCompletion > 0 ? Math.round((doneCount / totalForCompletion) * 100) : 0;
+  const todayGauge = computeTodayActionGauge(scopedTasks, openTasks);
 
   const complianceReviews = properties.reduce(
     (sum, p) => sum + (p.expired_compliance_count ?? 0),
@@ -247,7 +239,6 @@ export function computeAllPropertiesSummaryMetrics(
     assetsCount: properties.reduce((sum, p) => sum + (p.assets_count ?? 0), 0),
     documentsCount: 0,
     messagesCount: 0,
-    completionPct,
-    completedLabel: `${doneCount} of ${totalForCompletion} complete`,
+    ...todayGauge,
   };
 }

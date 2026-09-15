@@ -146,7 +146,7 @@ Breakpoints: dual from `sm` (640) / `md` (768) per phone contract; **third colum
 
 **Gutters & column gaps**
 
-DualPane owns horizontal insets and column gaps — do not wrap it in a centering `max-w-[1480px]` shell or an extra `px-gutter-page` (activity chrome uses full-bleed + `pt-[20px]` like the hub). Column gap is `gutter-rail` between tracks. Every rail uses **12px** horizontal inset at `sm+` / `layout+` (do not drop to `pl-2` in triple mode). PropertyWorkspaceLayout adds the same inner insets as the hub (`px-1` left, `md:px-2` centre). On phone (`max-width: 767px`), `--gutter-page` / `--gutter-pane` / `--gutter-rail` are **15px**; apply that inset to the content stack only. Gradient header and mobile bottom nav stay full-bleed with their own chrome padding.
+DualPane owns horizontal insets and column gaps — do not wrap it in a centering `max-w-[1480px]` shell or an extra `px-gutter-page` (activity chrome uses full-bleed + `pt-[20px]` like the hub). Column gap is `gutter-rail` between tracks. Every rail uses **12px** horizontal inset at `sm+` / `layout+` (do not drop to `pl-2` in triple mode). PropertyWorkspaceLayout adds the same inner insets as the hub (`px-1` left, `md:px-2` centre). Centre content shells (`HomeWorkbenchCentre`, `CentreWorkbench`) add **`px-2`**; section headers must not add a further horizontal inset. Gradient header Search uses `workbenchHeaderCentrePadClass` (`px-3` / `layout:px-4`) so it shares that content left edge, and the same DualPane grid template (dual / centre-max / triple). Hub DualPane uses **`pageScroll`**: left · centre · right grow with content and scroll together under `<main>` (no sticky left rail, no centre viewport lock, no nested task-list scroller). On phone (`max-width: 767px`), `--gutter-page` / `--gutter-pane` / `--gutter-rail` are **15px**; apply that inset to the content stack only. Gradient header and mobile bottom nav stay full-bleed with their own chrome padding.
 
 **Mobile**
 
@@ -504,7 +504,7 @@ import { ErrorState } from "@/components/design-system/ErrorState";
 
 **Still-Used Components (Keep but update to use design tokens):**
 - `SegmentControl` / `SegmentedControl` - Used in WorkTasks
-- `MiniCalendar` - Used in Calendar page
+- `MiniCalendar` (`FillaMiniCalendar`) - Used in Calendar page / context. Day blocks share `MINI_CAL_DAY`: fixed square per variant (sidebar 30×30, embedded 28×28), equal `flex-1` columns, centred button (never stretch). Selected / task-fill change only fill + shadow — never size or padding.
 - `TaskCard` - Check usage
 - `DashboardTabs` - Check usage
 

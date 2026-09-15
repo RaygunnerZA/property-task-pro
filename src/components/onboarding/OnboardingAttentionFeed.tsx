@@ -37,7 +37,7 @@ export type OnboardingAttentionFeedProps = {
 
 function FeedSectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
   return (
-    <div className="px-0.5">
+    <div className="px-0">
       <h2 className={workbenchSectionTitleClassName}>{title}</h2>
       <p className="mt-0.5 text-base text-muted-foreground">{subtitle}</p>
     </div>

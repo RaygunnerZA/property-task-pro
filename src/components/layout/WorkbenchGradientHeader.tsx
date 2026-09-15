@@ -18,6 +18,8 @@ import type { IntakeMode } from "@/types/intake";
 import fillaDarkLogo from "@/assets/filla-dark.png";
 import { paperTexturedGradientHeaderStyle } from "@/lib/paperTexture";
 import { WORKBENCH_SIDE_RAIL_PX } from "@/lib/layoutBreakpoints";
+import { workbenchHeaderCentrePadClass } from "@/lib/layoutClasses";
+import { useThirdColumn } from "@/contexts/ThirdColumnContext";
 import { cn } from "@/lib/utils";
 
 /** Desktop workbench header band height (keep in sync with `index.css` / shell offset). */
@@ -76,6 +78,7 @@ export function WorkbenchGradientHeader({
   onBack,
 }: WorkbenchGradientHeaderProps) {
   const navigate = useNavigate();
+  const hasThirdColumn = useThirdColumn();
   const showPropertySelector = properties.length > 1;
   const isActivity = variant === "activity";
   const showSearch = !hideSearch && !isActivity;
@@ -218,22 +221,27 @@ export function WorkbenchGradientHeader({
         showAccountMenu={false}
         showSearch={false}
         accentColor={accentColor}
-        className="page-header--workbench-desktop hidden lg:block"
+        className="page-header--workbench-desktop hidden pl-0 lg:block"
       >
         <div
           className={cn(
             "relative grid h-full w-full min-w-0 auto-rows-min content-center items-center gap-y-2 pr-14 sm:min-h-[var(--header-height,73px)] sm:gap-y-0 sm:pr-16",
             "grid-cols-1",
-            "sm:grid-cols-workbench-dual",
-            "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
+            // Same tracks + column-gap as DualPane so Search shares the centre column’s left edge.
+            "sm:grid-cols-workbench-dual sm:gap-x-gutter-rail",
+            hasThirdColumn
+              ? "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
+              : "layout:grid-cols-workbench-center-max layout:gap-x-gutter-rail"
           )}
         >
-          {/* Spacer under the fixed logo + property selector cluster */}
-          <div className="relative z-10 min-w-0 px-3 sm:px-[18px]" aria-hidden />
+          {/* Spacer under the fixed logo + property selector cluster — match DualPane left rail inset */}
+          <div className="relative z-10 min-w-0 px-3 sm:px-0 sm:pl-[12px] sm:pr-[12px]" aria-hidden />
 
           <div
             className={cn(
-              "relative z-10 flex min-h-0 min-w-0 items-center gap-2 self-center px-3 sm:col-start-2 sm:px-1 sm:max-w-[700px]",
+              "relative z-10 flex min-h-0 min-w-0 items-center gap-2 self-center sm:col-start-2 sm:max-w-[700px]",
+              // DualPane centre shell (px-1 / layout:px-2) + Home/CentreWorkbench (px-2).
+              workbenchHeaderCentrePadClass,
               "layout:max-w-[700px]"
             )}
           >
@@ -266,13 +274,12 @@ export function WorkbenchGradientHeader({
           </div>
 
           {/* Spacer aligns with the third workbench column (intake / details live in-column). */}
-          <div
-            className={cn(
-              "relative z-10 hidden min-w-0 self-stretch",
-              "layout:block"
-            )}
-            aria-hidden
-          />
+          {hasThirdColumn ? (
+            <div
+              className="relative z-10 hidden min-w-0 self-stretch layout:block"
+              aria-hidden
+            />
+          ) : null}
         </div>
       </PageHeader>
     </>

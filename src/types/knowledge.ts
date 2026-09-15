@@ -109,10 +109,14 @@ export type ContentTopicStatus = "draft" | "active" | "archived";
 export type ContentTopicWorkflowStatus =
   | "generating_seo"
   | "seo_review"
+  | "generating_plan"
+  | "plan_review"
   | "generating_brief"
   | "brief_review"
   | "ready_for_outputs"
+  | "generating_content"
   | "generating_outputs"
+  | "content_review"
   | "output_review"
   | "visual_concept_review"
   | "generating_final_assets"
@@ -125,6 +129,8 @@ export type ContentOutputKind =
   | "in_app_tip"
   | "newsletter"
   | "social_post"
+  | "social_carousel"
+  | "compliance_checklist"
   | "reel_script";
 export type ContentOutputStatus =
   | "draft"
@@ -134,12 +140,22 @@ export type ContentOutputStatus =
   | "needs_update"
   | "archived";
 
+export type ContentScope =
+  | "international_overview"
+  | "regional_comparison"
+  | "country_guide"
+  | "local_guide"
+  | "property_specific";
+
 export interface ContentTopicRow {
   id: string;
   knowledge_id: string;
   title: string;
   status: ContentTopicStatus;
   workflow_status: ContentTopicWorkflowStatus;
+  content_scope?: ContentScope | null;
+  channel?: string | null;
+  strategy?: Record<string, unknown>;
   seo: Record<string, unknown>;
   brief: Record<string, unknown>;
   creative: Record<string, unknown>;

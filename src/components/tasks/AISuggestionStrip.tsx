@@ -3,7 +3,7 @@ import { User, MapPin, Calendar, Tag, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AIExtractResponse } from "@/hooks/useAIExtract";
 import { SemanticChip } from "@/components/chips/semantic";
-import fillaAI from "@/assets/filla-ai.svg";
+import { FillaAiMark } from "@/components/brand/FillaAiMark";
 
 interface AISuggestionStripProps {
   aiResult: AIExtractResponse["combined"];
@@ -134,7 +134,7 @@ export function AISuggestionStrip({
     <div className="space-y-2">
       {/* Header - one Filla glyph at row level only */}
       <div className="flex items-center gap-1.5 text-2xs font-mono uppercase tracking-wider text-muted-foreground/70">
-        <img src={fillaAI} alt="Filla AI" className="h-3 w-3 opacity-70" />
+        <FillaAiMark size={12} className="opacity-70" />
         <span>Filla picked up:</span>
       </div>
 

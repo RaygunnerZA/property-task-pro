@@ -984,6 +984,26 @@ export function useAdminContentTopic(topicId: string | null) {
         outputs: ContentOutputRow[];
         sources: KnowledgeSourceRow[];
         claims?: Array<Record<string, unknown>>;
+        knowledge_links?: Array<{
+          id: string;
+          knowledge_id: string;
+          role: string;
+          sort_order: number;
+          title: string;
+          status: string;
+          applicability: Record<string, unknown>;
+        }>;
+        format_briefs?: Array<{
+          id: string;
+          topic_id: string;
+          form_kind: string;
+          status: string;
+          is_primary: boolean;
+          body: Record<string, unknown>;
+          blocker: Record<string, unknown> | null;
+          gap_kind: string | null;
+          output_id: string | null;
+        }>;
       };
     },
   });
@@ -1048,11 +1068,12 @@ export function useAdminUpsertContentTopicStage() {
 
 async function invokeContentGenerate(body: {
   topicId: string;
-  stage: "seo" | "brief" | "output" | "visual_concept" | "visual_final";
+  stage: "seo" | "plan" | "brief" | "output" | "content" | "visual_concept" | "visual_final";
   outputKinds?: ContentOutputKind[];
   regenerate?: boolean;
   /** Same ai_batch_jobs pipeline as Knowledge. Refused until the content processor is enabled. */
   delivery?: "interactive" | "batch";
+  strategyOverrides?: Record<string, unknown>;
 }) {
   if (body.delivery === "batch") {
     const { contentStageToBatchCapability, isAiBatchCapabilityEnabled } = await import(
@@ -1066,28 +1087,32 @@ async function invokeContentGenerate(body: {
     }
   }
 
-  const generatingStatus: Record<typeof body.stage, string> = {
+  const generatingStatus: Partial<Record<typeof body.stage, string>> = {
     seo: "generating_seo",
+    plan: "generating_plan",
     brief: "generating_brief",
     output: "generating_outputs",
+    content: "generating_content",
     visual_concept: "visual_concept_review",
     visual_final: "generating_final_assets",
   };
 
   const nextStatus = generatingStatus[body.stage];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: statusErr } = await (supabase as any).rpc("admin_set_content_topic_workflow_status", {
-    p_topic_id: body.topicId,
-    p_workflow_status: nextStatus,
-    p_generation_error: null,
-  });
-  if (statusErr) {
-    const msg = statusErr.message ?? "Could not start generation";
-    throw new Error(
-      /could not find the function/i.test(msg)
-        ? "Content workflow migration not applied. Run npm run db:push."
-        : msg
-    );
+  if (nextStatus) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error: statusErr } = await (supabase as any).rpc("admin_set_content_topic_workflow_status", {
+      p_topic_id: body.topicId,
+      p_workflow_status: nextStatus,
+      p_generation_error: null,
+    });
+    if (statusErr) {
+      const msg = statusErr.message ?? "Could not start generation";
+      throw new Error(
+        /could not find the function/i.test(msg)
+          ? "Content workflow migration not applied. Run npm run db:push."
+          : msg
+      );
+    }
   }
 
   let data: unknown;
@@ -1100,6 +1125,7 @@ async function invokeContentGenerate(body: {
         stage: body.stage,
         output_kinds: body.outputKinds,
         regenerate: body.regenerate ?? false,
+        strategy_overrides: body.strategyOverrides,
       },
     }));
   } catch (fetchErr) {
@@ -1137,6 +1163,62 @@ export function useAdminGenerateContent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: invokeContentGenerate,
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+export function useAdminUpsertContentStrategy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      topicId: string;
+      strategy: Record<string, unknown>;
+      contentScope?: string | null;
+      channel?: string | null;
+      seo?: Record<string, unknown> | null;
+      knowledgeIds?: string[] | null;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_upsert_content_strategy", {
+        p_topic_id: input.topicId,
+        p_strategy: input.strategy,
+        p_content_scope: input.contentScope ?? null,
+        p_channel: input.channel ?? null,
+        p_seo: input.seo ?? null,
+        p_knowledge_ids: input.knowledgeIds ?? null,
+      });
+      if (error) throw error;
+      return data as ContentTopicRow;
+    },
+    onSuccess: (_row, vars) => {
+      void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
+      void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });
+    },
+  });
+}
+
+export function useAdminApproveContentPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      topicId: string;
+      strategy?: Record<string, unknown> | null;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_approve_content_plan", {
+        p_topic_id: input.topicId,
+        p_strategy: input.strategy ?? null,
+      });
+      if (error) throw error;
+      return data as {
+        topic: ContentTopicRow;
+        eligible_forms: string[];
+        blocked_forms: string[];
+      };
+    },
     onSuccess: (_data, vars) => {
       void qc.invalidateQueries({ queryKey: ["admin-content-topic", vars.topicId] });
       void qc.invalidateQueries({ queryKey: ["admin-content-topics"] });

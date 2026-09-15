@@ -16,7 +16,7 @@ import {
 } from "../_shared/geminiKeys.ts";
 import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 
-const PROMPT_VERSION = "content-tree-claims-v1";
+const PROMPT_VERSION = "content-tree-plan-v2";
 const PLATFORM_ORG = "00000000-0000-0000-0000-000000000000";
 
 const corsHeaders = {
@@ -25,13 +25,21 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform",
 };
 
-type GenerateStage = "seo" | "brief" | "output" | "visual_concept" | "visual_final";
+type GenerateStage =
+  | "seo"
+  | "plan"
+  | "brief"
+  | "output"
+  | "content"
+  | "visual_concept"
+  | "visual_final";
 
 type RequestBody = {
   topic_id: string;
   stage: GenerateStage;
   output_kinds?: string[];
   regenerate?: boolean;
+  strategy_overrides?: Record<string, unknown>;
 };
 
 function newRequestId(): string {
@@ -165,26 +173,44 @@ async function callGemini(system: string, payload: string): Promise<ExecutorOutp
 }
 
 const SEO_SYSTEM =
-  "You are an SEO strategist for UK/EU property compliance content. " +
-  "Package ONLY the verified Knowledge claims for search. Prefer structured verified claims over inventing facts. " +
-  "The short approved guidance is a headline — verified claims are the factual basis. " +
-  "Do NOT invent legal duties, deadlines, standards, or penalties. " +
-  "Do NOT treat extracted/unverified claims as established facts. " +
-  "If a needed detail is absent from verified claims, list it in evidence_gaps (a Knowledge gap). " +
-  "Include claim_gaps (unknown/unresolved Knowledge claims) in evidence_gaps. " +
+  "You are Filla’s content strategist for UK/EU property compliance. " +
+  "Analyse published Knowledge, verified claims, applicability, jurisdiction and linked sources. " +
+  "Do NOT merely paraphrase the Knowledge title/summary. Do NOT invent legal duties, deadlines, standards, penalties or eligibility. " +
+  "Verified Knowledge claims are the approved factual boundary. Linked source text may add depth that is not yet in Knowledge — label that clearly in source_coverage_summary / evidence_gaps. " +
+  "IMPORTANT: You do NOT receive live keyword volume or SERP data in this request. " +
+  "Set live_search_consulted=false and search_evidence_available=false. " +
+  "Set opportunity_kind to \"editorial_hypothesis\". Never claim search evidence you were not given. " +
+  "Separate: (1) what the source supports, (2) the content opportunity, (3) recommended form/audience/channel. " +
+  "Group queries into query_clusters by intent (obligation, frequency, evidence, consequences, action, responsibility, other). " +
+  "Reject queries that are irrelevant or insufficiently supported in rejected_queries. " +
+  "If a needed detail is absent from verified claims, list it in evidence_gaps. " +
   "If source text is missing and no verified claims exist, set source_content_unavailable true. " +
-  "Return JSON only with keys: primary_search_theme, primary_keyword, secondary_keywords (array), " +
-  "search_intent, target_audience, user_problem, jurisdiction, content_angle, source_coverage_summary, " +
-  "evidence_gaps (array), research_warnings (array), source_content_unavailable (boolean).";
+  "Return JSON only with keys: " +
+  "search_market, language_market, primary_keyword, search_intent, target_audience, user_problem, " +
+  "query_clusters (array of {intent, label, queries[]}), " +
+  "existing_result_pattern, content_gap, recommended_content_form, " +
+  "suggested_title, meta_title, meta_description, primary_search_theme, " +
+  "secondary_keywords (flat array derived from clusters), content_angle, " +
+  "jurisdiction, source_coverage_summary, opportunity_confidence (low|medium|high), " +
+  "live_search_consulted (boolean), search_evidence_available (boolean), opportunity_kind, " +
+  "rejected_queries (array), evidence_gaps (array), research_warnings (array), source_content_unavailable (boolean).";
 
 const BRIEF_SYSTEM =
-  "You are an editorial strategist for homeowner property compliance content. " +
-  "Use approved SEO, verified Knowledge claims only, applicability, guidance, and sources. " +
-  "Do NOT invent facts beyond verified claims and sources. Missing claim details are Knowledge gaps. " +
+  "You are Filla’s content strategist. " +
+  "Treat linked published Knowledge and verified claims as the factual boundary; linked sources as the research corpus. " +
+  "Do not merely paraphrase the Knowledge summary. Prefer depth from source extracts when present. " +
+  "First decide audience/language market, reader problem, search or product intent, which claims are fully supported, " +
+  "which useful questions cannot yet be answered, and whether the primary form should be " +
+  "regulatory_guide, informational_article, compliance_checklist, faq, in_app_tip, seasonal_package, newsletter or social_post. " +
+  "Do NOT silently assume article. Never invent obligations, deadlines, penalties, eligibility or operational recommendations. " +
+  "Clearly distinguish: facts from verified claims; additional source-supported facts not yet in Knowledge; editorial framing; unsupported ideas needing research. " +
+  "If approved SEO marks opportunity_kind editorial_hypothesis or search_evidence_available false, treat SEO as a hypothesis. " +
   "Return JSON only with keys: " +
   "content_angle, working_title, intended_reader, reader_outcome, proposed_sections (array), " +
   "questions_to_answer (array), legal_factual_distinctions (array), required_source_points (array), " +
-  "cautious_claims (array), suggested_cta, recommended_output_types (array), visual_concept_suggestion, " +
+  "cautious_claims (array), suggested_cta, recommended_output_types (array), " +
+  "recommended_primary_form, recommended_derivative_forms (array), " +
+  "source_coverage_notes, research_gaps (array), visual_concept_suggestion, " +
   "source_content_unavailable (boolean).";
 
 const OUTPUT_SYSTEM =
@@ -301,6 +327,132 @@ function asFlag(value: unknown): boolean {
   return false;
 }
 
+function buildParentStrategy(input: {
+  channel: string;
+  title: string;
+  jurisdictions: string[];
+  unscoped: boolean;
+  overrides?: Record<string, unknown>;
+}): Record<string, unknown> {
+  const channel = (input.channel || "website_blog_social").toLowerCase();
+  const title = (input.title || "").toLowerCase();
+  const juris = input.jurisdictions;
+  const inApp = channel.includes("in_app") || channel === "app";
+  const countryChannel =
+    channel.includes("country") || channel === "country_guide" || channel === "local_guide";
+
+  let scope = "international_overview";
+  if (inApp) scope = "country_guide";
+  else if (countryChannel && juris.length === 1) scope = "country_guide";
+  else if (countryChannel && juris.length > 1) scope = "regional_comparison";
+  else if (
+    channel.includes("blog") ||
+    channel.includes("social") ||
+    channel.includes("website") ||
+    channel === "website_blog_social"
+  ) {
+    scope = "international_overview";
+  } else if (juris.length === 1) scope = "country_guide";
+  else if (juris.length > 1) scope = "regional_comparison";
+  else if (input.unscoped) scope = "international_overview";
+
+  const overrideScope = asText(input.overrides?.content_scope);
+  if (overrideScope) scope = overrideScope;
+
+  const looksChimney = /chimney|flue|ramonage|sweeping/.test(title);
+  const exclusions: Array<Record<string, string>> = [];
+  if (scope !== "property_specific") {
+    exclusions.push({
+      form: "in_app_tip",
+      reason: "In-app tip excluded until exact property jurisdiction is known",
+      gap_kind: "not_applicable",
+    });
+  }
+
+  const supporting: Array<Record<string, string>> = [];
+  if (scope === "international_overview") {
+    if (looksChimney || juris.some((j) => /france/i.test(j))) {
+      supporting.push({
+        label: "France country guide",
+        kind: "country_guide",
+        status: "suggested",
+        jurisdiction: "France",
+      });
+    } else if (juris.length === 1) {
+      supporting.push({
+        label: `${juris[0]} country guide`,
+        kind: "country_guide",
+        status: "suggested",
+        jurisdiction: juris[0],
+      });
+    }
+  }
+
+  let primary_form = "informational_article";
+  let derivative_forms = ["social_carousel", "social_post"];
+  if (scope === "country_guide" || scope === "local_guide") {
+    derivative_forms = ["faq", "compliance_checklist", "social_post"];
+  }
+  if (scope === "property_specific") {
+    primary_form = "in_app_tip";
+    derivative_forms = [];
+  }
+
+  if (asText(input.overrides?.primary_form)) {
+    primary_form = asText(input.overrides?.primary_form);
+  }
+  if (Array.isArray(input.overrides?.derivative_forms)) {
+    derivative_forms = asList(input.overrides?.derivative_forms);
+  }
+
+  return {
+    approval_status: "pending",
+    content_scope: scope,
+    scope_inferred: !overrideScope,
+    channel: input.channel || "website_blog_social",
+    audience:
+      scope === "international_overview"
+        ? "English-speaking property owners and managers researching cross-border obligations"
+        : "Property owners and managers in the linked jurisdiction",
+    market:
+      scope === "international_overview"
+        ? "English · international"
+        : juris.join(", ") || "Jurisdiction from Knowledge",
+    objective:
+      scope === "international_overview"
+        ? "Publish a concise overview that frames the topic and routes precise obligations to country guides"
+        : "Explain jurisdiction-exact requirements grounded in linked Knowledge",
+    primary_form,
+    derivative_forms,
+    supporting_content: supporting,
+    exclusions,
+    source_gaps: [],
+    confirmed_at: null,
+  };
+}
+
+function formToOutputKind(form: string): string | null {
+  switch (form) {
+    case "informational_article":
+    case "regulatory_guide":
+      return "core_article";
+    case "faq":
+      return "faq";
+    case "compliance_checklist":
+      return "compliance_checklist";
+    case "social_post":
+      return "social_post";
+    case "social_carousel":
+      return "social_carousel";
+    case "in_app_tip":
+      return "in_app_tip";
+    case "newsletter":
+      return "newsletter";
+    default:
+      return null;
+  }
+}
+
 function strategyIdOf(strategy: unknown): string | null {
   if (typeof strategy === "string" && strategy.trim()) return strategy.trim();
   if (strategy && typeof strategy === "object" && !Array.isArray(strategy)) {
@@ -315,24 +467,61 @@ function validateSeo(raw: unknown): Record<string, unknown> {
     throw new SchemaError("SEO response was not a JSON object");
   }
   const p = raw as Record<string, unknown>;
-  const primary_search_theme = asText(p.primary_search_theme);
+  const primary_search_theme = asText(p.primary_search_theme) || asText(p.suggested_title);
   const primary_keyword = asText(p.primary_keyword);
   if (!primary_keyword && !primary_search_theme) {
     throw new SchemaError("SEO proposal missing primary keyword or theme");
   }
+
+  const clustersRaw = Array.isArray(p.query_clusters) ? p.query_clusters : [];
+  const query_clusters = clustersRaw
+    .filter((item): item is Record<string, unknown> => !!item && typeof item === "object")
+    .map((item) => ({
+      intent: asText(item.intent) || "related",
+      label: asText(item.label) || asText(item.intent) || "Related",
+      queries: asList(item.queries ?? item.keywords),
+    }))
+    .filter((c) => c.queries.length > 0 || c.label.length > 0);
+
+  const secondary_keywords =
+    asList(p.secondary_keywords).length > 0
+      ? asList(p.secondary_keywords)
+      : query_clusters.flatMap((c) => c.queries);
+
+  // Live search is not wired yet — force honest hypothesis labelling.
+  const live_search_consulted = false;
+  const search_evidence_available = false;
+
   return {
     primary_search_theme,
     primary_keyword,
-    secondary_keywords: asList(p.secondary_keywords),
+    secondary_keywords,
     search_intent: asText(p.search_intent),
     target_audience: asText(p.target_audience),
     user_problem: asText(p.user_problem),
     jurisdiction: asText(p.jurisdiction),
-    content_angle: asText(p.content_angle),
+    content_angle: asText(p.content_angle) || asText(p.content_gap),
     source_coverage_summary: asText(p.source_coverage_summary),
     evidence_gaps: asList(p.evidence_gaps),
     research_warnings: asList(p.research_warnings),
     source_content_unavailable: asFlag(p.source_content_unavailable),
+    search_market: asText(p.search_market),
+    language_market: asText(p.language_market),
+    query_clusters,
+    existing_result_pattern: asText(p.existing_result_pattern),
+    content_gap: asText(p.content_gap) || asText(p.content_angle),
+    recommended_content_form: asText(p.recommended_content_form),
+    suggested_title: asText(p.suggested_title) || primary_search_theme,
+    meta_title: asText(p.meta_title) || asText(p.suggested_title) || primary_search_theme,
+    meta_description: asText(p.meta_description),
+    opportunity_confidence: (() => {
+      const c = asText(p.opportunity_confidence).toLowerCase();
+      return c === "low" || c === "medium" || c === "high" ? c : "medium";
+    })(),
+    live_search_consulted,
+    search_evidence_available,
+    opportunity_kind: "editorial_hypothesis",
+    rejected_queries: asList(p.rejected_queries),
   };
 }
 
@@ -522,8 +711,10 @@ Deno.serve(async (req) => {
 
   const generatingStatus: Record<GenerateStage, string> = {
     seo: "generating_seo",
+    plan: "generating_plan",
     brief: "generating_brief",
     output: "generating_outputs",
+    content: "generating_content",
     visual_concept: "visual_concept_review",
     visual_final: "generating_final_assets",
   };
@@ -599,6 +790,83 @@ Deno.serve(async (req) => {
       return jsonOk({ ok: true, stage, request_id: requestId, seo: run.value, provenance });
     }
 
+    if (stage === "plan") {
+      const knowledgePayload = buildKnowledgePayload(knowledge, sources, claims);
+      const payload = JSON.stringify(knowledgePayload);
+      const run = await runCapability<Record<string, unknown>>(admin, {
+        capability: "content_seo_draft" as never,
+        orgId: PLATFORM_ORG,
+        userId: userData.user.id,
+        entity: { type: "content_topic", id: topic_id },
+        metadata: { stage: "plan", request_id: requestId },
+        allowFallback: true,
+        skipGate: true,
+        executors: {
+          "model:gemini-2.0-flash": () => {
+            if (!geminiKey) throw new Error("Gemini API key not set");
+            return callGemini(SEO_SYSTEM, payload);
+          },
+          "model:gpt-4o-mini": () => callOpenAI(SEO_SYSTEM, payload),
+        },
+        validate: validateSeo,
+      });
+
+      if (run.blocked) {
+        return jsonErr(402, "ai_allowance_exhausted", "AI allowance exhausted.", requestId);
+      }
+      if (!run.ok || !run.value) {
+        throw new Error(run.error ?? "Plan generation failed");
+      }
+
+      if (knowledgePayload.source_content_unavailable) {
+        run.value.source_content_unavailable = true;
+      }
+      const claimGaps = (knowledgePayload.claims.unknown_or_unresolved as Array<{ text: string }>)
+        .map((g) => g.text)
+        .filter(Boolean);
+      run.value.evidence_gaps = [...new Set([...asList(run.value.evidence_gaps), ...claimGaps])];
+
+      const applicability = (knowledge.applicability as Record<string, unknown>) ?? {};
+      const jurisdictions = Array.isArray(applicability.jurisdictions)
+        ? (applicability.jurisdictions as unknown[]).filter((j): j is string => typeof j === "string")
+        : [];
+      const strategy = buildParentStrategy({
+        channel: String((topic as { channel?: string }).channel ?? "website_blog_social"),
+        title: String(knowledge.title ?? topic.title ?? ""),
+        jurisdictions,
+        unscoped: Boolean(applicability.unscoped),
+        overrides: body.strategy_overrides,
+      });
+      strategy.source_gaps = asList(run.value.evidence_gaps).map((text) => ({
+        text,
+        gap_kind: "not_yet_researched",
+      }));
+
+      const provenance = generationProvenance(run.strategy, knowledge.version as number, {
+        source_coverage_summary: asText(run.value.source_coverage_summary),
+        source_content_unavailable: asFlag(run.value.source_content_unavailable),
+      });
+      const nextSeo = appendVersion(seoEnv, run.value, provenance);
+
+      await adminWriteRpc("admin_upsert_content_strategy", {
+        p_topic_id: topic_id,
+        p_strategy: strategy,
+        p_content_scope: strategy.content_scope,
+        p_channel: strategy.channel,
+        p_seo: nextSeo,
+        p_knowledge_ids: null,
+      });
+
+      return jsonOk({
+        ok: true,
+        stage,
+        request_id: requestId,
+        seo: run.value,
+        strategy,
+        provenance,
+      });
+    }
+
     if (stage === "brief") {
       if (seoEnv.approval_status !== "approved") {
         return jsonErr(409, "seo_not_approved", "Approve SEO before generating the brief.", requestId);
@@ -641,6 +909,221 @@ Deno.serve(async (req) => {
       return jsonOk({ ok: true, stage, request_id: requestId, brief: run.value, provenance });
     }
 
+    if (stage === "content") {
+      const { data: briefRows } = await admin
+        .from("content_format_briefs")
+        .select("*")
+        .eq("topic_id", topic_id)
+        .in("status", ["approved", "source_checked"]);
+
+      const briefs = (briefRows ?? []) as Array<Record<string, unknown>>;
+      if (briefs.length === 0) {
+        return jsonErr(
+          409,
+          "no_eligible_briefs",
+          "Approve the plan first so eligible format briefs exist.",
+          requestId
+        );
+      }
+
+      const results: Array<{
+        form: string;
+        kind: string;
+        ok: boolean;
+        error?: string;
+        grounding_passed?: boolean;
+      }> = [];
+
+      for (const brief of briefs) {
+        const form = String(brief.form_kind ?? "");
+        const kind = formToOutputKind(form);
+        if (!kind) {
+          results.push({ form, kind: "", ok: false, error: "unsupported_form" });
+          continue;
+        }
+
+        try {
+          await admin
+            .from("content_format_briefs")
+            .update({ status: "generating", updated_at: new Date().toISOString() })
+            .eq("id", brief.id);
+
+          const formHint =
+            form === "social_carousel"
+              ? "Write a social carousel: 4-6 short slide captions as markdown numbered list, plus a hook title."
+              : form === "compliance_checklist"
+                ? "Write a compliance checklist with ordered steps, preconditions, proof and exceptions."
+                : form === "social_post"
+                  ? "Write one short social post (caption under 400 characters) with a single takeaway."
+                  : form === "faq"
+                    ? "Write an FAQ with discrete Q&A pairs grounded in verified claims."
+                    : "Write an informational article answering the primary search problem.";
+
+          const run = await runCapability<{ title: string; body: string }>(admin, {
+            capability: "content_output_draft" as never,
+            orgId: PLATFORM_ORG,
+            userId: userData.user.id,
+            entity: { type: "content_topic", id: topic_id },
+            metadata: { stage: "content", form, output_kind: kind, request_id: requestId },
+            allowFallback: true,
+            skipGate: true,
+            executors: {
+              "model:gemini-2.0-flash": () => {
+                if (!geminiKey) throw new Error("Gemini API key not set");
+                return callGemini(
+                  OUTPUT_SYSTEM + " " + formHint,
+                  JSON.stringify(
+                    buildKnowledgePayload(
+                      knowledge,
+                      sources,
+                      claims,
+                      seoApproved ??
+                        ((normalizeEnvelope(topic.seo).current as Record<string, unknown>) ??
+                          undefined),
+                      (topic.strategy as Record<string, unknown>) ?? undefined
+                    )
+                  )
+                );
+              },
+              "model:gpt-4o-mini": () =>
+                callOpenAI(
+                  OUTPUT_SYSTEM + " " + formHint,
+                  JSON.stringify(
+                    buildKnowledgePayload(
+                      knowledge,
+                      sources,
+                      claims,
+                      seoApproved ?? undefined,
+                      (topic.strategy as Record<string, unknown>) ?? undefined
+                    )
+                  )
+                ),
+            },
+            validate: validateOutput,
+          });
+
+          if (!run.ok || !run.value) throw new Error(run.error ?? "Output generation failed");
+
+          const knowledgePayload = buildKnowledgePayload(knowledge, sources, claims);
+          const verifiedClaims = knowledgePayload.claims.verified;
+          let grounding: Record<string, unknown> = {
+            passed: verifiedClaims.length > 0,
+            supported_count: 0,
+            unsupported_assertions: [],
+            knowledge_gaps: [],
+            skipped: false,
+          };
+
+          try {
+            const groundingRun = await runCapability<Record<string, unknown>>(admin, {
+              capability: "content_output_grounding" as never,
+              orgId: PLATFORM_ORG,
+              userId: userData.user.id,
+              entity: { type: "content_topic", id: topic_id },
+              metadata: { stage: "content_grounding", form, request_id: requestId },
+              mustDifferFrom: run.strategy?.provider ?? null,
+              allowFallback: true,
+              skipGate: true,
+              executors: {
+                "model:gpt-4o-mini": () =>
+                  callOpenAI(
+                    GROUNDING_SYSTEM,
+                    JSON.stringify({
+                      output: run.value,
+                      verified_claims: verifiedClaims,
+                      unknown_or_unresolved: knowledgePayload.claims.unknown_or_unresolved,
+                    })
+                  ),
+                "model:gemini-2.0-flash": () => {
+                  if (!geminiKey) throw new Error("Gemini API key not set");
+                  return callGemini(
+                    GROUNDING_SYSTEM,
+                    JSON.stringify({
+                      output: run.value,
+                      verified_claims: verifiedClaims,
+                      unknown_or_unresolved: knowledgePayload.claims.unknown_or_unresolved,
+                    })
+                  );
+                },
+              },
+              validate: validateGrounding,
+            });
+            if (groundingRun.ok && groundingRun.value) {
+              grounding = {
+                ...groundingRun.value,
+                skipped: false,
+                strategy_id: strategyIdOf(groundingRun.strategy),
+              };
+            }
+          } catch {
+            grounding = { ...grounding, skipped: true };
+          }
+
+          const provenance = generationProvenance(run.strategy, knowledge.version as number, {
+            output_kind: kind,
+            form_kind: form,
+            grounding,
+          });
+          const outputStatus =
+            grounding.passed === true && grounding.skipped !== true
+              ? "needs_review"
+              : "draft";
+
+          await adminWriteRpc("admin_upsert_content_output", {
+            p_topic_id: topic_id,
+            p_output_kind: kind,
+            p_title: run.value.title || null,
+            p_body: run.value.body,
+            p_status: outputStatus,
+            p_structured: { grounding, form_kind: form },
+            p_provenance: provenance,
+          });
+
+          const { data: outRow } = await admin
+            .from("content_outputs")
+            .select("id")
+            .eq("topic_id", topic_id)
+            .eq("output_kind", kind)
+            .maybeSingle();
+
+          await admin
+            .from("content_format_briefs")
+            .update({
+              status: "generated",
+              output_id: outRow?.id ?? null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", brief.id);
+
+          results.push({
+            form,
+            kind,
+            ok: true,
+            grounding_passed: grounding.passed === true && grounding.skipped !== true,
+          });
+        } catch (e) {
+          results.push({
+            form,
+            kind: kind ?? "",
+            ok: false,
+            error: e instanceof Error ? e.message : "generation_failed",
+          });
+          await admin
+            .from("content_format_briefs")
+            .update({ status: "approved", updated_at: new Date().toISOString() })
+            .eq("id", brief.id);
+        }
+      }
+
+      await adminWriteRpc("admin_set_content_topic_workflow_status", {
+        p_topic_id: topic_id,
+        p_workflow_status: "content_review",
+        p_generation_error: null,
+      });
+
+      return jsonOk({ ok: true, stage, request_id: requestId, results });
+    }
+
     if (stage === "output") {
       if (briefEnv.approval_status !== "approved") {
         return jsonErr(409, "brief_not_approved", "Approve the brief before generating outputs.", requestId);
@@ -652,7 +1135,14 @@ Deno.serve(async (req) => {
       }
 
       const validKinds = [
-        "core_article", "faq", "in_app_tip", "newsletter", "social_post", "reel_script",
+        "core_article",
+        "faq",
+        "in_app_tip",
+        "newsletter",
+        "social_post",
+        "social_carousel",
+        "compliance_checklist",
+        "reel_script",
       ];
       const results: Array<{
         kind: string;

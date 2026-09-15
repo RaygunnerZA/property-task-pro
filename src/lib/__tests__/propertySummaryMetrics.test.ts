@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeAllPropertiesSummaryMetrics,
   computePropertySummaryMetrics,
+  computeTodayActionGauge,
 } from "@/lib/propertySummaryMetrics";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 
@@ -58,11 +59,20 @@ describe("computePropertySummaryMetrics", () => {
     expect(metrics.complianceDueSoon).toBe(1);
   });
 
-  it("keeps completion math as done / (open + done)", () => {
+  it("scopes the radial to today’s due-now set, not lifetime backlog", () => {
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+    const todayKey = today.toISOString().slice(0, 10);
     const metrics = computePropertySummaryMetrics(
       { open_tasks_count: 22 },
       [
-        ...Array.from({ length: 22 }, () => ({ status: "open", title: "Open" })),
+        ...Array.from({ length: 20 }, () => ({
+          status: "open",
+          title: "Later",
+          due_date: "2099-01-01",
+        })),
+        { status: "open", title: "Due today", due_date: todayKey },
+        { status: "open", title: "Also today", due_date: todayKey },
         ...Array.from({ length: 15 }, () => ({ status: "completed", title: "Done" })),
       ],
       [],
@@ -71,8 +81,46 @@ describe("computePropertySummaryMetrics", () => {
     );
 
     expect(metrics.openTasks).toBe(22);
-    expect(metrics.completedLabel).toBe("15 of 37 complete");
-    expect(metrics.completionPct).toBe(41);
+    expect(metrics.gaugeEyebrow).toBe("Today");
+    expect(metrics.completedLabel).toBe("2 left today");
+    expect(metrics.completionPct).toBe(0);
+    expect(metrics.gaugeHint).toBe("Start here");
+  });
+});
+
+describe("computeTodayActionGauge", () => {
+  it("celebrates a clear day when open work is later", () => {
+    const gauge = computeTodayActionGauge(
+      [{ status: "open", due_date: "2099-06-01", title: "Later" }],
+      5,
+      new Date("2026-09-15T12:00:00")
+    );
+    expect(gauge.completionPct).toBe(100);
+    expect(gauge.gaugeEyebrow).toBe("Today");
+    expect(gauge.completedLabel).toBe("Nothing due today");
+    expect(gauge.gaugeHint).toBe("5 open later");
+  });
+
+  it("counts completed-today wins against due-now remaining", () => {
+    const now = new Date("2026-09-15T12:00:00");
+    const gauge = computeTodayActionGauge(
+      [
+        {
+          status: "completed",
+          due_date: "2026-09-15",
+          completed_at: "2026-09-15T09:00:00",
+          title: "Done",
+        },
+        { status: "open", due_date: "2026-09-15", title: "Still due" },
+        { status: "open", due_date: "2026-09-10", title: "Overdue" },
+      ],
+      2,
+      now
+    );
+    expect(gauge.gaugeEyebrow).toBe("Due now");
+    expect(gauge.completedLabel).toBe("2 left today");
+    expect(gauge.completionPct).toBe(33);
+    expect(gauge.gaugeHint).toBe("1 overdue");
   });
 });
 

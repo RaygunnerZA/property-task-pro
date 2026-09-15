@@ -34,6 +34,35 @@ function resolveDayUrgency(data: TaskDateData | undefined): DayUrgency {
 const MINI_CALENDAR_DAY_SHADOW =
   "1px 2px 1px 0px rgba(255, 255, 255, 0.8), inset 1.5px 2px 2.4px 0px rgba(0, 0, 0, 0.2), -1px -1px 1px 0px rgba(0, 0, 0, 0.1)";
 
+/**
+ * Mini-calendar day-block geometry (collapsed week strip + expanded month grid).
+ *
+ * Rules (do not diverge by selected / task-fill / plain):
+ * 1. Fixed square: same `sizePx` for every day button — never grow with fill or selection.
+ * 2. Equal columns: each weekday is `flex-1 min-w-0`; the button is centred inside (does not stretch).
+ * 3. Shared chrome: `rounded-card`, mono numeral, optional 3×3px urgency dot at top-left.
+ * 4. Selection / urgency change only fill + shadow — never width, height, or padding.
+ */
+const MINI_CAL_DAY = {
+  sidebar: {
+    sizePx: 30,
+    sizeClass: "h-[30px] w-[30px]",
+    textClass: "text-sm",
+    weekdayClass: "text-2xs",
+    /** Row height = cell + top margin (mt-0.5 → 2px). */
+    rowMarginPx: 2,
+  },
+  embedded: {
+    sizePx: 28,
+    sizeClass: "h-7 w-7",
+    textClass: "text-caption",
+    weekdayClass: "text-[0.65rem]",
+    rowMarginPx: 2,
+  },
+} as const;
+
+type MiniCalVariant = keyof typeof MINI_CAL_DAY;
+
 const CALENDAR_WEEK_ROWS = 6;
 const WEEK_STARTS_ON = 1 as const;
 /** Settle duration for magnetic week realignment (Monday sliding into place). */
@@ -51,13 +80,86 @@ const WEEK_WHEEL_IDLE_MS = 90;
 /** Slow magnetic pull — eases in, then settles without a snap. */
 const WEEK_EASE = "cubic-bezier(0.4, 0.0, 0.2, 1)";
 
-/** Row height = cell height + row top margin (mt-0.5) */
-function miniCalendarRowMetrics(variant: "sidebar" | "embedded") {
-  const cellHeight = variant === "embedded" ? 30 : 28;
-  const rowHeight = cellHeight + 2;
+function miniCalendarRowMetrics(variant: MiniCalVariant) {
+  const { sizePx, rowMarginPx } = MINI_CAL_DAY[variant];
+  const rowHeight = sizePx + rowMarginPx;
   return {
     rowHeight,
     expandedHeight: rowHeight * CALENDAR_WEEK_ROWS,
+  };
+}
+
+function miniCalDayButtonClassName(
+  variant: MiniCalVariant,
+  opts: { isWeekend: boolean; isSelected: boolean; isToday: boolean }
+) {
+  const geo = MINI_CAL_DAY[variant];
+  return cn(
+    "relative box-border flex shrink-0 flex-col items-center justify-center",
+    "rounded-card font-mono font-medium",
+    "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
+    geo.sizeClass,
+    opts.isWeekend && !opts.isSelected && "text-muted-foreground/50",
+    opts.isToday && !opts.isSelected && "ring-1 ring-primary/40"
+  );
+}
+
+/** Drop size/padding utilities from react-day-picker so MINI_CAL_DAY stays authoritative. */
+function stripDayPickerGeometryClasses(className?: string) {
+  if (!className) return undefined;
+  return className
+    .split(/\s+/)
+    .filter(
+      (token) =>
+        token.length > 0 &&
+        !/^(h|w|size|min-h|min-w|max-h|max-w|p|px|py|pt|pb|pl|pr|ps|pe)-/.test(token)
+    )
+    .join(" ");
+}
+
+function miniCalMonthClassNames(variant: MiniCalVariant) {
+  const geo = MINI_CAL_DAY[variant];
+  const isEmbedded = variant === "embedded";
+  return {
+    months: "flex flex-col w-full",
+    month: "space-y-3 w-full",
+    caption: "flex justify-between items-center px-0.5 mb-1",
+    caption_label: cn(
+      "font-semibold text-foreground",
+      isEmbedded ? "text-base" : "text-sm"
+    ),
+    nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
+    nav_button: cn(
+      "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
+    ),
+    nav_button_previous: "",
+    nav_button_next: "",
+    table: "w-full border-collapse",
+    head: isEmbedded ? undefined : "h-6",
+    head_row: "flex w-full justify-between mb-0",
+    head_cell: cn(
+      "flex-1 text-center font-mono font-medium uppercase text-foreground",
+      "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
+      geo.weekdayClass
+    ),
+    row: "flex w-full justify-between mt-0.5",
+    tbody: cn(
+      "block overflow-hidden transition-[max-height] duration-300 ease-in-out",
+      isEmbedded ? "max-h-[180px]" : undefined
+    ),
+    cell: cn(
+      "relative flex flex-1 items-center justify-center p-0 text-center",
+      "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
+      // Cell height matches day button + row margin (mt-0.5).
+      isEmbedded ? "h-7" : "h-[30px]"
+    ),
+    // No h-/w- here — Day button uses MINI_CAL_DAY exclusively.
+    day: "relative p-0 font-medium",
+    day_selected: "",
+    day_today: "",
+    day_outside: "text-muted-foreground/40",
+    day_disabled: "text-muted-foreground/30",
+    day_hidden: "invisible",
   };
 }
 
@@ -97,8 +199,7 @@ function WeekStripRow({
   isEmbedded: boolean;
 }) {
   const weekDays = useMemo(() => buildWeekDays(weekStart), [weekStart]);
-  const daySizeClass = isEmbedded ? "h-7 w-7" : "h-[30px] w-[30px]";
-  const dayTextClass = isEmbedded ? "text-caption" : "text-sm";
+  const geo = MINI_CAL_DAY[isEmbedded ? "embedded" : "sidebar"];
 
   return (
     <div className="w-full shrink-0">
@@ -110,7 +211,7 @@ function WeekStripRow({
               key={format(date, "yyyy-MM-dd-dow")}
               className={cn(
                 "min-w-0 flex-1 text-center font-mono font-medium uppercase",
-                isEmbedded ? "text-[0.65rem]" : "text-2xs",
+                geo.weekdayClass,
                 isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
               )}
             >
@@ -129,25 +230,24 @@ function WeekStripRow({
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           const fill = dayCellBackground(maxUrgency, isSelected);
           const dot = dayDotColor(maxUrgency);
+          const variant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
 
           return (
             <div key={dateKey} className="flex min-w-0 flex-1 items-center justify-center">
               <button
                 type="button"
                 onClick={() => onDateSelect?.(date)}
-                className={cn(
-                  "relative flex flex-col items-center justify-center rounded-card font-mono font-medium",
-                  "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
-                  daySizeClass,
-                  isWeekend && !isSelected && "text-muted-foreground/50",
-                  isTodayDate && !isSelected && "ring-1 ring-primary/40"
-                )}
+                className={miniCalDayButtonClassName(variant, {
+                  isWeekend,
+                  isSelected,
+                  isToday: isTodayDate,
+                })}
                 style={{
                   backgroundColor: fill,
                   ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
                 }}
               >
-                <span className={cn(dayTextClass, isTodayDate && !isSelected && "font-semibold")}>
+                <span className={cn(geo.textClass, isTodayDate && !isSelected && "font-semibold")}>
                   {date.getDate()}
                 </span>
                 {dot ? (
@@ -818,6 +918,7 @@ export function FillaMiniCalendar({
   };
 
   const showWeekStrip = isCollapsible && !isExpanded;
+  const monthClassNames = miniCalMonthClassNames(variant);
 
   const renderDayButton = (props: {
     date: Date;
@@ -830,8 +931,11 @@ export function FillaMiniCalendar({
     const maxUrgency = resolveDayUrgency(dateData);
     const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
     const isTodayDate = isToday(date);
+    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const fill = dayCellBackground(maxUrgency, isSelected);
     const dot = dayDotColor(maxUrgency);
+    const variant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
+    const geo = MINI_CAL_DAY[variant];
 
     return (
       <button
@@ -841,11 +945,12 @@ export function FillaMiniCalendar({
           handleDateSelect(date);
         }}
         className={cn(
-          propClassName,
-          "relative font-mono rounded-card",
-          "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
-          isEmbedded ? "h-6 w-6" : "h-[26px] w-[26px]",
-          isTodayDate && !isSelected && "ring-1 ring-primary/40"
+          miniCalDayButtonClassName(variant, {
+            isWeekend,
+            isSelected,
+            isToday: isTodayDate,
+          }),
+          stripDayPickerGeometryClasses(propClassName)
         )}
         style={{
           backgroundColor: fill,
@@ -854,7 +959,7 @@ export function FillaMiniCalendar({
       >
         <span
           className={cn(
-            isEmbedded ? "text-caption" : "text-sm",
+            geo.textClass,
             "font-medium",
             isTodayDate && !isSelected && "font-semibold"
           )}
@@ -863,7 +968,7 @@ export function FillaMiniCalendar({
         </span>
         {dot ? (
           <span
-            className="absolute top-[3px] left-[3px] h-1 w-1 rounded-full"
+            className="absolute left-[3px] top-[3px] h-1 w-1 rounded-full"
             style={{ backgroundColor: dot }}
             aria-hidden
           />
@@ -903,48 +1008,7 @@ export function FillaMiniCalendar({
                 className={cn(
                   isEmbedded ? "max-w-[247px]" : "w-full max-w-full sm:max-w-[311px]"
                 )}
-                classNames={{
-                  months: "flex flex-col w-full",
-                  month: "space-y-3 w-full",
-                  caption: "flex justify-between items-center px-0.5 mb-1",
-                  caption_label: cn(
-                    "font-semibold text-foreground",
-                    isEmbedded ? "text-base" : "text-sm"
-                  ),
-                  nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
-                  nav_button: cn(
-                    "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
-                  ),
-                  nav_button_previous: "",
-                  nav_button_next: "",
-                  table: "w-full border-collapse",
-                  head: isEmbedded ? undefined : "h-6",
-                  head_row: "flex w-full justify-between mb-0",
-                  head_cell: cn(
-                    "flex-1 text-center font-mono font-medium uppercase text-foreground",
-                    "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-                    isEmbedded ? "text-[0.65rem]" : "text-caption"
-                  ),
-                  row: "flex w-full justify-between mt-0.5",
-                  tbody: cn(
-                    "block overflow-hidden transition-[max-height] duration-300 ease-in-out",
-                    isEmbedded ? "max-h-[192px]" : undefined
-                  ),
-                  cell: cn(
-                    "relative flex flex-1 items-center justify-center p-0 text-center",
-                    "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-                    isEmbedded ? "h-[30px]" : "h-[28px]"
-                  ),
-                  day: cn(
-                    "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
-                    isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
-                  ),
-                  day_selected: "",
-                  day_today: "",
-                  day_outside: "text-muted-foreground/40",
-                  day_disabled: "text-muted-foreground/30",
-                  day_hidden: "invisible",
-                }}
+                classNames={monthClassNames}
                 modifiers={{ hasTasks: datesWithTasks }}
                 formatters={{
                   formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),
@@ -1031,48 +1095,7 @@ export function FillaMiniCalendar({
           month={displayMonth}
           onMonthChange={handleMonthChange}
           className={cn(isEmbedded ? "max-w-[247px]" : "w-full max-w-full sm:max-w-[311px]")}
-          classNames={{
-            months: "flex flex-col w-full",
-            month: "space-y-3 w-full",
-            caption: "flex justify-between items-center px-0.5 mb-1",
-            caption_label: cn(
-              "font-semibold text-foreground",
-              isEmbedded ? "text-base" : "text-sm"
-            ),
-            nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
-            nav_button: cn(
-              "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
-            ),
-            nav_button_previous: "",
-            nav_button_next: "",
-            table: "w-full border-collapse",
-            head: isEmbedded ? undefined : "h-6",
-            head_row: "flex w-full justify-between mb-0",
-            head_cell: cn(
-              "flex-1 text-center font-mono font-medium uppercase text-foreground",
-              "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-              isEmbedded ? "text-[0.65rem]" : "text-caption"
-            ),
-            row: "flex w-full justify-between mt-0.5",
-            tbody: cn(
-              "block overflow-hidden transition-[max-height] duration-300 ease-in-out",
-              isEmbedded ? "max-h-[192px]" : undefined
-            ),
-            cell: cn(
-              "relative flex flex-1 items-center justify-center p-0 text-center",
-              "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
-              isEmbedded ? "h-[30px]" : "h-[28px]"
-            ),
-            day: cn(
-              "relative flex flex-col items-center justify-center rounded-sharp font-medium transition-colors",
-              isEmbedded ? "h-6 w-6 text-xs" : "h-[26px] w-[26px] text-sm"
-            ),
-            day_selected: "",
-            day_today: "",
-            day_outside: "text-muted-foreground/40",
-            day_disabled: "text-muted-foreground/30",
-            day_hidden: "invisible",
-          }}
+          classNames={monthClassNames}
           modifiers={{ hasTasks: datesWithTasks }}
           formatters={{
             formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),

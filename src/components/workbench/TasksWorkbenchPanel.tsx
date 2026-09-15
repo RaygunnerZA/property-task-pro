@@ -3,7 +3,6 @@ import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
 import { TasksMessagesCardGrid } from "@/components/workbench/TasksMessagesCardGrid";
-import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
 import { ISSUES_WORKBENCH_SECTION_ILLUSTRATION } from "@/lib/issuesWorkbenchSectionIllustrations";
 import { useAllTasksIllustrationSrc } from "@/hooks/useAllTasksIllustration";
 import {
@@ -337,12 +336,12 @@ export function TasksWorkbenchPanel({
   };
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col rounded-2xl bg-transparent pt-0 pb-1">
+    <div className="flex min-h-0 min-w-0 w-full flex-col">
+      <section className="flex min-h-0 min-w-0 w-full flex-col rounded-2xl bg-transparent pt-0 pb-1">
         {/* Align All / Urgent / My with left-rail section H1 (shared title-band pt). */}
         <div
           className={cn(
-            "relative flex w-full min-w-0 items-start gap-3 px-0 md:px-2",
+            "relative flex w-full min-w-0 items-start gap-3 px-0",
             workbenchTitleBandPtClassName
           )}
         >
@@ -483,7 +482,7 @@ export function TasksWorkbenchPanel({
           </div>
         </div>
 
-        <div className="mt-3 px-0 md:mt-5 md:mb-5 md:px-2">
+        <div className="mt-3 px-0 md:mt-5 md:mb-5">
           <WorkbenchTaskFilterBar
             tasks={tasks}
             properties={properties}
@@ -496,8 +495,8 @@ export function TasksWorkbenchPanel({
           />
         </div>
 
-        {/* Only the list scrolls — header/tabs/filters above stay put. */}
-        <MagneticScrollArea className="mt-3 min-h-0 flex-1 md:mt-0" viewportClassName="px-0 pt-0.5 pb-4 md:px-2">
+        {/* List is in document flow — page scroll moves left · centre · right together. */}
+        <div className="mt-3 px-0 pb-4 pt-0.5 md:mt-0">
           {listTab === "messages" ? (
             <TasksMessagesCardGrid
               tasks={visibleTasks}
@@ -522,7 +521,7 @@ export function TasksWorkbenchPanel({
               hideDoneSection={listTab !== "all"}
             />
           )}
-        </MagneticScrollArea>
+        </div>
       </section>
     </div>
   );

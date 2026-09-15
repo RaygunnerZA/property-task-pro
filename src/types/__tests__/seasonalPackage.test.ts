@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  isCustomerVisibleSeasonalPackage,
   packageIsInDisplayWindow,
   pickTopSeasonalPackage,
   softRankSeasonalPackages,
@@ -40,6 +41,52 @@ describe("seasonalPackage helpers", () => {
     expect(packageIsInDisplayWindow(autumn, new Date("2026-10-31T12:00:00Z"))).toBe(true);
     expect(packageIsInDisplayWindow(autumn, new Date("2026-08-14T12:00:00Z"))).toBe(false);
     expect(packageIsInDisplayWindow(autumn, new Date("2026-11-01T12:00:00Z"))).toBe(false);
+  });
+
+  it("hides draft autumn seed from customers", () => {
+    const draft = pkg({
+      id: "b1000000-0000-4000-8000-000000000001",
+      slug: "before-autumn-heating-2026",
+      title: "5 things to get done before Autumn",
+      status: "draft",
+    });
+    expect(isCustomerVisibleSeasonalPackage(draft, new Date("2026-09-14T12:00:00Z"))).toBe(false);
+  });
+
+  it("hides approved future packages from active customer list", () => {
+    const scheduled = pkg({
+      id: "s",
+      slug: "winter",
+      title: "Winter",
+      status: "approved",
+      display_from: "2026-11-01",
+      display_until: "2027-02-28",
+    });
+    expect(isCustomerVisibleSeasonalPackage(scheduled, new Date("2026-09-14T12:00:00Z"))).toBe(
+      false
+    );
+  });
+
+  it("returns approved in-window packages as customer-visible", () => {
+    const live = pkg({
+      id: "l",
+      slug: "autumn",
+      title: "Autumn",
+      status: "approved",
+    });
+    expect(isCustomerVisibleSeasonalPackage(live, new Date("2026-09-14T12:00:00Z"))).toBe(true);
+  });
+
+  it("hides archived packages from customers", () => {
+    const archived = pkg({
+      id: "a",
+      slug: "old",
+      title: "Old",
+      status: "archived",
+    });
+    expect(isCustomerVisibleSeasonalPackage(archived, new Date("2026-09-14T12:00:00Z"))).toBe(
+      false
+    );
   });
 
   it("ranks add_asset higher only as soft preference when no heating asset is recorded", () => {
@@ -87,8 +134,6 @@ describe("seasonalPackage helpers", () => {
       noHeatingAssetRecorded: true,
     });
     expect(ranked[0]?.id).toBe("asset");
-
-    // Soft ranking must not invent a “boiler not serviced” claim — tip text stays additive.
     expect(ranked[0]?.items[0]?.tip_text.toLowerCase()).not.toMatch(/has not been serviced/);
   });
 

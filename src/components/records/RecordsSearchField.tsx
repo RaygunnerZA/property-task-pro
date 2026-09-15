@@ -1,4 +1,4 @@
-import fillaAiIcon from "@/assets/filla-ai.svg";
+import { FillaAiMark } from "@/components/brand/FillaAiMark";
 import { cn } from "@/lib/utils";
 
 type RecordsSearchFieldProps = {
@@ -15,20 +15,13 @@ export function RecordsSearchField({ value, onChange, className }: RecordsSearch
         className
       )}
     >
-      <img
-        src={fillaAiIcon}
-        alt=""
-        aria-hidden
-        className="h-4 w-4 shrink-0 object-contain opacity-80"
-        width={16}
-        height={16}
-      />
+      <FillaAiMark />
       <input
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Search records, certificates, or types"
-        className="min-w-0 flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground/70"
+        className="min-w-0 flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-muted-foreground/70"
         aria-label="Search records"
       />
     </div>

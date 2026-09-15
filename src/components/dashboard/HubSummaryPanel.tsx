@@ -182,6 +182,9 @@ export function HubSummaryPanel({
         {/* Progress + status list */}
         <div className="flex items-center gap-0 border-t border-dashed border-border/40 pt-0.5 pr-[7px]">
           <div className="flex w-[42%] min-w-[120px] shrink-0 flex-col items-center">
+            <span className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+              {metrics.gaugeEyebrow}
+            </span>
             <RadialProgress
               value={metrics.completionPct}
               size={72}
@@ -190,11 +193,16 @@ export function HubSummaryPanel({
               labelMarginLeft={6}
               embed
               visualWeight="soft"
-              aria-label={`${metrics.completedLabel}, ${metrics.completionPct}%`}
+              aria-label={`${metrics.gaugeEyebrow}: ${metrics.completedLabel}, ${metrics.completionPct}%`}
             />
-            <p className="mt-1 max-w-[120px] text-center text-caption font-medium leading-tight text-muted-foreground">
+            <p className="mt-1 max-w-[120px] text-center text-caption font-semibold leading-tight text-foreground/80">
               {metrics.completedLabel}
             </p>
+            {metrics.gaugeHint ? (
+              <p className="mt-0.5 max-w-[120px] text-center text-2xs font-medium leading-tight text-muted-foreground">
+                {metrics.gaugeHint}
+              </p>
+            ) : null}
           </div>
 
           <div className="min-w-0 flex-1 border-l border-dashed border-border/35 pl-1 pr-[3px] pt-[14px]">

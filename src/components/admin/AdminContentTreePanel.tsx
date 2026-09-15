@@ -65,6 +65,7 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
+  Copy,
   GitBranch,
   Loader2,
   RefreshCw,
@@ -1093,6 +1094,39 @@ function BriefStage({
     visual_concept_suggestion: visual,
   });
 
+  const formatBriefForCopy = () => {
+    const sectionsList = [
+      ["Content angle", angle],
+      ["Working title", title],
+      ["Intended reader", reader],
+      ["Reader outcome", outcome],
+      ["Proposed sections", sections],
+      ["Questions to answer", questions],
+      ["Legal / factual distinctions", distinctions],
+      ["Required source points", sourcePoints],
+      ["Claims needing cautious wording", cautious],
+      ["Suggested CTA", cta],
+      ["Recommended output types", outputs],
+      ["Visual concept suggestion", visual],
+    ] as const;
+
+    return sectionsList
+      .map(([label, value]) => {
+        const body = value.trim() || "(empty)";
+        return `${label}\n${body}`;
+      })
+      .join("\n\n");
+  };
+
+  const copyBrief = async () => {
+    try {
+      await navigator.clipboard.writeText(formatBriefForCopy());
+      toast.success("Brief copied");
+    } catch {
+      toast.error("Could not copy brief");
+    }
+  };
+
   if (!hasProposal) {
     return (
       <div className="space-y-2">
@@ -1150,6 +1184,15 @@ function BriefStage({
           }}
         >
           Save changes
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-0 btn-neomorphic"
+          disabled={busy}
+          onClick={() => void copyBrief()}
+        >
+          <Copy className="h-3.5 w-3.5 mr-1" /> Copy
         </Button>
         <Button
           size="sm"
