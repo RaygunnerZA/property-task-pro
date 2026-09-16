@@ -1,7 +1,7 @@
 import { useMemo, useEffect, useRef } from "react";
 import { format, startOfDay } from "date-fns";
 import TaskCard from "@/components/TaskCard";
-import { MagneticScrollArea } from "@/components/ui/MagneticScrollArea";
+import MagneticScrollArea from "@/components/ui/MagneticScrollArea";
 import {
   CALENDAR_AFTERNOON_TIME,
   CALENDAR_MORNING_TIME,

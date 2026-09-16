@@ -92,7 +92,19 @@ export function useActionableSuggestions(options?: {
       const { data, error } = await (supabase as unknown as {
         from: (table: string) => {
           select: (cols: string) => {
-            in: (col: string, ids: string[]) => Promise<{ data: Array<{ task_id: string; asset_id: string }> | null; error: { code?: string } | null }>;
+            in: (
+              col: string,
+              ids: string[]
+            ) => Promise<{
+              data: Array<{ task_id: string; asset_id: string }> | null;
+              error: {
+                code?: string;
+                message?: string;
+                details?: string;
+                hint?: string;
+                status?: number;
+              } | null;
+            }>;
           };
         };
       })
@@ -100,7 +112,14 @@ export function useActionableSuggestions(options?: {
         .select("task_id, asset_id")
         .in("task_id", taskIds);
       if (error) {
-        if (error.code === "42P01") return [];
+        // Postgres undefined_table, or PostgREST missing relation (table not in API schema).
+        if (
+          error.code === "42P01" ||
+          error.code === "PGRST205" ||
+          /schema cache|does not exist/i.test(error.message ?? "")
+        ) {
+          return [];
+        }
         throw error;
       }
       return (data ?? []).map((row) => ({

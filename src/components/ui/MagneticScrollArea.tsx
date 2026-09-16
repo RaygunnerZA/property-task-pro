@@ -178,3 +178,6 @@ export const MagneticScrollArea = forwardRef<HTMLDivElement, MagneticScrollAreaP
     );
   }
 );
+
+MagneticScrollArea.displayName = "MagneticScrollArea";
+export default MagneticScrollArea;

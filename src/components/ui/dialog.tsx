@@ -39,9 +39,9 @@ const DialogContent = React.forwardRef<
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
-      // Forward string ids only. Never pass `undefined` — React drops it and Radix
-      // warns. Dialogs without a Description should include an sr-only one.
-      {...(typeof ariaDescribedBy === "string" ? { "aria-describedby": ariaDescribedBy } : {})}
+      // Always forward the prop (including `undefined`) so Radix sees the key and
+      // does not warn when no DialogDescription is present.
+      aria-describedby={ariaDescribedBy}
       className={cn(
         "dialog-content fixed z-[110] flex w-full flex-col gap-4 border bg-background p-6 shadow-lg duration-200",
         modalHorizontalCenterClass,
