@@ -4,11 +4,19 @@ import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useInitialOrgQueries } from "@/hooks/use-initial-org-queries";
 import { supabase } from "@/integrations/supabase/client";
+import { fetchOrgPropertiesList } from "@/services/properties/fetchOrgProperties";
+import { filterPropertiesByScope, resolveEffectiveAccess } from "@/lib/permissions/effectiveAccess";
 
 export function AppBootLoader({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
   const { loading: authLoading } = useDataContext();
-  const { orgId, isLoading: orgLoading } = useActiveOrg();
+  const {
+    orgId,
+    role,
+    assignedProperties,
+    isPrimaryOwner,
+    isLoading: orgLoading,
+  } = useActiveOrg();
   useInitialOrgQueries(orgId);
 
   // Prefetch tasks and properties as soon as orgId is available
@@ -31,21 +39,20 @@ export function AppBootLoader({ children }: { children: React.ReactNode }) {
       staleTime: 60000, // 1 minute
     });
 
-    // Prefetch properties
     queryClient.prefetchQuery({
-      queryKey: ["properties", orgId],
+      queryKey: ["properties", orgId, role, assignedProperties, isPrimaryOwner],
       queryFn: async () => {
-        const { data, error } = await supabase
-          .from("properties_view")
-          .select("*")
-          .eq("org_id", orgId);
-
-        if (error) throw error;
-        return data ?? [];
+        const rows = await fetchOrgPropertiesList(orgId);
+        const access = resolveEffectiveAccess({
+          role,
+          assignedPropertyIds: assignedProperties,
+          isPrimaryOwner,
+        });
+        return filterPropertiesByScope(rows, access);
       },
-      staleTime: 60000, // 1 minute
+      staleTime: 60000,
     });
-  }, [orgId, orgLoading, queryClient]);
+  }, [orgId, orgLoading, queryClient, role, assignedProperties, isPrimaryOwner]);
 
   // Only block for auth or org loading - let data load in background
   const isLoading = authLoading || orgLoading;

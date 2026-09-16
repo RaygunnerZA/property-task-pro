@@ -74,13 +74,15 @@ Not a CMS of topics, strategies, and briefs for the admin to shepherd.
 |---------|------|
 | **Header** | Knowledge · Search · Filter · **Add source** · Overflow (Pilot / advanced machinery / reporting) |
 | **Filters** | Needs attention · Scheduled · Monitoring · Complete |
-| **Queue groups** | Now only when many decisions; otherwise a flat decision list |
+| **Scheduled** | Editorial calendar of **Proposed** (machine) and **Confirmed** (human accepted for production) packages — neither means published or distributed |
 | **Row unit** | **Subject package** (aggregated Knowledge + optional content_topic) — not atomic jurisdiction rows, not individual articles |
 | **Primary actions** | Context-sensitive when a decision exists: **Accept plan** · **Review drafts** · **Resolve gap** · **Approve distribution** · **View**. No button when the machine is still working. |
 
-**Needs attention** may only contain genuine human decisions. Do **not** put an item there because planning, drafting, visuals, or topic creation has not run — that is Monitoring (“Planning queued”) and machine continuation. “Subject ready to plan” is never a human stopping state.
+**Needs attention** may only contain genuine human decisions (complete proposed plan awaiting accept, valid drafts awaiting review, source/applicability exceptions, distribution approval). Do **not** put “Planning queued” there — that is Monitoring. Premature drafts do not unlock Review drafts until the plan is accepted.
 
-**Accept plan** authorises generation (machine then drafts). **Approve distribution** marks channel-ready — does not publish or execute channels. Do not use “Ready to publish”.
+**Scheduled** answers: what Filla proposes, in what order, why then, which regions support it, and whether the entry is Proposed or Confirmed. Planning resumes into Proposed calendar only — never auto-accept, never draft unaccepted plans, never distribute.
+
+**Accept plan** moves Proposed → Confirmed and may then generate drafts. **Approve distribution** marks channel-ready — does not publish. Do not use “Ready to publish”.
 
 Compact queue rows: title · coverage · state/reason · one action if required. Forms show only after a recommendation exists (“Assessing opportunity” before that).
 

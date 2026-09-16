@@ -24,7 +24,9 @@ import {
 } from "@/lib/content/contentPlan";
 import { normalizeSeoProposal, normalizeStageEnvelope } from "@/lib/content/contentTopicWorkflow";
 import {
+  draftBodyToReadableProse,
   mergeSchedulePrefsIntoPublishing,
+  sanitizeImportantGaps,
   type PackagePrimaryKind,
   type SubjectPackage,
 } from "@/lib/content/knowledgeSubjectPackage";
@@ -106,6 +108,7 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
 
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [pilotOpen, setPilotOpen] = useState(false);
+  const [editRaw, setEditRaw] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const generating =
@@ -120,20 +123,31 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
   );
   const planAccepted = draft.approval_status === "approved";
 
+  // Furthest valid state — do not let premature drafts override Accept plan
   let primaryKind: PackagePrimaryKind = pkg.primaryKind;
   if (generating) primaryKind = "none";
-  else if (pendingOutputs.length > 0) primaryKind = "review_drafts";
-  else if (planAccepted && outputs.length > 0 && pendingOutputs.length === 0) {
-    primaryKind = "approve_distribution";
-  } else if (!planAccepted && (draft.primary_form || pkg.primaryKind === "accept_plan")) {
+  else if (pkg.primaryKind === "resolve_gap") primaryKind = "resolve_gap";
+  else if (!planAccepted && (pkg.primaryKind === "accept_plan" || draft.primary_form)) {
     primaryKind = "accept_plan";
-  } else if (pkg.primaryKind === "resolve_gap") {
-    primaryKind = "resolve_gap";
+  } else if (planAccepted && pendingOutputs.length > 0) {
+    primaryKind = "review_drafts";
+  } else if (
+    planAccepted &&
+    outputs.length > 0 &&
+    pendingOutputs.length === 0 &&
+    !pkg.prefs.distribution_ready_at
+  ) {
+    primaryKind = "approve_distribution";
   } else if (pkg.prefs.distribution_ready_at) {
     primaryKind = "view";
   } else {
-    primaryKind = pkg.primaryKind === "none" ? "none" : pkg.primaryKind;
+    primaryKind = pkg.primaryKind;
   }
+
+  const gapTexts = sanitizeImportantGaps([
+    ...draft.source_gaps.map((g) => g.text),
+    ...seoProposal.evidence_gaps,
+  ]);
 
   const ensureTopic = async (): Promise<string> => {
     if (topicId) return topicId;
@@ -174,9 +188,17 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
           topicId: id,
           strategy: { ...draft, approval_status: "approved" },
         });
-        // Machine continuation — do not leave "ready to generate" as human work
+        await upsertStage.mutateAsync({
+          topicId: id,
+          publishing: mergeSchedulePrefsIntoPublishing(topic?.publishing ?? {}, {
+            schedule_state: "confirmed",
+            window_label: pkg.windowLabel ?? undefined,
+            window_start: pkg.windowStart ?? undefined,
+          }),
+        });
+        // Content generation only after human acceptance
         await generate.mutateAsync({ topicId: id, stage: "content" });
-        toast.success("Plan accepted — generating drafts");
+        toast.success("Plan confirmed — generating drafts. Not published.");
         onPackageUpdated?.();
         return;
       }
@@ -271,14 +293,11 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
             {sources.length > 0 ? ` · ${sources.length} source${sources.length === 1 ? "" : "s"}` : ""}
           </p>
         )}
-        {(draft.source_gaps.length > 0 || seoProposal.evidence_gaps.length > 0) && (
+        {gapTexts.length > 0 && (
           <div className="rounded-lg bg-amber-500/10 p-3 space-y-1">
             <p className="text-xs font-medium">Important gaps</p>
             <ul className="text-xs space-y-1">
-              {(draft.source_gaps.length
-                ? draft.source_gaps.map((g) => g.text)
-                : seoProposal.evidence_gaps
-              ).map((text) => (
+              {gapTexts.map((text) => (
                 <li key={text}>{text}</li>
               ))}
             </ul>
@@ -357,21 +376,40 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm font-medium">{o.title || o.output_kind}</p>
               <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                {o.status === "approved"
-                  ? "Approved"
-                  : o.status === "needs_review" || o.status === "draft"
-                    ? "Ready to review"
-                    : o.status === "rejected"
-                      ? "Held"
-                      : o.status}
+                {!planAccepted && (o.status === "draft" || o.status === "needs_review")
+                  ? "Held until plan accepted"
+                  : o.status === "approved"
+                    ? "Approved"
+                    : o.status === "needs_review" || o.status === "draft"
+                      ? "Ready to review"
+                      : o.status === "rejected"
+                        ? "Held"
+                        : o.status}
               </span>
             </div>
-            <pre className="whitespace-pre-wrap text-xs text-muted-foreground max-h-40 overflow-auto">
-              {(o.body ?? "").slice(0, 2000)}
-              {(o.body ?? "").length > 2000 ? "…" : ""}
-            </pre>
+            {editRaw ? (
+              <pre className="whitespace-pre-wrap text-xs text-muted-foreground max-h-40 overflow-auto font-mono">
+                {(o.body ?? "").slice(0, 4000)}
+                {(o.body ?? "").length > 4000 ? "…" : ""}
+              </pre>
+            ) : (
+              <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
+                {draftBodyToReadableProse((o.body ?? "").slice(0, 4000))}
+                {(o.body ?? "").length > 4000 ? "…" : ""}
+              </div>
+            )}
           </article>
         ))}
+
+        {outputs.length > 0 && (
+          <button
+            type="button"
+            className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
+            onClick={() => setEditRaw((v) => !v)}
+          >
+            {editRaw ? "Show readable prose" : "Show raw markdown"}
+          </button>
+        )}
 
         {outputs.length === 0 && !generating && (
           <p className="text-sm text-muted-foreground">

@@ -383,7 +383,7 @@ function SpaceOrganisationScreenInner() {
   const workspace = (
     <PropertyWorkspaceLayout
       pageTitle="Spaces"
-      pageSubtitle="Rooms and areas organised for work and inspections."
+      pageSubtitle="Areas, rooms, and groups — drag spaces into floors and zones."
       pageIllustrationSrc={SPACES_ILLUSTRATION}
       contextColumn={contextColumn}
       workColumn={workColumn}

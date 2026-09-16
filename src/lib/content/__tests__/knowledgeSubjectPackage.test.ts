@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { proposePilotCalendarWindows } from "@/lib/content/knowledgeEditorialCalendar";
 import {
   buildSubjectPackages,
+  deriveNextAction,
+  draftBodyToReadableProse,
   filterCounts,
   formatCoverageLine,
+  packagesForFilter,
+  sanitizeImportantGaps,
   subjectKeyFromTitle,
-  subjectDisplayTitle,
 } from "@/lib/content/knowledgeSubjectPackage";
 import type { ContentTopicRow, KnowledgeRow } from "@/types/knowledge";
 
@@ -34,15 +38,14 @@ function knowledge(
   } as KnowledgeRow;
 }
 
-describe("knowledgeSubjectPackage triage", () => {
-  it("clusters heating prep separately from chimney", () => {
-    expect(subjectKeyFromTitle("Boiler service — France")).toBe("before-heating-season");
-    expect(subjectKeyFromTitle("Exposed pipework")).toBe("before-heating-season");
+describe("schedule semantics + planning", () => {
+  it("clusters gutters and heating separately from chimney", () => {
+    expect(subjectKeyFromTitle("Gutter clearing — autumn")).toBe("gutters-autumn-leaf-risk");
+    expect(subjectKeyFromTitle("Boiler service")).toBe("before-heating-season");
     expect(subjectKeyFromTitle("Chimney sweeping — France")).toBe("chimney-flue-sweeping");
-    expect(subjectDisplayTitle("before-heating-season", "x")).toBe("Before the heating season");
   });
 
-  it("does not put unplanned Knowledge in Needs attention", () => {
+  it("does not put planning-queued subjects in Needs attention", () => {
     const packages = buildSubjectPackages({
       knowledge: [
         knowledge({
@@ -53,12 +56,6 @@ describe("knowledgeSubjectPackage triage", () => {
         }),
         knowledge({
           id: "k2",
-          title: "Private sewage — France",
-          status: "verified",
-          applicability: { jurisdictions: ["France"], regions: [], languages: [], audiences: [] },
-        }),
-        knowledge({
-          id: "k3",
           title: "Boiler service — France",
           status: "verified",
           applicability: { jurisdictions: ["France"], regions: [], languages: [], audiences: [] },
@@ -67,18 +64,40 @@ describe("knowledgeSubjectPackage triage", () => {
       topics: [],
       now: new Date("2026-09-15T12:00:00Z"),
     });
-    const counts = filterCounts(packages);
-    expect(counts.attention).toBe(0);
-    expect(counts.monitoring).toBeGreaterThan(0);
-    const heating = packages.find((p) => p.subjectKey === "before-heating-season");
-    expect(heating?.filter).toBe("monitoring");
-    expect(heating?.machineState).toBe("planning_queued");
-    expect(heating?.actionLabel).toBeNull();
-    expect(heating?.deliverablesSummary).toBe("Assessing opportunity");
-    expect(heating?.autoPlanEligible).toBe(true);
+    expect(filterCounts(packages).attention).toBe(0);
+    expect(packages.every((p) => p.actionLabel === null || p.filter !== "attention")).toBe(true);
+    expect(packages.some((p) => p.machineState === "planning_queued")).toBe(true);
   });
 
-  it("puts chimney with ready plan in Needs attention as Accept plan", () => {
+  it("keeps Accept plan when drafts exist but plan is not accepted", () => {
+    const next = deriveNextAction({
+      planAccepted: false,
+      planReady: true,
+      hasBlockingGap: false,
+      validPendingDrafts: false,
+      allOutputsApproved: false,
+      distributionReady: false,
+      deferred: false,
+    });
+    expect(next.actionLabel).toBe("Accept plan");
+    expect(next.needsAttention).toBe(true);
+  });
+
+  it("uses Review drafts only after plan accepted with valid drafts", () => {
+    expect(
+      deriveNextAction({
+        planAccepted: true,
+        planReady: false,
+        hasBlockingGap: false,
+        validPendingDrafts: true,
+        allOutputsApproved: false,
+        distributionReady: false,
+        deferred: false,
+      }).actionLabel
+    ).toBe("Review drafts");
+  });
+
+  it("puts proposed plan packages into Scheduled calendar membership", () => {
     const topic = {
       id: "t1",
       knowledge_id: "k1",
@@ -100,7 +119,13 @@ describe("knowledgeSubjectPackage triage", () => {
       seo: {},
       brief: {},
       creative: {},
-      publishing: {},
+      publishing: {
+        schedule: {
+          schedule_state: "proposed",
+          window_label: "Week of 15 September",
+          window_start: "2026-09-14",
+        },
+      },
       knowledge_version: 1,
       applicability_snapshot: {},
       upstream_hash: null,
@@ -118,53 +143,6 @@ describe("knowledgeSubjectPackage triage", () => {
         }),
       ],
       topics: [topic],
-      now: new Date("2026-09-15T12:00:00Z"),
-    });
-    expect(packages[0].filter).toBe("attention");
-    expect(packages[0].actionLabel).toBe("Accept plan");
-    expect(packages[0].whyNow).toMatch(/heating/i);
-    expect(packages[0].coverageSummary).toMatch(/France sourced/i);
-    expect(filterCounts(packages).attention).toBe(1);
-  });
-
-  it("shows Review drafts when outputs await judgement", () => {
-    const topic = {
-      id: "t1",
-      knowledge_id: "k1",
-      title: "Chimney and flue sweeping",
-      status: "active",
-      workflow_status: "content_review",
-      content_scope: "international_overview",
-      strategy: {
-        approval_status: "approved",
-        content_scope: "international_overview",
-        primary_form: "informational_article",
-        derivative_forms: ["social_post"],
-        supporting_content: [{ label: "France country guide", jurisdiction: "France" }],
-        exclusions: [],
-        source_gaps: [],
-      },
-      seo: {},
-      brief: {},
-      creative: {},
-      publishing: {},
-      knowledge_version: 1,
-      applicability_snapshot: {},
-      upstream_hash: null,
-      created_at: "2026-09-01T00:00:00Z",
-      updated_at: "2026-09-15T00:00:00Z",
-    } as ContentTopicRow;
-
-    const packages = buildSubjectPackages({
-      knowledge: [
-        knowledge({
-          id: "k1",
-          title: "Chimney sweeping — France",
-          status: "published",
-          applicability: { jurisdictions: ["France"], regions: [], languages: [], audiences: [] },
-        }),
-      ],
-      topics: [topic],
       outputsByTopicId: {
         t1: [
           {
@@ -173,7 +151,7 @@ describe("knowledgeSubjectPackage triage", () => {
             output_kind: "core_article",
             status: "needs_review",
             title: "Article",
-            body: "…",
+            body: "## Hello\n\n**Bold** claim",
             structured: {},
             provenance: {},
             version: 1,
@@ -186,18 +164,52 @@ describe("knowledgeSubjectPackage triage", () => {
       },
       now: new Date("2026-09-15T12:00:00Z"),
     });
-    expect(packages[0].actionLabel).toBe("Review drafts");
-    expect(packages[0].filter).toBe("attention");
-    expect(packages[0].outcome).toMatch(/International article|Drafts ready/i);
+
+    const chimney = packages[0];
+    expect(chimney.actionLabel).toBe("Accept plan");
+    expect(chimney.scheduleState).toBe("proposed");
+    expect(packagesForFilter(packages, "scheduled").some((p) => p.id === chimney.id)).toBe(true);
+    expect(chimney.coverageSummary).toMatch(/France sourced/i);
+    expect(chimney.coverageSummary).toMatch(/International incomplete/i);
+    expect(chimney.deliverables.some((d) => d.label === "International article" && d.state === "Blocked")).toBe(
+      true
+    );
+  });
+
+  it("proposes a restrained weekly pilot calendar", () => {
+    const cal = proposePilotCalendarWindows({
+      now: new Date("2026-09-15T12:00:00Z"),
+      subjectKeys: [
+        "chimney-flue-sweeping",
+        "before-heating-season",
+        "smoke-carbon-monoxide-alarms",
+        "gutters-autumn-leaf-risk",
+        "party-walls",
+      ],
+      heatingSeason: true,
+    });
+    expect(cal[0].subjectKey).toBe("chimney-flue-sweeping");
+    expect(cal.map((c) => c.subjectKey)).toContain("before-heating-season");
+    expect(new Set(cal.map((c) => c.window_start)).size).toBe(cal.length);
+  });
+
+  it("sanitizes French gap noise and renders readable prose", () => {
+    expect(
+      sanitizeImportantGaps([
+        "Besoin de vérifier le ramonage annuel",
+        "France source does not cover insurance requirements",
+      ])
+    ).toEqual(["France source does not cover insurance requirements"]);
+    expect(draftBodyToReadableProse("## Title\n\n**Bold** and *italic*")).toContain("Bold");
+    expect(draftBodyToReadableProse("## Title\n\n**Bold**")).not.toContain("**");
   });
 
   it("formats coverage without enums", () => {
     expect(
       formatCoverageLine([
-        { id: "international", label: "International", status: "Ready" },
+        { id: "international", label: "International", status: "Incomplete" },
         { id: "1", label: "France", status: "Sourced" },
-        { id: "2", label: "Scotland", status: "Sourced" },
       ])
-    ).toBe("International ready · France sourced · Scotland sourced");
+    ).toBe("International incomplete · France sourced");
   });
 });

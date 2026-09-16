@@ -49,9 +49,10 @@ interface DualPaneLayoutProps {
  * Dual-Pane Command Centre Layout (single React tree; responsive CSS only).
  *
  * Default (desktop / tablet dual):
- * - sm–layout: 330px side rail | centre (max 700px)
+ * - sm–layout: 330px side rail | centre fills remaining width (1fr)
  * - layout+ (≥1280px): optional third column; rails flex via workbench-triple minmax
  *   with gutter-rail column-gap so the centre list and detail pane stay separated.
+ *   With a third column, centre is capped at 700px; without one, centre keeps filling 1fr.
  *   Centre must not use overflow-x-hidden on the grid cell — that couples
  *   overflow-y to `auto` and parks a native scrollbar on the column seam.
  * - `embedded`: same tracks inside StandardPage (PropertyWorkspaceLayout); no min-h-screen.
@@ -122,9 +123,12 @@ export function DualPaneLayout({
     // Do not put overflow-y-auto on this grid cell: the native scrollbar sits on the
     // track edge and reads as a thick divider against the third column. Inner panes
     // (CentreWorkbench, TaskPanel) own vertical scroll, inset by this padding.
+    // Dual mode (!third): fill the 1fr track — do not leave dead space beside a 700px cap.
+    // Triple mode: keep the constitutional centre max (700).
     collapseCentreOnPhone
       ? cn(
-          "hidden md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
+          "hidden md:flex md:min-h-0 md:flex-col md:px-1 md:pb-4",
+          hasThirdColumn ? "md:max-w-[700px]" : "md:max-w-none",
           bindCentre
             ? boundCentreMd
             : pageScroll
@@ -133,7 +137,8 @@ export function DualPaneLayout({
         )
       : dualGridFromPhone
         ? cn(
-            "md:flex md:min-h-0 md:max-w-[700px] md:flex-col md:px-1 md:pb-4",
+            "md:flex md:min-h-0 md:flex-col md:px-1 md:pb-4",
+            hasThirdColumn ? "md:max-w-[700px]" : "md:max-w-none",
             bindCentre
               ? boundCentreMd
               : pageScroll
@@ -141,7 +146,8 @@ export function DualPaneLayout({
                 : "md:h-full md:self-stretch"
           )
         : cn(
-            "sm:flex sm:min-h-0 sm:max-w-[700px] sm:flex-col sm:px-1 sm:pb-4",
+            "sm:flex sm:min-h-0 sm:flex-col sm:px-1 sm:pb-4",
+            hasThirdColumn ? "sm:max-w-[700px]" : "sm:max-w-none",
             bindCentre
               ? boundCentreSm
               : pageScroll
@@ -178,13 +184,13 @@ export function DualPaneLayout({
                 "md:grid md:min-h-0 md:grid-cols-workbench-dual",
                 hasThirdColumn
                   ? "layout:grid layout:grid-cols-workbench-triple"
-                  : "layout:grid layout:grid-cols-workbench-center-max",
+                  : "layout:grid layout:grid-cols-workbench-dual",
               ]
             : [
                 "sm:grid sm:min-h-0 sm:grid-cols-workbench-dual",
                 hasThirdColumn
                   ? "layout:grid layout:grid-cols-workbench-triple"
-                  : "layout:grid layout:grid-cols-workbench-center-max",
+                  : "layout:grid layout:grid-cols-workbench-dual",
               ],
           !embedded && collapseLeftOnPhone && "pt-2 md:pt-[20px]",
           // gap-y only for phone stack: the `gap` shorthand would reset column-gap to 0.

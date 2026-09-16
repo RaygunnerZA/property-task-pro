@@ -348,6 +348,7 @@ export function OnboardingCustomCollectionCard({
                           ? () => onCopySpace(name, collection.id)
                           : undefined
                       }
+                      onPress={() => onRemoveSpace?.(name)}
                       className="!shadow-sm"
                     />
                   );

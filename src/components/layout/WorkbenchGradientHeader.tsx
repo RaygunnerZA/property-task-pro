@@ -231,7 +231,7 @@ export function WorkbenchGradientHeader({
             "sm:grid-cols-workbench-dual sm:gap-x-gutter-rail",
             hasThirdColumn
               ? "layout:grid-cols-workbench-triple layout:gap-x-gutter-rail"
-              : "layout:grid-cols-workbench-center-max layout:gap-x-gutter-rail"
+              : "layout:grid-cols-workbench-dual layout:gap-x-gutter-rail"
           )}
         >
           {/* Spacer under the fixed logo + property selector cluster — match DualPane left rail inset */}
@@ -239,10 +239,11 @@ export function WorkbenchGradientHeader({
 
           <div
             className={cn(
-              "relative z-10 flex min-h-0 min-w-0 items-center gap-2 self-center sm:col-start-2 sm:max-w-[700px]",
+              "relative z-10 flex min-h-0 min-w-0 items-center gap-2 self-center sm:col-start-2",
+              // Match DualPane: fill centre track in dual; cap at 700 when third column is open.
+              hasThirdColumn ? "sm:max-w-[700px] layout:max-w-[700px]" : "sm:max-w-none layout:max-w-none",
               // DualPane centre shell (px-1 / layout:px-2) + Home/CentreWorkbench (px-2).
-              workbenchHeaderCentrePadClass,
-              "layout:max-w-[700px]"
+              workbenchHeaderCentrePadClass
             )}
           >
             {!showSearch ? null : (

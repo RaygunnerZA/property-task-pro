@@ -93,7 +93,7 @@ Spaces, Assets, and People are **separate primary nav destinations** for place e
 
 | Nav item | Route | Purpose |
 |----------|-------|---------|
-| Spaces | `/property/spaces` | Spaces and space groups |
+| Spaces | `/property/spaces` | Areas (floors/zones via `parent_space_id`) · spaces · type groups |
 | Assets | `/property/assets` | Equipment and maintainable items |
 | People | `/property/people` | Staff, contractors, suppliers, contacts (outside Settings) |
 
@@ -133,6 +133,8 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 | Centre | Active entity screen · sub-tabs · collection slider · filter/sort · lists |
 | Right | Create Space / Add Asset / Invite Member · Manage Tags below |
 
+**Spaces — Areas nesting:** Centre Spaces organisation uses **Areas** (parent spaces) and **rooms** (`spaces.parent_space_id`). Type-group cards remain the catalog axis; Areas are the place hierarchy. Chip DnD (`onboardingAreasDnd`) reparents rooms. **Extension seam (not yet built):** same SortableItem / DroppableZone / drag-data union can add `kind: "task" | "asset" | "record"` with droppable prefixes — Tasks → status/area lanes; Assets → space/area drops (`assets.space_id`); Records → space-linked filing. Do not invent a second DnD kit.
+
 **Workbench column geometry (single system)**
 
 All primary screens and activity-area modules use **DualPaneLayout** (PropertyWorkspaceLayout is a DualPane convenience wrapper for title / search / action slots):
@@ -140,7 +142,7 @@ All primary screens and activity-area modules use **DualPaneLayout** (PropertyWo
 | Track | Preferred | Soft min | Notes |
 |-------|-----------|----------|-------|
 | Left / right rails | 330px | 260px | `WORKBENCH_SIDE_RAIL_*` |
-| Centre | max 700px | 420px | Cap list / work surface |
+| Centre | max 700px (triple) / fill 1fr (dual) | 420px | Cap list when third column is open; fill remaining width in dual mode |
 
 Breakpoints: dual from `sm` (640) / `md` (768) per phone contract; **third column from `layout` (1280px)**. Do not introduce a second rail geometry or a separate triple breakpoint.
 

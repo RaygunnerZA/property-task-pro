@@ -307,22 +307,85 @@ export function SemanticChip({
   if (dropdown && dropdownContent) {
     return (
       <DropdownMenu onOpenChange={onDropdownOpenChange}>
-        <DropdownMenuTrigger asChild>
-          <button
-            ref={chipRef as React.Ref<HTMLButtonElement>}
-            type="button"
-            className={baseStyles}
-            style={color ? { backgroundColor: color } : undefined}
-            aria-label={ariaLabel}
-            aria-expanded={undefined}
-            aria-haspopup="true"
-            onPointerDown={handlePointerDown}
-            onPointerUp={handlePointerUp}
-            onPointerLeave={() => setIsPressed(false)}
+        <span
+          ref={chipRef as React.Ref<HTMLSpanElement>}
+          role={onPress ? "button" : undefined}
+          tabIndex={onPress ? 0 : undefined}
+          className={baseStyles}
+          style={color ? { backgroundColor: color } : undefined}
+          aria-label={ariaLabel}
+          onClick={onPress ? handleClick : undefined}
+          onPointerDown={onPress ? handlePointerDown : undefined}
+          onPointerUp={onPress ? handlePointerUp : undefined}
+          onPointerLeave={onPress ? () => setIsPressed(false) : undefined}
+          onKeyDown={
+            onPress
+              ? (e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    triggerPress(e);
+                  }
+                }
+              : undefined
+          }
+        >
+          {icon && <span className="flex-shrink-0">{icon}</span>}
+          {pending && (
+            <span className="w-1.5 h-1.5 rounded-full bg-warning-vivid/70 flex-shrink-0" />
+          )}
+          <span
+            className={cn(
+              truncate && "min-w-0 truncate",
+              removable && truncate && "group-hover:shrink-0",
+              !truncate && "flex-1"
+            )}
           >
-            {content}
-          </button>
-        </DropdownMenuTrigger>
+            {label}
+          </span>
+          {removable && onRemove && (
+            <span
+              role="button"
+              tabIndex={0}
+              onClick={handleRemove}
+              onPointerDown={(e) => e.stopPropagation()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  handleRemove(e as unknown as React.MouseEvent);
+                }
+              }}
+              className={cn(
+                "inline-flex items-center justify-center flex-shrink-0 overflow-hidden",
+                "w-0 opacity-0 pointer-events-none",
+                "transition-[width,opacity] duration-200 ease-out",
+                "group-hover:w-[12px] group-hover:ml-1 group-hover:opacity-70 group-hover:pointer-events-auto",
+                "hover:opacity-100"
+              )}
+            >
+              <X className="h-3 w-3" />
+            </span>
+          )}
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label="Open options"
+              className={cn(
+                "inline-flex h-full w-[18px] shrink-0 items-center justify-center rounded-sm",
+                "outline-none focus-visible:ring-1 focus-visible:ring-ring",
+                "[&[data-state=open]>svg]:rotate-180"
+              )}
+              onClick={(e) => e.stopPropagation()}
+              onPointerDown={(e) => e.stopPropagation()}
+            >
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 flex-shrink-0 transition-transform duration-150",
+                  useLightText ? "text-white/80" : "text-muted-foreground"
+                )}
+              />
+            </button>
+          </DropdownMenuTrigger>
+        </span>
         <DropdownMenuContent
           align="start"
           side="bottom"

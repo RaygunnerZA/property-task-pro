@@ -14,6 +14,9 @@ import {
   SPACE_GROUP_ADD_INPUT_CLASS,
   SPACE_GROUP_ADD_INPUT_SHADOW,
 } from "./spaceGroupCardInputStyles";
+import { hexToRgba } from "./onboardingPropertyAreas";
+import { DroppableZone, groupDroppableId } from "./onboardingAreasDnd";
+import { DraggableChipShell } from "./DraggableChipShell";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -45,6 +48,18 @@ interface OnboardingSpaceGroupCardProps {
   /** Display names for renamed suggestion chips (key = original suggestion, lowercased). */
   suggestionLabelOverrides?: SuggestionLabelOverrides;
   subSpacesByParent?: Record<string, string[]>;
+  /** When set, selected chips use this colour (e.g. active area colour). Key = lowercased name. */
+  selectedSpaceColors?: Record<string, string>;
+  /** Area id owning each selected space (lowercased name → area id). */
+  spaceAreaByNameKey?: Record<string, string>;
+  /** Active area that receives new spaces — chips in other areas are dimmed. */
+  activeAreaId?: string | null;
+  /** Gray out and block interaction (progressive: wait for an area). */
+  disabled?: boolean;
+  /** Instruction banner over the card body below the image. */
+  instructionOverlay?: { label: string; color: string } | null;
+  /** Soft fade for the instruction overlay (0–1). */
+  instructionOpacity?: number;
   onAddSpace: (name: string, extra?: boolean) => void;
   onRemoveSpace?: (name: string) => void;
   onRenameSpace?: (name: string, groupId: string) => void;
@@ -69,6 +84,12 @@ export function OnboardingSpaceGroupCard({
   spaceFilter = "",
   suggestionLabelOverrides = {},
   subSpacesByParent = {},
+  selectedSpaceColors,
+  spaceAreaByNameKey = {},
+  activeAreaId = null,
+  disabled = false,
+  instructionOverlay = null,
+  instructionOpacity = 1,
   onAddSpace,
   onRemoveSpace,
   onRenameSpace,
@@ -270,11 +291,21 @@ export function OnboardingSpaceGroupCard({
 
   return (
     <div
-      className={cn("w-[230px] h-[295px] flex-shrink-0", className)}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
+      className={cn(
+        "relative w-[230px] h-[295px] flex-shrink-0",
+        disabled && "pointer-events-none",
+        className
+      )}
+      onMouseEnter={disabled ? undefined : handleMouseEnter}
+      onMouseLeave={disabled ? undefined : handleMouseLeave}
     >
-      <div className="relative flex h-full flex-col gap-0 overflow-hidden rounded-card bg-card pb-[3px] shadow-e1">
+      <DroppableZone id={groupDroppableId(group.id)} className="h-full">
+      <div
+        className={cn(
+          "relative flex h-full flex-col gap-0 overflow-hidden rounded-card bg-card pb-[3px] shadow-e1",
+          disabled && "opacity-45 grayscale-[0.35]"
+        )}
+      >
         {/* Banner — collapses to 70px on expand */}
         <div
           role={isExpanded ? "button" : undefined}
@@ -308,10 +339,32 @@ export function OnboardingSpaceGroupCard({
           />
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-0 px-3 pb-2 pt-2">
+        <div className="relative flex min-h-0 flex-1 flex-col gap-0 px-3 pb-2 pt-2">
+          {instructionOverlay ? (
+            <div
+              className="pointer-events-none absolute inset-0 z-20 rounded-b-card transition-opacity duration-500 ease-out"
+              style={{
+                backgroundColor: hexToRgba(instructionOverlay.color, 0.4),
+                opacity: instructionOpacity,
+              }}
+              aria-live="polite"
+            >
+              <p className="absolute left-3 top-2 max-w-[calc(100%-1.5rem)] text-left text-lg font-semibold leading-tight text-white">
+                {instructionOverlay.label}
+              </p>
+            </div>
+          ) : null}
+
           {/* Title + dashed rule — slides to card top as banner collapses */}
           <div className="shrink-0 space-y-2 transition-transform ease-out" style={transitionStyle}>
-            <h3 className="text-lg font-semibold leading-tight text-foreground">{group.label}</h3>
+            <h3
+              className={cn(
+                "text-lg font-semibold leading-tight text-foreground",
+                instructionOverlay && instructionOpacity > 0.05 && "opacity-0"
+              )}
+            >
+              {group.label}
+            </h3>
             <div className="-ml-1 -mr-1 pt-1" style={DASHED_LINE_STYLE} />
           </div>
 
@@ -321,7 +374,9 @@ export function OnboardingSpaceGroupCard({
               "mt-[5px] text-xs leading-[18px] text-muted-foreground transition-all ease-out",
               isExpanded
                 ? "pointer-events-none max-h-0 overflow-hidden opacity-0"
-                : "line-clamp-4 h-[72px] max-h-24 opacity-100"
+                : instructionOverlay && instructionOpacity > 0.05
+                  ? "pointer-events-none line-clamp-4 h-[72px] max-h-24 opacity-0"
+                  : "line-clamp-4 h-[72px] max-h-24 opacity-100"
             )}
             style={transitionStyle}
           >
@@ -346,32 +401,50 @@ export function OnboardingSpaceGroupCard({
                 const viewHandler =
                   viewSpaceByNameKey[key] ??
                   (onViewSpace ? () => onViewSpace(name, group.id) : undefined);
+                const ownerAreaId = spaceAreaByNameKey[key];
+                const dimmed =
+                  !!activeAreaId && !!ownerAreaId && ownerAreaId !== activeAreaId;
                 return (
-                  <ExpandableSpaceChip
+                  <DraggableChipShell
                     key={name}
-                    label={shortSpaceLabel(name)}
-                    color={SELECTED_CHIP_TEAL}
-                    subSpaces={subSpacesByParent[key] ?? []}
-                    onRemove={() => onRemoveSpace?.(name)}
-                    onAddSubSpace={(subName) => onAddSubSpace?.(name, subName)}
-                    onRename={
-                      onRenameSpace ? () => onRenameSpace(name, group.id) : undefined
-                    }
-                    onView={viewHandler}
-                    onDuplicate={onCopySpace ? () => onCopySpace(name, group.id) : undefined}
-                    className="!shadow-none"
-                  />
+                    id={`space-chip:${key}`}
+                    data={{
+                      kind: "space",
+                      spaceName: name,
+                      areaId: ownerAreaId ?? activeAreaId ?? "",
+                    }}
+                  >
+                    <ExpandableSpaceChip
+                      label={shortSpaceLabel(name)}
+                      color={selectedSpaceColors?.[key] ?? SELECTED_CHIP_TEAL}
+                      subSpaces={subSpacesByParent[key] ?? []}
+                      onRemove={() => onRemoveSpace?.(name)}
+                      onAddSubSpace={(subName) => onAddSubSpace?.(name, subName)}
+                      onRename={
+                        onRenameSpace ? () => onRenameSpace(name, group.id) : undefined
+                      }
+                      onView={viewHandler}
+                      onDuplicate={onCopySpace ? () => onCopySpace(name, group.id) : undefined}
+                      onPress={() => onRemoveSpace?.(name)}
+                      className={cn("!shadow-none", dimmed && "opacity-40")}
+                    />
+                  </DraggableChipShell>
                 );
               }
               return (
-                <SemanticChip
+                <DraggableChipShell
                   key={name}
-                  epistemic="proposal"
-                  label={shortSpaceLabel(name)}
-                  removable
-                  onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
-                  onPress={() => handleChipClick(name)}
-                />
+                  id={`suggestion:${group.id}:${key}`}
+                  data={{ kind: "suggestion", spaceName: name, groupId: group.id }}
+                >
+                  <SemanticChip
+                    epistemic="proposal"
+                    label={shortSpaceLabel(name)}
+                    removable
+                    onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
+                    onPress={() => handleChipClick(name)}
+                  />
+                </DraggableChipShell>
               );
             })}
           </div>
@@ -416,6 +489,7 @@ export function OnboardingSpaceGroupCard({
           </div>
         </div>
       </div>
+      </DroppableZone>
     </div>
   );
 }

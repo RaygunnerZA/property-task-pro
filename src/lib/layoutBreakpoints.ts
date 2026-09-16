@@ -12,7 +12,8 @@
  * - `max-pane`: max-width query for very narrow inner panes (task rail density).
  *
  * Column formula (DualPane / PropertyWorkspaceLayout):
- *   rails 330 (min 260) | centre max 700 (min 420) | rails 330 (min 260)
+ *   Dual (no third column): rails 330 | centre minmax(0, 1fr) — fill remaining width
+ *   Triple (`layout`+): rails 330 (min 260) | centre max 700 (min 420) | rails 330 (min 260)
  */
 export const LAYOUT_BREAKPOINTS = {
   /** Narrow inner panes (task rail, tight padding) */

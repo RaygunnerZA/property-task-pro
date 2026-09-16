@@ -20,8 +20,12 @@ export interface ExpandableSpaceChipProps {
   onView?: () => void;
   onRename?: () => void;
   onDuplicate?: () => void;
+  /** Chip body click (not chevron) — select / deselect. */
+  onPress?: () => void;
   color?: string;
   className?: string;
+  /** Area chips: hide sub-space / duplicate menu items. */
+  variant?: "space" | "area";
 }
 
 const itemClassName = cn(
@@ -38,12 +42,15 @@ export function ExpandableSpaceChip({
   onView,
   onRename,
   onDuplicate,
+  onPress,
   color,
   className,
+  variant = "space",
 }: ExpandableSpaceChipProps) {
   const [isAddingSubSpace, setIsAddingSubSpace] = useState(false);
   const [newSubSpaceName, setNewSubSpaceName] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const isArea = variant === "area";
 
   useEffect(() => {
     if (isAddingSubSpace) {
@@ -104,16 +111,18 @@ export function ExpandableSpaceChip({
             </DropdownMenuItem>
           ) : null}
 
-          <DropdownMenuItem
-            onSelect={(e) => {
-              e.preventDefault();
-              setIsAddingSubSpace(true);
-            }}
-            className={itemClassName}
-          >
-            <Plus className="h-3 w-3 shrink-0" aria-hidden />
-            Sub-space
-          </DropdownMenuItem>
+          {!isArea ? (
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                setIsAddingSubSpace(true);
+              }}
+              className={itemClassName}
+            >
+              <Plus className="h-3 w-3 shrink-0" aria-hidden />
+              Sub-space
+            </DropdownMenuItem>
+          ) : null}
 
           <DropdownMenuItem
             onSelect={() => onRename?.()}
@@ -124,14 +133,16 @@ export function ExpandableSpaceChip({
             Rename
           </DropdownMenuItem>
 
-          <DropdownMenuItem
-            onSelect={() => onDuplicate?.()}
-            disabled={!onDuplicate}
-            className={itemClassName}
-          >
-            <CopyPlus className="h-3 w-3 shrink-0" aria-hidden />
-            Duplicate
-          </DropdownMenuItem>
+          {!isArea ? (
+            <DropdownMenuItem
+              onSelect={() => onDuplicate?.()}
+              disabled={!onDuplicate}
+              className={itemClassName}
+            >
+              <CopyPlus className="h-3 w-3 shrink-0" aria-hidden />
+              Duplicate
+            </DropdownMenuItem>
+          ) : null}
 
           <DropdownMenuSeparator className="my-0.5" />
 
@@ -142,7 +153,7 @@ export function ExpandableSpaceChip({
         </>
       )}
 
-      {subSpaces.length > 0 && !isAddingSubSpace && (
+      {!isArea && subSpaces.length > 0 && !isAddingSubSpace && (
         <>
           <DropdownMenuSeparator className="my-0.5" />
           {subSpaces.map((name) => (
@@ -169,6 +180,7 @@ export function ExpandableSpaceChip({
       dropdown
       dropdownContent={dropdownContent}
       color={color}
+      onPress={onPress}
       onDropdownOpenChange={(open) => {
         if (!open) {
           setIsAddingSubSpace(false);

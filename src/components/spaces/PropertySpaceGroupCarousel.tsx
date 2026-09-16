@@ -1,12 +1,24 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import { arrayMove } from "@dnd-kit/sortable";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useSpacesWithTypes, type SpaceWithType } from "@/hooks/useSpacesWithTypes";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
 import { OnboardingCustomCollectionCard } from "@/components/onboarding/OnboardingCustomCollectionCard";
 import { OnboardingCustomCollectionDraftCard } from "@/components/onboarding/OnboardingCustomCollectionDraftCard";
+import { OnboardingPropertyAreasCard } from "@/components/onboarding/OnboardingPropertyAreasCard";
 import {
   ONBOARDING_SPACE_GROUPS,
   getGroupIdFromDefaultUiGroup,
@@ -17,11 +29,25 @@ import {
   type SuggestionLabelOverrides,
 } from "@/components/onboarding/onboardingSpaceGroups";
 import {
+  type OnboardingArea,
+} from "@/components/onboarding/onboardingPropertyAreas";
+import {
+  type OnboardingDragData,
+  parseSpaceIdSortableId,
+} from "@/components/onboarding/onboardingAreasDnd";
+import {
   createPropertyCustomCollection,
   loadPropertyCustomSpaceGroups,
   savePropertyCustomSpaceGroups,
 } from "@/lib/propertyCustomSpaceGroupsStorage";
+import {
+  partitionPropertySpaces,
+  selectedSpaceColorsFromPartition,
+  spaceAreaByNameKeyFromPartition,
+  toOnboardingAreas,
+} from "@/lib/spaces/partitionPropertySpaces";
 import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
+import { PropertySpaceAreasStrip } from "@/components/spaces/PropertySpaceAreasStrip";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import {
   Dialog,
@@ -101,6 +127,109 @@ export function PropertySpaceGroupCarousel({
   const [pendingPinsByGroup, setPendingPinsByGroup] = useState<Record<string, string[]>>({});
   const skipPersistCustomGroupsRef = useRef(true);
 
+  const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
+  const [viewingAreaId, setViewingAreaId] = useState<string | null>(null);
+  const [areaOrderIds, setAreaOrderIds] = useState<string[]>([]);
+  const [activeDrag, setActiveDrag] = useState<OnboardingDragData | null>(null);
+  const [showAddSpacesInstruction, setShowAddSpacesInstruction] = useState(false);
+  const [instructionOpacity, setInstructionOpacity] = useState(1);
+  const instructionFadeRef = useRef<number | null>(null);
+  const [renameAreaModal, setRenameAreaModal] = useState<{
+    areaId: string;
+    name: string;
+  } | null>(null);
+  const [renameAreaInput, setRenameAreaInput] = useState("");
+  const [areaDeleteModal, setAreaDeleteModal] = useState<{
+    areaId: string;
+    spaceCount: number;
+  } | null>(null);
+  const [transferTargetAreaId, setTransferTargetAreaId] = useState("");
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  const {
+    areas: partitionedAreas,
+    rooms,
+    roomsByAreaId,
+    unassigned,
+  } = useMemo(() => partitionPropertySpaces(spaces), [spaces]);
+
+  const areas: OnboardingArea[] = useMemo(() => {
+    const mapped = toOnboardingAreas(partitionedAreas);
+    if (areaOrderIds.length === 0) return mapped;
+    const byId = new Map(mapped.map((a) => [a.id, a]));
+    const ordered: OnboardingArea[] = [];
+    for (const id of areaOrderIds) {
+      const area = byId.get(id);
+      if (area) {
+        ordered.push(area);
+        byId.delete(id);
+      }
+    }
+    for (const area of byId.values()) ordered.push(area);
+    return ordered;
+  }, [partitionedAreas, areaOrderIds]);
+
+  const spaceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const area of areas) {
+      counts[area.id] = (roomsByAreaId[area.id] ?? []).length;
+    }
+    return counts;
+  }, [areas, roomsByAreaId]);
+
+  const spaceAreaByNameKey = useMemo(
+    () => spaceAreaByNameKeyFromPartition(roomsByAreaId, areas),
+    [roomsByAreaId, areas]
+  );
+
+  const selectedSpaceColors = useMemo(
+    () => selectedSpaceColorsFromPartition(spaceAreaByNameKey, areas),
+    [spaceAreaByNameKey, areas]
+  );
+
+  const activeArea = areas.find((a) => a.id === activeAreaId) ?? null;
+
+  useEffect(() => {
+    setAreaOrderIds((prev) => {
+      const ids = partitionedAreas.map((a) => a.id);
+      if (prev.length === 0) return ids;
+      const known = new Set(ids);
+      const kept = prev.filter((id) => known.has(id));
+      const missing = ids.filter((id) => !kept.includes(id));
+      return [...kept, ...missing];
+    });
+  }, [partitionedAreas]);
+
+  useEffect(() => {
+    if (areas.length === 0) {
+      setActiveAreaId(null);
+      setViewingAreaId(null);
+      return;
+    }
+    if (activeAreaId && areas.some((a) => a.id === activeAreaId)) return;
+    setActiveAreaId(areas[0].id);
+    setViewingAreaId(areas[0].id);
+  }, [areas, activeAreaId]);
+
+  const triggerAreaInstruction = useCallback(() => {
+    setShowAddSpacesInstruction(true);
+    setInstructionOpacity(1);
+    if (instructionFadeRef.current) window.clearTimeout(instructionFadeRef.current);
+    instructionFadeRef.current = window.setTimeout(() => {
+      setInstructionOpacity(0);
+      window.setTimeout(() => setShowAddSpacesInstruction(false), 400);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (instructionFadeRef.current) window.clearTimeout(instructionFadeRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     skipPersistCustomGroupsRef.current = true;
     const stored = loadPropertyCustomSpaceGroups(propertyId);
@@ -157,7 +286,7 @@ export function PropertySpaceGroupCarousel({
 
   const selectedSpacesSet = useMemo(() => {
     const set = new Set(
-      spaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+      rooms.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
     );
     for (const pins of Object.values(pendingPinsByGroup)) {
       for (const name of pins) {
@@ -166,11 +295,11 @@ export function PropertySpaceGroupCarousel({
       }
     }
     return set;
-  }, [spaces, pendingPinsByGroup]);
+  }, [rooms, pendingPinsByGroup]);
 
   useEffect(() => {
     const existing = new Set(
-      spaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+      rooms.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
     );
     setPendingPinsByGroup((prev) => {
       let changed = false;
@@ -183,7 +312,7 @@ export function PropertySpaceGroupCarousel({
       }
       return changed ? next : prev;
     });
-  }, [spaces]);
+  }, [rooms]);
 
   const pinSpaceOptimistic = useCallback((name: string, groupId: string) => {
     const trimmed = name.trim();
@@ -197,7 +326,7 @@ export function PropertySpaceGroupCarousel({
 
   const selectedSpacesNewestFirstByGroup = useMemo(() => {
     const result: Record<string, string[]> = {};
-    const sorted = [...spaces].sort(
+    const sorted = [...rooms].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
     for (const space of sorted) {
@@ -217,11 +346,11 @@ export function PropertySpaceGroupCarousel({
       result[groupId] = [...pendingOnly, ...(result[groupId] ?? [])];
     }
     return result;
-  }, [spaces, spaceToCollection, pendingPinsByGroup]);
+  }, [rooms, spaceToCollection, pendingPinsByGroup]);
 
   const extraSpacesByGroup = useMemo(() => {
     const result: Record<string, GroupExtraSpace[]> = {};
-    const sorted = [...spaces].sort(
+    const sorted = [...rooms].sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
     for (const space of sorted) {
@@ -258,7 +387,7 @@ export function PropertySpaceGroupCarousel({
       }
     }
     return result;
-  }, [spaces, spaceToCollection, pendingPinsByGroup]);
+  }, [rooms, spaceToCollection, pendingPinsByGroup]);
 
   const filterKey = spaceFilter.trim().toLowerCase();
 
@@ -292,9 +421,319 @@ export function PropertySpaceGroupCarousel({
   const findSpaceByName = useCallback(
     (name: string) => {
       const key = name.toLowerCase().trim();
-      return spaces.find((s) => (s.name ?? "").toLowerCase().trim() === key);
+      return rooms.find((s) => (s.name ?? "").toLowerCase().trim() === key);
     },
-    [spaces]
+    [rooms]
+  );
+
+  const setSpaceParent = useCallback(
+    async (spaceId: string, parentSpaceId: string | null) => {
+      const { error } = await supabase
+        .from("spaces")
+        .update({ parent_space_id: parentSpaceId })
+        .eq("id", spaceId);
+      if (error) throw error;
+      await invalidateSpaces();
+    },
+    [invalidateSpaces]
+  );
+
+  const handleSelectArea = useCallback(
+    async (name: string, _color: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !orgId) return;
+      const key = trimmed.toLowerCase();
+      const existing = areas.find((a) => a.name.toLowerCase() === key);
+      if (existing) {
+        setActiveAreaId(existing.id);
+        setViewingAreaId(existing.id);
+        triggerAreaInstruction();
+        return;
+      }
+      setBusy(true);
+      try {
+        const { data, error } = await supabase
+          .from("spaces")
+          .insert({
+            org_id: orgId,
+            property_id: propertyId,
+            name: trimmed,
+            floor_level: trimmed,
+            parent_space_id: null,
+            icon_name: "layers",
+            thumbnail_url: resolveSpaceMiniCardIllustration(trimmed),
+          })
+          .select("id")
+          .single();
+        if (error) throw error;
+        const id = data.id as string;
+        setAreaOrderIds((prev) => [...prev, id]);
+        setActiveAreaId(id);
+        setViewingAreaId(id);
+        triggerAreaInstruction();
+        toast.success(`Added area ${trimmed}`);
+        await invalidateSpaces();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to add area";
+        toast.error(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [areas, orgId, propertyId, invalidateSpaces, triggerAreaInstruction]
+  );
+
+  const handleActivateArea = useCallback(
+    (areaId: string) => {
+      setActiveAreaId(areaId);
+      setViewingAreaId((prev) => (prev === areaId ? null : areaId));
+      triggerAreaInstruction();
+    },
+    [triggerAreaInstruction]
+  );
+
+  const purgeArea = useCallback(
+    async (areaId: string, deleteChildren: boolean) => {
+      setBusy(true);
+      try {
+        const childIds = (roomsByAreaId[areaId] ?? []).map((s) => s.id);
+        if (deleteChildren && childIds.length) {
+          const { error } = await supabase.from("spaces").delete().in("id", childIds);
+          if (error) throw error;
+          for (const room of roomsByAreaId[areaId] ?? []) {
+            const name = room.name ?? "";
+            if (name) {
+              unassignSpace(name);
+              clearSuggestionOverridesForName(name);
+            }
+          }
+        } else if (childIds.length) {
+          const { error } = await supabase
+            .from("spaces")
+            .update({ parent_space_id: null })
+            .in("id", childIds);
+          if (error) throw error;
+        }
+        const { error } = await supabase.from("spaces").delete().eq("id", areaId);
+        if (error) throw error;
+        setAreaOrderIds((prev) => prev.filter((id) => id !== areaId));
+        setActiveAreaId((prev) => {
+          if (prev !== areaId) return prev;
+          return areas.find((a) => a.id !== areaId)?.id ?? null;
+        });
+        setViewingAreaId((prev) => (prev === areaId ? null : prev));
+        toast.success("Area removed");
+        await invalidateSpaces();
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to remove area";
+        toast.error(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [
+      roomsByAreaId,
+      areas,
+      unassignSpace,
+      clearSuggestionOverridesForName,
+      invalidateSpaces,
+    ]
+  );
+
+  const handleRemoveArea = useCallback(
+    (areaId: string) => {
+      const count = (roomsByAreaId[areaId] ?? []).length;
+      if (count > 5) {
+        setAreaDeleteModal({ areaId, spaceCount: count });
+        setTransferTargetAreaId(areas.find((a) => a.id !== areaId)?.id ?? "");
+        return;
+      }
+      void purgeArea(areaId, true);
+    },
+    [roomsByAreaId, areas, purgeArea]
+  );
+
+  const confirmDeleteArea = useCallback(
+    async (mode: "delete" | "transfer") => {
+      if (!areaDeleteModal) return;
+      const { areaId } = areaDeleteModal;
+      if (mode === "transfer" && transferTargetAreaId && transferTargetAreaId !== areaId) {
+        setBusy(true);
+        try {
+          const childIds = (roomsByAreaId[areaId] ?? []).map((s) => s.id);
+          if (childIds.length) {
+            const { error } = await supabase
+              .from("spaces")
+              .update({ parent_space_id: transferTargetAreaId })
+              .in("id", childIds);
+            if (error) throw error;
+          }
+          const { error } = await supabase.from("spaces").delete().eq("id", areaId);
+          if (error) throw error;
+          setAreaOrderIds((prev) => prev.filter((id) => id !== areaId));
+          setActiveAreaId(transferTargetAreaId);
+          setViewingAreaId(transferTargetAreaId);
+          toast.success("Spaces transferred");
+          await invalidateSpaces();
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Failed to transfer spaces";
+          toast.error(message);
+        } finally {
+          setBusy(false);
+        }
+      } else {
+        await purgeArea(areaId, true);
+      }
+      setAreaDeleteModal(null);
+      setTransferTargetAreaId("");
+    },
+    [
+      areaDeleteModal,
+      transferTargetAreaId,
+      roomsByAreaId,
+      purgeArea,
+      invalidateSpaces,
+    ]
+  );
+
+  const openRenameArea = useCallback(
+    (areaId: string) => {
+      const area = areas.find((a) => a.id === areaId);
+      if (!area) return;
+      setRenameAreaModal({ areaId, name: area.name });
+      setRenameAreaInput(area.name);
+    },
+    [areas]
+  );
+
+  const confirmRenameArea = useCallback(async () => {
+    if (!renameAreaModal) return;
+    const trimmed = renameAreaInput.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (areas.some((a) => a.id !== renameAreaModal.areaId && a.name.toLowerCase() === key)) {
+      toast.error("Area already exists");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { error } = await supabase
+        .from("spaces")
+        .update({ name: trimmed, floor_level: trimmed })
+        .eq("id", renameAreaModal.areaId);
+      if (error) throw error;
+      toast.success("Area renamed");
+      setRenameAreaModal(null);
+      setRenameAreaInput("");
+      await invalidateSpaces();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to rename area";
+      toast.error(message);
+    } finally {
+      setBusy(false);
+    }
+  }, [renameAreaModal, renameAreaInput, areas, invalidateSpaces]);
+
+  const moveSpaceToArea = useCallback(
+    async (spaceId: string, targetAreaId: string) => {
+      setBusy(true);
+      try {
+        await setSpaceParent(spaceId, targetAreaId);
+        setActiveAreaId(targetAreaId);
+        setViewingAreaId(targetAreaId);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to move space";
+        toast.error(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [setSpaceParent]
+  );
+
+  const createSpaceRef = useRef<
+    (name: string, groupId: string, parentAreaId?: string | null) => Promise<void>
+  >(async () => undefined);
+
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    const data = event.active.data.current as OnboardingDragData | undefined;
+    setActiveDrag(data ?? null);
+  }, []);
+
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      setActiveDrag(null);
+      const { active, over } = event;
+      if (!over) return;
+      const drag = active.data.current as OnboardingDragData | undefined;
+      const overId = String(over.id);
+
+      if (drag?.kind === "area" && overId.startsWith("area:")) {
+        const activeId = drag.areaId;
+        const overAreaId = overId.slice("area:".length);
+        if (activeId === overAreaId) return;
+        setAreaOrderIds((prev) => {
+          const oldIndex = prev.indexOf(activeId);
+          const newIndex = prev.indexOf(overAreaId);
+          if (oldIndex < 0 || newIndex < 0) return prev;
+          return arrayMove(prev, oldIndex, newIndex);
+        });
+        return;
+      }
+
+      const resolveSpaceId = (): string | null => {
+        if (drag?.kind === "space" && drag.spaceId) return drag.spaceId;
+        if (drag?.kind === "unassigned") return drag.spaceId;
+        if (drag?.kind === "space") {
+          return findSpaceByName(drag.spaceName)?.id ?? null;
+        }
+        return null;
+      };
+
+      if (
+        (drag?.kind === "space" || drag?.kind === "unassigned") &&
+        overId.startsWith("area-drop:")
+      ) {
+        const spaceId = resolveSpaceId();
+        const targetAreaId = overId.slice("area-drop:".length);
+        if (spaceId) void moveSpaceToArea(spaceId, targetAreaId);
+        return;
+      }
+
+      if (drag?.kind === "space" && overId.startsWith("space-id:")) {
+        const overParsed = parseSpaceIdSortableId(overId);
+        if (!overParsed) return;
+        const spaceId = resolveSpaceId();
+        if (!spaceId) return;
+        if (drag.areaId !== overParsed.areaId) {
+          void moveSpaceToArea(spaceId, overParsed.areaId);
+        }
+        return;
+      }
+
+      if (drag?.kind === "unassigned" && overId === "spaces-list" && activeAreaId) {
+        void moveSpaceToArea(drag.spaceId, activeAreaId);
+        return;
+      }
+
+      if (drag?.kind === "suggestion") {
+        if (overId.startsWith("area-drop:")) {
+          const targetAreaId = overId.slice("area-drop:".length);
+          setActiveAreaId(targetAreaId);
+          setViewingAreaId(targetAreaId);
+          void createSpaceRef.current(drag.spaceName, drag.groupId, targetAreaId);
+          return;
+        }
+        if (overId === "spaces-list" || overId.startsWith("space-id:")) {
+          if (!activeAreaId) {
+            toast.error("Select a property area first");
+            return;
+          }
+          void createSpaceRef.current(drag.spaceName, drag.groupId, activeAreaId);
+        }
+      }
+    },
+    [findSpaceByName, moveSpaceToArea, activeAreaId]
   );
 
   const openRenameModal = useCallback(
@@ -310,7 +749,7 @@ export function PropertySpaceGroupCarousel({
   /** Stable name-key → open space detail. Enables View whenever the space exists in DB. */
   const viewSpaceByNameKey = useMemo(() => {
     const handlers: Record<string, () => void> = {};
-    for (const space of spaces) {
+    for (const space of rooms) {
       const key = (space.name ?? "").toLowerCase().trim();
       if (!key || handlers[key]) continue;
       const spaceId = space.id;
@@ -319,7 +758,7 @@ export function PropertySpaceGroupCarousel({
       };
     }
     return handlers;
-  }, [spaces, navigate, propertyId]);
+  }, [rooms, navigate, propertyId]);
 
   const openViewSpace = useCallback(
     (name: string) => {
@@ -358,9 +797,17 @@ export function PropertySpaceGroupCarousel({
     [spaces]
   );
 
-  const createSpace = async (name: string, groupId: string) => {
+  const createSpace = async (
+    name: string,
+    groupId: string,
+    parentAreaId: string | null = activeAreaId
+  ) => {
     if (!orgId) {
       toast.error("Organisation not found");
+      return;
+    }
+    if (!parentAreaId) {
+      toast.error("Select a property area first");
       return;
     }
     const trimmed = name.trim();
@@ -416,11 +863,14 @@ export function PropertySpaceGroupCarousel({
         icon_name: iconName,
         space_type_id: spaceTypeId,
         thumbnail_url: resolveSpaceMiniCardIllustration(canonical),
+        parent_space_id: parentAreaId,
       });
       if (error) throw error;
       // Persist group membership for custom names (and suggestions) so chips
       // survive refresh — resolveSpaceGroupId needs this when there's no space_type.
       assignSpaceToCollection(trimmed, groupId);
+      setActiveAreaId(parentAreaId);
+      setViewingAreaId(parentAreaId);
       toast.success(`Added ${trimmed}`);
       await invalidateSpaces();
     } catch (err: unknown) {
@@ -440,13 +890,18 @@ export function PropertySpaceGroupCarousel({
       setBusy(false);
     }
   };
+  createSpaceRef.current = createSpace;
 
   const removeSpace = async (name: string) => {
     const space = findSpaceByName(name);
     if (!space) return;
+    await removeSpaceById(space.id, name);
+  };
+
+  const removeSpaceById = async (spaceId: string, name: string) => {
     setBusy(true);
     try {
-      const { error } = await supabase.from("spaces").delete().eq("id", space.id);
+      const { error } = await supabase.from("spaces").delete().eq("id", spaceId);
       if (error) throw error;
       unassignSpace(name);
       clearSuggestionOverridesForName(name);
@@ -567,65 +1022,151 @@ export function PropertySpaceGroupCarousel({
     setCopyInput("");
   };
 
-  if (filterKey && !hasVisibleGroups) {
+  if (filterKey && !hasVisibleGroups && areas.length === 0) {
     return null;
   }
 
   return (
     <>
-      <div className={cn("space-y-4", className)}>
-        {!filterKey ? (
-          <p className="text-sm text-muted-foreground">
-            Hover a group to browse suggestions, add spaces, or manage what you already have.
-          </p>
-        ) : null}
-        <SpaceGroupCarousel>
-          {visibleGroups.map((group) => (
-            <OnboardingSpaceGroupCard
-              key={group.id}
-              group={group}
-              selectedSpacesSet={selectedSpacesSet}
-              extraSpaces={extraSpacesByGroup[group.id] ?? []}
-              selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
-              spaceFilter={spaceFilter}
-              suggestionLabelOverrides={suggestionLabelOverrides}
-              onAddSpace={(name) => createSpace(name, group.id)}
-              onRemoveSpace={removeSpace}
-              onRenameSpace={openRenameModal}
-              onViewSpace={(name) => openViewSpace(name)}
-              viewSpaceByNameKey={viewSpaceByNameKey}
-              onCopySpace={(name, groupId) => {
-                const suggested = getSuggestedCopyName(name);
-                setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                setCopyInput(suggested);
-              }}
-            />
-          ))}
-          {visibleCustomCollections.map((collection) => (
-            <OnboardingCustomCollectionCard
-              key={collection.id}
-              collection={collection}
-              selectedSpacesSet={selectedSpacesSet}
-              extraSpaces={extraSpacesByGroup[collection.id] ?? []}
-              spaceFilter={spaceFilter}
-              onAddSpace={(name) => createSpace(name, collection.id)}
-              onRemoveSpace={removeSpace}
-              onRenameSpace={openRenameModal}
-              onViewSpace={(name) => openViewSpace(name)}
-              viewSpaceByNameKey={viewSpaceByNameKey}
-              onCopySpace={(name, groupId) => {
-                const suggested = getSuggestedCopyName(name);
-                setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                setCopyInput(suggested);
-              }}
-              onUpdateCollection={handleUpdateCustomCollection}
-            />
-          ))}
+      <DndContext
+        sensors={dndSensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className={cn("space-y-4", className)}>
           {!filterKey ? (
-            <OnboardingCustomCollectionDraftCard onCreateCollection={handleCreateCustomCollection} />
+            <p className="text-sm text-muted-foreground">
+              {areas.length === 0
+                ? "Start with Property Areas (floors and zones), then add spaces into the active area."
+                : activeArea
+                  ? `Active area: ${activeArea.name}. Add spaces from the groups, or drag chips onto area chips.`
+                  : "Select an area, then add spaces from the groups below."}
+            </p>
           ) : null}
-        </SpaceGroupCarousel>
-      </div>
+          <SpaceGroupCarousel
+            onScroll={(e) => {
+              if (e.currentTarget.scrollLeft > 12) {
+                setInstructionOpacity(0);
+                if (instructionFadeRef.current) clearTimeout(instructionFadeRef.current);
+                window.setTimeout(() => setShowAddSpacesInstruction(false), 400);
+              }
+            }}
+          >
+            {!filterKey ? (
+              <OnboardingPropertyAreasCard
+                areas={areas}
+                activeAreaId={activeAreaId}
+                spaceCounts={spaceCounts}
+                onSelectArea={(name, color) => void handleSelectArea(name, color)}
+                onActivateArea={handleActivateArea}
+                onRemoveArea={handleRemoveArea}
+                onRenameArea={openRenameArea}
+              />
+            ) : null}
+            {visibleGroups.map((group, index) => (
+              <OnboardingSpaceGroupCard
+                key={group.id}
+                group={group}
+                selectedSpacesSet={selectedSpacesSet}
+                selectedSpaceColors={selectedSpaceColors}
+                spaceAreaByNameKey={spaceAreaByNameKey}
+                activeAreaId={activeAreaId}
+                extraSpaces={extraSpacesByGroup[group.id] ?? []}
+                selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
+                spaceFilter={spaceFilter}
+                suggestionLabelOverrides={suggestionLabelOverrides}
+                disabled={areas.length === 0}
+                instructionOverlay={
+                  index === 0 &&
+                  showAddSpacesInstruction &&
+                  activeArea &&
+                  areas.length > 0
+                    ? {
+                        label: `Add spaces to ${activeArea.name}`,
+                        color: activeArea.color,
+                      }
+                    : null
+                }
+                instructionOpacity={instructionOpacity}
+                onAddSpace={(name) => void createSpace(name, group.id)}
+                onRemoveSpace={removeSpace}
+                onRenameSpace={openRenameModal}
+                onViewSpace={(name) => openViewSpace(name)}
+                viewSpaceByNameKey={viewSpaceByNameKey}
+                onCopySpace={(name, groupId) => {
+                  const suggested = getSuggestedCopyName(name);
+                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
+                  setCopyInput(suggested);
+                }}
+              />
+            ))}
+            {visibleCustomCollections.map((collection) => (
+              <OnboardingCustomCollectionCard
+                key={collection.id}
+                collection={collection}
+                selectedSpacesSet={selectedSpacesSet}
+                extraSpaces={extraSpacesByGroup[collection.id] ?? []}
+                spaceFilter={spaceFilter}
+                onAddSpace={(name) => void createSpace(name, collection.id)}
+                onRemoveSpace={removeSpace}
+                onRenameSpace={openRenameModal}
+                onViewSpace={(name) => openViewSpace(name)}
+                viewSpaceByNameKey={viewSpaceByNameKey}
+                onCopySpace={(name, groupId) => {
+                  const suggested = getSuggestedCopyName(name);
+                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
+                  setCopyInput(suggested);
+                }}
+                onUpdateCollection={handleUpdateCustomCollection}
+              />
+            ))}
+            {!filterKey ? (
+              <OnboardingCustomCollectionDraftCard
+                onCreateCollection={handleCreateCustomCollection}
+              />
+            ) : null}
+          </SpaceGroupCarousel>
+
+          {!filterKey ? (
+            <PropertySpaceAreasStrip
+              areas={areas}
+              activeAreaId={activeAreaId}
+              viewingAreaId={viewingAreaId}
+              roomsByAreaId={roomsByAreaId}
+              unassigned={unassigned}
+              onActivateArea={handleActivateArea}
+              onRemoveArea={handleRemoveArea}
+              onRenameArea={openRenameArea}
+              onRemoveSpace={(spaceId, name) => void removeSpaceById(spaceId, name)}
+              onRenameSpace={(spaceId, name) => {
+                const groupId =
+                  resolveSpaceGroupId(
+                    rooms.find((r) => r.id === spaceId) ?? ({} as SpaceWithType),
+                    spaceToCollection
+                  ) ?? "";
+                setRenameModal({ spaceId, currentName: name, groupId });
+                setRenameInput(name);
+              }}
+              onViewSpace={(spaceId) =>
+                navigate(`/properties/${propertyId}/spaces/${spaceId}`)
+              }
+            />
+          ) : null}
+        </div>
+
+        <DragOverlay>
+          {activeDrag ? (
+            <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
+              {activeDrag.kind === "area"
+                ? areas.find((a) => a.id === activeDrag.areaId)?.name ?? "Area"
+                : activeDrag.kind === "space" || activeDrag.kind === "unassigned"
+                  ? activeDrag.spaceName
+                  : activeDrag.spaceName}
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <Dialog open={!!renameModal} onOpenChange={(open) => !open && setRenameModal(null)}>
         <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
@@ -692,6 +1233,98 @@ export function PropertySpaceGroupCarousel({
               disabled={!copyInput.trim() || busy}
             >
               Add
+            </NeomorphicButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!renameAreaModal}
+        onOpenChange={(open) => !open && setRenameAreaModal(null)}
+      >
+        <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-mono uppercase tracking-wider">
+              Rename area
+            </DialogTitle>
+          </DialogHeader>
+          <input
+            type="text"
+            value={renameAreaInput}
+            onChange={(e) => setRenameAreaInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                void confirmRenameArea();
+              }
+            }}
+            className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm font-mono uppercase tracking-wider outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+          />
+          <DialogFooter className="gap-2 sm:gap-0">
+            <NeomorphicButton variant="ghost" onClick={() => setRenameAreaModal(null)}>
+              Cancel
+            </NeomorphicButton>
+            <NeomorphicButton
+              variant="primary"
+              onClick={() => void confirmRenameArea()}
+              disabled={!renameAreaInput.trim() || busy}
+            >
+              Save
+            </NeomorphicButton>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!areaDeleteModal}
+        onOpenChange={(open) => !open && setAreaDeleteModal(null)}
+      >
+        <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-mono uppercase tracking-wider">
+              Delete area
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This area has {areaDeleteModal?.spaceCount ?? 0} spaces. You can transfer them
+            to another area, or delete the area and its spaces.
+          </p>
+          {(areaDeleteModal?.spaceCount ?? 0) > 5 ? (
+            <div className="space-y-2">
+              <label className="block text-xs text-muted-foreground">Transfer spaces to</label>
+              <select
+                value={transferTargetAreaId}
+                onChange={(e) => setTransferTargetAreaId(e.target.value)}
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+              >
+                {areas
+                  .filter((a) => a.id !== areaDeleteModal?.areaId)
+                  .map((a) => (
+                    <option key={a.id} value={a.id}>
+                      {a.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          ) : null}
+          <DialogFooter className="gap-2 sm:gap-0 flex-col sm:flex-row">
+            <NeomorphicButton variant="ghost" onClick={() => setAreaDeleteModal(null)}>
+              Cancel
+            </NeomorphicButton>
+            <NeomorphicButton
+              variant="ghost"
+              onClick={() => void confirmDeleteArea("delete")}
+              disabled={busy}
+            >
+              Delete all
+            </NeomorphicButton>
+            <NeomorphicButton
+              variant="primary"
+              onClick={() => void confirmDeleteArea("transfer")}
+              disabled={busy || !transferTargetAreaId}
+            >
+              Transfer & delete area
             </NeomorphicButton>
           </DialogFooter>
         </DialogContent>

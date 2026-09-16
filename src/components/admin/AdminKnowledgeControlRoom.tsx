@@ -39,9 +39,12 @@ import {
   CONTROL_FILTER_LABELS,
   filterCounts,
   groupAttentionPackages,
+  packagesForFilter,
   type ControlFilter,
   type SubjectPackage,
 } from "@/lib/content/knowledgeSubjectPackage";
+import { proposePilotCalendarWindows } from "@/lib/content/knowledgeEditorialCalendar";
+import { mergeSchedulePrefsIntoPublishing } from "@/lib/content/knowledgeSchedule";
 import { isPublicationReady, queueCardPreview } from "@/lib/knowledge/knowledgePresentation";
 import type { KnowledgeRow } from "@/types/knowledge";
 
@@ -54,7 +57,14 @@ function CompactRow({
   pkg: SubjectPackage;
   onOpen: () => void;
 }) {
-  const clickable = Boolean(pkg.actionLabel) || pkg.filter === "attention";
+  const clickable = Boolean(pkg.actionLabel) || pkg.filter === "attention" || Boolean(pkg.scheduleState);
+  const scheduleBadge =
+    pkg.scheduleState === "proposed"
+      ? "Proposed"
+      : pkg.scheduleState === "confirmed"
+        ? "Confirmed"
+        : null;
+
   return (
     <div
       className={cn(
@@ -76,21 +86,20 @@ function CompactRow({
       tabIndex={clickable ? 0 : undefined}
     >
       <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-sm font-medium text-foreground leading-snug">{pkg.title}</p>
+        <div className="flex flex-wrap items-baseline gap-2">
+          <p className="text-sm font-medium text-foreground leading-snug">{pkg.title}</p>
+          {scheduleBadge && (
+            <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              {scheduleBadge}
+              {pkg.windowLabel ? ` · ${pkg.windowLabel}` : ""}
+            </span>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground leading-snug">{pkg.coverageSummary}</p>
         <p className="text-xs text-muted-foreground leading-snug">
-          {pkg.filter === "attention" ? pkg.outcome : pkg.deliverablesSummary}
-          {pkg.filter === "attention" || pkg.filter === "scheduled" ? (
-            <>
-              <span className="text-border/80"> · </span>
-              {pkg.whyNow}
-            </>
-          ) : (
-            <>
-              <span className="text-border/80"> · </span>
-              {pkg.outcome}
-            </>
-          )}
+          {pkg.deliverablesSummary}
+          <span className="text-border/80"> · </span>
+          {pkg.whyNow}
         </p>
       </div>
       {pkg.actionLabel ? (
@@ -153,6 +162,7 @@ export function AdminKnowledgeControlRoom() {
   const [addOpen, setAddOpen] = useState(false);
   const [overflowView, setOverflowView] = useState<OverflowView>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [planningBusy, setPlanningBusy] = useState(false);
   const autoPlanStarted = useRef<Set<string>>(new Set());
 
   const packages = useMemo(
@@ -166,23 +176,23 @@ export function AdminKnowledgeControlRoom() {
 
   const counts = useMemo(() => filterCounts(packages), [packages]);
 
-  // Machine continuation: auto-plan a few eligible packages (not human work).
-  useEffect(() => {
-    if (knowledgeQuery.isLoading || topicsQuery.isLoading) return;
-    if (createTopic.isPending || generate.isPending) return;
+  /** Planning only: cluster → propose calendar → plan stage. Never accept or draft content. */
+  const runPlanningPass = async (limit = 3) => {
+    setPlanningBusy(true);
+    try {
+      const calendar = proposePilotCalendarWindows({
+        subjectKeys: packages.map((p) => p.subjectKey),
+      });
+      const calByKey = new Map(calendar.map((c) => [c.subjectKey, c]));
+      const eligible = packages
+        .filter((p) => p.autoPlanEligible && p.primaryKnowledgeId)
+        .sort((a, b) => b.rank - a.rank)
+        .slice(0, limit);
 
-    const eligible = packages.filter(
-      (p) =>
-        p.autoPlanEligible &&
-        p.primaryKnowledgeId &&
-        !autoPlanStarted.current.has(p.subjectKey)
-    );
-    const next = eligible[0];
-    if (!next?.primaryKnowledgeId) return;
-
-    autoPlanStarted.current.add(next.subjectKey);
-    void (async () => {
-      try {
+      for (const next of eligible) {
+        if (autoPlanStarted.current.has(next.subjectKey)) continue;
+        autoPlanStarted.current.add(next.subjectKey);
+        const cal = calByKey.get(next.subjectKey);
         let topicId = next.topic?.id ?? null;
         if (!topicId) {
           const row = await createTopic.mutateAsync({
@@ -190,32 +200,42 @@ export function AdminKnowledgeControlRoom() {
             title: next.title,
           });
           topicId = row.id;
-          await upsertStage.mutateAsync({
-            topicId,
-            publishing: {
-              schedule: { reason_override: next.whyNow || "Auto-planned" },
-            },
-          });
         }
+        await upsertStage.mutateAsync({
+          topicId,
+          publishing: mergeSchedulePrefsIntoPublishing(next.topic?.publishing ?? {}, {
+            schedule_state: "proposed",
+            window_label: cal?.window_label ?? next.windowLabel ?? undefined,
+            window_start: cal?.window_start ?? next.windowStart ?? undefined,
+            reason_override: cal?.why ?? next.whyNow,
+          }),
+        });
         await generate.mutateAsync({ topicId, stage: "plan" });
-        await topicsQuery.refetch();
-      } catch {
-        // Leave in Monitoring — do not surface as human failure on the queue
       }
-    })();
-  }, [
-    packages,
-    knowledgeQuery.isLoading,
-    topicsQuery.isLoading,
-    createTopic,
-    generate,
-    upsertStage,
-    topicsQuery,
-  ]);
+      await topicsQuery.refetch();
+    } finally {
+      setPlanningBusy(false);
+    }
+  };
+
+  // Quiet continuation: one planning-only subject at a time while Monitoring has backlog.
+  useEffect(() => {
+    if (knowledgeQuery.isLoading || topicsQuery.isLoading || planningBusy) return;
+    if (createTopic.isPending || generate.isPending) return;
+    const next = packages.find(
+      (p) =>
+        p.autoPlanEligible &&
+        p.primaryKnowledgeId &&
+        !autoPlanStarted.current.has(p.subjectKey)
+    );
+    if (!next) return;
+    void runPlanningPass(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberate one-at-a-time kick
+  }, [packages, knowledgeQuery.isLoading, topicsQuery.isLoading, planningBusy]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = packages.filter((p) => p.filter === filter);
+    const list = packagesForFilter(packages, filter);
     if (!q) return list;
     return list.filter(
       (p) =>
@@ -373,6 +393,13 @@ export function AdminKnowledgeControlRoom() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>Pilot &amp; machinery</DropdownMenuLabel>
+              <DropdownMenuItem
+                disabled={planningBusy}
+                onClick={() => void runPlanningPass(5)}
+              >
+                {planningBusy ? "Planning…" : "Resume planning (calendar only)"}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setOverflowView("legacy-review")}>
                 Legacy Knowledge review
               </DropdownMenuItem>
@@ -430,17 +457,28 @@ export function AdminKnowledgeControlRoom() {
         </div>
       )}
 
-      {!loading && filtered.length === 0 && (
+      {!loading && filter === "scheduled" && filtered.length === 0 && (
         <p className="text-sm text-muted-foreground rounded-xl bg-card/80 shadow-e1 px-4 py-6">
-          {filter === "attention"
-            ? "No decisions waiting. Unprocessed Knowledge continues under Monitoring."
-            : filter === "scheduled"
-              ? "Nothing scheduled."
-              : filter === "monitoring"
-                ? "Nothing in monitoring."
-                : "No completed packages yet."}
+          No proposed calendar yet. Use Resume planning to build Proposed packages from Monitoring —
+          nothing is accepted or published.
         </p>
       )}
+
+      {!loading && filter === "attention" && filtered.length === 0 && (
+        <p className="text-sm text-muted-foreground rounded-xl bg-card/80 shadow-e1 px-4 py-6">
+          No decisions waiting. Unprocessed Knowledge continues under Monitoring; the proposed
+          calendar lives under Scheduled.
+        </p>
+      )}
+
+      {!loading &&
+        filter !== "attention" &&
+        filter !== "scheduled" &&
+        filtered.length === 0 && (
+          <p className="text-sm text-muted-foreground rounded-xl bg-card/80 shadow-e1 px-4 py-6">
+            {filter === "monitoring" ? "Nothing in monitoring." : "No completed packages yet."}
+          </p>
+        )}
 
       {!loading && filter === "attention" && filtered.length > 0 && (
         <section className="space-y-2">

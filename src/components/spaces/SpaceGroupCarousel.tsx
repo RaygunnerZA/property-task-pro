@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, type ReactNode, type UIEvent } from "react";
 import { useTrackpadHorizontalElementScroll } from "@/hooks/useTrackpadHorizontalScroll";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,8 @@ type SpaceGroupCarouselProps = {
    * Use for record category cards that expand description on hover.
    */
   autoHeight?: boolean;
+  /** Fires when the horizontal scroller moves (e.g. dismiss progressive overlays). */
+  onScroll?: (event: UIEvent<HTMLDivElement>) => void;
 };
 
 /** Horizontal scroller for space group cards (matches onboarding Add Spaces layout). */
@@ -17,6 +19,7 @@ export function SpaceGroupCarousel({
   children,
   className,
   autoHeight = false,
+  onScroll,
 }: SpaceGroupCarouselProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useTrackpadHorizontalElementScroll(scrollRef);
@@ -26,6 +29,7 @@ export function SpaceGroupCarousel({
       <div className="relative">
         <div
           ref={scrollRef}
+          onScroll={onScroll}
           className={cn(
             "flex gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] overscroll-x-contain",
             autoHeight ? "h-auto items-start" : "h-[310px]"

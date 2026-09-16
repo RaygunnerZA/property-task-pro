@@ -26,10 +26,18 @@ export type ScheduleLayer = {
   readiness: ScheduleLayerReadiness;
 };
 
+export type ScheduleState = "proposed" | "confirmed";
+
 export type SchedulePrefs = {
   pinned?: boolean;
   deferred?: boolean;
   reason_override?: string;
+  /** Proposed = machine calendar entry; Confirmed = human accepted for production. Neither means published. */
+  schedule_state?: ScheduleState | null;
+  /** Human-readable window, e.g. "Week of 22 September" or "Before heating season". */
+  window_label?: string | null;
+  /** Sort key for editorial calendar (ISO date or week start). */
+  window_start?: string | null;
   /** ISO — package approved for channel readiness (not distributed). */
   distribution_ready_at?: string | null;
 };
@@ -89,6 +97,18 @@ export function parseSchedulePrefs(publishing: unknown): SchedulePrefs {
       typeof schedule.reason_override === "string" && schedule.reason_override.trim()
         ? schedule.reason_override.trim()
         : undefined,
+    schedule_state:
+      schedule.schedule_state === "proposed" || schedule.schedule_state === "confirmed"
+        ? schedule.schedule_state
+        : null,
+    window_label:
+      typeof schedule.window_label === "string" && schedule.window_label.trim()
+        ? schedule.window_label.trim()
+        : null,
+    window_start:
+      typeof schedule.window_start === "string" && schedule.window_start.trim()
+        ? schedule.window_start.trim()
+        : null,
     distribution_ready_at:
       typeof distribution.ready_at === "string" && distribution.ready_at
         ? distribution.ready_at
@@ -116,6 +136,18 @@ export function mergeSchedulePrefsIntoPublishing(
     if (patch.reason_override) schedule.reason_override = patch.reason_override;
     else delete schedule.reason_override;
   }
+  if (patch.schedule_state !== undefined) {
+    if (patch.schedule_state) schedule.schedule_state = patch.schedule_state;
+    else delete schedule.schedule_state;
+  }
+  if (patch.window_label !== undefined) {
+    if (patch.window_label) schedule.window_label = patch.window_label;
+    else delete schedule.window_label;
+  }
+  if (patch.window_start !== undefined) {
+    if (patch.window_start) schedule.window_start = patch.window_start;
+    else delete schedule.window_start;
+  }
   const distribution: Record<string, unknown> = {
     ...(typeof base.distribution === "object" &&
     base.distribution &&
@@ -135,6 +167,9 @@ export function mergeSchedulePrefsIntoPublishing(
       ...schedule,
       pinned: patch.pinned ?? prev.pinned ?? false,
       deferred: patch.deferred ?? prev.deferred ?? false,
+      schedule_state: patch.schedule_state ?? prev.schedule_state ?? undefined,
+      window_label: patch.window_label ?? prev.window_label ?? undefined,
+      window_start: patch.window_start ?? prev.window_start ?? undefined,
     },
     distribution,
   };

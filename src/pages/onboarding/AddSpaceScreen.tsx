@@ -1,5 +1,30 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  horizontalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { ExpandableSpaceChip } from "@/components/chips/semantic";
+import {
+  DroppableZone,
+  SortableItem,
+  areaSortableId,
+  parseSpaceSortableId,
+  spaceSortableId,
+  spacesListDroppableId,
+  type OnboardingDragData,
+} from "@/components/onboarding/onboardingAreasDnd";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
 import { OnboardingHeader, OnboardingLogoutButton } from "@/components/onboarding/OnboardingHeader";
@@ -7,8 +32,8 @@ import { ProgressDots } from "@/components/onboarding/ProgressDots";
 import { OnboardingBreadcrumbs } from "@/components/onboarding/OnboardingBreadcrumbs";
 import { NeomorphicInput } from "@/components/onboarding/NeomorphicInput";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
-import { ExpandableSpaceChip } from "@/components/chips/semantic";
 import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
+import { OnboardingPropertyAreasCard } from "@/components/onboarding/OnboardingPropertyAreasCard";
 import { OnboardingCustomCollectionCard } from "@/components/onboarding/OnboardingCustomCollectionCard";
 import { OnboardingCustomCollectionDraftCard } from "@/components/onboarding/OnboardingCustomCollectionDraftCard";
 import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
@@ -20,6 +45,17 @@ import {
   type OnboardingCustomCollection,
   type SuggestionLabelOverrides,
 } from "@/components/onboarding/onboardingSpaceGroups";
+import {
+  AREA_CHIP_BASE_CLASS,
+  AREA_CHIP_NEUMO_RAISED,
+  areaSpacesRowLabel,
+  createAreaId,
+  getSuggestedAreaColor,
+  hexToRgba,
+  shortAreaLabel,
+  type OnboardingArea,
+} from "@/components/onboarding/onboardingPropertyAreas";
+import { cn } from "@/lib/utils";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useOrganization } from "@/hooks/use-organization";
 import { useBuildingPlans } from "@/hooks/property/useBuildingPlans";
@@ -27,8 +63,8 @@ import { getPostAddSpacesRoute } from "@/lib/propertyProfiles";
 import { finishOwnerOnboarding } from "@/utils/completeOnboarding";
 import { useOnboardingPropertyProfile } from "@/hooks/useOnboardingPropertyProfile";
 import { toast } from "sonner";
-import { Plus, Layers, FileUp, Loader2 } from "lucide-react";
-import { paperTexturedColorStyle } from "@/lib/paperTexture";
+import { Plus, FileUp, Loader2 } from "lucide-react";
+import addAreasSpacesIcon from "@/assets/onboarding/add-areas-spaces.png";
 import {
   Dialog,
   DialogContent,
@@ -47,7 +83,25 @@ export default function AddSpaceScreen() {
   const { organization } = useOrganization();
   const [loading, setLoading] = useState(false);
   const [spaceName, setSpaceName] = useState("");
-  const [spaces, setSpaces] = useState<string[]>([]);
+  /** Spaces keyed by area id (progressive Areas → Spaces). */
+  const [spacesByAreaId, setSpacesByAreaId] = useState<Record<string, string[]>>({});
+  const [areas, setAreas] = useState<OnboardingArea[]>([]);
+  const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
+  /** Which area’s spaces row is expanded under YOUR AREAS (one at a time). */
+  const [viewingAreaId, setViewingAreaId] = useState<string | null>(null);
+  const [showAddSpacesInstruction, setShowAddSpacesInstruction] = useState(false);
+  const [instructionOpacity, setInstructionOpacity] = useState(0);
+  const [areaDeleteModal, setAreaDeleteModal] = useState<{
+    areaId: string;
+    spaceCount: number;
+  } | null>(null);
+  const [transferTargetAreaId, setTransferTargetAreaId] = useState<string>("");
+  const [renameAreaModal, setRenameAreaModal] = useState<{ areaId: string; name: string } | null>(
+    null
+  );
+  const [renameAreaInput, setRenameAreaInput] = useState("");
+  const [activeDrag, setActiveDrag] = useState<OnboardingDragData | null>(null);
+  const instructionFadeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [subSpacesByParent, setSubSpacesByParent] = useState<Record<string, string[]>>({});
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [propertyName, setPropertyName] = useState<string | null>(null);
@@ -76,6 +130,67 @@ export default function AddSpaceScreen() {
   // Pass undefined while the panel is hidden so the hook's queries stay disabled
   // (the plan tables don't exist in the remote DB yet).
   const plans = useBuildingPlans(SHOW_PROPERTY_PLANS_PANEL ? propertyId || undefined : undefined);
+
+  const spaces = useMemo(
+    () => areas.flatMap((a) => spacesByAreaId[a.id] ?? []),
+    [areas, spacesByAreaId]
+  );
+
+  const spaceAreaByNameKey = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const a of areas) {
+      for (const s of spacesByAreaId[a.id] ?? []) {
+        map[s.toLowerCase().trim()] = a.id;
+      }
+    }
+    return map;
+  }, [areas, spacesByAreaId]);
+
+  const selectedSpaceColors = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const a of areas) {
+      for (const s of spacesByAreaId[a.id] ?? []) {
+        map[s.toLowerCase().trim()] = a.color;
+      }
+    }
+    return map;
+  }, [areas, spacesByAreaId]);
+
+  const activeArea = useMemo(
+    () => areas.find((a) => a.id === activeAreaId) ?? null,
+    [areas, activeAreaId]
+  );
+
+  const viewingArea = useMemo(
+    () => areas.find((a) => a.id === viewingAreaId) ?? null,
+    [areas, viewingAreaId]
+  );
+
+  const spaceCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const a of areas) counts[a.id] = (spacesByAreaId[a.id] ?? []).length;
+    return counts;
+  }, [areas, spacesByAreaId]);
+
+  const triggerAreaInstruction = useCallback(() => {
+    setShowAddSpacesInstruction(true);
+    setInstructionOpacity(1);
+    if (instructionFadeRef.current) clearTimeout(instructionFadeRef.current);
+    instructionFadeRef.current = setTimeout(() => {
+      setInstructionOpacity(0);
+      window.setTimeout(() => setShowAddSpacesInstruction(false), 500);
+    }, 3000);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (instructionFadeRef.current) clearTimeout(instructionFadeRef.current);
+    };
+  }, []);
+
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
 
   useEffect(() => {
     if (!orgLoading && orgId) {
@@ -175,22 +290,278 @@ export default function AddSpaceScreen() {
     }
   };
 
+  const addSpaceToActiveArea = (name: string): boolean => {
+    const trimmed = name.trim();
+    if (!trimmed) return false;
+    if (!activeAreaId) {
+      toast.error("Select a property area first");
+      return false;
+    }
+    const key = trimmed.toLowerCase();
+    if (spaces.some((s) => s.toLowerCase() === key)) {
+      return false;
+    }
+    if (spaces.length >= 20) {
+      toast.error("Maximum 20 spaces allowed");
+      return false;
+    }
+    setSpacesByAreaId((prev) => ({
+      ...prev,
+      [activeAreaId]: [trimmed, ...(prev[activeAreaId] ?? [])],
+    }));
+    setViewingAreaId(activeAreaId);
+    return true;
+  };
+
+  const handleSelectArea = (name: string, color: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    const existing = areas.find((a) => a.name.toLowerCase() === key);
+    if (existing) {
+      setActiveAreaId(existing.id);
+      setViewingAreaId(existing.id);
+      triggerAreaInstruction();
+      return;
+    }
+    const id = createAreaId();
+    const area: OnboardingArea = {
+      id,
+      name: trimmed,
+      color: color || getSuggestedAreaColor(trimmed),
+    };
+    // Keep selection order stable — do not jump the new area to the front of the card.
+    setAreas((prev) => [...prev, area]);
+    setSpacesByAreaId((prev) => ({ ...prev, [id]: [] }));
+    setActiveAreaId(id);
+    setViewingAreaId(id);
+    triggerAreaInstruction();
+  };
+
+  const handleActivateArea = (areaId: string) => {
+    setActiveAreaId(areaId);
+    setViewingAreaId((prev) => (prev === areaId ? null : areaId));
+    triggerAreaInstruction();
+  };
+
+  const purgeAreaSpaces = (areaId: string, spaceNames: string[]) => {
+    for (const s of spaceNames) {
+      unlinkSpaceFromGroup(s);
+      clearSuggestionLabelOverride(s.toLowerCase().trim());
+    }
+    setAreas((prev) => prev.filter((a) => a.id !== areaId));
+    setSpacesByAreaId((prev) => {
+      const next = { ...prev };
+      delete next[areaId];
+      return next;
+    });
+    setActiveAreaId((prev) => {
+      if (prev !== areaId) return prev;
+      const remaining = areas.filter((a) => a.id !== areaId);
+      return remaining[0]?.id ?? null;
+    });
+    setViewingAreaId((prev) => (prev === areaId ? null : prev));
+  };
+
+  const handleRemoveArea = (areaId: string) => {
+    const removedSpaces = spacesByAreaId[areaId] ?? [];
+    if (removedSpaces.length > 5) {
+      setAreaDeleteModal({ areaId, spaceCount: removedSpaces.length });
+      setTransferTargetAreaId(
+        areas.find((a) => a.id !== areaId)?.id ?? ""
+      );
+      return;
+    }
+    purgeAreaSpaces(areaId, removedSpaces);
+  };
+
+  const confirmDeleteArea = (mode: "delete" | "transfer") => {
+    if (!areaDeleteModal) return;
+    const { areaId } = areaDeleteModal;
+    const removedSpaces = spacesByAreaId[areaId] ?? [];
+    if (mode === "transfer" && transferTargetAreaId && transferTargetAreaId !== areaId) {
+      setSpacesByAreaId((prev) => {
+        const moving = prev[areaId] ?? [];
+        const target = prev[transferTargetAreaId] ?? [];
+        const next = { ...prev };
+        next[transferTargetAreaId] = [...moving, ...target];
+        delete next[areaId];
+        return next;
+      });
+      setAreas((prev) => prev.filter((a) => a.id !== areaId));
+      setActiveAreaId((prev) => (prev === areaId ? transferTargetAreaId : prev));
+      setViewingAreaId((prev) => (prev === areaId ? transferTargetAreaId : prev));
+    } else {
+      purgeAreaSpaces(areaId, removedSpaces);
+    }
+    setAreaDeleteModal(null);
+    setTransferTargetAreaId("");
+  };
+
+  const openRenameArea = (areaId: string) => {
+    const area = areas.find((a) => a.id === areaId);
+    if (!area) return;
+    setRenameAreaModal({ areaId, name: area.name });
+    setRenameAreaInput(area.name);
+  };
+
+  const confirmRenameArea = () => {
+    if (!renameAreaModal) return;
+    const trimmed = renameAreaInput.trim();
+    if (!trimmed) return;
+    const key = trimmed.toLowerCase();
+    if (
+      areas.some(
+        (a) => a.id !== renameAreaModal.areaId && a.name.toLowerCase() === key
+      )
+    ) {
+      toast.error("Area already exists");
+      return;
+    }
+    setAreas((prev) =>
+      prev.map((a) => (a.id === renameAreaModal.areaId ? { ...a, name: trimmed } : a))
+    );
+    setRenameAreaModal(null);
+    setRenameAreaInput("");
+  };
+
+  const moveSpaceToArea = (spaceName: string, targetAreaId: string) => {
+    const key = spaceName.toLowerCase().trim();
+    const fromAreaId = spaceAreaByNameKey[key];
+    if (!fromAreaId || fromAreaId === targetAreaId) {
+      if (!fromAreaId && activeAreaId === targetAreaId) {
+        addSpaceToActiveArea(spaceName);
+      }
+      return;
+    }
+    setSpacesByAreaId((prev) => {
+      const fromList = (prev[fromAreaId] ?? []).filter((s) => s.toLowerCase().trim() !== key);
+      const moving = (prev[fromAreaId] ?? []).find((s) => s.toLowerCase().trim() === key);
+      if (!moving) return prev;
+      return {
+        ...prev,
+        [fromAreaId]: fromList,
+        [targetAreaId]: [moving, ...(prev[targetAreaId] ?? [])],
+      };
+    });
+    setActiveAreaId(targetAreaId);
+    setViewingAreaId(targetAreaId);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    const data = event.active.data.current as OnboardingDragData | undefined;
+    setActiveDrag(data ?? null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveDrag(null);
+    const { active, over } = event;
+    if (!over) return;
+    const drag = active.data.current as OnboardingDragData | undefined;
+    const overId = String(over.id);
+
+    if (drag?.kind === "area" && overId.startsWith("area:")) {
+      const activeId = drag.areaId;
+      const overAreaId = overId.slice("area:".length);
+      if (activeId === overAreaId) return;
+      setAreas((prev) => {
+        const oldIndex = prev.findIndex((a) => a.id === activeId);
+        const newIndex = prev.findIndex((a) => a.id === overAreaId);
+        if (oldIndex < 0 || newIndex < 0) return prev;
+        return arrayMove(prev, oldIndex, newIndex);
+      });
+      return;
+    }
+
+    if (drag?.kind === "space" && overId.startsWith("space:")) {
+      const overParsed = parseSpaceSortableId(overId);
+      if (!overParsed) return;
+      if (drag.areaId !== overParsed.areaId) {
+        moveSpaceToArea(drag.spaceName, overParsed.areaId);
+        return;
+      }
+      setSpacesByAreaId((prev) => {
+        const list = prev[overParsed.areaId] ?? [];
+        const oldIndex = list.findIndex(
+          (s) => s.toLowerCase().trim() === drag.spaceName.toLowerCase().trim()
+        );
+        const newIndex = list.findIndex(
+          (s) => s.toLowerCase().trim() === overParsed.spaceKey
+        );
+        if (oldIndex < 0 || newIndex < 0) return prev;
+        return { ...prev, [overParsed.areaId]: arrayMove(list, oldIndex, newIndex) };
+      });
+      return;
+    }
+
+    if (drag?.kind === "space" && overId.startsWith("area-drop:")) {
+      moveSpaceToArea(drag.spaceName, overId.slice("area-drop:".length));
+      return;
+    }
+
+    if (drag?.kind === "suggestion") {
+      if (overId.startsWith("area-drop:")) {
+        const targetAreaId = overId.slice("area-drop:".length);
+        setActiveAreaId(targetAreaId);
+        setViewingAreaId(targetAreaId);
+        // add after active set — use direct write
+        const key = drag.spaceName.toLowerCase().trim();
+        if (spaces.some((s) => s.toLowerCase() === key)) {
+          const owner = spaceAreaByNameKey[key];
+          if (owner && owner !== targetAreaId) openCopyModal(drag.spaceName, drag.groupId);
+          return;
+        }
+        setSpacesByAreaId((prev) => ({
+          ...prev,
+          [targetAreaId]: [drag.spaceName, ...(prev[targetAreaId] ?? [])],
+        }));
+        addSpaceToGroupCard(drag.spaceName, drag.groupId);
+        return;
+      }
+      if (overId === spacesListDroppableId() || overId.startsWith("space:")) {
+        handleAddSuggestionFromGroup(drag.spaceName, drag.groupId);
+        return;
+      }
+      if (overId.startsWith("group:")) {
+        const targetGroupId = overId.slice("group:".length);
+        handleAddSuggestionFromGroup(drag.spaceName, targetGroupId);
+        return;
+      }
+    }
+
+    if (drag?.kind === "space" && overId.startsWith("group:")) {
+      const targetGroupId = overId.slice("group:".length);
+      addSpaceToGroupCard(drag.spaceName, targetGroupId, true);
+      return;
+    }
+
+    if (drag?.kind === "space" && overId === spacesListDroppableId() && activeAreaId) {
+      // already in an area — ensure viewing active list
+      setViewingAreaId(activeAreaId);
+    }
+  };
+
   const handleAddSpace = () => {
     const trimmed = spaceName.trim();
     if (!trimmed) return;
-    
-    // Check for duplicates (case-insensitive)
-    if (spaces.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+
+    if (!activeAreaId) {
+      toast.error("Select a property area first");
+      return;
+    }
+
+    if (spaces.some((s) => s.toLowerCase() === trimmed.toLowerCase())) {
+      const ownerAreaId = spaceAreaByNameKey[trimmed.toLowerCase()];
+      if (ownerAreaId && ownerAreaId !== activeAreaId) {
+        openCopyModal(trimmed);
+        setSpaceName("");
+        return;
+      }
       toast.error("Space already added");
       return;
     }
 
-    if (spaces.length >= 20) {
-      toast.error("Maximum 20 spaces allowed");
-      return;
-    }
-
-    setSpaces([...spaces, trimmed]);
+    if (!addSpaceToActiveArea(trimmed)) return;
     const key = trimmed.toLowerCase().trim();
     const matchingGroups = ONBOARDING_SPACE_GROUPS.filter((g) =>
       g.suggestedSpaces.some((s) => s.toLowerCase().trim() === key)
@@ -295,17 +666,22 @@ export default function AddSpaceScreen() {
 
   const handleRemoveSpace = (index: number) => {
     const removed = spaces[index];
-    setSpaces(spaces.filter((_, i) => i !== index));
-    if (removed) {
-      const key = removed.toLowerCase().trim();
-      unlinkSpaceFromGroup(removed);
-      clearSuggestionLabelOverride(key);
-      setSubSpacesByParent((prev) => {
-        const next = { ...prev };
-        delete next[key];
-        return next;
-      });
+    if (!removed) return;
+    const key = removed.toLowerCase().trim();
+    const areaId = spaceAreaByNameKey[key];
+    if (areaId) {
+      setSpacesByAreaId((prev) => ({
+        ...prev,
+        [areaId]: (prev[areaId] ?? []).filter((s) => s.toLowerCase().trim() !== key),
+      }));
     }
+    unlinkSpaceFromGroup(removed);
+    clearSuggestionLabelOverride(key);
+    setSubSpacesByParent((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
   };
 
   const handleRemoveSpaceByName = (name: string) => {
@@ -334,9 +710,13 @@ export default function AddSpaceScreen() {
       toast.error("Space already added");
       return;
     }
-    setSpaces((prev) =>
-      prev.map((s) => (s.toLowerCase().trim() === oldKey ? trimmed : s))
-    );
+    setSpacesByAreaId((prev) => {
+      const next: Record<string, string[]> = {};
+      for (const [areaId, list] of Object.entries(prev)) {
+        next[areaId] = list.map((s) => (s.toLowerCase().trim() === oldKey ? trimmed : s));
+      }
+      return next;
+    });
     setSubSpacesByParent((prev) => {
       if (!prev[oldKey]) return prev;
       const next = { ...prev };
@@ -386,14 +766,20 @@ export default function AddSpaceScreen() {
   };
 
   const handleAddSuggestion = (suggestion: string) => {
-    if (spaces.some(s => s.toLowerCase() === suggestion.toLowerCase())) {
-      return; // Already added
-    }
-    if (spaces.length >= 20) {
-      toast.error("Maximum 20 spaces allowed");
+    if (!activeAreaId) {
+      toast.error("Select a property area first");
       return;
     }
-    setSpaces([...spaces, suggestion]);
+    const key = suggestion.toLowerCase();
+    if (spaces.some((s) => s.toLowerCase() === key)) {
+      const ownerAreaId = spaceAreaByNameKey[key];
+      if (ownerAreaId && ownerAreaId !== activeAreaId) {
+        openCopyModal(suggestion);
+        return;
+      }
+      return;
+    }
+    addSpaceToActiveArea(suggestion);
   };
 
   const handleAddSuggestionFromGroup = (
@@ -401,15 +787,25 @@ export default function AddSpaceScreen() {
     groupId: string,
     extra = false
   ) => {
-    if (spaces.some((s) => s.toLowerCase() === suggestion.toLowerCase())) {
+    if (!activeAreaId) {
+      toast.error("Select a property area first");
+      return;
+    }
+    const key = suggestion.toLowerCase().trim();
+    if (spaces.some((s) => s.toLowerCase() === key)) {
+      const ownerAreaId = spaceAreaByNameKey[key];
+      if (ownerAreaId && ownerAreaId !== activeAreaId) {
+        openCopyModal(suggestion, groupId);
+        return;
+      }
       return;
     }
     if (spaces.length >= 20) {
       toast.error("Maximum 20 spaces allowed");
       return;
     }
+    if (!addSpaceToActiveArea(suggestion)) return;
     addSpaceToGroupCard(suggestion, groupId, extra);
-    setSpaces([...spaces, suggestion]);
   };
 
   const allSpaceNames = useMemo(
@@ -478,14 +874,7 @@ export default function AddSpaceScreen() {
       toast.error("Maximum 20 spaces allowed");
       return;
     }
-    const baseKey = copyModal.baseName.toLowerCase().trim();
-    setSpaces((prev) => {
-      const baseIndex = prev.findIndex((s) => s.toLowerCase().trim() === baseKey);
-      if (baseIndex < 0) return [...prev, trimmed];
-      const next = [...prev];
-      next.splice(baseIndex + 1, 0, trimmed);
-      return next;
-    });
+    if (!addSpaceToActiveArea(trimmed)) return;
     const groupId = resolveSpaceGroupId(copyModal.baseName, copyModal.groupId);
     if (groupId) {
       addSpaceToGroupCard(trimmed, groupId, true, copyModal.baseName);
@@ -508,27 +897,63 @@ export default function AddSpaceScreen() {
       return;
     }
 
+    if (areas.length === 0) {
+      toast.error("Please add at least one property area");
+      return;
+    }
+
     if (spaces.length === 0) {
-      toast.error("Please add at least one space");
+      toast.error("Please add at least one space to an area");
       return;
     }
 
     setLoading(true);
     try {
-      const allNames = [...spaces, ...Object.values(subSpacesByParent).flat()];
-      const spacesToInsert = allNames.map((name) => ({
-        name,
-        org_id: orgId,
+      const areaRows = areas.map((a) => ({
+        name: a.name,
+        org_id: orgId!,
         property_id: propertyId,
+        parent_space_id: null as string | null,
       }));
 
-      const { error } = await supabase
-        .from('spaces')
-        .insert(spacesToInsert);
+      const { data: insertedAreas, error: areaError } = await supabase
+        .from("spaces")
+        .insert(areaRows)
+        .select("id, name");
 
-      if (error) throw error;
+      if (areaError) throw areaError;
 
-      toast.success(`${allNames.length} space${allNames.length > 1 ? "s" : ""} added!`);
+      const areaIdByName = new Map(
+        (insertedAreas ?? []).map((row) => [row.name.toLowerCase().trim(), row.id])
+      );
+
+      const childRows: {
+        name: string;
+        org_id: string;
+        property_id: string;
+        parent_space_id: string;
+      }[] = [];
+
+      for (const area of areas) {
+        const parentId = areaIdByName.get(area.name.toLowerCase().trim());
+        if (!parentId) continue;
+        for (const spaceName of spacesByAreaId[area.id] ?? []) {
+          childRows.push({
+            name: spaceName,
+            org_id: orgId!,
+            property_id: propertyId,
+            parent_space_id: parentId,
+          });
+        }
+      }
+
+      if (childRows.length > 0) {
+        const { error: spaceError } = await supabase.from("spaces").insert(childRows);
+        if (spaceError) throw spaceError;
+      }
+
+      const total = areas.length + childRows.length;
+      toast.success(`${total} space${total > 1 ? "s" : ""} added!`);
       await navigateAfterAddSpaces();
     } catch (error: any) {
       toast.error(error.message || "Failed to add spaces");
@@ -596,13 +1021,6 @@ export default function AddSpaceScreen() {
     [spaces]
   );
 
-  const stepIconStyle = {
-    ...paperTexturedColorStyle("#8EC9CE"),
-    backgroundColor: "rgba(255, 255, 255, 1)",
-    boxShadow:
-      "2px 3px 3px 0px rgba(255, 255, 255, 0.75), -1px -1px 1px 1px rgba(0, 0, 0, 0.15), inset 1px 3px 3px 0px rgba(0, 0, 0, 0.15)",
-  } as const;
-
   return (
     <OnboardingContainer topRight={<OnboardingLogoutButton />}>
       <div className="animate-fade-in">
@@ -617,21 +1035,21 @@ export default function AddSpaceScreen() {
           />
         )}
         
-        {/* Spaces icon above title — matches Add Property step icon */}
-        <div className="flex flex-col items-center mt-[33px] mb-[10px]">
-          <div
-            className="paper-textured-color relative overflow-hidden p-4 rounded-2xl"
-            style={stepIconStyle}
-          >
-            <Layers className="relative z-10 w-10 h-10 text-white drop-shadow-sm" />
-          </div>
+        <div className="mb-[10px] mt-[33px] flex flex-col items-center">
+          <img
+            src={addAreasSpacesIcon}
+            alt=""
+            aria-hidden
+            className="h-16 w-16 object-contain drop-shadow-sm sm:h-[72px] sm:w-[72px]"
+          />
         </div>
 
         <OnboardingHeader
-          title="Add spaces"
-          subtitle={hasExistingSpaces 
-            ? "Spaces are the areas inside your property. Filla uses them to organise tasks, schedules, and records."
-            : "Define areas within your property"
+          title="Add areas & spaces"
+          subtitle={
+            hasExistingSpaces
+              ? "Areas are the main zones of your property (floors, outside). Spaces are the rooms and places inside each area — Filla uses both to organise tasks, schedules, and records."
+              : "Areas are floors and zones. Spaces are rooms inside an area. Pick areas first, then add spaces to the active area."
           }
           showLogout={false}
         />
@@ -670,16 +1088,56 @@ export default function AddSpaceScreen() {
         </div>
         )}
 
-        {/* Space group cards: hover to reveal ghost chips; click chip to add to main chip row */}
-        <SpaceGroupCarousel className="mb-6 rounded-tr-xl rounded-bl-xl">
-              {ONBOARDING_SPACE_GROUPS.map((group) => (
+        <DndContext
+          sensors={dndSensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        >
+        {/* Property Areas card first; space groups unlock after an area is selected */}
+        <SpaceGroupCarousel
+          className="mb-4 rounded-tr-xl rounded-bl-xl"
+          onScroll={(e) => {
+            if (e.currentTarget.scrollLeft > 12) {
+              setInstructionOpacity(0);
+              if (instructionFadeRef.current) clearTimeout(instructionFadeRef.current);
+              window.setTimeout(() => setShowAddSpacesInstruction(false), 400);
+            }
+          }}
+        >
+              <OnboardingPropertyAreasCard
+                areas={areas}
+                activeAreaId={activeAreaId}
+                spaceCounts={spaceCounts}
+                onSelectArea={handleSelectArea}
+                onActivateArea={handleActivateArea}
+                onRemoveArea={handleRemoveArea}
+                onRenameArea={openRenameArea}
+              />
+              {ONBOARDING_SPACE_GROUPS.map((group, index) => (
               <OnboardingSpaceGroupCard
                 key={group.id}
                 group={group}
                 selectedSpacesSet={selectedSpacesSet}
+                selectedSpaceColors={selectedSpaceColors}
+                spaceAreaByNameKey={spaceAreaByNameKey}
+                activeAreaId={activeAreaId}
                 extraSpaces={groupExtraSpaces[group.id] ?? []}
                 suggestionLabelOverrides={suggestionLabelOverrides}
                 subSpacesByParent={subSpacesByParent}
+                disabled={areas.length === 0}
+                instructionOverlay={
+                  index === 0 &&
+                  showAddSpacesInstruction &&
+                  activeArea &&
+                  areas.length > 0
+                    ? {
+                        label: `Add spaces to ${activeArea.name}`,
+                        color: activeArea.color,
+                      }
+                    : null
+                }
+                instructionOpacity={instructionOpacity}
                 onAddSpace={(name, extra) =>
                   handleAddSuggestionFromGroup(name, group.id, extra)
                 }
@@ -711,22 +1169,132 @@ export default function AddSpaceScreen() {
             />
         </SpaceGroupCarousel>
 
+        {areas.length > 0 ? (
+          <div className="mb-4 space-y-3">
+            <div>
+              <p className="mb-2 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                Your areas
+              </p>
+              <SortableContext
+                items={areas.map((a) => areaSortableId(a.id))}
+                strategy={horizontalListSortingStrategy}
+              >
+              <div className="flex flex-wrap gap-[5px]">
+                {areas.map((area) => {
+                  const count = (spacesByAreaId[area.id] ?? []).length;
+                  const isActive = activeAreaId === area.id;
+                  return (
+                    <SortableItem
+                      key={area.id}
+                      id={areaSortableId(area.id)}
+                      data={{ kind: "area", areaId: area.id }}
+                    >
+                      <DroppableZone id={`area-drop:${area.id}`}>
+                        <ExpandableSpaceChip
+                          variant="area"
+                          label={`${shortAreaLabel(area.name).toUpperCase()} · ${count}`}
+                          color={isActive ? area.color : hexToRgba(area.color, 0.42)}
+                          subSpaces={[]}
+                          onRemove={() => handleRemoveArea(area.id)}
+                          onAddSubSpace={() => undefined}
+                          onRename={() => openRenameArea(area.id)}
+                          onView={() => handleActivateArea(area.id)}
+                          onPress={() => handleActivateArea(area.id)}
+                          className={cn("!shadow-none", AREA_CHIP_NEUMO_RAISED)}
+                        />
+                      </DroppableZone>
+                    </SortableItem>
+                  );
+                })}
+              </div>
+              </SortableContext>
+            </div>
+
+            {viewingArea ? (
+              <div>
+                <p className="mb-2 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                  {areaSpacesRowLabel(viewingArea.name)}
+                </p>
+                <DroppableZone id={spacesListDroppableId()}>
+                <SortableContext
+                  items={(spacesByAreaId[viewingArea.id] ?? []).map((s) =>
+                    spaceSortableId(viewingArea.id, s)
+                  )}
+                  strategy={horizontalListSortingStrategy}
+                >
+                <div className="flex min-h-[36px] flex-wrap gap-[5px] rounded-[8px] p-1">
+                  {(spacesByAreaId[viewingArea.id] ?? []).length === 0 ? (
+                    <p className="text-xs text-muted-foreground px-1 py-1.5">
+                      Drop spaces here, or pick them from the cards above.
+                    </p>
+                  ) : (
+                    (spacesByAreaId[viewingArea.id] ?? []).map((space) => (
+                      <SortableItem
+                        key={space}
+                        id={spaceSortableId(viewingArea.id, space)}
+                        data={{
+                          kind: "space",
+                          spaceName: space,
+                          areaId: viewingArea.id,
+                        }}
+                      >
+                        <ExpandableSpaceChip
+                          label={shortSpaceLabel(space)}
+                          color={viewingArea.color}
+                          subSpaces={
+                            subSpacesByParent[space.toLowerCase().trim()] ?? []
+                          }
+                          onRemove={() => handleRemoveSpaceByName(space)}
+                          onAddSubSpace={(name) => handleAddSubSpace(space, name)}
+                          onRename={() => openRenameModal(space)}
+                          onDuplicate={() => openCopyModal(space)}
+                          onPress={() => handleRemoveSpaceByName(space)}
+                          className={cn("!shadow-none", AREA_CHIP_NEUMO_RAISED)}
+                        />
+                      </SortableItem>
+                    ))
+                  )}
+                </div>
+                </SortableContext>
+                </DroppableZone>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <DragOverlay>
+          {activeDrag ? (
+            <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
+              {activeDrag.kind === "area"
+                ? areas.find((a) => a.id === activeDrag.areaId)?.name ?? "Area"
+                : activeDrag.kind === "space"
+                  ? activeDrag.spaceName
+                  : activeDrag.spaceName}
+            </div>
+          ) : null}
+        </DragOverlay>
+        </DndContext>
+
         {/* Input field */}
         <div className="mb-4">
           <div className="flex gap-2">
             <div className="flex-1">
               <NeomorphicInput
                 ref={spaceInputRef}
-                placeholder="Enter space name..."
+                placeholder={
+                  activeArea
+                    ? `Enter space name for ${activeArea.name}…`
+                    : "Select an area first…"
+                }
                 value={spaceName}
                 onChange={(e) => setSpaceName(e.target.value)}
                 onKeyDown={handleKeyDown}
+                disabled={areas.length === 0}
               />
             </div>
             <button
               type="button"
               onClick={handleAddSpace}
-              disabled={!spaceName.trim()}
+              disabled={!spaceName.trim() || !activeAreaId}
               className="h-12 w-12 flex-shrink-0 flex items-center justify-center px-4 rounded-xl bg-primary text-primary-foreground shadow-primary-btn transition-[transform,box-shadow,background-color] active:shadow-btn-pressed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:!opacity-100"
               aria-label="Add space"
             >
@@ -811,32 +1379,105 @@ export default function AddSpaceScreen() {
           </DialogContent>
         </Dialog>
 
-        {/* Your Spaces – expandable fact chips with chevron dropdown (sub-spaces, + Sub-space, X | More) */}
-        {spaces.length > 0 && (
-          <div className="mb-6">
-            <p className="text-xs text-muted-foreground mb-2 font-mono uppercase tracking-wider">Your Spaces</p>
-            <div className="flex flex-wrap gap-2">
-              {spaces.map((space, index) => (
-                <ExpandableSpaceChip
-                  key={`${space}-${index}`}
-                  label={shortSpaceLabel(space)}
-                  subSpaces={subSpacesByParent[space.toLowerCase().trim()] ?? []}
-                  onRemove={() => handleRemoveSpace(index)}
-                  onAddSubSpace={(name) => handleAddSubSpace(space, name)}
-                  onRename={() => openRenameModal(space)}
-                  onDuplicate={() => openCopyModal(space)}
-                  className="!shadow-none"
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        <Dialog
+          open={!!renameAreaModal}
+          onOpenChange={(open) => !open && setRenameAreaModal(null)}
+        >
+          <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-mono uppercase tracking-wider">
+                Rename area
+              </DialogTitle>
+            </DialogHeader>
+            <input
+              type="text"
+              value={renameAreaInput}
+              onChange={(e) => setRenameAreaInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  confirmRenameArea();
+                }
+                if (e.key === "Escape") setRenameAreaModal(null);
+              }}
+              placeholder="Area name"
+              className="w-full px-3 py-2 text-sm font-mono uppercase tracking-wider rounded-lg border border-input bg-background outline-none focus:ring-2 focus:ring-ring"
+              autoFocus
+            />
+            <DialogFooter className="gap-2 sm:gap-0">
+              <NeomorphicButton variant="ghost" onClick={() => setRenameAreaModal(null)}>
+                Cancel
+              </NeomorphicButton>
+              <NeomorphicButton
+                variant="primary"
+                onClick={confirmRenameArea}
+                disabled={!renameAreaInput.trim()}
+              >
+                Save
+              </NeomorphicButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog
+          open={!!areaDeleteModal}
+          onOpenChange={(open) => !open && setAreaDeleteModal(null)}
+        >
+          <DialogContent className="max-w-sm gap-3 p-4" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-mono uppercase tracking-wider">
+                Delete area?
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-sm text-muted-foreground">
+              This area has {areaDeleteModal?.spaceCount ?? 0} spaces. You can transfer them
+              to another area, or delete the area and its spaces.
+            </p>
+            {(areaDeleteModal?.spaceCount ?? 0) > 5 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-mono uppercase tracking-wide text-amber-700">
+                  Warning: more than 5 spaces
+                </p>
+                <label className="block text-xs text-muted-foreground">Transfer spaces to</label>
+                <select
+                  value={transferTargetAreaId}
+                  onChange={(e) => setTransferTargetAreaId(e.target.value)}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Select area…</option>
+                  {areas
+                    .filter((a) => a.id !== areaDeleteModal?.areaId)
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            ) : null}
+            <DialogFooter className="flex-col gap-2 sm:flex-col">
+              <NeomorphicButton
+                variant="primary"
+                onClick={() => confirmDeleteArea("transfer")}
+                disabled={!transferTargetAreaId}
+              >
+                Transfer & delete area
+              </NeomorphicButton>
+              <NeomorphicButton variant="ghost" onClick={() => confirmDeleteArea("delete")}>
+                Delete area and spaces
+              </NeomorphicButton>
+              <NeomorphicButton variant="ghost" onClick={() => setAreaDeleteModal(null)}>
+                Cancel
+              </NeomorphicButton>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="pt-4 space-y-3">
           <NeomorphicButton
             variant="primary"
             onClick={handleSave}
-            disabled={loading || spaces.length === 0 || !propertyId}
+            disabled={loading || spaces.length === 0 || areas.length === 0 || !propertyId}
           >
             {loading ? "Saving…" : "Continue"}
           </NeomorphicButton>
