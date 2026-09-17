@@ -396,8 +396,10 @@ function ruleBased(text: string) {
   ];
   const priority = urgentHints.some((k) => lower.includes(k)) ? "urgent" : "medium";
 
+  // Never invent a title by slicing the description — client applies a summary
+  // heuristic after settle, or leaves the field empty for the user to edit.
   return {
-    title: text.slice(0, 50),
+    title: "",
     spaces: [],
     people: [],
     teams: [],

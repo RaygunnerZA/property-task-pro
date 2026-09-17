@@ -287,5 +287,15 @@ export function useAIExtract(input: string) {
     };
   }, [abortActiveRequest]);
 
-  return { result, loading, error };
+  /** Run extract immediately (e.g. description blur) — skips the idle debounce. */
+  const flush = useCallback(() => {
+    clearPendingTimer();
+    const latestRaw = inputRef.current;
+    if (latestRaw.trim().length < MIN_DESCRIPTION_LENGTH) return;
+    if (normalizeForDedupe(latestRaw) === lastSuccessNormalizedRef.current) return;
+    if (isProcessingRef.current) return;
+    void extractNow(latestRaw);
+  }, [clearPendingTimer, extractNow]);
+
+  return { result, loading, error, flush };
 }

@@ -26,6 +26,8 @@ interface SubtasksSectionProps {
   embedded?: boolean;
   description?: string;
   onDescriptionChange?: (description: string) => void;
+  /** Fired when the description field blurs (e.g. settle AI title). */
+  onDescriptionBlur?: () => void;
   /** When pasting or dropping a file into the description, parent adds it like Add Photo. */
   onPasteImages?: (files: File[]) => void;
   className?: string;
@@ -43,6 +45,7 @@ export function SubtasksSection({
   embedded = false,
   description = "",
   onDescriptionChange,
+  onDescriptionBlur,
   onPasteImages,
   activeTemplateName,
   onSaveAsTemplate,
@@ -110,7 +113,10 @@ export function SubtasksSection({
             value={description}
             onChange={(e) => onDescriptionChange?.(e.target.value)}
             onFocus={() => setDescriptionFocused(true)}
-            onBlur={() => setDescriptionFocused(false)}
+            onBlur={() => {
+              setDescriptionFocused(false);
+              onDescriptionBlur?.();
+            }}
             onPaste={(e) => {
               if (!onPasteImages) return;
               const files = clipboardImageFiles(e.clipboardData);

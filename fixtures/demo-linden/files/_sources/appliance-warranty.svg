@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#f1eadc"/><rect x="54" y="54" width="1092" height="692" rx="24" fill="#fffdf7" stroke="#c58a61" stroke-width="8"/>
+  <text x="105" y="145" fill="#31343d" font-family="Arial,sans-serif" font-size="52" font-weight="700">APPLIANCE WARRANTY</text><rect x="105" y="194" width="990" height="14" fill="#c58a61"/>
+  <text x="105" y="292" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Appliance: Bosch washing machine</text><text x="105" y="350" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Reference: WM-ORCHARD-025</text>
+  <circle cx="600" cy="540" r="126" fill="#315a4b"/><circle cx="600" cy="540" r="80" fill="#8ec9ce"/><path d="M548 540c30-38 70 38 104 0" fill="none" stroke="#fffdf7" stroke-width="13" stroke-linecap="round"/>
+</svg>

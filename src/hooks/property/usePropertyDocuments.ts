@@ -179,19 +179,62 @@ export function usePropertyDocuments(
         });
       }
 
+      // Always enrich with space links (label model for Records filing).
+      {
+        const ids = docs.map((d) => d.id);
+        if (ids.length > 0) {
+          const { data: spaceRows } = await supabase
+            .from("attachment_spaces")
+            .select("attachment_id, space_id")
+            .in("attachment_id", ids)
+            .eq("org_id", orgId);
+
+          const spaceIds = [
+            ...new Set((spaceRows || []).map((r) => r.space_id).filter(Boolean)),
+          ];
+          const spaceNameById = new Map<string, string>();
+          if (spaceIds.length > 0) {
+            const { data: spacesData } = await supabase
+              .from("spaces")
+              .select("id, name")
+              .in("id", spaceIds)
+              .eq("org_id", orgId);
+            for (const s of spacesData || []) {
+              spaceNameById.set(s.id, (s.name ?? "").trim() || "Space");
+            }
+          }
+
+          const spacesByAttachment = new Map<string, { id: string; name: string }[]>();
+          for (const row of spaceRows || []) {
+            const list = spacesByAttachment.get(row.attachment_id) ?? [];
+            list.push({
+              id: row.space_id,
+              name: spaceNameById.get(row.space_id) ?? "Space",
+            });
+            spacesByAttachment.set(row.attachment_id, list);
+          }
+
+          docs = docs.map((d) => ({
+            ...d,
+            linked_spaces: spacesByAttachment.get(d.id) ?? [],
+          }));
+        } else {
+          docs = docs.map((d) => ({ ...d, linked_spaces: [] }));
+        }
+      }
+
       if (filters?.unlinked) {
         const ids = docs.map((d) => d.id);
         if (ids.length === 0) return [];
-        // attachment_* junction tables are pending-migration; cast to any
+        // attachment_assets / attachment_compliance may lag generated types
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const sb = supabase as any;
-        const [spRes, aRes, cRes] = await Promise.all([
-          sb.from("attachment_spaces").select("attachment_id").in("attachment_id", ids),
+        const [aRes, cRes] = await Promise.all([
           sb.from("attachment_assets").select("attachment_id").in("attachment_id", ids),
           sb.from("attachment_compliance").select("attachment_id").in("attachment_id", ids),
         ]);
         const linkedIds = new Set([
-          ...(spRes.data || []).map((r: { attachment_id: string }) => r.attachment_id),
+          ...docs.filter((d) => (d.linked_spaces?.length ?? 0) > 0).map((d) => d.id),
           ...(aRes.data || []).map((r: { attachment_id: string }) => r.attachment_id),
           ...(cRes.data || []).map((r: { attachment_id: string }) => r.attachment_id),
         ]);

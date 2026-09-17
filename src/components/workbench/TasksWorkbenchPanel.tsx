@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
@@ -149,11 +149,13 @@ export function TasksWorkbenchPanel({
   onCalendarTaskScopeChange,
 }: TasksWorkbenchPanelProps) {
   const { userId } = useDataContext();
-  const { setSelectedFilters, selectedFilters, sortBy, searchQuery } = useWorkbenchControls();
+  const { setSelectedFilters, selectedFilters, sortBy, searchQuery, clearAllFilters } =
+    useWorkbenchControls();
   const { mode: identityMode } = useIdentityMode();
   const memberRole =
     identityMode === "manager" ? "manager" : identityMode === "staff" ? "staff" : "owner";
   const [listTab, setListTab] = useState<TasksListTab>("all");
+  const [listEpoch, setListEpoch] = useState(0);
   const [authorFilterKey, setAuthorFilterKey] = useState<string | null>(null);
   const { latestByTask, recentAuthors } = useTaskMessageActivity();
   const allTasksIllustrationSrc = useAllTasksIllustrationSrc();
@@ -382,6 +384,17 @@ export function TasksWorkbenchPanel({
     );
   };
 
+  /** List tabs are primary views — choosing one drops the filter bar and reloads that list. */
+  const selectListTab = useCallback(
+    (next: TasksListTab) => {
+      clearAllFilters();
+      setAuthorFilterKey(null);
+      setListTab(next);
+      setListEpoch((n) => n + 1);
+    },
+    [clearAllFilters]
+  );
+
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-col">
       <section className="flex min-h-0 min-w-0 w-full flex-col rounded-2xl bg-transparent pt-0 pb-1">
@@ -429,7 +442,7 @@ export function TasksWorkbenchPanel({
                       type="button"
                       role="tab"
                       aria-selected={selected}
-                      onClick={() => setListTab(tab.id)}
+                      onClick={() => selectListTab(tab.id)}
                       className={cn(
                         "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
@@ -472,7 +485,7 @@ export function TasksWorkbenchPanel({
                       ? `Messages, ${unreadMessageCount} unread`
                       : "Messages"
                   }
-                  onClick={() => setListTab("messages")}
+                  onClick={() => selectListTab("messages")}
                   className={cn(
                     "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                     listTab === "messages"
@@ -534,6 +547,7 @@ export function TasksWorkbenchPanel({
 
         <div className="mt-3 px-0 md:mt-5 md:mb-5">
           <WorkbenchTaskFilterBar
+            key={`task-filters-${listEpoch}`}
             tasks={tasks}
             properties={properties}
             hidePrimaryQuickChips
@@ -549,6 +563,7 @@ export function TasksWorkbenchPanel({
         <div className="mt-3 px-0 pb-4 pt-0.5 md:mt-0">
           {listTab === "messages" ? (
             <TasksMessagesCardGrid
+              key={`task-messages-${listEpoch}`}
               tasks={visibleTasks}
               properties={properties}
               selectedTaskId={selectedTaskId}
@@ -557,6 +572,7 @@ export function TasksWorkbenchPanel({
             />
           ) : (
             <TaskList
+              key={`task-list-${listTab}-${listEpoch}`}
               tasks={visibleTasks}
               properties={properties}
               tasksLoading={tasksLoading}

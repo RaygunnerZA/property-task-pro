@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addMonths, startOfMonth, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid";
-import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
+import {
+  CalendarMonthYearLabel,
+  CalendarNavChevrons,
+} from "@/components/calendar/CalendarMonthYearLabel";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { Button } from "@/components/ui/button";
 import {
@@ -238,7 +240,12 @@ export function CalendarWorkbenchPanel({
   );
 
   return (
-    <div className="flex min-w-0 w-full flex-col pt-0">
+    <div
+      className={cn(
+        "flex min-w-0 w-full flex-col pt-0",
+        view === "schedule" && "min-h-0 flex-1"
+      )}
+    >
       <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
         <div
           className={cn(
@@ -318,31 +325,18 @@ export function CalendarWorkbenchPanel({
               "bg-transparent py-[3px]"
             )}
           >
-            <div className="flex items-center gap-0">
-              <button
-                type="button"
-                onClick={() => setCurrentMonth((m) => subMonths(m, 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
-                aria-label="Previous month"
-              >
-                <ChevronLeft className="h-4 w-4 text-accent" />
-              </button>
-              <CalendarMonthYearLabel
-                date={currentMonth}
-                className="min-w-[88px] justify-center"
+            <CalendarMonthYearLabel date={currentMonth} />
+            <div className="flex items-center gap-3">
+              <CalendarNavChevrons
+                onPrev={() => setCurrentMonth((m) => subMonths(m, 1))}
+                onNext={() => setCurrentMonth((m) => addMonths(m, 1))}
+                prevLabel="Previous month"
+                nextLabel="Next month"
               />
-              <button
-                type="button"
-                onClick={() => setCurrentMonth((m) => addMonths(m, 1))}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
-                aria-label="Next month"
-              >
-                <ChevronRight className="h-4 w-4 text-accent" />
-              </button>
+              <Button type="button" variant="outline" size="sm" onClick={handleToday}>
+                Today
+              </Button>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={handleToday}>
-              Today
-            </Button>
           </div>
 
           <div className="h-fit w-full rounded-xl bg-transparent p-0 shadow-none">
@@ -362,13 +356,15 @@ export function CalendarWorkbenchPanel({
                 onTaskReschedule={handleTaskReschedule}
                 selectedTaskId={selectedTaskId}
                 propertyMap={propertyMap}
+                onMonthChange={setCurrentMonth}
+                edgeBleed
               />
             )}
           </div>
         </section>
       ) : (
         <section className="flex min-h-0 flex-1 flex-col px-0">
-          <div className="min-h-[320px] flex-1 overflow-hidden rounded-xl bg-muted/10">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl bg-muted/10">
             {tasksLoading ? (
               <div className="space-y-3 p-4">
                 <div className="h-20 animate-pulse rounded-xl bg-muted/50" />

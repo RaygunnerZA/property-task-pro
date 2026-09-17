@@ -125,7 +125,7 @@ export interface CapabilityDef {
 export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   task_extraction: {
     functionName: "ai-extract",
-    promptVersion: "task-extraction-v1",
+    promptVersion: "task-extraction-v3",
     requires: { structuredJson: true },
     order: [
       "model:google/gemini-2.0-flash",

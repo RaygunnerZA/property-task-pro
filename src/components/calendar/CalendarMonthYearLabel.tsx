@@ -1,5 +1,61 @@
 import { format } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+/** Shared month title — matches the mini-calendar caption. */
+export const CALENDAR_MONTH_TITLE_CLASS = "font-semibold text-ink pl-[7px] text-xl";
+
+export const CALENDAR_MONTH_TITLE_EMBEDDED_CLASS = "font-semibold text-ink pl-[7px] text-base";
+
+export const CALENDAR_NAV_CHEVRON_GROUP_CLASS =
+  "flex h-[26px] items-center gap-[17px] pt-[3px]";
+
+export const CALENDAR_NAV_CHEVRON_BUTTON_CLASS =
+  "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90";
+
+export function CalendarNavChevronIcon({
+  direction,
+}: {
+  direction: "prev" | "next";
+}) {
+  const Icon = direction === "prev" ? ChevronLeft : ChevronRight;
+  return <Icon className="h-6 w-6 text-accent" strokeWidth={2.2} />;
+}
+
+export function CalendarNavChevrons({
+  onPrev,
+  onNext,
+  prevLabel,
+  nextLabel,
+  className,
+}: {
+  onPrev: () => void;
+  onNext: () => void;
+  prevLabel: string;
+  nextLabel: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn(CALENDAR_NAV_CHEVRON_GROUP_CLASS, className)}>
+      <button
+        type="button"
+        onClick={onPrev}
+        className={CALENDAR_NAV_CHEVRON_BUTTON_CLASS}
+        aria-label={prevLabel}
+      >
+        <CalendarNavChevronIcon direction="prev" />
+      </button>
+      <button
+        type="button"
+        onClick={onNext}
+        className={CALENDAR_NAV_CHEVRON_BUTTON_CLASS}
+        aria-label={nextLabel}
+      >
+        <CalendarNavChevronIcon direction="next" />
+      </button>
+    </div>
+  );
+}
 
 type CalendarMonthYearLabelProps = {
   date: Date;
@@ -14,7 +70,7 @@ type CalendarMonthYearLabelProps = {
 export function CalendarMonthYearLabel({
   date,
   className,
-  monthClassName = "text-lg font-semibold text-ink",
+  monthClassName = CALENDAR_MONTH_TITLE_CLASS,
   yearClassName = "text-2xs font-semibold leading-none text-accent",
   onClick,
 }: CalendarMonthYearLabelProps) {

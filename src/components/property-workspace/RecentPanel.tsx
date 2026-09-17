@@ -37,7 +37,7 @@ export function RecentPanel({
         {action ? <div className="flex shrink-0 items-center gap-1">{action}</div> : null}
       </div>
       {hasItems ? (
-        <ul className={cn("flex flex-col gap-1.5", listClassName)}>{items}</ul>
+        <ul className={cn("flex flex-col gap-[3px]", listClassName)}>{items}</ul>
       ) : empty === null ? null : (
         empty ?? (
           <p className="px-0.5 text-caption text-muted-foreground">Nothing recent yet.</p>

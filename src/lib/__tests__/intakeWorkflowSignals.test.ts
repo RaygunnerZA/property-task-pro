@@ -10,6 +10,8 @@ describe("intakeWorkflowSignals", () => {
   it("rejects meaningless suggested types", () => {
     expect(isMeaningfulSuggestedType("None")).toBe(false);
     expect(isMeaningfulSuggestedType("unknown")).toBe(false);
+    expect(isMeaningfulSuggestedType("Misc")).toBe(false);
+    expect(isMeaningfulSuggestedType("other")).toBe(false);
     expect(isMeaningfulSuggestedType("Gas Safety Certificate")).toBe(true);
   });
 

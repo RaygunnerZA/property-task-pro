@@ -7,6 +7,10 @@ const UPLOADED_INSET_SHADOW_HORIZONTAL =
   // Depth stays on the top/left (and a soft bottom), so the right can fade out.
   "inset 2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.08)";
 
+const UPLOADED_INSET_SHADOW_HORIZONTAL_FADE_LEFT =
+  // Thumbnail on the right — no left-edge inset, so the fade into the card body stays soft.
+  "inset -2px 2px 2px 0px rgba(255, 255, 255, 0.71), inset 0px -1px 2px 0px rgba(0, 0, 0, 0.08)";
+
 const UPLOADED_INSET_SHADOW_VERTICAL =
   "inset 2px 2px 4px rgba(255, 255, 255, 0.6), inset -1px -1px 2px rgba(0, 0, 0, 0.1), 0px 3px 6px rgba(0, 0, 0, 0.15)";
 
@@ -16,6 +20,13 @@ export const VERTICAL_ILLUSTRATION_INSET_SHADOW_CLASS =
 
 const HORIZONTAL_ILLUSTRATION_INSET_SHADOW_CLASS =
   "shadow-[inset_0px_1px_1px_0px_rgba(255,255,255,0.7)]";
+
+/** Photo dissolves into the card body on the content-facing edge. */
+const PHOTO_MASK_FADE_RIGHT =
+  "[mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)]";
+
+const PHOTO_MASK_FADE_LEFT =
+  "[mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.28)_12%,rgba(0,0,0,0.7)_28%,black_46%,black_100%)] [-webkit-mask-image:linear-gradient(to_right,transparent_0%,rgba(0,0,0,0.28)_12%,rgba(0,0,0,0.7)_28%,black_46%,black_100%)]";
 
 interface TaskCardMediaZoneProps {
   imageUrl?: string | null;
@@ -27,6 +38,11 @@ interface TaskCardMediaZoneProps {
   placeholderClassName?: string;
   /** Dim thumbnail media (e.g. completed / on hold) — overlays stay full opacity. */
   dimmed?: boolean;
+  /**
+   * Which edge of a horizontal photo meets the card body and should fade in.
+   * Right-side thumbnails (Schedule) fade from the left; left-side thumbs fade out to the right.
+   */
+  fadeEdge?: "left" | "right";
   children?: ReactNode;
 }
 
@@ -38,9 +54,16 @@ export function TaskCardMediaZone({
   className,
   placeholderClassName,
   dimmed = false,
+  fadeEdge = "right",
   children,
 }: TaskCardMediaZoneProps) {
   const isIllustration = isTaskSpaceIllustrationUrl(imageUrl);
+  const photoMaskClass =
+    variant === "horizontal" || fixedSize != null
+      ? fadeEdge === "left"
+        ? PHOTO_MASK_FADE_LEFT
+        : PHOTO_MASK_FADE_RIGHT
+      : undefined;
   const baseZoneClass = fixedSize
     ? "relative shrink-0 overflow-hidden"
     : variant === "horizontal"
@@ -104,9 +127,7 @@ export function TaskCardMediaZone({
             : "absolute inset-0 h-full w-full object-cover",
           dimmed && "opacity-50",
           // Fade photo into the shared card surface (bg-card/60 + paper) — no painted overlay.
-          !isIllustration &&
-            (variant === "horizontal" || fixedSize != null) &&
-            "[mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)]"
+          !isIllustration && photoMaskClass
         )}
         onError={(e) => {
           (e.target as HTMLImageElement).style.display = "none";
@@ -120,13 +141,14 @@ export function TaskCardMediaZone({
         <div
           className={cn(
             "pointer-events-none absolute inset-0 z-[1]",
-            (variant === "horizontal" || fixedSize != null) &&
-              "[mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)] [-webkit-mask-image:linear-gradient(to_right,black_0%,black_42%,rgba(0,0,0,0.7)_62%,rgba(0,0,0,0.25)_82%,transparent_100%)]"
+            photoMaskClass
           )}
           style={{
             boxShadow:
               variant === "horizontal"
-                ? UPLOADED_INSET_SHADOW_HORIZONTAL
+                ? fadeEdge === "left"
+                  ? UPLOADED_INSET_SHADOW_HORIZONTAL_FADE_LEFT
+                  : UPLOADED_INSET_SHADOW_HORIZONTAL
                 : UPLOADED_INSET_SHADOW_VERTICAL,
           }}
         />

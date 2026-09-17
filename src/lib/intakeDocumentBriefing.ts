@@ -69,9 +69,13 @@ function inferTypeFromText(text: string): string | null {
   if (/\bfire\b/.test(value) && /\bcertificate\b/.test(value)) return "Fire Certificate";
   if (/\binvoice\b|\breceipt\b|\bquote\b/.test(value)) return "Invoice";
 
-  if (trimmed.length <= 80 && !/\.[a-z0-9]{2,5}$/i.test(trimmed)) {
+  if (
+    trimmed.length <= 80 &&
+    !/\n/.test(trimmed) &&
+    !/\.[a-z0-9]{2,5}$/i.test(trimmed)
+  ) {
     const mapped = mapIntakeDocumentType(trimmed);
-    if (mapped && !/^(other|misc)$/i.test(mapped.type)) return mapped.type;
+    if (mapped && !mapped.isOther) return mapped.type;
   }
 
   return null;
@@ -114,11 +118,14 @@ export function buildIntakeDocumentBriefing(
 
   const rawType = String(extracted.document_type || artifact.aiClassification || "");
   const mappedType = mapIntakeDocumentType(rawType);
-  const mappedIsOther = mappedType?.type && /^other$/i.test(mappedType.type);
+  const filenameMapped = mapIntakeDocumentType(humanizeIntakeFileStem(artifact.fileName));
   const documentType =
-    (mappedType && !mappedIsOther ? mappedType.type : null) ||
+    (mappedType && !mappedType.isOther ? mappedType.type : null) ||
     inferTypeFromText(rawType) ||
-    inferTypeFromText(combined);
+    inferTypeFromText(combined) ||
+    (filenameMapped && !filenameMapped.isOther ? filenameMapped.type : null) ||
+    inferTypeFromText(humanizeIntakeFileStem(artifact.fileName)) ||
+    (mappedType?.isOther ? mappedType.type : null);
 
   const outcomeFromAi = inferOutcomeFromText(String(extracted.outcome || extracted.status || ""));
   const outcome =
@@ -136,7 +143,16 @@ export function buildIntakeDocumentBriefing(
     titleFromStem(artifact.fileName);
 
   const findings = Array.isArray(extracted.findings)
-    ? (extracted.findings as unknown[]).map((item) => String(item).trim()).filter(Boolean).slice(0, 6)
+    ? (extracted.findings as unknown[])
+        .map((item) => {
+          if (typeof item === "string") return item.trim();
+          if (item && typeof item === "object" && "text" in item) {
+            return String((item as { text: unknown }).text).trim();
+          }
+          return "";
+        })
+        .filter(Boolean)
+        .slice(0, 6)
     : [];
 
   const effectiveProvenance: IntakeReadProvenance =
@@ -145,6 +161,7 @@ export function buildIntakeDocumentBriefing(
   const excerpt = (officeText?.trim() || ocr).slice(0, 900);
 
   const typeLabel = documentType || "property document";
+  const article = /^(eicr|epc|[aeiou])/i.test(typeLabel) ? "an" : "a";
   const outcomeSentence =
     outcome === "unsatisfactory"
       ? `The outcome is unsatisfactory — this usually needs remedial work as well as filing.`
@@ -158,7 +175,7 @@ export function buildIntakeDocumentBriefing(
   const summary =
     summaryFromAi && !isStub
       ? summaryFromAi
-      : [`This is a ${typeLabel}.`, outcomeSentence].filter(Boolean).join(" ");
+      : [`This is ${article} ${typeLabel}.`, outcomeSentence].filter(Boolean).join(" ");
 
   return {
     title,
@@ -221,8 +238,8 @@ export function intakeInboxCardCopy(item: {
   ai_extracted: Record<string, unknown> | null;
   error_message?: string | null;
   status?: string;
-}): { title: string; insight: string } {
-  const briefing = buildIntakeDocumentBriefing(artifactFromIntakeItem(item));
+}, extractedText?: string | null): { title: string; insight: string } {
+  const briefing = buildIntakeDocumentBriefing(artifactFromIntakeItem(item), extractedText);
   const title = titleLooksLikeJunk(briefing.title) ? briefing.fileKindLabel : briefing.title;
 
   if (item.status === "pending" || item.status === "processing") {

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#eee8dc"/><rect x="110" y="42" width="980" height="716" rx="18" fill="#fffdf7" stroke="#567888" stroke-width="7"/>
+  <text x="165" y="132" fill="#31343d" font-family="Arial,sans-serif" font-size="50" font-weight="700">HEATING ENGINEER INVOICE</text><text x="165" y="206" fill="#567888" font-family="Arial,sans-serif" font-size="29">Northstar Property Services</text>
+  <text x="165" y="292" fill="#31343d" font-family="Arial,sans-serif" font-size="29">Property: 18 Linden Road, London</text><line x1="165" y1="340" x2="1035" y2="340" stroke="#d7ccba" stroke-width="5"/>
+  <text x="165" y="408" fill="#31343d" font-family="Arial,sans-serif" font-size="27">Engineer attendance and boiler inspection</text><text x="165" y="470" fill="#31343d" font-family="Arial,sans-serif" font-size="27">Pressure check and leak investigation</text>
+  <rect x="165" y="550" width="870" height="90" rx="12" fill="#e4eee9"/><text x="205" y="608" fill="#315a4b" font-family="Arial,sans-serif" font-size="30" font-weight="700">Record retained for property history</text>
+</svg>

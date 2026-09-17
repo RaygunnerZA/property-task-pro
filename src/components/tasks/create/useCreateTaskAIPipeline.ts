@@ -16,7 +16,7 @@
  * Extracted from CreateTaskModal.tsx (Tier 3 — t3-modal).
  */
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useAIExtract } from "@/hooks/useAIExtract";
 import { useChipSuggestions } from "@/hooks/useChipSuggestions";
 import { useImageAnalysis } from "@/hooks/useImageAnalysis";
@@ -27,6 +27,12 @@ import type { TempImage, ImageAnalysisResult } from "@/types/temp-image";
 import { supabase } from "@/integrations/supabase/client";
 import type { ClaritySeverity } from "./ClarityState";
 import type { TaskPriority } from "@/types/database";
+import {
+  buildFallbackTitleFromDescription,
+  finalizeGeneratedTitle,
+  isUsableGeneratedTitle,
+  TASK_TITLE_SETTLE_MS,
+} from "@/lib/taskTitleFromDescription";
 
 // ─── Section metadata (duplicated here to avoid importing from JSX) ──────────
 
@@ -110,6 +116,8 @@ export function useCreateTaskAIPipeline({
   const [aiTitleGenerated, setAiTitleGenerated] = useState("");
   const [userEditedTitle, setUserEditedTitle] = useState(false);
   const [showTitleField, setShowTitleField] = useState(false);
+  const titleRef = useRef(title);
+  titleRef.current = title;
 
   // ─── Chip resolution state ────────────────────────────────────────────────
 
@@ -182,7 +190,21 @@ export function useCreateTaskAIPipeline({
 
   // ─── AI text extraction ───────────────────────────────────────────────────
 
-  const { result: aiResult, loading: aiLoading, error: aiError } = useAIExtract(description);
+  const { result: aiResult, loading: aiLoading, error: aiError, flush: flushAiExtract } =
+    useAIExtract(description);
+
+  const applyGeneratedTitle = useCallback(
+    (raw: string) => {
+      if (userEditedTitle) return false;
+      const processed = finalizeGeneratedTitle(raw);
+      if (!isUsableGeneratedTitle(processed, description)) return false;
+      setAiTitleGenerated(processed);
+      setTitle(processed);
+      setShowTitleField(true);
+      return true;
+    },
+    [userEditedTitle, setTitle, description]
+  );
 
   // ─── Chip suggestions ─────────────────────────────────────────────────────
 
@@ -366,17 +388,40 @@ export function useCreateTaskAIPipeline({
   // ─── AI auto-apply effects ────────────────────────────────────────────────
 
   useEffect(() => {
-    if (aiResult?.title && !userEditedTitle) {
-      let processed = aiResult.title.trim();
-      if (processed.length >= 3) {
-        processed = processed.charAt(0).toUpperCase() + processed.slice(1);
-        processed = processed.replace(/[.!]+$/, "");
-        setAiTitleGenerated(processed);
-        setTitle(processed);
-        setShowTitleField(true);
-      }
-    }
-  }, [aiResult?.title, userEditedTitle, setTitle]);
+    const aiRaw = aiResult?.title?.trim() || "";
+    if (aiRaw) applyGeneratedTitle(aiRaw);
+  }, [aiResult?.title, applyGeneratedTitle]);
+
+  useEffect(() => {
+    if (userEditedTitle) return;
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 12) return;
+
+    const timer = window.setTimeout(() => {
+      if (userEditedTitle) return;
+      const aiRaw = aiResult?.title?.trim() || "";
+      if (aiRaw && applyGeneratedTitle(aiRaw)) return;
+      const current = titleRef.current.trim();
+      if (current && isUsableGeneratedTitle(current, trimmedDescription)) return;
+      const fallback = buildFallbackTitleFromDescription(trimmedDescription);
+      if (fallback) applyGeneratedTitle(fallback);
+    }, TASK_TITLE_SETTLE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [description, userEditedTitle, aiResult?.title, applyGeneratedTitle]);
+
+  const commitTitleOnDescriptionBlur = useCallback(() => {
+    flushAiExtract();
+    if (userEditedTitle) return;
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 12) return;
+    const aiRaw = aiResult?.title?.trim() || "";
+    if (aiRaw && applyGeneratedTitle(aiRaw)) return;
+    const current = titleRef.current.trim();
+    if (current && isUsableGeneratedTitle(current, trimmedDescription)) return;
+    const fallback = buildFallbackTitleFromDescription(trimmedDescription);
+    if (fallback) applyGeneratedTitle(fallback);
+  }, [flushAiExtract, userEditedTitle, description, aiResult?.title, applyGeneratedTitle]);
 
   useEffect(() => {
     if (!aiResult) return;
@@ -611,6 +656,7 @@ export function useCreateTaskAIPipeline({
     setShowTitleField,
     hasDescriptionDraft,
     shouldShowTitleField,
+    commitTitleOnDescriptionBlur,
     // Helpers (used in handleSubmit)
     generateVerbLabel,
     // Handlers

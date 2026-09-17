@@ -137,6 +137,13 @@ import { useCategories } from "@/hooks/useCategories";
 import { useWhoSuggestions, type WhoProposal } from "@/hooks/useWhoSuggestions";
 import { useTeams } from "@/hooks/useTeams";
 import { scheduleInlineInputBlur } from "@/lib/inlineChipInput";
+import {
+  buildFallbackTitleFromDescription,
+  finalizeGeneratedTitle,
+  isUsableGeneratedTitle,
+  resolveTaskTitle,
+  TASK_TITLE_SETTLE_MS,
+} from "@/lib/taskTitleFromDescription";
 
 const INTAKE_COMPLIANCE_TYPES = [...INTAKE_COMPLIANCE_PRESETS, "Other"] as const;
 
@@ -148,91 +155,6 @@ const CHECKLIST_CATEGORY_OPTIONS: Array<{ value: ChecklistTemplateCategory; labe
 ];
 
 type ChecklistTemplateDialogMode = "save" | "edit" | "duplicate";
-
-const TITLE_TRAILING_STOP_WORDS = new Set([
-  "a",
-  "an",
-  "and",
-  "at",
-  "before",
-  "for",
-  "from",
-  "in",
-  "into",
-  "of",
-  "on",
-  "or",
-  "the",
-  "to",
-  "with",
-]);
-
-function buildFallbackTitleFromDescription(input: string): string {
-  const normalized = input.replace(/\s+/g, " ").trim();
-  if (!normalized) return "";
-
-  const needToMatch = normalized.match(/\b(?:we\s+need\s+to|need\s+to)\s+([^,.!?]+)/i);
-  if (needToMatch?.[1]) {
-    const action = needToMatch[1].trim().replace(/[.!?,:;]+$/, "");
-    if (action.length >= 6) {
-      return action.charAt(0).toUpperCase() + action.slice(1);
-    }
-  }
-
-  // Prefer a short verb phrase when present (fix/repair/…).
-  const actionMatch = normalized.match(
-    /\b((?:please\s+)?(?:fix|repair|replace|check|clean|install|inspect|paint|upload|service|clear|unblock|reset|replace)\b[^,.!?]{0,48})/i
-  );
-  if (actionMatch?.[1]) {
-    let phrase = actionMatch[1]
-      .replace(/^\s*please\s+/i, "")
-      .replace(/\b(today|tomorrow|tonight|asap|urgent(ly)?)\b/gi, " ")
-      .replace(/\s+/g, " ")
-      .trim()
-      .replace(/[.!?,:;]+$/, "");
-    const words = phrase.split(" ").filter(Boolean).slice(0, 5);
-    if (words.length >= 2) {
-      phrase = words.join(" ");
-      return phrase.charAt(0).toUpperCase() + phrase.slice(1);
-    }
-  }
-
-  const firstClause = normalized.split(/[,.!?]/)[0]?.trim() || normalized;
-  const stop = new Set([
-    "a",
-    "an",
-    "and",
-    "at",
-    "for",
-    "from",
-    "in",
-    "of",
-    "on",
-    "or",
-    "please",
-    "pls",
-    "the",
-    "to",
-    "with",
-    "can",
-    "you",
-    "we",
-    "i",
-    "today",
-    "tomorrow",
-    "tonight",
-  ]);
-  const words = firstClause
-    .split(" ")
-    .map((w) => w.replace(/^[^\w]+|[^\w]+$/g, ""))
-    .filter((w) => w && !stop.has(w.toLowerCase()))
-    .slice(0, 5);
-  if (words.length === 0) {
-    return firstClause.split(" ").filter(Boolean).slice(0, 4).join(" ");
-  }
-  const title = words.join(" ").replace(/[.!?,:;]+$/, "");
-  return title.charAt(0).toUpperCase() + title.slice(1);
-}
 
 const PAPER_TEXTURE_STYLE: React.CSSProperties = {
   backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise-filter\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.522\' numOctaves=\'1\' stitchTiles=\'stitch\'%3E%3C/feTurbulence%3E%3CfeColorMatrix type=\'saturate\' values=\'0\'%3E%3C/feColorMatrix%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'0.468\'%3E%3C/feFuncR%3E%3CfeFuncG type=\'linear\' slope=\'0.468\'%3E%3C/feFuncG%3E%3CfeFuncB type=\'linear\' slope=\'0.468\'%3E%3C/feFuncB%3E%3CfeFuncA type=\'linear\' slope=\'0.137\'%3E%3C/feFuncA%3E%3C/feComponentTransfer%3E%3CfeComponentTransfer%3E%3CfeFuncR type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncG type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3CfeFuncB type=\'linear\' slope=\'1.323\' intercept=\'-0.207\'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise-filter)\' opacity=\'0.8\'%3E%3C/rect%3E%3C/svg%3E")',
@@ -414,51 +336,68 @@ export function IntakeModal({
   const [truncateIntakeTabLabels, setTruncateIntakeTabLabels] = useState(false);
   const intakeTabListRef = useRef<HTMLDivElement>(null);
 
-  const { result: aiResult, loading: aiLoading, error: aiExtractError } = useAIExtract(description);
+  const { result: aiResult, loading: aiLoading, error: aiExtractError, flush: flushAiExtract } =
+    useAIExtract(description);
 
-  const isUsableGeneratedTitle = useCallback((rawTitle: string) => {
-    const trimmed = rawTitle.trim().replace(/[.!?,:;]+$/, "");
-    // Require enough total characters to be a real title (avoids "The b").
-    if (trimmed.length < 8) return false;
+  const applyGeneratedTitle = useCallback(
+    (raw: string, opts?: { fromScan?: boolean }) => {
+      if (userEditedTitle) return false;
+      const processed = finalizeGeneratedTitle(raw);
+      if (!opts?.fromScan && !isUsableGeneratedTitle(processed, description)) return false;
+      if (opts?.fromScan && processed.length < 3) return false;
+      setAiTitleGenerated(processed);
+      if (titleRef.current.trim() !== processed) setTitle(processed);
+      setShowTitleField(true);
+      return true;
+    },
+    [userEditedTitle, description]
+  );
 
-    const words = trimmed.split(/\s+/).filter(Boolean);
-    if (words.length < 2) return false;
+  // AI / document-scan titles only while composing — never a live description prefix.
+  useEffect(() => {
+    if (userEditedTitle) return;
+    const scanTitle = taskFiles
+      .map((file) => file.scanTitle?.trim())
+      .find((value) => value && value.length >= 3);
+    if (scanTitle) {
+      applyGeneratedTitle(scanTitle, { fromScan: true });
+      return;
+    }
+    const aiRaw = aiResult?.title?.trim() || "";
+    if (aiRaw) applyGeneratedTitle(aiRaw);
+  }, [aiResult?.title, userEditedTitle, taskFiles, applyGeneratedTitle]);
 
-    // A trailing single-character word almost always means the user is mid-typing
-    // (e.g. "The b" while they're still on "bmw"). Hold the previous title in
-    // that case rather than committing a partial fragment.
-    const lastWord = words[words.length - 1] ?? "";
-    if (lastWord.length < 2) return false;
-
-    const lastWordLower = lastWord.toLowerCase();
-    if (TITLE_TRAILING_STOP_WORDS.has(lastWordLower)) return false;
-    if (/\bon(?:\s+the)?\s+\d{1,2}(?:st|nd|rd|th)?$/i.test(trimmed)) return false;
-
-    return true;
-  }, []);
-
+  // After idle settle: if AI has not produced a usable title, commit a summary heuristic.
   useEffect(() => {
     if (userEditedTitle) return;
     const trimmedDescription = description.trim();
-    const scanTitle = taskFiles.map((file) => file.scanTitle?.trim()).find((value) => value && value.length >= 3);
-    // Don't auto-populate a title until the description has enough substance,
-    // unless a document scan already produced a title.
-    if (trimmedDescription.length < 12 && !aiResult?.title && !scanTitle) return;
+    if (trimmedDescription.length < 12) return;
 
+    const timer = window.setTimeout(() => {
+      if (userEditedTitle) return;
+      const aiRaw = aiResult?.title?.trim() || "";
+      if (aiRaw && applyGeneratedTitle(aiRaw)) return;
+      const current = titleRef.current.trim();
+      if (current && isUsableGeneratedTitle(current, trimmedDescription)) return;
+      const fallback = buildFallbackTitleFromDescription(trimmedDescription);
+      if (fallback) applyGeneratedTitle(fallback);
+    }, TASK_TITLE_SETTLE_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [description, userEditedTitle, aiResult?.title, applyGeneratedTitle]);
+
+  const commitTitleOnDescriptionBlur = useCallback(() => {
+    flushAiExtract();
+    if (userEditedTitle) return;
+    const trimmedDescription = description.trim();
+    if (trimmedDescription.length < 12) return;
     const aiRaw = aiResult?.title?.trim() || "";
-    const fallback = buildFallbackTitleFromDescription(description);
-    const chosen =
-      scanTitle ||
-      (aiRaw && isUsableGeneratedTitle(aiRaw) ? aiRaw : fallback);
-    if (!chosen) return;
-    const processed = chosen.charAt(0).toUpperCase() + chosen.slice(1).replace(/[.!]+$/, "");
-    if (!scanTitle && !isUsableGeneratedTitle(processed)) return;
-
-    setAiTitleGenerated(processed);
-    if (titleRef.current.trim() !== processed) setTitle(processed);
-    setShowTitleField(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiResult?.title, description, isUsableGeneratedTitle, userEditedTitle, taskFiles]);
+    if (aiRaw && applyGeneratedTitle(aiRaw)) return;
+    const current = titleRef.current.trim();
+    if (current && isUsableGeneratedTitle(current, trimmedDescription)) return;
+    const fallback = buildFallbackTitleFromDescription(trimmedDescription);
+    if (fallback) applyGeneratedTitle(fallback);
+  }, [flushAiExtract, userEditedTitle, description, aiResult?.title, applyGeneratedTitle]);
 
   useEffect(() => {
     if (!description.trim()) {
@@ -3855,7 +3794,10 @@ export function IntakeModal({
     }
 
     const finalTitle =
-      title.trim() || aiTitleGenerated.trim() || description.trim().slice(0, 50) || "New task";
+      title.trim() ||
+      aiTitleGenerated.trim() ||
+      resolveTaskTitle("", "", description) ||
+      "New task";
 
     setIsSubmitting(true);
     try {
@@ -4630,6 +4572,7 @@ export function IntakeModal({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 onPaste={handleDescriptionPaste}
+                onBlur={commitTitleOnDescriptionBlur}
                 placeholder={descriptionPlaceholder}
                 rows={3}
                 className="w-full px-3 py-2 text-[15px] border-0 bg-transparent shadow-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 resize-none"

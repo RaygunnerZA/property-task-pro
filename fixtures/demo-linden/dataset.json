@@ -1,0 +1,656 @@
+{
+  "asOf": "2026-09-14T00:00:00+01:00",
+  "timeZone": "Europe/London",
+  "users": [
+    {
+      "key": "user.homeowner",
+      "email": "maya.chen@filla-demo.test",
+      "password": "env:DEMO_HOMEOWNER_PASSWORD",
+      "first_name": "Maya",
+      "last_name": "Chen"
+    },
+    {
+      "key": "user.portfolio-owner",
+      "email": "oliver.grant@filla-demo.test",
+      "password": "env:DEMO_PORTFOLIO_OWNER_PASSWORD",
+      "first_name": "Oliver",
+      "last_name": "Grant"
+    },
+    {
+      "key": "user.portfolio-manager",
+      "email": "priya.shah@filla-demo.test",
+      "password": "env:DEMO_PORTFOLIO_MANAGER_PASSWORD",
+      "first_name": "Priya",
+      "last_name": "Shah"
+    },
+    {
+      "key": "user.portfolio-staff",
+      "email": "daniel.brooks@filla-demo.test",
+      "password": "env:DEMO_PORTFOLIO_STAFF_PASSWORD",
+      "first_name": "Daniel",
+      "last_name": "Brooks"
+    }
+  ],
+  "files": [
+    { "key": "file.home-gas-safety", "path": "linden-home/gas-safety-certificate.webp", "mime": "image/webp" },
+    { "key": "file.home-boiler-warranty", "path": "linden-home/boiler-warranty.webp", "mime": "image/webp" },
+    { "key": "file.portfolio-linden-invoice", "path": "linden-portfolio/heating-invoice.webp", "mime": "image/webp" },
+    { "key": "file.castle-eicr", "path": "castle/eicr-certificate.webp", "mime": "image/webp" },
+    { "key": "file.tyne-access-note", "path": "tyne/contractor-visit-note.webp", "mime": "image/webp" },
+    { "key": "file.orchard-warranty", "path": "orchard/appliance-warranty.webp", "mime": "image/webp" }
+  ],
+  "orgs": [
+    {
+      "key": "org.linden-home",
+      "name": "18 Linden Road",
+      "slug": "demo-linden-home",
+      "org_type": "personal",
+      "plan_id": "home_plus",
+      "members": [
+        { "userKey": "user.homeowner", "role": "owner", "is_primary_owner": true, "assigned_property_keys": null }
+      ],
+      "properties": [
+        {
+          "key": "prop.linden-home",
+          "address": "18 Linden Road, London, N16 8QJ",
+          "nickname": "18 Linden Road",
+          "icon_name": "home",
+          "icon_color_hex": "#8EC9CE",
+          "owner_name": "Maya Chen",
+          "owner_email": "maya.chen@filla-demo.test",
+          "contact_name": "Jordan Ellis",
+          "contact_email": "jordan.ellis@filla-demo.test",
+          "contact_phone": "+44 20 7946 0101",
+          "details": { "site_type": "residential", "ownership_type": "owned", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.linden-home.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.linden-home.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.linden-home.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.linden-home.bathroom", "name": "Bathroom", "icon_name": "bath" },
+            { "key": "space.linden-home.attic", "name": "Attic", "icon_name": "warehouse" },
+            { "key": "space.linden-home.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.linden-home.boiler",
+              "name": "Worcester combi boiler",
+              "spaceKey": "space.linden-home.kitchen",
+              "asset_type": "HVAC",
+              "category": "Heating",
+              "serial_number": "WB-LINDEN-001",
+              "condition_score": 68,
+              "status": "active",
+              "icon_name": "flame",
+              "notes": "Gas combi boiler serving heating and hot water."
+            },
+            {
+              "key": "asset.linden-home.smoke-alarm",
+              "name": "Hall smoke alarm",
+              "spaceKey": "space.linden-home.living",
+              "asset_type": "Safety",
+              "category": "Fire Safety",
+              "serial_number": "SA-LINDEN-001",
+              "condition_score": 92,
+              "status": "active",
+              "icon_name": "alarm-smoke",
+              "notes": "Interlinked mains alarm with battery backup."
+            }
+          ],
+          "contractors": [
+            { "key": "contractor.home.heatco", "display_name": "HeatCo Heating" }
+          ],
+          "tasks": [
+            {
+              "key": "task.home.boiler-access",
+              "title": "Boiler leak repair — waiting for access",
+              "description": "HeatCo engineer booked. Waiting for access; keys need to be arranged with the occupier.",
+              "status": "open",
+              "priority": "high",
+              "type": "repair",
+              "due_offset_days": 2,
+              "created_offset_days": -3,
+              "assigned_user_key": "user.homeowner",
+              "contractor_key": "contractor.home.heatco",
+              "space_keys": ["space.linden-home.kitchen"],
+              "asset_keys": ["asset.linden-home.boiler"]
+            },
+            {
+              "key": "task.home.boiler-fault-previous-1",
+              "title": "Boiler pressure fault",
+              "description": "Heating pressure dropped overnight and required repressurising.",
+              "status": "completed",
+              "priority": "medium",
+              "type": "repair",
+              "created_offset_days": -61,
+              "completed_offset_days": -59,
+              "assigned_user_key": "user.homeowner",
+              "contractor_key": "contractor.home.heatco",
+              "space_keys": ["space.linden-home.kitchen"],
+              "asset_keys": ["asset.linden-home.boiler"]
+            },
+            {
+              "key": "task.home.boiler-fault-previous-2",
+              "title": "Boiler heating fault",
+              "description": "Intermittent boiler shutdown investigated by heating engineer.",
+              "status": "completed",
+              "priority": "medium",
+              "type": "repair",
+              "created_offset_days": -124,
+              "completed_offset_days": -121,
+              "assigned_user_key": "user.homeowner",
+              "contractor_key": "contractor.home.heatco",
+              "space_keys": ["space.linden-home.kitchen"],
+              "asset_keys": ["asset.linden-home.boiler"]
+            }
+          ],
+          "records": [
+            {
+              "key": "record.home.gas-safety",
+              "file": "file.home-gas-safety",
+              "file_name": "gas-safety-certificate.webp",
+              "file_type": "image/webp",
+              "title": "Gas Safety Certificate",
+              "category": "Fire Safety",
+              "document_type": "Gas Safety Certificate",
+              "expiry_offset_days": 20,
+              "notes": "Annual CP12 covering the kitchen boiler.",
+              "ocr_text": "Gas Safety Record. Property: 18 Linden Road. Appliance: Worcester combi boiler. Next due: 4 October 2026.",
+              "intake_scan": {
+                "source": "image_scan",
+                "outcome": "valid",
+                "outcome_severity": "none",
+                "primary_issue": null,
+                "dates": [{ "label": "Next due", "date_offset_days": 20, "kind": "expiry" }],
+                "findings": [],
+                "linked_asset_keys": ["asset.linden-home.boiler"]
+              }
+            },
+            {
+              "key": "record.home.boiler-warranty",
+              "file": "file.home-boiler-warranty",
+              "file_name": "boiler-warranty.webp",
+              "file_type": "image/webp",
+              "title": "Boiler warranty",
+              "category": "Warranties",
+              "document_type": "Manufacturer Warranty",
+              "notes": "Warranty record for the Worcester combi boiler.",
+              "ocr_text": "Manufacturer warranty. Product reference WB-LINDEN-001."
+            }
+          ],
+          "compliance_documents": [
+            {
+              "key": "comp.home.gas-safety",
+              "title": "Gas Safety Certificate",
+              "document_type": "Gas Safety Certificate",
+              "expiry_offset_days": 20,
+              "notes": "Annual CP12 for the kitchen boiler.",
+              "linked_asset_keys": ["asset.linden-home.boiler"],
+              "file": "file.home-gas-safety"
+            }
+          ],
+          "conversations": [
+            {
+              "key": "conv.home.boiler-access",
+              "channel": "task",
+              "taskKey": "task.home.boiler-access",
+              "subject": "Boiler leak access",
+              "messages": [
+                {
+                  "author_name": "HeatCo Heating",
+                  "author_role": "contractor",
+                  "direction": "inbound",
+                  "source": "app",
+                  "body": "The engineer is waiting for access. Please confirm keys or a let-in time with the occupier.",
+                  "created_offset_hours": -6
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "org.linden-portfolio",
+      "name": "Linden Residential Portfolio",
+      "slug": "demo-linden-portfolio",
+      "org_type": "business",
+      "plan_id": "portfolio_6_15",
+      "members": [
+        { "userKey": "user.portfolio-owner", "role": "owner", "is_primary_owner": true, "assigned_property_keys": null },
+        { "userKey": "user.portfolio-manager", "role": "manager", "is_primary_owner": false, "assigned_property_keys": null },
+        {
+          "userKey": "user.portfolio-staff",
+          "role": "staff",
+          "is_primary_owner": false,
+          "assigned_property_keys": ["prop.linden-portfolio", "prop.rowan"]
+        }
+      ],
+      "properties": [
+        {
+          "key": "prop.linden-portfolio",
+          "address": "18 Linden Road, London, N16 8QJ",
+          "nickname": "Linden Road",
+          "icon_name": "home",
+          "icon_color_hex": "#8EC9CE",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Jordan Ellis",
+          "contact_email": "jordan.ellis@filla-demo.test",
+          "contact_phone": "+44 20 7946 0201",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.linden-portfolio.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.linden-portfolio.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.linden-portfolio.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.linden-portfolio.bathroom", "name": "Bathroom", "icon_name": "bath" },
+            { "key": "space.linden-portfolio.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.linden-portfolio.boiler",
+              "name": "Vaillant ecoTEC boiler",
+              "spaceKey": "space.linden-portfolio.kitchen",
+              "asset_type": "HVAC",
+              "category": "Heating",
+              "serial_number": "VE-LINDEN-201",
+              "condition_score": 64,
+              "status": "active",
+              "icon_name": "flame",
+              "notes": "Wall-mounted combi boiler."
+            }
+          ],
+          "contractors": [{ "key": "contractor.portfolio.northstar", "display_name": "Northstar Property Services" }],
+          "tasks": [
+            {
+              "key": "task.portfolio.linden-boiler-leak-1",
+              "title": "Kitchen boiler leak investigation",
+              "description": "Water found below the kitchen boiler; engineer to inspect the heating fault.",
+              "status": "open",
+              "priority": "high",
+              "type": "repair",
+              "due_offset_days": 4,
+              "created_offset_days": -10,
+              "assigned_user_key": "user.portfolio-manager",
+              "contractor_key": "contractor.portfolio.northstar",
+              "space_keys": ["space.linden-portfolio.kitchen"],
+              "asset_keys": ["asset.linden-portfolio.boiler"]
+            },
+            {
+              "key": "task.portfolio.linden-boiler-leak-2",
+              "title": "Kitchen boiler leak reported again",
+              "description": "Second report of water beneath the kitchen boiler and loss of heating pressure.",
+              "status": "open",
+              "priority": "urgent",
+              "type": "repair",
+              "due_offset_days": 1,
+              "created_offset_days": -2,
+              "assigned_user_key": "user.portfolio-manager",
+              "contractor_key": "contractor.portfolio.northstar",
+              "space_keys": ["space.linden-portfolio.kitchen"],
+              "asset_keys": ["asset.linden-portfolio.boiler"]
+            }
+          ],
+          "records": [
+            {
+              "key": "record.portfolio.linden-invoice",
+              "file": "file.portfolio-linden-invoice",
+              "file_name": "heating-invoice.webp",
+              "file_type": "image/webp",
+              "title": "Heating engineer invoice",
+              "category": "Contractors",
+              "document_type": "Invoice",
+              "notes": "Previous boiler call-out.",
+              "ocr_text": "Northstar Property Services. Heating engineer attendance at 18 Linden Road."
+            }
+          ],
+          "compliance_documents": [],
+          "conversations": []
+        },
+        {
+          "key": "prop.rowan",
+          "address": "7 Rowan Close, Bristol, BS7 9DP",
+          "nickname": "Rowan Close",
+          "icon_name": "house",
+          "icon_color_hex": "#789A78",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Aisha Morgan",
+          "contact_email": "aisha.morgan@filla-demo.test",
+          "contact_phone": "+44 117 496 0202",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.rowan.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.rowan.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.rowan.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.rowan.bathroom", "name": "Bathroom", "icon_name": "bath" },
+            { "key": "space.rowan.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.rowan.boiler",
+              "name": "Ideal Logic boiler",
+              "spaceKey": "space.rowan.kitchen",
+              "asset_type": "HVAC",
+              "category": "Heating",
+              "serial_number": "IL-ROWAN-007",
+              "condition_score": 81,
+              "status": "active",
+              "icon_name": "flame",
+              "notes": "Combination boiler in kitchen cupboard."
+            }
+          ],
+          "contractors": [{ "key": "contractor.rowan.clearflow", "display_name": "Clearflow Plumbing" }],
+          "tasks": [
+            {
+              "key": "task.rowan.contractor-visit",
+              "title": "Plumber visit for bathroom inspection",
+              "description": "Clearflow plumber booked to inspect the slow bathroom drain. Access visit requires the occupier to be home.",
+              "status": "open",
+              "priority": "medium",
+              "type": "inspection",
+              "due_offset_days": 3,
+              "created_offset_days": -1,
+              "assigned_user_key": "user.portfolio-staff",
+              "contractor_key": "contractor.rowan.clearflow",
+              "space_keys": ["space.rowan.bathroom"]
+            }
+          ],
+          "records": [],
+          "compliance_documents": [],
+          "conversations": [
+            {
+              "key": "conv.rowan.contractor-visit",
+              "channel": "task",
+              "taskKey": "task.rowan.contractor-visit",
+              "subject": "Bathroom inspection appointment",
+              "messages": [
+                {
+                  "author_name": "Clearflow Plumbing",
+                  "author_role": "contractor",
+                  "direction": "inbound",
+                  "source": "app",
+                  "body": "The engineer appointment is confirmed for the booked time.",
+                  "created_offset_hours": -5
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "prop.harbour",
+          "address": "42 Harbour View, Brighton, BN2 5NX",
+          "nickname": "Harbour View",
+          "icon_name": "house",
+          "icon_color_hex": "#557C8C",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Theo Bennett",
+          "contact_email": "theo.bennett@filla-demo.test",
+          "contact_phone": "+44 1273 496 0203",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 3 },
+          "spaces": [
+            { "key": "space.harbour.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.harbour.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.harbour.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.harbour.communal", "name": "Communal Hall", "icon_name": "building" },
+            { "key": "space.harbour.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.harbour.fire-panel",
+              "name": "Communal fire alarm panel",
+              "spaceKey": "space.harbour.communal",
+              "asset_type": "Safety",
+              "category": "Fire Safety",
+              "serial_number": "FP-HARBOUR-042",
+              "condition_score": 88,
+              "status": "active",
+              "icon_name": "siren",
+              "notes": "Fire alarm control panel serving common areas."
+            }
+          ],
+          "contractors": [{ "key": "contractor.harbour.safecheck", "display_name": "SafeCheck Fire Consulting" }],
+          "tasks": [
+            {
+              "key": "task.harbour.fire-risk-inspection",
+              "title": "Fire risk assessment inspection",
+              "description": "Completed inspection of common areas and escape routes. Awaiting the final assessment certificate.",
+              "status": "completed",
+              "priority": "high",
+              "type": "fire risk inspection",
+              "is_compliance": true,
+              "created_offset_days": -18,
+              "completed_offset_days": -12,
+              "assigned_user_key": "user.portfolio-manager",
+              "contractor_key": "contractor.harbour.safecheck",
+              "space_keys": ["space.harbour.communal"],
+              "asset_keys": ["asset.harbour.fire-panel"]
+            }
+          ],
+          "records": [],
+          "compliance_documents": [],
+          "conversations": []
+        },
+        {
+          "key": "prop.castle",
+          "address": "11 Castle Mews, Edinburgh, EH3 9QG",
+          "nickname": "Castle Mews",
+          "icon_name": "house",
+          "icon_color_hex": "#A77B55",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Isla Reid",
+          "contact_email": "isla.reid@filla-demo.test",
+          "contact_phone": "+44 131 496 0204",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.castle.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.castle.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.castle.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.castle.utility", "name": "Utility Cupboard", "icon_name": "plug-zap" },
+            { "key": "space.castle.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.castle.consumer-unit",
+              "name": "Consumer unit",
+              "spaceKey": "space.castle.utility",
+              "asset_type": "Electrical",
+              "category": "Electrical",
+              "serial_number": "CU-CASTLE-011",
+              "condition_score": 84,
+              "status": "active",
+              "icon_name": "circuit-board",
+              "notes": "Main consumer unit for the dwelling."
+            }
+          ],
+          "contractors": [{ "key": "contractor.castle.volt", "display_name": "Voltwise Electrical" }],
+          "tasks": [],
+          "records": [
+            {
+              "key": "record.castle.eicr",
+              "file": "file.castle-eicr",
+              "file_name": "eicr-certificate.webp",
+              "file_type": "image/webp",
+              "title": "Electrical Installation Condition Report",
+              "category": "Electrical",
+              "document_type": "EICR",
+              "expiry_offset_days": 45,
+              "notes": "Periodic electrical inspection report.",
+              "ocr_text": "Electrical Installation Condition Report. Property: 11 Castle Mews. Next inspection due: 29 October 2026.",
+              "intake_scan": {
+                "source": "image_scan",
+                "outcome": "valid",
+                "outcome_severity": "none",
+                "primary_issue": null,
+                "dates": [{ "label": "Next inspection", "date_offset_days": 45, "kind": "expiry" }],
+                "findings": [],
+                "linked_asset_keys": ["asset.castle.consumer-unit"]
+              }
+            }
+          ],
+          "compliance_documents": [
+            {
+              "key": "comp.castle.eicr",
+              "title": "Electrical Installation Condition Report",
+              "document_type": "EICR",
+              "expiry_offset_days": 45,
+              "notes": "Periodic electrical inspection for Castle Mews.",
+              "linked_asset_keys": ["asset.castle.consumer-unit"],
+              "file": "file.castle-eicr"
+            }
+          ],
+          "conversations": []
+        },
+        {
+          "key": "prop.tyne",
+          "address": "6 Tyne Terrace, Newcastle upon Tyne, NE6 1LP",
+          "nickname": "Tyne Terrace",
+          "icon_name": "house",
+          "icon_color_hex": "#C58A61",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Lewis Walker",
+          "contact_email": "lewis.walker@filla-demo.test",
+          "contact_phone": "+44 191 496 0205",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.tyne.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.tyne.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.tyne.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.tyne.bathroom", "name": "Bathroom", "icon_name": "bath" },
+            { "key": "space.tyne.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.tyne.boiler",
+              "name": "Baxi boiler",
+              "spaceKey": "space.tyne.kitchen",
+              "asset_type": "HVAC",
+              "category": "Heating",
+              "serial_number": "BX-TYNE-006",
+              "condition_score": 79,
+              "status": "active",
+              "icon_name": "flame",
+              "notes": "Gas boiler serving heating and hot water."
+            }
+          ],
+          "contractors": [{ "key": "contractor.tyne.warmhome", "display_name": "WarmHome Engineers" }],
+          "tasks": [
+            {
+              "key": "task.tyne.service-visit",
+              "title": "Engineer visit for annual boiler service",
+              "description": "WarmHome engineer appointment booked for the annual service.",
+              "status": "open",
+              "priority": "medium",
+              "type": "service visit",
+              "due_offset_days": 5,
+              "created_offset_days": -2,
+              "assigned_user_key": "user.portfolio-manager",
+              "contractor_key": "contractor.tyne.warmhome",
+              "space_keys": ["space.tyne.kitchen"],
+              "asset_keys": ["asset.tyne.boiler"]
+            }
+          ],
+          "records": [
+            {
+              "key": "record.tyne.access-note",
+              "file": "file.tyne-access-note",
+              "file_name": "contractor-visit-note.webp",
+              "file_type": "image/webp",
+              "title": "Contractor visit note",
+              "category": "Contractors",
+              "document_type": "Visit Note",
+              "notes": "Appointment details retained with the property record.",
+              "ocr_text": "WarmHome Engineers. Annual boiler service appointment."
+            }
+          ],
+          "compliance_documents": [],
+          "conversations": [
+            {
+              "key": "conv.tyne.service-visit",
+              "channel": "task",
+              "taskKey": "task.tyne.service-visit",
+              "subject": "Annual boiler service",
+              "messages": [
+                {
+                  "author_user_key": "user.portfolio-manager",
+                  "author_name": "Priya Shah",
+                  "author_role": "manager",
+                  "direction": "outbound",
+                  "source": "email",
+                  "body": "Tenant notified by email about the engineer visit and confirmed the appointment time.",
+                  "created_offset_hours": -12
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "prop.orchard",
+          "address": "25 Orchard Lane, Cardiff, CF14 6RQ",
+          "nickname": "Orchard Lane",
+          "icon_name": "house",
+          "icon_color_hex": "#D1A04A",
+          "owner_name": "Linden Residential Portfolio",
+          "owner_email": "owner@filla-demo.test",
+          "contact_name": "Carys Hughes",
+          "contact_email": "carys.hughes@filla-demo.test",
+          "contact_phone": "+44 29 2049 0206",
+          "details": { "site_type": "residential", "ownership_type": "managed", "floor_count": 2 },
+          "spaces": [
+            { "key": "space.orchard.kitchen", "name": "Kitchen", "icon_name": "cooking-pot" },
+            { "key": "space.orchard.living", "name": "Living Room", "icon_name": "sofa" },
+            { "key": "space.orchard.bedroom", "name": "Main Bedroom", "icon_name": "bed-double" },
+            { "key": "space.orchard.utility", "name": "Utility Room", "icon_name": "washing-machine" },
+            { "key": "space.orchard.exterior", "name": "Exterior", "icon_name": "trees" }
+          ],
+          "assets": [
+            {
+              "key": "asset.orchard.washing-machine",
+              "name": "Bosch washing machine",
+              "spaceKey": "space.orchard.utility",
+              "asset_type": "Appliance",
+              "category": "Domestic Appliance",
+              "serial_number": "WM-ORCHARD-025",
+              "condition_score": 93,
+              "status": "active",
+              "icon_name": "washing-machine",
+              "notes": "Freestanding washing machine in utility room."
+            }
+          ],
+          "contractors": [],
+          "tasks": [
+            {
+              "key": "task.orchard.gutter-clean",
+              "title": "Clear leaves from front gutter",
+              "description": "Routine autumn maintenance before heavier rainfall.",
+              "status": "completed",
+              "priority": "low",
+              "type": "maintenance",
+              "created_offset_days": -35,
+              "completed_offset_days": -30,
+              "assigned_user_key": "user.portfolio-manager",
+              "space_keys": ["space.orchard.exterior"]
+            }
+          ],
+          "records": [
+            {
+              "key": "record.orchard.warranty",
+              "file": "file.orchard-warranty",
+              "file_name": "appliance-warranty.webp",
+              "file_type": "image/webp",
+              "title": "Washing machine warranty",
+              "category": "Warranties",
+              "document_type": "Manufacturer Warranty",
+              "notes": "Warranty information for the utility-room appliance.",
+              "ocr_text": "Manufacturer warranty. Appliance reference WM-ORCHARD-025."
+            }
+          ],
+          "compliance_documents": [],
+          "conversations": []
+        }
+      ]
+    }
+  ]
+}

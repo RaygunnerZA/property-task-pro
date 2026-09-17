@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ExternalLink,
-  FileText,
-  ImageIcon,
   Loader2,
-  Mail,
   Plus,
   ShieldCheck,
   X,
@@ -25,18 +22,15 @@ import { useToast } from "@/hooks/use-toast";
 import type { IntakeMode } from "@/types/intake";
 import type { IntakeReviewPayload } from "@/components/intake/IntakeInboxPanel";
 import type { IntakeItemStatus, IntakeSourceArtifact } from "@/types/intake-item";
-import {
-  formatIntakeFileSize,
-  isImageMime,
-  isPdfMime,
-  suggestIntakeMode,
-} from "@/lib/intakeReviewSummary";
+import { formatIntakeFileSize, suggestIntakeMode } from "@/lib/intakeReviewSummary";
 import {
   buildIntakeDocumentBriefing,
   intakeOutcomeLabel,
   intakeReadFromLabel,
 } from "@/lib/intakeDocumentBriefing";
-import { extractOfficePlainText, isOfficeDocument } from "@/lib/officeDocumentText";
+import { useInboxFilePreview } from "@/hooks/useInboxFilePreview";
+import { IntakeFileThumb } from "@/components/intake/IntakeFileThumb";
+import { IntakeFilePreviewFrame } from "@/components/intake/IntakeFilePreviewFrame";
 import { cn } from "@/lib/utils";
 import {
   intakeAddRecordDrawerCardClassName,
@@ -69,9 +63,6 @@ export function IntakeReviewSheet({
 }: IntakeReviewSheetProps) {
   const { toast } = useToast();
   const invalidate = useIntakeItemsInvalidator();
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
-  const [officeText, setOfficeText] = useState<string | null>(null);
   const [dismissing, setDismissing] = useState(false);
   const [artifact, setArtifact] = useState<IntakeSourceArtifact | null>(payload?.sourceArtifact ?? null);
   const [itemStatus, setItemStatus] = useState<IntakeItemStatus | null>(null);
@@ -122,58 +113,20 @@ export function IntakeReviewSheet({
     };
   }, [open, payload?.sourceArtifact]);
 
+  const preview = useInboxFilePreview({
+    storagePath: artifact?.storagePath ?? null,
+    mimeType: artifact?.mimeType,
+    fileName: artifact?.fileName,
+    fileSize: payload?.fileSize,
+    enabled: open && Boolean(artifact?.storagePath),
+  });
   const suggestedMode = artifact ? suggestIntakeMode(artifact) : "add_record";
-  const briefing = artifact ? buildIntakeDocumentBriefing(artifact, officeText) : null;
+  const briefing = artifact ? buildIntakeDocumentBriefing(artifact, preview.extractedText) : null;
   const scanStillRunning = itemStatus === "pending" || itemStatus === "processing";
   const fileSizeLabel = formatIntakeFileSize(payload?.fileSize ?? null);
-  const isImage = artifact ? isImageMime(artifact.mimeType) : false;
-  const isPdf = artifact ? isPdfMime(artifact.mimeType, artifact.fileName) : false;
   const isEmailOnly = !artifact?.storagePath && !!artifact?.rawText;
   const displayName = artifact?.fileName || (isEmailOnly ? "Forwarded email" : "Upload");
-  const hasFilePreview = Boolean(artifact?.storagePath && (isImage || isPdf));
-
-  useEffect(() => {
-    if (!open || !artifact?.storagePath) {
-      setPreviewUrl(null);
-      setOfficeText(null);
-      return;
-    }
-
-    let cancelled = false;
-    setPreviewLoading(true);
-    setOfficeText(null);
-
-    void (async () => {
-      try {
-        const { data, error } = await supabase.storage
-          .from("inbox")
-          .createSignedUrl(artifact.storagePath, 3600);
-        if (cancelled) return;
-        if (error || !data?.signedUrl) {
-          setPreviewUrl(null);
-          return;
-        }
-        setPreviewUrl(data.signedUrl);
-
-        const shouldReadOffice =
-          isOfficeDocument(artifact.mimeType, artifact.fileName) &&
-          (payload?.fileSize == null || payload.fileSize <= 8 * 1024 * 1024);
-        if (!shouldReadOffice) return;
-
-        const fileRes = await fetch(data.signedUrl);
-        if (!fileRes.ok || cancelled) return;
-        const buffer = await fileRes.arrayBuffer();
-        const text = await extractOfficePlainText(buffer, artifact.fileName);
-        if (!cancelled && text.trim().length >= 12) setOfficeText(text);
-      } finally {
-        if (!cancelled) setPreviewLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, artifact?.storagePath, artifact?.mimeType, artifact?.fileName, payload?.fileSize]);
+  const openUrl = preview.openUrl;
 
   const handleDismiss = async () => {
     if (!artifact) return;
@@ -236,32 +189,22 @@ export function IntakeReviewSheet({
 
         <div className="mt-4 space-y-5">
           <div className="flex items-start gap-3">
-            {isImage && previewUrl ? (
-              <img
-                src={previewUrl}
-                alt=""
-                className="h-16 w-16 shrink-0 rounded-card object-cover shadow-e1"
-              />
-            ) : (
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-card bg-muted/40 shadow-e1">
-                {isEmailOnly ? (
-                  <Mail className="h-6 w-6 text-muted-foreground" />
-                ) : isImage ? (
-                  <ImageIcon className="h-6 w-6 text-muted-foreground" />
-                ) : (
-                  <FileText className="h-6 w-6 text-muted-foreground" />
-                )}
-              </div>
-            )}
+            <IntakeFileThumb
+              kind={preview.kind}
+              thumbnailUrl={preview.thumbnailUrl}
+              label={displayName}
+              size="md"
+              isEmail={isEmailOnly}
+            />
             <div className="min-w-0 flex-1">
               <p className="text-base font-semibold text-foreground leading-snug">{briefing.title}</p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{displayName}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 <span>{briefing.fileKindLabel}</span>
                 {fileSizeLabel ? <span>{fileSizeLabel}</span> : null}
-                {previewUrl ? (
+                {openUrl ? (
                   <a
-                    href={previewUrl}
+                    href={openUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
@@ -286,6 +229,16 @@ export function IntakeReviewSheet({
               </span>
             ) : null}
           </div>
+
+          {preview.loading || preview.thumbnailUrl || preview.kind === "pdf" || preview.kind === "image" ? (
+            <IntakeFilePreviewFrame
+              kind={preview.kind}
+              thumbnailUrl={preview.thumbnailUrl}
+              openUrl={openUrl}
+              title={displayName}
+              loading={preview.loading && !preview.thumbnailUrl}
+            />
+          ) : null}
 
           <p className="text-sm leading-relaxed text-foreground">{briefing.summary}</p>
 
@@ -324,7 +277,7 @@ export function IntakeReviewSheet({
             </ul>
           ) : null}
 
-          {previewLoading ? (
+          {preview.loading && !briefing.excerpt ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
               Reading document…
@@ -338,12 +291,6 @@ export function IntakeReviewSheet({
                 {briefing.excerpt}
               </p>
             </div>
-          ) : hasFilePreview && previewUrl && isPdf ? (
-            <iframe
-              src={`${previewUrl}#toolbar=0&navpanes=0`}
-              title={displayName}
-              className="h-[min(32vh,280px)] w-full rounded-xl bg-white shadow-engraved"
-            />
           ) : isEmailOnly && artifact.rawText ? (
             <div className="max-h-40 overflow-y-auto rounded-xl bg-muted/35 px-3 py-2.5 shadow-engraved">
               <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">

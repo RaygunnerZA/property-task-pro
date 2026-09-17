@@ -1,33 +1,49 @@
-import { useMemo, useEffect, useRef } from "react";
-import { format, isSameDay, startOfDay } from "date-fns";
+import { useMemo, useLayoutEffect, useRef } from "react";
+import { format, startOfDay } from "date-fns";
 import { Plus } from "lucide-react";
 import TaskCard from "@/components/TaskCard";
 import MagneticScrollArea from "@/components/ui/MagneticScrollArea";
 import {
   CALENDAR_AFTERNOON_TIME,
   CALENDAR_MORNING_TIME,
-  hasAssigneeDefinedScheduleTime,
+  hasExplicitTime,
   parseScheduleDateTime,
 } from "@/lib/calendarTaskSchedule";
-import { intakeReportIssueMicroClassName } from "@/lib/intake-action-buttons";
 import { cn } from "@/lib/utils";
 
 const SCHEDULE_TIME_COLUMN_CLASS = "w-[81px] sm:w-[5.5rem] flex-shrink-0";
 
-const SCHEDULE_DAY_DIVIDER_CLASS = "pt-[14px] border-t-2 border-white/50";
+const SCHEDULE_DAY_DIVIDER_CLASS =
+  "pt-[15px] pb-[15px] transition-[padding] duration-200 ease-out motion-reduce:transition-none group-hover/day:pt-0 group-hover/day:pb-[10px] group-focus-within/day:pt-0 group-focus-within/day:pb-[10px] max-md:pt-0 max-md:pb-[10px]";
 
 const SCHEDULE_DATE_LABEL_CLASS =
   "text-sm font-semibold text-primary pb-[11px]";
 
 const SCHEDULE_TIME_BADGE_CLASS =
-  "text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground w-[50px] h-6 -ml-1 px-[9px] py-[5px] rounded-xl bg-black/5 shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)]";
+  "text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground w-[57px] h-6 -ml-1 pl-[9px] pr-[16px] py-[5px] rounded-xl bg-black/5 shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)]";
 
 function formatScheduleTimeLabel(time: Date, hasSpecificTime: boolean): string | null {
   if (!hasSpecificTime) return null;
   const hhmm = format(time, "HH:mm");
-  if (hhmm === CALENDAR_MORNING_TIME) return "MORNING";
-  if (hhmm === CALENDAR_AFTERNOON_TIME) return "AFTERNOON";
+  if (hhmm === CALENDAR_MORNING_TIME) return null;
+  if (hhmm === CALENDAR_AFTERNOON_TIME) return null;
   return hhmm;
+}
+
+function alignScheduleDayIntoView(target: HTMLElement, innerScroller: HTMLElement | null) {
+  const innerCanScroll =
+    innerScroller != null && innerScroller.scrollHeight > innerScroller.clientHeight + 1;
+  if (innerCanScroll && innerScroller) {
+    const top =
+      target.getBoundingClientRect().top -
+      innerScroller.getBoundingClientRect().top +
+      innerScroller.scrollTop;
+    innerScroller.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    return;
+  }
+  // Workbench uses page scroll (left · centre · right move together). The inner
+  // list is not overflow-clipped, so we have to move `main` to the selected day.
+  target.scrollIntoView({ block: "start", inline: "nearest", behavior: "auto" });
 }
 
 interface ScheduleViewProps {
@@ -49,16 +65,14 @@ function ScheduleCreateTaskRow({
 }) {
   const dateLabel = format(date, "MMMM d");
   return (
-    <div className="flex items-start gap-3 pt-1">
-      <div className={SCHEDULE_TIME_COLUMN_CLASS} />
+    <div className="flex justify-center pt-[10px] pb-[10px]">
       <button
         type="button"
         onClick={() => onCreate(date)}
-        className={cn(intakeReportIssueMicroClassName, "h-8 px-3")}
+        className="flex h-7 w-7 items-center justify-center rounded-[8px] text-muted-foreground/80 transition-colors hover:bg-primary/20 hover:text-primary"
         aria-label={`Create task on ${dateLabel}`}
       >
         <Plus className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
-        Create Task
       </button>
     </div>
   );
@@ -71,7 +85,7 @@ function ScheduleCreateTaskRow({
  * - Day, date, and time labels live in the left column beside each task card
  * - Only shows hours that have tasks (no empty hour slots)
  * - Time-scheduled tasks first, "Any Time" tasks at bottom
- * - Hover (or selected day) expands a Create Task action after that day's tasks
+ * - Hover (or selected day) reveals a subtle + to create a task for that day
  */
 export function ScheduleView({
   tasks,
@@ -82,6 +96,8 @@ export function ScheduleView({
   onCreateForDate,
 }: ScheduleViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
   const propertyMap = useMemo(() => {
     return new Map(properties.map((p) => [p.id, p]));
   }, [properties]);
@@ -107,7 +123,7 @@ export function ScheduleView({
       withDate.push({
         task,
         time: dueDate,
-        hasSpecificTime: hasAssigneeDefinedScheduleTime(task, dueValue),
+        hasSpecificTime: hasExplicitTime(dueValue),
       });
     });
 
@@ -149,32 +165,81 @@ export function ScheduleView({
     return Array.from(keys).sort();
   }, [tasksByDate, selectedDate]);
 
-  useEffect(() => {
-    if (!selectedDate) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
-    const dateKey = format(startOfDay(selectedDate), "yyyy-MM-dd");
-    const target = container.querySelector(`#schedule-day-${dateKey}`);
-    if (!(target instanceof HTMLElement)) return;
+  useLayoutEffect(() => {
+    const root = rootRef.current;
 
-    // Scroll only this list — `scrollIntoView` also moves ancestor page/shell scrollers
-    // (e.g. switching Calendar → Schedule on the workbench jumps the desktop layout).
-    const top =
-      target.getBoundingClientRect().top -
-      container.getBoundingClientRect().top +
-      container.scrollTop;
-    container.scrollTo({ top: Math.max(0, top), behavior: "auto" });
+    const fitToViewport = () => {
+      if (!root) return;
+      const top = root.getBoundingClientRect().top;
+      const available = Math.max(320, window.innerHeight - top - 16);
+      root.style.maxHeight = `${available}px`;
+      const inner = scrollContainerRef.current;
+      const spacer = spacerRef.current;
+      if (inner && spacer) {
+        spacer.style.height = `${Math.max(0, inner.clientHeight - 88)}px`;
+      }
+    };
+
+    const dateKey = selectedDate
+      ? format(startOfDay(selectedDate), "yyyy-MM-dd")
+      : null;
+
+    const align = () => {
+      fitToViewport();
+      if (!dateKey) return true;
+      const target = document.getElementById(`schedule-day-${dateKey}`);
+      if (!(target instanceof HTMLElement) || target.getBoundingClientRect().height < 8) {
+        return false;
+      }
+      const inner = scrollContainerRef.current;
+      if (!inner || inner.scrollHeight <= inner.clientHeight + 1) {
+        return false;
+      }
+      alignScheduleDayIntoView(target, inner);
+      const edge = inner.getBoundingClientRect().top;
+      return Math.abs(target.getBoundingClientRect().top - edge) <= 48;
+    };
+
+    let cancelled = false;
+    let attempts = 0;
+
+    const tick = () => {
+      if (cancelled) return;
+      const done = align();
+      attempts += 1;
+      if (!done && attempts < 90) {
+        requestAnimationFrame(tick);
+      }
+    };
+
+    tick();
+
+    const inner = scrollContainerRef.current;
+    const resizeObserver = new ResizeObserver(() => {
+      if (!cancelled) align();
+    });
+    if (root) resizeObserver.observe(root);
+    if (inner) resizeObserver.observe(inner);
+
+    const later = [80, 250, 600].map((ms) => window.setTimeout(align, ms));
+    window.addEventListener("resize", fitToViewport);
+    return () => {
+      cancelled = true;
+      resizeObserver.disconnect();
+      later.forEach((id) => window.clearTimeout(id));
+      window.removeEventListener("resize", fitToViewport);
+    };
   }, [selectedDate, dates]);
 
   return (
-    <div className="flex h-full w-full relative">
+    <div ref={rootRef} className="relative flex h-full min-h-0 w-full overflow-hidden">
       {/* Task Stack — internal scroll with magnetic edge squish + top/bottom shadow hints */}
       <MagneticScrollArea
         ref={scrollContainerRef}
         className="min-w-0 flex-1"
         viewportClassName="px-2 pt-0.5 pb-4"
       >
-        <div className="space-y-6">
+        <div>
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {
             const dateTasks = tasksByDate.get(dateKey) || [];
@@ -182,17 +247,13 @@ export function ScheduleView({
             const isTodayDate = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
             const weekdayLabel = isTodayDate ? "Today" : format(date, "EEEE");
             const dateLabel = format(date, "MMMM d");
-            const isSelectedDay = selectedDate ? isSameDay(date, selectedDate) : false;
-
             return (
               <div
                 key={dateKey}
                 id={`schedule-day-${dateKey}`}
-                className={cn(
-                  "group/day list-stagger space-y-3",
-                  dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS
-                )}
+                className="group/day scroll-mt-[calc(var(--header-height,70px)+12px)]"
               >
+                <div className="space-y-3">
                 {dateTasks.map(({ task, time, hasSpecificTime }, taskIndex) => {
                   const property = task.property_id
                     ? propertyMap.get(task.property_id)
@@ -255,21 +316,30 @@ export function ScheduleView({
                     </div>
                   </div>
                 ) : null}
+                </div>
 
                 {onCreateForDate ? (
                   <div
-                    data-open={isSelectedDay || dateTasks.length === 0 ? "true" : undefined}
                     className={cn(
-                      "grid transition-[grid-template-rows] duration-200 ease-out",
+                      "grid min-h-0 transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none",
                       "grid-rows-[0fr]",
                       "group-hover/day:grid-rows-[1fr] group-focus-within/day:grid-rows-[1fr]",
-                      "data-[open=true]:grid-rows-[1fr]",
                       "max-md:grid-rows-[1fr]"
                     )}
                   >
                     <div className="min-h-0 overflow-hidden">
                       <ScheduleCreateTaskRow date={date} onCreate={onCreateForDate} />
                     </div>
+                  </div>
+                ) : null}
+
+                {dayIndex < dates.length - 1 ? (
+                  <div
+                    aria-hidden
+                    data-schedule-day-rule
+                    className={SCHEDULE_DAY_DIVIDER_CLASS}
+                  >
+                    <div className="perforation-list" />
                   </div>
                 ) : null}
               </div>
@@ -314,6 +384,12 @@ export function ScheduleView({
             </div>
           )}
         </div>
+        {/* Lets any selected day scroll to the top of the pane. */}
+        <div
+          ref={spacerRef}
+          aria-hidden
+          className="pointer-events-none w-full shrink-0"
+        />
       </MagneticScrollArea>
     </div>
   );

@@ -100,9 +100,15 @@ export function CentreWorkbench({
 
   const showMobileCalendar = activeTab === "tasks";
 
+  const calendarFullBleed =
+    activeTab === "calendar" &&
+    // Reach DualPane centre outer edges (md:px-1 / layout:px-2) so month edge washes
+    // can paint column-wide without being clipped by this pane's overflow-x-clip.
+    "md:-mx-1 md:w-[calc(100%+0.5rem)] layout:-mx-2 layout:w-[calc(100%+1rem)]";
+
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-col bg-transparent pb-1">
-      <div className={centreScrollClass}>
+      <div className={cn(centreScrollClass, calendarFullBleed)}>
         {showMobileCalendar ? (
           <div className="mt-3 md:hidden">
             <CentreWorkbenchMobileCalendar
@@ -123,7 +129,9 @@ export function CentreWorkbench({
           key={activeTab}
           className={cn(
             "panel-enter flex min-h-0 min-w-0 flex-col",
-            activeTab === "calendar" ? "flex-none" : "min-h-0 flex-1",
+            activeTab === "calendar" && initialCalendarView !== "schedule"
+              ? "flex-none"
+              : "min-h-0 flex-1",
             // Title-band padding lives on Tasks/Calendar tab headers (aligns with left H1).
             showMobileCalendar ? "pt-3 md:pt-0" : "pt-0"
           )}

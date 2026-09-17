@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#ede7dc"/><rect x="120" y="54" width="960" height="692" rx="24" fill="#fffdf7" stroke="#789a78" stroke-width="8"/>
+  <text x="175" y="144" fill="#31343d" font-family="Arial,sans-serif" font-size="50" font-weight="700">CONTRACTOR VISIT NOTE</text><text x="175" y="218" fill="#789a78" font-family="Arial,sans-serif" font-size="30">WarmHome Engineers</text>
+  <line x1="175" y1="270" x2="1025" y2="270" stroke="#d7ccba" stroke-width="5"/><text x="175" y="350" fill="#31343d" font-family="Arial,sans-serif" font-size="30">Annual boiler service appointment</text><text x="175" y="412" fill="#31343d" font-family="Arial,sans-serif" font-size="30">Property: 6 Tyne Terrace</text>
+  <rect x="175" y="500" width="850" height="112" rx="14" fill="#e4eee9"/><text x="220" y="568" fill="#315a4b" font-family="Arial,sans-serif" font-size="31" font-weight="700">Appointment confirmed</text>
+</svg>

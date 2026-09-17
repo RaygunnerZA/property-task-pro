@@ -795,6 +795,7 @@ function TaskCardComponent({
         imageUrl={imageUrl}
         alt={t.title}
         variant="horizontal"
+        fadeEdge={thumbnailFirst ? "right" : "left"}
         dimmed={dimThumbnail || isConfirmingComplete}
       >
         {statusMark}

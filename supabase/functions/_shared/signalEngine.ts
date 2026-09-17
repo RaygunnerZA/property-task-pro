@@ -268,19 +268,34 @@ export async function fetchGooglePollen(
 export async function geocodeAddress(
   address: string,
   apiKey: string
-): Promise<{ lat: number; lng: number; placeId?: string; formatted?: string } | null> {
+): Promise<{
+  lat: number;
+  lng: number;
+  placeId?: string;
+  formatted?: string;
+  addressComponents?: unknown;
+} | null> {
   const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
   url.searchParams.set("address", address);
   url.searchParams.set("key", apiKey);
-  const res = await fetch(url.toString());
-  if (!res.ok) return null;
-  const json = await res.json();
-  const result = json.results?.[0];
-  if (!result?.geometry?.location) return null;
-  return {
-    lat: result.geometry.location.lat,
-    lng: result.geometry.location.lng,
-    placeId: result.place_id,
-    formatted: result.formatted_address,
-  };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 12_000);
+  try {
+    const res = await fetch(url.toString(), { signal: controller.signal });
+    if (!res.ok) return null;
+    const json = await res.json();
+    const result = json.results?.[0];
+    if (!result?.geometry?.location) return null;
+    return {
+      lat: result.geometry.location.lat,
+      lng: result.geometry.location.lng,
+      placeId: result.place_id,
+      formatted: result.formatted_address,
+      addressComponents: result.address_components,
+    };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }

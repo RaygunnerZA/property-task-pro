@@ -3,6 +3,7 @@
  * Unifies Create Task, Details, and Filla AI into a single concertina.
  * Uses Create Task design as primary style for closed headers.
  */
+import type { ReactNode } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FillaIcon } from "@/components/filla/FillaIcon";
@@ -24,9 +25,16 @@ export interface ConcertinaSection {
   title: string;
   isExpanded?: boolean;
   onToggle?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   /** Inline block without accordion header (e.g. drop zone). */
   variant?: "accordion" | "static";
+  /**
+   * When false, body stays open and the chevron collapse control is omitted.
+   * Use `headerTrailing` for an alternate header control (e.g. open-mode switch).
+   */
+  collapsible?: boolean;
+  /** Replaces the expand/collapse chevron when provided (or shown beside title when not collapsible). */
+  headerTrailing?: ReactNode;
 }
 
 interface ThirdColumnConcertinaProps {
@@ -62,34 +70,60 @@ export function ThirdColumnConcertina({ sections, className }: ThirdColumnConcer
           );
         }
 
-        const isExpanded = section.isExpanded ?? false;
+        const collapsible = section.collapsible !== false;
+        const isExpanded = collapsible ? (section.isExpanded ?? false) : true;
+        const headerTrailing =
+          section.headerTrailing ??
+          (collapsible ? (
+            isExpanded ? (
+              <ChevronUp className="h-5 w-5 shrink-0 text-primary" />
+            ) : (
+              <ChevronDown className="h-5 w-5 shrink-0 text-primary" />
+            )
+          ) : null);
+
+        const headerClassName = cn(
+          SECTION_HEADER_CLASS,
+          isFirst && "rounded-t-xl",
+          isLast && !isExpanded && "rounded-b-xl",
+          !isFirst && "border-t-0"
+        );
+
+        const headerInner = (
+          <>
+            <div className="flex min-w-0 items-center gap-2">
+              {section.id === "assistant" && (
+                <FillaIcon size={20} className="shrink-0 text-primary" />
+              )}
+              <h2 className="text-lg font-semibold text-primary">{section.title}</h2>
+            </div>
+            {headerTrailing ? (
+              <div
+                className="shrink-0"
+                onClick={(event) => event.stopPropagation()}
+                onKeyDown={(event) => event.stopPropagation()}
+              >
+                {headerTrailing}
+              </div>
+            ) : null}
+          </>
+        );
 
         return (
           <div key={section.id} className="flex flex-col">
-            <button
-              type="button"
-              aria-expanded={isExpanded}
-              aria-controls={`concertina-body-${section.id}`}
-              onClick={section.onToggle}
-              className={cn(
-                SECTION_HEADER_CLASS,
-                isFirst && "rounded-t-xl",
-                isLast && !isExpanded && "rounded-b-xl",
-                !isFirst && "border-t-0"
-              )}
-            >
-              <div className="flex items-center gap-2">
-                {section.id === "assistant" && (
-                  <FillaIcon size={20} className="shrink-0 text-primary" />
-                )}
-                <h2 className="text-lg font-semibold text-primary">{section.title}</h2>
-              </div>
-              {isExpanded ? (
-                <ChevronUp className="h-5 w-5 text-primary shrink-0" />
-              ) : (
-                <ChevronDown className="h-5 w-5 text-primary shrink-0" />
-              )}
-            </button>
+            {collapsible ? (
+              <button
+                type="button"
+                aria-expanded={isExpanded}
+                aria-controls={`concertina-body-${section.id}`}
+                onClick={section.onToggle}
+                className={headerClassName}
+              >
+                {headerInner}
+              </button>
+            ) : (
+              <div className={headerClassName}>{headerInner}</div>
+            )}
 
             <div
               id={`concertina-body-${section.id}`}

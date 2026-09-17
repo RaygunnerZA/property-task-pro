@@ -38,22 +38,32 @@ export function parseScheduleDateTime(value: string | null | undefined): Date | 
   }
 }
 
-/** True when the value carries an explicit time (not midnight date-only). */
+/**
+ * True when the due value carries a clock time the user set (not date-only,
+ * midnight, or the 09:00 / 14:00 period defaults written at create/drag).
+ */
 export function hasExplicitTime(value: string | null | undefined): boolean {
   if (!value) return false;
   const trimmed = value.trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return false;
+  const match = trimmed.match(/T(\d{2}):(\d{2})/);
+  if (!match) return false;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (minutes !== 0) return true;
+  if (hours === 0) return false;
+  if (hours === 9 || hours === 14) return false;
   const dt = parseScheduleDateTime(trimmed);
   if (!dt) return false;
-  return dt.getHours() !== 0 || dt.getMinutes() !== 0;
+  if (dt.getUTCHours() === 0 && dt.getUTCMinutes() === 0) return false;
+  return true;
 }
 
-/** Schedule list/column time labels: assignee must be set and due must carry a real time. */
+/** Schedule column time labels follow {@link hasExplicitTime}. */
 export function hasAssigneeDefinedScheduleTime(
-  task: { assigned_user_id?: string | null },
+  _task: { assigned_user_id?: string | null },
   dueValue: string | null | undefined
 ): boolean {
-  if (!task.assigned_user_id) return false;
   return hasExplicitTime(dueValue);
 }
 

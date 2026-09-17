@@ -39,7 +39,11 @@ import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { columnShellClass, dialogContentWideClass } from "@/lib/layoutClasses";
+import { columnShellClass, dialogContentWideClass, dialogContentXWideClass } from "@/lib/layoutClasses";
+import { TaskDetailMediaSlideshow } from "@/components/tasks/detail/TaskDetailMediaSlideshow";
+import {
+  useCanTaskMediaSplit,
+} from "@/hooks/useCanTaskMediaSplit";
 import { useDataContext } from "@/contexts/DataContext";
 import { useAuth } from "@/hooks/useAuth";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
@@ -94,7 +98,6 @@ import {
 } from "@/components/tasks/detail/TaskDetailChecklistTab";
 import { TaskDetailActionBar } from "@/components/tasks/detail/TaskDetailActionBar";
 import { TaskProgressUpdateSheet } from "@/components/tasks/detail/TaskProgressUpdateSheet";
-import { TaskModalNavChevrons } from "@/components/tasks/detail/TaskModalNavChevrons";
 import { findNextOpenTaskId } from "@/lib/findNextOpenTask";
 import { findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
 import { useMobileTaskSwipeNav } from "@/hooks/useMobileTaskSwipeNav";
@@ -143,6 +146,7 @@ export function TaskDetailPanel({
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { capture: captureGeo } = useGeoCaptureOnAction();
   const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
+  const canMediaSplit = useCanTaskMediaSplit();
 
   useEffect(() => {
     if (taskId) writeLastTaskId(taskId);
@@ -1439,6 +1443,18 @@ export function TaskDetailPanel({
       }),
     [allAttachments]
   );
+  const heroImages = useMemo(
+    () =>
+      imageAttachments
+        .map((image: any, index: number) => ({
+          id: String(image.id || `img-${index}`),
+          src: image.thumbnail_url || image.optimized_url || image.file_url || "",
+          heroSrc: image.optimized_url || image.file_url || image.thumbnail_url || "",
+          alt: image.file_name || `Task image ${index + 1}`,
+        }))
+        .filter((image) => Boolean(image.src)),
+    [imageAttachments]
+  );
   const assignerUser = useMemo(
     () =>
       resolveTaskAssignerUser(task as any, members, user, {
@@ -1654,7 +1670,7 @@ export function TaskDetailPanel({
   const panelWrapper = (
     content: ReactNode,
     title?: string,
-    options?: { hideCloseButton?: boolean }
+    options?: { hideCloseButton?: boolean; mediaSplit?: boolean }
   ) => {
     if (variant === "column") {
       return (
@@ -1692,7 +1708,14 @@ export function TaskDetailPanel({
         }}
       >
         <DialogContent
-          className="flex max-h-[calc(100dvh-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0"
+          className={cn(
+            "flex max-h-[calc(100dvh-2rem)] min-w-0 flex-col gap-0 overflow-hidden p-0",
+            options?.mediaSplit &&
+              cn(
+                dialogContentXWideClass,
+                "h-[min(90dvh,calc(100dvh-2rem))] max-h-[min(90dvh,calc(100dvh-2rem))]"
+              )
+          )}
           aria-describedby="task-detail-panel-desc"
           // Modal keeps Dialog chrome close outside the scroll body so it stays
           // reachable when messages/compose push the hero off-screen.
@@ -1761,17 +1784,13 @@ export function TaskDetailPanel({
             Task detail: description, checklist, evidence, and timeline.
             </DialogDescription>
           </DialogHeader>
-          {onOpenTask && !showAnnotationEditor ? (
-            <TaskModalNavChevrons
-              prevId={prevTaskId}
-              nextId={nextTaskId}
-              onOpen={openAdjacentTask}
-              prevLabel="Previous task"
-              nextLabel="Next task"
-            />
-          ) : null}
           <div
-            className="flex max-h-[calc(100dvh-2rem)] min-h-0 w-full flex-col overflow-hidden rounded-xl lg:rounded-lg"
+            className={cn(
+              "flex min-h-0 w-full flex-col overflow-hidden rounded-xl lg:rounded-lg",
+              options?.mediaSplit
+                ? "h-full max-h-[min(90dvh,calc(100dvh-2rem))]"
+                : "max-h-[calc(100dvh-2rem)]"
+            )}
             {...swipeNav}
           >
             {content}
@@ -1888,6 +1907,9 @@ export function TaskDetailPanel({
     </div>
   );
 
+  const useMediaSplitModal =
+    variant === "modal" && heroImages.length > 0 && canMediaSplit;
+
   const panelContent = (
     <div
       ref={panelScrollRef}
@@ -1902,14 +1924,7 @@ export function TaskDetailPanel({
         hero={
           <TaskDetailHeroMeta
             title={taskTitle}
-            images={imageAttachments
-              .map((image: any, index: number) => ({
-                id: String(image.id || `img-${index}`),
-                src: image.thumbnail_url || image.optimized_url || image.file_url || "",
-                heroSrc: image.optimized_url || image.file_url || image.thumbnail_url || "",
-                alt: image.file_name || `Task image ${index + 1}`,
-              }))
-              .filter((image) => Boolean(image.src))}
+            images={useMediaSplitModal ? [] : heroImages}
             selectedIndex={selectedImageIndex}
             onSelectImage={setSelectedImageIndex}
             onOpenImage={(index) => {
@@ -2091,29 +2106,68 @@ export function TaskDetailPanel({
 
   // Single-scroll detail body (hero → checklist → messages → actions → activity).
   // Modal: pin Close outside the scroll region so compose/keyboard can't push it away.
+  // With images in fullscreen modal: left slideshow + right details.
   return (
     <>
     {panelWrapper(
-        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
-          {variant === "modal" ? (
-            <button
-              type="button"
-              onClick={onClose}
+        useMediaSplitModal ? (
+          <div className="relative flex min-h-0 flex-1 flex-row overflow-hidden">
+            <TaskDetailMediaSlideshow
+              images={heroImages}
+              onOpenImage={(index) => {
+                setSelectedImageIndex(index);
+                const img = imageAttachments[index];
+                if (!img?.id) return;
+                setEditingImageId(img.id);
+                setShowAnnotationEditor(true);
+              }}
+              className="min-h-0 min-w-[50%] flex-1 rounded-l-xl"
+            />
+            <div
               className={cn(
-                "absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-md",
-                "bg-background/90 text-foreground shadow-sm ring-1 ring-border/40 backdrop-blur-sm",
-                "transition-colors hover:bg-muted/80",
-                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                "relative flex min-h-0 shrink-0 flex-col overflow-hidden bg-background",
+                // ~400px detail pane; never more than half so the image stays ≥50|50.
+                "w-[min(100%,400px)] max-w-[50%]"
               )}
-              aria-label="Close task"
             >
-              <X className="h-4 w-4" />
-            </button>
-          ) : null}
-          {panelContent}
-        </div>,
+              <button
+                type="button"
+                onClick={onClose}
+                className={cn(
+                  "absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-md",
+                  "bg-background/90 text-foreground shadow-sm ring-1 ring-border/40 backdrop-blur-sm",
+                  "transition-colors hover:bg-muted/80",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+                aria-label="Close task"
+              >
+                <X className="h-4 w-4" />
+              </button>
+              {panelContent}
+            </div>
+          </div>
+        ) : (
+          <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+            {variant === "modal" ? (
+              <button
+                type="button"
+                onClick={onClose}
+                className={cn(
+                  "absolute right-3 top-3 z-30 flex h-8 w-8 items-center justify-center rounded-md",
+                  "bg-background/90 text-foreground shadow-sm ring-1 ring-border/40 backdrop-blur-sm",
+                  "transition-colors hover:bg-muted/80",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                )}
+                aria-label="Close task"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+            {panelContent}
+          </div>
+        ),
       "Task Details",
-      { hideCloseButton: true }
+      { hideCloseButton: true, mediaSplit: useMediaSplitModal }
     )}
 
     <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>

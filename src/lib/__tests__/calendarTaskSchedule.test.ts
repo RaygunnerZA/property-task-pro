@@ -7,6 +7,7 @@ import {
   formatScheduleDateTime,
   getPeriodFromScheduleValue,
   hasAssigneeDefinedScheduleTime,
+  hasExplicitTime,
   parseDropTargetId,
   parsePlacementDragId,
   weekIsAfternoonOnly,
@@ -65,19 +66,17 @@ describe("calendarTaskSchedule", () => {
     });
   });
 
-  it("requires assignee + explicit time for schedule time labels", () => {
-    expect(
-      hasAssigneeDefinedScheduleTime(
-        { assigned_user_id: "user-1" },
-        "2026-05-28T14:30"
-      )
-    ).toBe(true);
+  it("treats only a user-set clock time as explicit", () => {
+    expect(hasExplicitTime("2026-05-28T14:30")).toBe(true);
+    expect(hasExplicitTime("2026-05-28T11:15:00.000Z")).toBe(true);
+    expect(hasExplicitTime("2026-05-28")).toBe(false);
+    expect(hasExplicitTime("2026-05-28T00:00:00.000Z")).toBe(false);
+    expect(hasExplicitTime("2026-05-28T09:00")).toBe(false);
+    expect(hasExplicitTime("2026-05-28T09:00:00.000Z")).toBe(false);
+    expect(hasExplicitTime("2026-05-28T14:00")).toBe(false);
     expect(
       hasAssigneeDefinedScheduleTime({ assigned_user_id: null }, "2026-05-28T14:30")
-    ).toBe(false);
-    expect(
-      hasAssigneeDefinedScheduleTime({ assigned_user_id: "user-1" }, "2026-05-28")
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("builds schedule updates for due and milestone sources", () => {

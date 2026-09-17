@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#efe8d8"/><rect x="54" y="54" width="1092" height="692" rx="24" fill="#fffdf7" stroke="#cc9a35" stroke-width="8"/>
+  <text x="105" y="145" fill="#31343d" font-family="Arial,sans-serif" font-size="52" font-weight="700">MANUFACTURER WARRANTY</text><rect x="105" y="194" width="990" height="14" fill="#cc9a35"/>
+  <text x="105" y="292" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Covered product: Worcester combi boiler</text><text x="105" y="350" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Reference: WB-LINDEN-001</text>
+  <path d="M600 432l92 34v72c0 82-59 126-92 144-33-18-92-62-92-144v-72z" fill="#315a4b"/><path d="M554 541l31 31 65-75" fill="none" stroke="#fffdf7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

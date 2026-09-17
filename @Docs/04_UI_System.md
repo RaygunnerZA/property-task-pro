@@ -87,6 +87,8 @@ These are **separate primary nav destinations**. The centre column shows page co
 
 Tasks is **work-driven**. Records is **evidence-driven**.
 
+**Tasks centre list tabs** (All · Urgent · My tasks · Messages) are primary views. Choosing a tab clears the filter bar (status, FILTER chip, Messages author) and reloads that list — including when the same tab is already selected.
+
 **Place entities — Spaces · Assets · People**
 
 Spaces, Assets, and People are **separate primary nav destinations** for place entities (not a nested Property → Tasks tree). Routes stay under `/property/*` for continuity.
@@ -139,7 +141,7 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
 **Chip options chevron:** Fact chips with a dropdown hide the chevron until hover (or focus-within / open menu). The chip expands right to reveal it — same pattern as the removable X.
 
-**Remaining seam:** same SortableItem / DroppableZone / drag-data union can add `kind: "task" | "record"` — Tasks → status/area lanes; Records → space-linked filing.
+**Records explorer:** Centre Records uses a compact horizontal paper-cut category carousel above a full-width document workspace. Locations open in a right drawer (browse filter or drag-to-file). Category and location are intersecting filters; `attachment_spaces` links are additive.
 
 **Workbench column geometry (single system)**
 
@@ -318,7 +320,7 @@ All design tokens are defined in:
 1. **Title block** — large section illustration to the left of H1 (`font-display` / Fraunces) + short description
 2. **Section health dashboard** — three informational tabs styled like the Inflow property card stats (**omit** the radial completion graph)
 3. **Perforation** line
-4. **Expandable calendar** — **Tasks** and **Records**: collapsed by default. **Calendar Schedule**: shown in the left column (date picker for the agenda). **Omitted on Calendar Planner** (centre owns the month grid) and on Spaces / Assets / People / Home. Month/title opens Calendar Planner. Date click opens Schedule for that day; empty days open Create Task with the due date prefilled and description focused. Weekdays and day titles stagger in, then pressed-box fill stamps (full intro ≤1500ms). Hovering a Schedule day expands **Create Task** below that day's tasks (always visible on the selected day).
+4. **Expandable calendar** — **Tasks** and **Records**: collapsed by default. **Calendar Schedule**: shown in the left column (date picker for the agenda). **Omitted on Calendar Planner** (centre owns the month grid) and on Spaces / Assets / People / Home. Month/title opens Calendar Planner. Date click opens Schedule for that day; empty days open Create Task with the due date prefilled and description focused. Weekdays and day titles stagger in, then pressed-box fill stamps (full intro ≤1500ms). Hovering a Schedule day reveals a subtle **+** under that day's tasks (always visible on the selected day and empty days). Clock times appear in the left column only when the task was created with a specific time (not date-only, midnight, or the 09:00 / 14:00 period defaults). Planner month chrome (month name, stacked year, coral chevrons) matches the mini calendar caption.
 5. **Filla suggested actions** — up to 3
 6. **Recent** — compact list via shared `RecentPanel` / `RecentPanelRow`: calendar day-cell **pressed paper** on each row, mono uppercase section label, `text-sm` title + caption. **No outer card wrapping rows** (no boxes on boxes).
 

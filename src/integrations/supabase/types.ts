@@ -4304,60 +4304,90 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          address_components: Json | null
+          address_formatted: string | null
+          address_validated_at: string | null
           contact_email: string | null
           contact_name: string | null
           contact_phone: string | null
+          country_code: string | null
           created_at: string | null
+          geo_accuracy_m: number | null
+          geocoded_at: string | null
           health_score: number | null
           icon_color_hex: string | null
           icon_name: string | null
           id: string
           is_archived: boolean
           last_environmental_scan_at: string | null
+          latitude: number | null
+          longitude: number | null
           nickname: string | null
           org_id: string | null
           owner_email: string | null
           owner_name: string | null
+          place_id: string | null
+          postal_code: string | null
           thumbnail_url: string | null
           units: number | null
           updated_at: string
         }
         Insert: {
           address: string
+          address_components?: Json | null
+          address_formatted?: string | null
+          address_validated_at?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          country_code?: string | null
           created_at?: string | null
+          geo_accuracy_m?: number | null
+          geocoded_at?: string | null
           health_score?: number | null
           icon_color_hex?: string | null
           icon_name?: string | null
           id?: string
           is_archived?: boolean
           last_environmental_scan_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
           nickname?: string | null
           org_id?: string | null
           owner_email?: string | null
           owner_name?: string | null
+          place_id?: string | null
+          postal_code?: string | null
           thumbnail_url?: string | null
           units?: number | null
           updated_at?: string
         }
         Update: {
           address?: string
+          address_components?: Json | null
+          address_formatted?: string | null
+          address_validated_at?: string | null
           contact_email?: string | null
           contact_name?: string | null
           contact_phone?: string | null
+          country_code?: string | null
           created_at?: string | null
+          geo_accuracy_m?: number | null
+          geocoded_at?: string | null
           health_score?: number | null
           icon_color_hex?: string | null
           icon_name?: string | null
           id?: string
           is_archived?: boolean
           last_environmental_scan_at?: string | null
+          latitude?: number | null
+          longitude?: number | null
           nickname?: string | null
           org_id?: string | null
           owner_email?: string | null
           owner_name?: string | null
+          place_id?: string | null
+          postal_code?: string | null
           thumbnail_url?: string | null
           units?: number | null
           updated_at?: string
@@ -4477,6 +4507,74 @@ export type Database = {
             foreignKeyName: "property_details_property_id_fkey"
             columns: ["property_id"]
             isOneToOne: true
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      property_enrichments: {
+        Row: {
+          created_at: string
+          facts: Json
+          id: string
+          org_id: string
+          property_id: string
+          provider: string
+          retrieved_at: string
+          source_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          facts?: Json
+          id?: string
+          org_id: string
+          property_id: string
+          provider: string
+          retrieved_at?: string
+          source_id?: string | null
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          facts?: Json
+          id?: string
+          org_id?: string
+          property_id?: string
+          provider?: string
+          retrieved_at?: string
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_enrichments_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_enrichments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "property_enrichments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "property_enrichments_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
             referencedRelation: "properties_view"
             referencedColumns: ["id"]
           },
@@ -8521,10 +8619,12 @@ export type Database = {
           p_address_components?: Json
           p_address_formatted?: string
           p_address_validated?: boolean
+          p_country_code?: string
           p_geo_accuracy_m?: number
           p_latitude?: number
           p_longitude?: number
           p_place_id?: string
+          p_postal_code?: string
           p_property_id: string
         }
         Returns: boolean

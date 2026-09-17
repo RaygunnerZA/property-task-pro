@@ -839,7 +839,6 @@
   .calendar-day-cell:hover .calendar-day-cell__add,
   .calendar-day-cell:focus-within .calendar-day-cell__add {
     opacity: 1;
-    pointer-events: auto;
   }
 
   /*

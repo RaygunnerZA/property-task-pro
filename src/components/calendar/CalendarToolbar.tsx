@@ -1,5 +1,5 @@
 import { addMonths, subMonths } from "date-fns";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,7 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
+import {
+  CalendarMonthYearLabel,
+  CalendarNavChevrons,
+} from "@/components/calendar/CalendarMonthYearLabel";
 import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 
 export type CalendarViewMode = "month" | "week" | "day" | "agenda";
@@ -56,27 +59,14 @@ export function CalendarToolbar({
         onChange={(id) => onViewModeChange(id as CalendarViewMode)}
       />
 
-      <div className="flex items-center gap-0">
-        <button
-          type="button"
-          onClick={() => onMonthChange(subMonths(currentMonth, 1))}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
-          aria-label="Previous month"
-        >
-          <ChevronLeft className="h-4 w-4 text-accent" />
-        </button>
-        <CalendarMonthYearLabel
-          date={currentMonth}
-          className="min-w-[88px] justify-center"
+      <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
+        <CalendarMonthYearLabel date={currentMonth} />
+        <CalendarNavChevrons
+          onPrev={() => onMonthChange(subMonths(currentMonth, 1))}
+          onNext={() => onMonthChange(addMonths(currentMonth, 1))}
+          prevLabel="Previous month"
+          nextLabel="Next month"
         />
-        <button
-          type="button"
-          onClick={() => onMonthChange(addMonths(currentMonth, 1))}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted/50"
-          aria-label="Next month"
-        >
-          <ChevronRight className="h-4 w-4 text-accent" />
-        </button>
       </div>
 
       <div className="flex items-center gap-2">

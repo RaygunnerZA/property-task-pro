@@ -68,6 +68,8 @@ import { FILLA_TURQUOISE } from "@/lib/brandColors";
 import { WORKBENCH_SECTION_ROUTES } from "@/lib/mainNavigation";
 import { useMinLayoutBreakpoint } from "@/hooks/use-min-layout-breakpoint";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useTaskOpenMode } from "@/hooks/useTaskOpenMode";
+import { TaskOpenModeSwitch } from "@/components/tasks/TaskOpenModeSwitch";
 import {
   centreWorkbenchTasksPath,
   centreWorkbenchPathForTab,
@@ -148,6 +150,8 @@ export default function Dashboard({
   const [tasksMessagesTabActive, setTasksMessagesTabActiveState] = useState(false);
   const [openTaskChecklistCollapsed, setOpenTaskChecklistCollapsed] = useState(false);
   const isLargeScreen = useMinLayoutBreakpoint();
+  const { mode: taskOpenMode, setMode: setTaskOpenMode } = useTaskOpenMode();
+  const openTasksInFullscreen = !isLargeScreen || taskOpenMode === "fullscreen";
   const [showCreateTask, setShowCreateTask] = useState(false);
   const [workbenchIntakeMode, setWorkbenchIntakeMode] = useState<IntakeMode>("report_issue");
   const [modalInitialIntakeMode, setModalInitialIntakeMode] = useState<IntakeMode>("report_issue");
@@ -157,7 +161,14 @@ export default function Dashboard({
   const [expandedSection, setExpandedSection] = useState<ExpandedSection>(null);
   const { isOpen: assistantOpen, closeAssistant, openAssistant, assistantContext, messages, proposedAction, loading, onSendMessage, onConfirmAction, onRejectAction } = useAssistantContext();
 
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(() => {
+    const raw = searchParams.get(WORKBENCH_DATE_QUERY);
+    if (raw && /^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+      const parsed = parseISO(raw);
+      if (isValid(parsed)) return startOfDay(parsed);
+    }
+    return new Date();
+  });
   const [filterToApply, setFilterToApply] = useState<string | null>(null);
   const [assistantFiltersToApply, setAssistantFiltersToApply] = useState<string[] | null>(null);
   const [centreWorkbenchFiltersToApply, setCentreWorkbenchFiltersToApply] = useState<
@@ -622,7 +633,7 @@ export default function Dashboard({
         handleWorkbenchTabChange("issues");
       }
       setSelectedItem({ type: "task", id: taskId });
-      if (isLargeScreen) {
+      if (isLargeScreen && taskOpenMode === "panel") {
         setExpandedSection("details");
         setIntakeMinimized(true);
         pinThirdColumnTop();
@@ -631,17 +642,17 @@ export default function Dashboard({
 
     window.addEventListener("filla:assistant-open-task", onOpenTask);
     return () => window.removeEventListener("filla:assistant-open-task", onOpenTask);
-  }, [isLargeScreen, handleWorkbenchTabChange, pathname, pinThirdColumnTop]);
+  }, [isLargeScreen, handleWorkbenchTabChange, pathname, pinThirdColumnTop, taskOpenMode]);
 
   const handleTaskClick = useCallback((taskId: string) => {
     setOpenTaskChecklistCollapsed(false);
-    if (isLargeScreen) {
+    if (isLargeScreen && taskOpenMode === "panel") {
       setExpandedSection("details");
       setIntakeMinimized(true);
       pinThirdColumnTop();
     }
     setSelectedItem({ type: "task", id: taskId });
-  }, [isLargeScreen, pinThirdColumnTop]);
+  }, [isLargeScreen, pinThirdColumnTop, taskOpenMode]);
 
   // `/task/:id` deep links land here so the task opens in the context column.
   useEffect(() => {
@@ -1021,7 +1032,7 @@ export default function Dashboard({
   ]);
 
   const showWorkbenchDetailSection =
-    selectedItem?.type === "task" ||
+    (selectedItem?.type === "task" && taskOpenMode === "panel") ||
     selectedItem?.type === "message" ||
     selectedItem?.type === "signal";
   const detailsSectionTitle =
@@ -1032,6 +1043,10 @@ export default function Dashboard({
         : selectedItem?.type === "signal"
           ? "Signal"
           : "Details";
+
+  const taskOpenModeSwitch = (
+    <TaskOpenModeSwitch value={taskOpenMode} onChange={setTaskOpenMode} />
+  );
 
   const intakeScopedPropertyId = useMemo(() => {
     if (selectedPropertyIds.size !== 1) return undefined;
@@ -1101,8 +1116,8 @@ export default function Dashboard({
                 {
                   id: "details" as const,
                   title: detailsSectionTitle,
-                  isExpanded: expandedSection === "details",
-                  onToggle: () => setExpandedSection((s) => (s === "details" ? null : "details")),
+                  collapsible: false,
+                  headerTrailing: taskOpenModeSwitch,
                   children: (
                     <div
                       key={`${selectedItem.type}-${selectedItem.id}`}
@@ -1138,7 +1153,24 @@ export default function Dashboard({
                   ),
                 },
               ]
-            : []),
+            : [
+                {
+                  id: "task-open-mode" as const,
+                  title: "",
+                  variant: "static" as const,
+                  children: (
+                    <div className="flex items-start justify-between gap-3 px-4 py-2">
+                      <div className="min-w-0 flex-1 flex flex-col gap-[5px]">
+                        <h2 className="text-lg font-semibold text-primary">Open task</h2>
+                        <p className="text-muted-foreground text-xs leading-snug">
+                          Choose full screen or the right panel when you open a task.
+                        </p>
+                      </div>
+                      <div className="shrink-0 pt-0.5">{taskOpenModeSwitch}</div>
+                    </div>
+                  ),
+                },
+              ]),
           {
             id: "add-to-filla",
             title: "",
@@ -1388,20 +1420,21 @@ export default function Dashboard({
         />
       )}
 
-      {/* Detail Panel - Modal variant for smaller screens */}
-      {selectedItem && !isLargeScreen && (
-        selectedItem.type === "task" ? (
-          <TaskDetailPanel
-            taskId={selectedItem.id}
-            onClose={handleClosePanel}
-            variant="modal"
-            initialChecklistCollapsed={openTaskChecklistCollapsed}
-            onOpenTask={(id) => {
-              setOpenTaskChecklistCollapsed(false);
-              setSelectedItem({ type: "task", id });
-            }}
-          />
-        ) : selectedItem.type === "message" ? (
+      {/* Detail Panel — modal on phone, or fullscreen task preference on wide screens */}
+      {selectedItem?.type === "task" && openTasksInFullscreen ? (
+        <TaskDetailPanel
+          taskId={selectedItem.id}
+          onClose={handleClosePanel}
+          variant="modal"
+          initialChecklistCollapsed={openTaskChecklistCollapsed}
+          onOpenTask={(id) => {
+            setOpenTaskChecklistCollapsed(false);
+            setSelectedItem({ type: "task", id });
+          }}
+        />
+      ) : null}
+      {selectedItem && !isLargeScreen && selectedItem.type !== "task" ? (
+        selectedItem.type === "message" ? (
           <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
         ) : (
           <SignalFeedDetailPanel
@@ -1412,7 +1445,7 @@ export default function Dashboard({
             onOpenAddToFilla={openHomePendingReview}
           />
         )
-      )}
+      ) : null}
       </div>
     </WorkbenchControlsProvider>
   );

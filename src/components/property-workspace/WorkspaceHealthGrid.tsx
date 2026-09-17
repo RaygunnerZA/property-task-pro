@@ -86,7 +86,7 @@ export function WorkspaceHealthGrid({
   return (
     <div
       className={cn(
-        "grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px]",
+        "grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px]",
         className
       )}
       role="navigation"

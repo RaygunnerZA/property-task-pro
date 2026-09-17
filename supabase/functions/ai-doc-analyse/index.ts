@@ -15,6 +15,7 @@ import {
   isOfficeDocument,
   isVisionDocument,
 } from "../_shared/officeDocumentText.ts";
+import { extractPdfPlainText, isPdfBytes } from "../_shared/pdfDocumentText.ts";
 import { buildIntakeDocStub } from "../_shared/intakeDocStub.ts";
 
 const corsHeaders = {
@@ -900,6 +901,8 @@ Deno.serve(async (req) => {
         officeText = await extractOfficePlainText(bytes.buffer, file_name);
       } else if (effectiveMime.startsWith("text/")) {
         officeText = new TextDecoder().decode(bytes);
+      } else if (effectiveMime.includes("pdf") || file_name.toLowerCase().endsWith(".pdf") || isPdfBytes(bytes)) {
+        officeText = await extractPdfPlainText(bytes);
       }
 
       const useText = officeText.trim().length >= 40;

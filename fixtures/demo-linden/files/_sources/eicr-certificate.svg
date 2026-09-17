@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#eee8dc"/><rect x="54" y="54" width="1092" height="692" rx="24" fill="#fffdf7" stroke="#245b72" stroke-width="8"/>
+  <rect x="54" y="54" width="1092" height="112" rx="24" fill="#245b72"/><text x="105" y="126" fill="#fffdf7" font-family="Arial,sans-serif" font-size="44" font-weight="700">ELECTRICAL CONDITION REPORT</text>
+  <text x="105" y="236" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Property: 11 Castle Mews, Edinburgh</text><text x="105" y="294" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Installation: Domestic electrical system</text>
+  <line x1="105" y1="350" x2="1095" y2="350" stroke="#d7ccba" stroke-width="5"/><text x="105" y="420" fill="#31343d" font-family="Arial,sans-serif" font-size="29">Overall assessment</text><text x="840" y="420" fill="#217a59" font-family="Arial,sans-serif" font-size="29" font-weight="700">SATISFACTORY</text>
+  <text x="105" y="504" fill="#31343d" font-family="Arial,sans-serif" font-size="29">Next inspection</text><text x="758" y="504" fill="#b35b38" font-family="Arial,sans-serif" font-size="29" font-weight="700">29 October 2026</text>
+  <circle cx="1000" cy="626" r="70" fill="#cc9a35"/><path d="M1000 575v102M954 626h92" stroke="#fffdf7" stroke-width="16" stroke-linecap="round"/>
+</svg>

@@ -8,6 +8,8 @@ import { markQuickWinComplete } from "@/lib/quickWins";
 interface DocumentUploadZoneProps {
   propertyId: string;
   onUploadComplete?: () => void;
+  /** Called with created attachment ids after a successful upload (property-level by default). */
+  onUploaded?: (createdIds: string[]) => void;
   accept?: string;
   className?: string;
 }
@@ -17,6 +19,7 @@ const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
 export function DocumentUploadZone({
   propertyId,
   onUploadComplete,
+  onUploaded,
   accept = DEFAULT_ACCEPT,
   className,
 }: DocumentUploadZoneProps) {
@@ -32,12 +35,13 @@ export function DocumentUploadZone({
     try {
       const created = await upload(Array.from(files));
       const celebrated = markQuickWinComplete("upload", propertyId);
-      if (!celebrated) {
+      if (!celebrated && !onUploaded) {
         toast({
           title: "Upload complete",
-          description: `${created.length} document(s) uploaded`,
+          description: `${created.length} document(s) uploaded · kept at property level`,
         });
       }
+      onUploaded?.(created);
       onUploadComplete?.();
     } catch (e: any) {
       toast({

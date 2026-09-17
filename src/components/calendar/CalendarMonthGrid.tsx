@@ -781,6 +781,31 @@ function CalendarDayCell({
   }, [date, onCreateForDate]);
 
   const fillRow = !compact || isDragging;
+  const fullCellCreate = Boolean(onCreateForDate) && !occupied;
+
+  const dateNumberClassName = cn(
+    "relative inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
+    flushEdges ? "mx-0.5" : "-mx-px",
+    // Below expanded hands so stacked cards aren't clipped by the date badge.
+    handExpanded ? "z-[1]" : "z-[2]",
+    compact ? "h-5 w-5" : "h-6 w-6",
+    // Mute date chrome only — task chips must keep full colour on weekends / out-of-month.
+    (isWeekendColumn || !inMonth) && "opacity-50"
+  );
+
+  const dateNumberInner = (
+    <span
+      className={cn(
+        "inline-flex items-center justify-center rounded-sharp",
+        compact ? "h-5 w-5" : "h-6 w-6",
+        isSelected && "bg-white text-foreground opacity-100",
+        isTodayDate && !isSelected && "ring-1 ring-accent/60",
+        !inMonth && !isSelected && "text-muted-foreground/50"
+      )}
+    >
+      {date.getDate()}
+    </span>
+  );
 
   return (
     <div
@@ -796,51 +821,25 @@ function CalendarDayCell({
         if (!occupied) handleCreate();
       }}
     >
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          if (occupied && onCreateForDate) {
-            handleCreate();
-            return;
-          }
-          onDateSelect?.(date);
-        }}
-        onDoubleClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          if (!occupied) handleCreate();
-        }}
-        aria-label={
-          occupied && onCreateForDate
-            ? `Create task on ${dateLabel}`
-            : `Select ${dateLabel}`
-        }
-        title={occupied && onCreateForDate ? "Create task" : undefined}
-        className={cn(
-          "relative inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
-          flushEdges ? "mx-0.5" : "-mx-px",
-          // Below expanded hands so stacked cards aren't clipped by the date badge.
-          handExpanded ? "z-[1]" : "z-[2]",
-          compact ? "h-5 w-5" : "h-6 w-6",
-          // Mute date chrome only — task chips must keep full colour on weekends / out-of-month.
-          (isWeekendColumn || !inMonth) && "opacity-50"
-        )}
-      >
-        <span
-          className={cn(
-            "inline-flex items-center justify-center rounded-sharp",
-            compact ? "h-5 w-5" : "h-6 w-6",
-            isSelected && "bg-white text-foreground opacity-100",
-            isTodayDate && !isSelected && "ring-1 ring-accent/60",
-            !inMonth && !isSelected && "text-muted-foreground/50"
-          )}
-        >
-          {date.getDate()}
+      {fullCellCreate ? (
+        <span className={dateNumberClassName} aria-hidden>
+          {dateNumberInner}
         </span>
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDateSelect?.(date);
+          }}
+          aria-label={`Select ${dateLabel}`}
+          className={dateNumberClassName}
+        >
+          {dateNumberInner}
+        </button>
+      )}
 
-      {onCreateForDate ? (
+      {fullCellCreate ? (
         <button
           type="button"
           onClick={(e) => {
@@ -848,13 +847,18 @@ function CalendarDayCell({
             handleCreate();
           }}
           className={cn(
-            "calendar-day-cell__add absolute bottom-1 right-1 z-[4] inline-flex h-5 w-5 items-center justify-center rounded-[4px]",
-            "bg-black/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+            "absolute inset-0 z-[3] flex items-center justify-center rounded-[5px] bg-transparent",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30",
+            isDragging && "pointer-events-none"
           )}
           aria-label={`Create task on ${dateLabel}`}
           title={`Create task on ${dateLabel}`}
         >
-          <Plus className="h-3.5 w-3.5 text-white" strokeWidth={2.75} aria-hidden />
+          <Plus
+            className="calendar-day-cell__add h-5 w-5 text-primary icon-shadow-neu-pressed"
+            strokeWidth={2.25}
+            aria-hidden
+          />
         </button>
       ) : null}
       <div

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#f3eee3"/><rect x="54" y="54" width="1092" height="692" rx="24" fill="#fffdf7" stroke="#315a4b" stroke-width="8"/>
+  <rect x="54" y="54" width="1092" height="112" rx="24" fill="#315a4b"/><text x="105" y="126" fill="#fffdf7" font-family="Arial,sans-serif" font-size="48" font-weight="700">GAS SAFETY RECORD</text>
+  <text x="105" y="236" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Property: 18 Linden Road, London</text><text x="105" y="292" fill="#31343d" font-family="Arial,sans-serif" font-size="31">Appliance: Worcester combi boiler</text>
+  <line x1="105" y1="350" x2="1095" y2="350" stroke="#d7ccba" stroke-width="5"/><text x="105" y="420" fill="#31343d" font-family="Arial,sans-serif" font-size="29">Inspection outcome</text><text x="940" y="420" fill="#217a59" font-family="Arial,sans-serif" font-size="29" font-weight="700">VALID</text>
+  <text x="105" y="504" fill="#31343d" font-family="Arial,sans-serif" font-size="29">Next due</text><text x="795" y="504" fill="#b35b38" font-family="Arial,sans-serif" font-size="29" font-weight="700">4 October 2026</text>
+  <circle cx="1000" cy="626" r="70" fill="#c86d4b"/><path d="M965 625l24 25 48-58" fill="none" stroke="#fffdf7" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

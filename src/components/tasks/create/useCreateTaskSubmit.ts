@@ -28,6 +28,7 @@ import type { SubtaskInput } from "./SubtasksSection";
 import type { PendingTaskFile } from "./ImageUploadSection";
 import type { PendingInvitation } from "./tabs/WhoTab";
 import type { CreateTaskPrefill } from "../CreateTaskModal";
+import { resolveTaskTitle } from "@/lib/taskTitleFromDescription";
 import { toErrorMessage } from "@/lib/error";
 import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
@@ -153,16 +154,8 @@ export function useCreateTaskSubmit({
 
     // ── Title resolution ─────────────────────────────────────────────────────
 
-    let finalTitle = title.trim();
+    const finalTitle = resolveTaskTitle(title, aiTitleGenerated ?? "", description);
     if (!finalTitle) {
-      if (aiTitleGenerated?.trim()) {
-        finalTitle = aiTitleGenerated.trim();
-      } else if (description.trim()) {
-        finalTitle = description.trim().substring(0, 50);
-        if (description.trim().length > 50) finalTitle += "...";
-      }
-    }
-    if (!finalTitle.trim()) {
       toast({ title: "Add a description", description: "Enter a task title or description to continue.", variant: "destructive" });
       return;
     }

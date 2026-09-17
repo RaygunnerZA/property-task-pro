@@ -27,11 +27,19 @@ AUTHORITY SCORING (0-1) - Be precise:
 - Uncertain or missing → 0.0-0.3 (Very Low - only include if context strongly suggests)
 
 TITLE GENERATION:
-- Create a concise, actionable title (3-8 words)
-- Use imperative mood when appropriate (e.g., "Fix leak in kitchen")
-- Capitalize first letter only
-- No trailing punctuation
-- Be specific but brief
+- Summarise the WHOLE note into a concise, actionable title (3–6 words ideal, max 8)
+- Capture the work to do (verb + object), not the story lead-in
+- Do NOT copy or lightly trim the start of the description verbatim
+- BAD: "This afternoon Oliver said the dishwasher" (narrative opening)
+- BAD: "Upload the latest EICR certificate to the property records" (too long / restates note)
+- GOOD: "Fix dishwasher and clean gutters"
+- GOOD: "Upload EICR certificate"
+- BAD: "Replace boiler before spring as" (cuts mid-clause)
+- GOOD: "Replace boiler before spring"
+- Prefer imperative mood (e.g., "Fix leak in kitchen")
+- Include the key object/place when known
+- Capitalize first letter only; no trailing punctuation
+- If the note is too vague for a useful summary, return an empty string for title
 
 PRIORITY DETECTION:
 - "urgent", "asap", "emergency", "critical" → "urgent"

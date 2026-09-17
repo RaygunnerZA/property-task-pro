@@ -173,6 +173,7 @@ export function CreateTaskModal({
     aiTitleGenerated,
     setUserEditedTitle,
     shouldShowTitleField,
+    commitTitleOnDescriptionBlur,
     handleChipRemove,
     handleChipSelect,
     generateVerbLabel,
@@ -307,6 +308,7 @@ export function CreateTaskModal({
             onSubtasksChange={setSubtasks}
             description={description}
             onDescriptionChange={setDescription}
+            onDescriptionBlur={commitTitleOnDescriptionBlur}
             onPasteImages={handlePasteImages}
             className="bg-transparent"
             activeTemplateName={activeTemplate?.name ?? null}

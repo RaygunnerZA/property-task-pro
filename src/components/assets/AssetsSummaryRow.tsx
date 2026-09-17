@@ -132,7 +132,7 @@ export function AssetsSummaryRow({
   }, [assets]);
 
   return (
-    <div className="grid w-full min-w-0 grid-cols-3 items-stretch gap-y-[5px] divide-x divide-border/30">
+    <div className="grid w-full min-w-0 grid-cols-3 items-stretch gap-[3px]">
       <MetricBlock
         value={counts.active}
         line1="active"

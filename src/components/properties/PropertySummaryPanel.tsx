@@ -546,7 +546,7 @@ export function PropertySummaryPanel({
         {showPhoneWorkEntries ? (
           <div
             className={cn(
-              "grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden",
+              "grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden",
               sectionRevealClass
             )}
             style={sectionRevealStyle(0)}
@@ -576,7 +576,7 @@ export function PropertySummaryPanel({
         {!showPhoneWorkEntries ? (
           <div
             className={cn(
-              "grid grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:hidden",
+              "grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden",
               sectionRevealClass
             )}
             style={sectionRevealStyle(0)}
@@ -606,7 +606,7 @@ export function PropertySummaryPanel({
             >
               <div className="min-h-0 overflow-hidden">
                 {/* Desktop: three metric blocks collapse with the snapshot below. */}
-                <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid">
+                <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:grid">
                   {desktopStats.map((stat) => (
                     <StatColumn
                       key={stat.centreTab}
@@ -662,7 +662,7 @@ export function PropertySummaryPanel({
         ) : (
           <div
             className={cn(
-              "hidden grid-cols-3 grid-rows-1 items-stretch gap-y-[5px] divide-x divide-border/30 border-b border-border/30 py-[10px] md:grid",
+              "hidden grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:grid",
               sectionRevealClass
             )}
             style={sectionRevealStyle(0)}

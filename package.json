@@ -29,7 +29,9 @@
     "db:diagnose": "node scripts/supabase-db-bootstrap.mjs",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "db:cutover-stamp": "node scripts/cutover-stamp-baseline.mjs"
+    "db:cutover-stamp": "node scripts/cutover-stamp-baseline.mjs",
+    "seed:demo-linden": "node scripts/seed-demo-linden.mjs --reset",
+    "seed:demo-linden:staging": "node scripts/seed-demo-linden.mjs --reset --allow-staging"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -78,6 +80,7 @@
     "lucide-react": "^0.462.0",
     "motion": "^12.38.0",
     "next-themes": "^0.3.0",
+    "pdfjs-dist": "^4.10.38",
     "posthog-js": "^1.364.1",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",

@@ -20,7 +20,7 @@ import {
   startOfWeek,
 } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, ChevronUp } from "lucide-react";
+import { ChevronUp } from "lucide-react";
 import {
   buildTasksByDate,
   dayCellBackground,
@@ -28,7 +28,15 @@ import {
   type DayUrgency,
   type TaskDateData,
 } from "@/lib/calendarDayMeta";
-import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
+import {
+  CalendarMonthYearLabel,
+  CalendarNavChevrons,
+  CalendarNavChevronIcon,
+  CALENDAR_MONTH_TITLE_CLASS,
+  CALENDAR_MONTH_TITLE_EMBEDDED_CLASS,
+  CALENDAR_NAV_CHEVRON_BUTTON_CLASS,
+  CALENDAR_NAV_CHEVRON_GROUP_CLASS,
+} from "@/components/calendar/CalendarMonthYearLabel";
 
 function resolveDayUrgency(data: TaskDateData | undefined): DayUrgency {
   if (!data || data.total === 0) return "none";
@@ -144,6 +152,7 @@ function MiniCalDayButton({
   return (
     <button
       type="button"
+      data-mini-cal-date={format(date, "yyyy-MM-dd")}
       onClick={onClick}
       className={cn(
         miniCalDayButtonClassName(variant, {
@@ -157,7 +166,7 @@ function MiniCalDayButton({
     >
       {fill ? (
         <span
-          className="mini-cal-day-stamp"
+          className="mini-cal-day-stamp pointer-events-none"
           style={{
             backgroundColor: fill,
             boxShadow: MINI_CALENDAR_DAY_SHADOW,
@@ -167,7 +176,7 @@ function MiniCalDayButton({
       ) : null}
       <span
         className={cn(
-          "mini-cal-day-title relative z-[1] font-medium",
+          "mini-cal-day-title pointer-events-none relative z-[1] font-medium",
           geo.textClass,
           isTodayDate && !isSelected && "font-semibold"
         )}
@@ -176,7 +185,7 @@ function MiniCalDayButton({
       </span>
       {dot ? (
         <span
-          className="mini-cal-day-dot absolute left-[3px] top-[3px] z-[1] h-1 w-1 rounded-full"
+          className="mini-cal-day-dot pointer-events-none absolute left-[3px] top-[3px] z-[1] h-1 w-1 rounded-full"
           style={{ backgroundColor: dot }}
           aria-hidden
         />
@@ -209,10 +218,8 @@ function miniCalMonthClassNames(variant: MiniCalVariant) {
       "font-semibold text-foreground",
       isEmbedded ? "text-base" : "text-sm"
     ),
-    nav: "flex h-[26px] items-center gap-[17px] pt-[3px]",
-    nav_button: cn(
-      "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
-    ),
+    nav: CALENDAR_NAV_CHEVRON_GROUP_CLASS,
+    nav_button: CALENDAR_NAV_CHEVRON_BUTTON_CLASS,
     nav_button_previous: "",
     nav_button_next: "",
     table: "w-full border-collapse",
@@ -250,6 +257,16 @@ function buildWeekDays(weekStart: Date): Date[] {
 
 function stripWidth(el: HTMLElement | null): number {
   return Math.max(el?.clientWidth ?? 0, 1);
+}
+
+function dateFromMiniCalDayTarget(target: EventTarget | null): Date | undefined {
+  const el = target instanceof Element ? target.closest("[data-mini-cal-date]") : null;
+  if (!(el instanceof HTMLElement)) return undefined;
+  const key = el.getAttribute("data-mini-cal-date");
+  if (!key) return undefined;
+  const [year, month, day] = key.split("-").map(Number);
+  if (!year || !month || !day) return undefined;
+  return new Date(year, month - 1, day);
 }
 
 function shouldCommitWeek(offsetPx: number, velocityPxPerMs: number, width: number): -1 | 1 | 0 {
@@ -357,6 +374,7 @@ const MiniCalendarWeekStrip = forwardRef<
   const suppressClickRef = useRef(false);
   const lastSampleRef = useRef<{ x: number; t: number } | null>(null);
   const velocityRef = useRef(0);
+  const pendingDateRef = useRef<Date | undefined>(undefined);
   const dragOffsetRef = useRef(0);
   const trackOffsetRef = useRef(0);
   const slideDirectionRef = useRef<"next" | "prev" | null>(null);
@@ -372,8 +390,10 @@ const MiniCalendarWeekStrip = forwardRef<
   >(null);
   const displayWeekRef = useRef(displayWeekStart);
   const onWeekChangeRef = useRef(onWeekChange);
+  const onDateSelectRef = useRef(onDateSelect);
   displayWeekRef.current = displayWeekStart;
   onWeekChangeRef.current = onWeekChange;
+  onDateSelectRef.current = onDateSelect;
   slideDirectionRef.current = slideDirection;
   incomingWeekRef.current = incomingWeekStart;
 
@@ -670,7 +690,7 @@ const MiniCalendarWeekStrip = forwardRef<
     lastSampleRef.current = { x: clientX, t: now };
   };
 
-  const beginGestureAt = (clientX: number, clientY: number, target: HTMLElement, pointerId: number) => {
+  const beginGestureAt = (clientX: number, clientY: number, pointerId: number) => {
     interruptMotion();
     clearWheelIdle();
 
@@ -681,12 +701,13 @@ const MiniCalendarWeekStrip = forwardRef<
     isDraggingRef.current = false;
     velocityRef.current = 0;
     lastSampleRef.current = { x: clientX, t: performance.now() };
-    target.setPointerCapture?.(pointerId);
   };
 
   const onPointerDown = (event: React.PointerEvent) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    beginGestureAt(event.clientX, event.clientY, event.currentTarget as HTMLElement, event.pointerId);
+    pendingDateRef.current = dateFromMiniCalDayTarget(event.target);
+    // Do not capture yet — capturing here swallows the day-button click.
+    beginGestureAt(event.clientX, event.clientY, event.pointerId);
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -698,15 +719,15 @@ const MiniCalendarWeekStrip = forwardRef<
     if (!isDraggingRef.current) {
       if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
       if (Math.abs(dx) <= Math.abs(dy) * 1.05) {
-        try {
-          (event.currentTarget as HTMLElement).releasePointerCapture?.(event.pointerId);
-        } catch {
-          /* ignore */
-        }
         pointerIdRef.current = null;
         return;
       }
       isDraggingRef.current = true;
+      try {
+        (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+      } catch {
+        /* ignore */
+      }
     }
 
     event.preventDefault();
@@ -723,11 +744,20 @@ const MiniCalendarWeekStrip = forwardRef<
       /* already released */
     }
 
-    if (!isDraggingRef.current) return;
-    isDraggingRef.current = false;
+    if (isDraggingRef.current) {
+      isDraggingRef.current = false;
+      pendingDateRef.current = undefined;
+      suppressClickRef.current = true;
+      sampleVelocity(event.clientX);
+      settleFromOffset(dragOffsetRef.current, velocityRef.current);
+      return;
+    }
+
+    const date = pendingDateRef.current ?? dateFromMiniCalDayTarget(event.target);
+    pendingDateRef.current = undefined;
+    if (!date) return;
     suppressClickRef.current = true;
-    sampleVelocity(event.clientX);
-    settleFromOffset(dragOffsetRef.current, velocityRef.current);
+    onDateSelectRef.current?.(date);
   };
 
   const onClickCapture = (event: React.MouseEvent) => {
@@ -1016,10 +1046,7 @@ export function FillaMiniCalendar({
     <CalendarMonthYearLabel
       date={captionMonth}
       onClick={onMonthTitleClick}
-      monthClassName={cn(
-        "font-semibold text-ink pl-[7px]",
-        isEmbedded ? "text-base" : "text-xl"
-      )}
+      monthClassName={isEmbedded ? CALENDAR_MONTH_TITLE_EMBEDDED_CLASS : CALENDAR_MONTH_TITLE_CLASS}
     />
   );
 
@@ -1062,12 +1089,8 @@ export function FillaMiniCalendar({
                   formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),
                 }}
                 components={{
-                  IconLeft: () => (
-                    <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />
-                  ),
-                  IconRight: () => (
-                    <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />
-                  ),
+                  IconLeft: () => <CalendarNavChevronIcon direction="prev" />,
+                  IconRight: () => <CalendarNavChevronIcon direction="next" />,
                   CaptionLabel: ({ displayMonth: captionMonth }) => monthTitleLabel(captionMonth),
                   Day: renderDayButton,
                 }}
@@ -1089,24 +1112,12 @@ export function FillaMiniCalendar({
               <div ref={collapsedWeekRef} className="w-full" key={`week-${introNonce}`}>
                 <div className="mb-2 flex items-center justify-between px-0.5">
                   {monthTitleLabel(displayMonth)}
-                  <div className="flex h-[26px] items-center gap-[17px] pt-[3px]">
-                    <button
-                      type="button"
-                      onClick={() => navigateWeek(-1)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
-                      aria-label="Previous week"
-                    >
-                      <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigateWeek(1)}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground transition-[background-color,transform] duration-150 ease-out hover:bg-muted/50 active:scale-90"
-                      aria-label="Next week"
-                    >
-                      <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />
-                    </button>
-                  </div>
+                  <CalendarNavChevrons
+                    onPrev={() => navigateWeek(-1)}
+                    onNext={() => navigateWeek(1)}
+                    prevLabel="Previous week"
+                    nextLabel="Next week"
+                  />
                 </div>
                 <MiniCalendarWeekStrip
                   ref={weekStripRef}
@@ -1136,8 +1147,8 @@ export function FillaMiniCalendar({
             formatWeekdayName: (date) => formatDate(date, "EEE").toUpperCase(),
           }}
           components={{
-            IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />,
-            IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />,
+            IconLeft: () => <CalendarNavChevronIcon direction="prev" />,
+            IconRight: () => <CalendarNavChevronIcon direction="next" />,
             CaptionLabel: ({ displayMonth: captionMonth }) => monthTitleLabel(captionMonth),
             Day: renderDayButton,
           }}

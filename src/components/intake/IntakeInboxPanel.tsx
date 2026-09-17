@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, ImageIcon, Loader2, Sparkles, X } from "lucide-react";
+import { Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
 import { useIntakeItems, useIntakeItemsInvalidator } from "@/hooks/useIntakeItems";
@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import type { IntakeItem } from "@/types/intake-item";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
 import { intakeInboxCardCopy } from "@/lib/intakeDocumentBriefing";
+import { useInboxFilePreview } from "@/hooks/useInboxFilePreview";
+import { IntakeFileThumb } from "@/components/intake/IntakeFileThumb";
 import { cn } from "@/lib/utils";
 
 export interface IntakeReviewPayload {
@@ -34,10 +36,6 @@ function descriptionFromItem(item: IntakeItem): string {
   return ocr.trim().slice(0, 2000);
 }
 
-function isImageItem(item: IntakeItem): boolean {
-  return (item.mime_type || "").toLowerCase().startsWith("image/");
-}
-
 function IntakeInboxRow({
   item,
   onReview,
@@ -51,7 +49,14 @@ function IntakeInboxRow({
 }) {
   const isProcessing = item.status === "pending" || item.status === "processing";
   const isFailed = item.status === "failed";
-  const { title, insight } = intakeInboxCardCopy(item);
+  const preview = useInboxFilePreview({
+    storagePath: item.storage_path,
+    mimeType: item.mime_type,
+    fileName: item.file_name,
+    fileSize: item.file_size,
+    enabled: Boolean(item.storage_path),
+  });
+  const { title, insight } = intakeInboxCardCopy(item, preview.extractedText);
 
   const handleReview = () => {
     if (!item.storage_path && !item.raw_text) return;
@@ -79,15 +84,18 @@ function IntakeInboxRow({
         isFailed && "opacity-80"
       )}
     >
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/60">
-        {isProcessing ? (
+      {isProcessing ? (
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-muted/40 shadow-e1">
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
-        ) : isImageItem(item) ? (
-          <ImageIcon className="h-4 w-4 text-primary" />
-        ) : (
-          <FileText className="h-4 w-4 text-primary" />
-        )}
-      </div>
+        </div>
+      ) : (
+        <IntakeFileThumb
+          kind={preview.kind}
+          thumbnailUrl={preview.thumbnailUrl}
+          label={item.file_name || title}
+          size="sm"
+        />
+      )}
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{title}</p>

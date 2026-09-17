@@ -27,7 +27,14 @@ export type OnboardingDragData =
       spaceId?: string | null;
     }
   | { kind: "asset-suggestion"; assetName: string; groupId: string }
-  | { kind: "unassigned-asset"; assetId: string; assetName: string };
+  | { kind: "unassigned-asset"; assetId: string; assetName: string }
+  | {
+      kind: "record";
+      recordId: string;
+      recordName: string;
+      /** Existing space links — drop adds another; never replaces. */
+      spaceIds?: string[];
+    };
 
 export function areaSortableId(areaId: string) {
   return `area:${areaId}`;
@@ -124,6 +131,21 @@ export function assetSuggestionDragId(groupId: string, nameKey: string) {
   return `asset-suggestion:${groupId}:${nameKey}`;
 }
 
+export function recordDragId(recordId: string) {
+  return `record:${recordId}`;
+}
+
+export function parseRecordDragId(id: string): string | null {
+  if (!id.startsWith("record:")) return null;
+  const recordId = id.slice("record:".length);
+  return recordId || null;
+}
+
+/** Droppable for property-level (no space link) on Records filing strip. */
+export function propertyLevelDroppableId() {
+  return "property-level";
+}
+
 export function onboardingDragLabel(
   drag: OnboardingDragData,
   areaName?: string
@@ -139,6 +161,8 @@ export function onboardingDragLabel(
     case "unassigned-asset":
     case "asset-suggestion":
       return drag.assetName;
+    case "record":
+      return drag.recordName;
   }
 }
 
@@ -179,17 +203,20 @@ export function SortableItem({
 export function DroppableZone({
   id,
   className,
+  activeClassName = "ring-2 ring-primary/50 shadow-md rounded-[8px]",
   children,
 }: {
   id: string;
   className?: string;
+  /** Applied while a draggable is over this zone (default: aqua outline + elevation). */
+  activeClassName?: string;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
     <div
       ref={setNodeRef}
-      className={cn(className, isOver && "ring-2 ring-primary/40 rounded-[8px]")}
+      className={cn(className, isOver && activeClassName)}
     >
       {children}
     </div>

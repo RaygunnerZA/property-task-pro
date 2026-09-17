@@ -37,6 +37,9 @@ dist-ssr
 .env.local
 env.local.html
 
+# Generated demo seed IDs (local/staging only)
+fixtures/demo-linden/generated/
+
 # Supabase CLI local cache (not portable)
 supabase/.temp/
 supabase/.branches/

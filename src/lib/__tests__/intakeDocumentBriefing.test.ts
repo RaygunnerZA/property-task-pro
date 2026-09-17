@@ -76,8 +76,9 @@ describe("intake document briefing", () => {
       artifact({
         fileName: "04_energy_performance_certificate_valid.pdf",
         mimeType: "application/pdf",
-        aiClassification: null,
+        aiClassification: "Misc",
         aiExtracted: {
+          document_type: "Misc",
           metadata: { stub: true, source: "filename" },
           outcome: "valid",
         },
@@ -86,6 +87,7 @@ describe("intake document briefing", () => {
     expect(briefing.documentType).toBe("EPC");
     expect(briefing.outcome).toBe("valid");
     expect(briefing.provenance).toBe("filename");
+    expect(briefing.title).toBe("EPC Record");
   });
 
   it("surfaces at least one document insight on pending-review cards", () => {

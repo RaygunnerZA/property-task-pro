@@ -15,6 +15,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import type { SuggestedChip } from "@/types/chip-suggestions";
+import { resolveTaskTitle } from "@/lib/taskTitleFromDescription";
 
 // ---------------------------------------------------------------------------
 // Helper: build a minimal chip
@@ -32,20 +33,8 @@ function chip(overrides: Partial<SuggestedChip>): SuggestedChip {
 }
 
 // ---------------------------------------------------------------------------
-// Title resolution logic (extracted from useCreateTaskSubmit for unit testing)
+// Title resolution uses shared resolveTaskTitle (no raw description slice)
 // ---------------------------------------------------------------------------
-function resolveTitle(title: string, aiTitleGenerated: string, description: string): string | null {
-  let finalTitle = title.trim();
-  if (!finalTitle) {
-    if (aiTitleGenerated?.trim()) {
-      finalTitle = aiTitleGenerated.trim();
-    } else if (description.trim()) {
-      finalTitle = description.trim().substring(0, 50);
-      if (description.trim().length > 50) finalTitle += "...";
-    }
-  }
-  return finalTitle.trim() || null;
-}
 
 // ---------------------------------------------------------------------------
 // Assigned user resolution (extracted from useCreateTaskSubmit)
@@ -110,30 +99,31 @@ describe("useCreateTaskSubmit — blocking chip validation", () => {
 
 describe("useCreateTaskSubmit — title resolution", () => {
   it("uses the manually entered title when present", () => {
-    expect(resolveTitle("Fix the boiler", "AI Title", "Some description")).toBe("Fix the boiler");
+    expect(resolveTaskTitle("Fix the boiler", "AI Title", "Some description")).toBe("Fix the boiler");
   });
 
   it("falls back to AI-generated title when manual title is empty", () => {
-    expect(resolveTitle("", "AI Title", "Some description")).toBe("AI Title");
+    expect(resolveTaskTitle("", "AI Title Here", "Some description")).toBe("AI Title Here");
   });
 
-  it("falls back to first 50 chars of description when title and AI title are absent", () => {
-    const longDesc = "A".repeat(60);
-    const result = resolveTitle("", "", longDesc);
-    expect(result).toBe("A".repeat(50) + "...");
+  it("falls back to an action summary — not a raw character slice", () => {
+    const longDesc = `Please fix the kitchen tap urgently. ${"A".repeat(60)}`;
+    const result = resolveTaskTitle("", "", longDesc);
+    expect(result?.toLowerCase()).toContain("fix");
+    expect(result).not.toMatch(/^A{50}/);
+    expect(result).not.toContain("...");
   });
 
-  it("uses full description as title when it is 50 chars or fewer", () => {
-    const shortDesc = "Short description";
-    expect(resolveTitle("", "", shortDesc)).toBe("Short description");
+  it("returns null when description is too vague for a title", () => {
+    expect(resolveTaskTitle("", "", "Hi")).toBeNull();
   });
 
   it("returns null when all title sources are empty", () => {
-    expect(resolveTitle("", "", "")).toBeNull();
+    expect(resolveTaskTitle("", "", "")).toBeNull();
   });
 
   it("trims whitespace from manual title", () => {
-    expect(resolveTitle("  Trim me  ", "", "")).toBe("Trim me");
+    expect(resolveTaskTitle("  Trim me  ", "", "")).toBe("Trim me");
   });
 });
 

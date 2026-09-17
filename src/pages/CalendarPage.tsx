@@ -11,7 +11,9 @@ import {
   type CalendarViewMode,
 } from "@/components/calendar/CalendarToolbar";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { TaskOpenModeSwitch } from "@/components/tasks/TaskOpenModeSwitch";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
+import { useTaskOpenMode } from "@/hooks/useTaskOpenMode";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useAssistantContext } from "@/contexts/AssistantContext";
@@ -58,6 +60,8 @@ function CalendarPageContent() {
   const [viewMode, setViewMode] = useState<CalendarViewMode>("month");
   const [taskScope, setTaskScope] = useState<CalendarTaskScope>("all");
   const [isLargeScreen, setIsLargeScreen] = useState(false);
+  const { mode: taskOpenMode, setMode: setTaskOpenMode } = useTaskOpenMode();
+  const openTasksInFullscreen = !isLargeScreen || taskOpenMode === "fullscreen";
   const [createOpen, setCreateOpen] = useState(false);
   const [createDueDate, setCreateDueDate] = useState<string | undefined>();
 
@@ -219,6 +223,9 @@ function CalendarPageContent() {
   const thirdColumn =
     isLargeScreen && createOpen ? (
       <div className="flex h-full min-h-0 flex-col pt-4 pr-2 pl-2">
+        <div className="mb-2 flex justify-end">
+          <TaskOpenModeSwitch value={taskOpenMode} onChange={setTaskOpenMode} />
+        </div>
         <CreateTaskModal
           key={createDueDate ?? "create"}
           open={createOpen}
@@ -234,8 +241,11 @@ function CalendarPageContent() {
           variant="column"
         />
       </div>
-    ) : isLargeScreen && selectedTaskId ? (
+    ) : isLargeScreen && selectedTaskId && taskOpenMode === "panel" ? (
       <div className="flex h-full min-h-0 flex-col pt-4 pr-2 pl-2">
+        <div className="mb-2 flex justify-end">
+          <TaskOpenModeSwitch value={taskOpenMode} onChange={setTaskOpenMode} />
+        </div>
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
@@ -277,16 +287,25 @@ function CalendarPageContent() {
         }
         rightColumn={
           <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-            <CalendarToolbar
-              className="shrink-0"
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-              currentMonth={currentMonth}
-              onMonthChange={setCurrentMonth}
-              onToday={handleToday}
-              taskScope={taskScope}
-              onTaskScopeChange={setTaskScope}
-            />
+            <div className="flex shrink-0 items-start gap-2">
+              <CalendarToolbar
+                className="min-w-0 flex-1"
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                currentMonth={currentMonth}
+                onMonthChange={setCurrentMonth}
+                onToday={handleToday}
+                taskScope={taskScope}
+                onTaskScopeChange={setTaskScope}
+              />
+              {isLargeScreen ? (
+                <TaskOpenModeSwitch
+                  value={taskOpenMode}
+                  onChange={setTaskOpenMode}
+                  className="mt-1.5 shrink-0"
+                />
+              ) : null}
+            </div>
             {viewMode === "month" ? (
               <div className="flex min-h-0 max-h-[777px] flex-1 flex-col overflow-y-auto">
                 <CalendarMonthGrid
@@ -328,14 +347,14 @@ function CalendarPageContent() {
         />
       )}
 
-      {selectedTaskId && !isLargeScreen && (
+      {selectedTaskId && openTasksInFullscreen ? (
         <TaskDetailPanel
           taskId={selectedTaskId}
           onClose={() => setSelectedTaskId(null)}
           variant="modal"
           onOpenTask={setSelectedTaskId}
         />
-      )}
+      ) : null}
     </>
   );
 }
