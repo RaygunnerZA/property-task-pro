@@ -4,7 +4,8 @@
  */
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ExternalLink, FolderOpen, Package, Shield, X, ListChecks } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { ExternalLink, FolderOpen, Package, Plus, Shield, X, ListChecks } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +19,7 @@ import { toSentenceCaseSpaceName } from "@/lib/spaceNameUtils";
 import { dialogContentClass, columnShellClass } from "@/lib/layoutClasses";
 import { cn } from "@/lib/utils";
 import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { IntakeModal } from "@/components/intake/IntakeModal";
 
 type SpaceDetailPanelProps = {
   spaceId: string | null;
@@ -34,12 +36,14 @@ export function SpaceDetailPanel({
   variant = "modal",
 }: SpaceDetailPanelProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { data: space, isLoading, isError } = useSpaceDetail(spaceId ?? undefined);
   const resolvedPropertyId = propertyId || space?.property_id || undefined;
   const { data: compliance = [] } = useSpaceComplianceQuery(spaceId ?? undefined);
   const { data: allAssets = [] } = useAssetsQuery(resolvedPropertyId);
   const { data: tasksData = [] } = useTasksQuery(resolvedPropertyId);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [showCreateTask, setShowCreateTask] = useState(false);
 
   const assetsInSpace = useMemo(() => {
     if (!spaceId) return [];
@@ -202,15 +206,25 @@ export function SpaceDetailPanel({
             </div>
 
             {resolvedPropertyId ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full btn-neomorphic gap-2"
-                onClick={openFullPage}
-              >
-                <ExternalLink className="h-4 w-4" />
-                Open full space
-              </Button>
+              <div className="space-y-2">
+                <Button
+                  type="button"
+                  className="w-full btn-accent-vibrant gap-2"
+                  onClick={() => setShowCreateTask(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create task
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full btn-neomorphic gap-2"
+                  onClick={openFullPage}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open full space
+                </Button>
+              </div>
             ) : null}
           </>
         )}
@@ -218,12 +232,29 @@ export function SpaceDetailPanel({
     </div>
   );
 
+  const createTaskModal =
+    showCreateTask && resolvedPropertyId && spaceId ? (
+      <IntakeModal
+        open={showCreateTask}
+        onOpenChange={setShowCreateTask}
+        onTaskCreated={() => {
+          void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+          void queryClient.invalidateQueries({ queryKey: ["tasks", undefined, resolvedPropertyId] });
+        }}
+        defaultPropertyId={resolvedPropertyId}
+        defaultSpaceIds={[spaceId]}
+        variant="modal"
+        initialIntakeMode="report_issue"
+      />
+    ) : null;
+
   if (variant === "column") {
     return (
       <>
         <div className={cn(columnShellClass, "overflow-hidden rounded-xl border-0 bg-background shadow-e1")}>
           {body}
         </div>
+        {createTaskModal}
         {selectedTaskId ? (
           <TaskDetailPanel
             taskId={selectedTaskId}
@@ -252,6 +283,7 @@ export function SpaceDetailPanel({
           {body}
         </DialogContent>
       </Dialog>
+      {createTaskModal}
       {selectedTaskId ? (
         <TaskDetailPanel
           taskId={selectedTaskId}
