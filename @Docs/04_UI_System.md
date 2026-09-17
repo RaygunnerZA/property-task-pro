@@ -94,7 +94,7 @@ Spaces, Assets, and People are **separate primary nav destinations** for place e
 | Nav item | Route | Purpose |
 |----------|-------|---------|
 | Spaces | `/property/spaces` | Areas (floors/zones via `parent_space_id`) · spaces · type groups |
-| Assets | `/property/assets` | Equipment and maintainable items |
+| Assets | `/property/assets` | Equipment and maintainable items · type groups · nest under Spaces (`assets.space_id`) |
 | People | `/property/people` | Staff, contractors, suppliers, contacts (outside Settings) |
 
 Left-nav **Spaces · Assets · People**:
@@ -133,7 +133,13 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 | Centre | Active entity screen · sub-tabs · collection slider · filter/sort · lists |
 | Right | Create Space / Add Asset / Invite Member · Manage Tags below |
 
-**Spaces — Areas nesting:** Centre Spaces organisation uses **Areas** (parent spaces) and **rooms** (`spaces.parent_space_id`). Type-group cards remain the catalog axis; Areas are the place hierarchy. Chip DnD (`onboardingAreasDnd`) reparents rooms. **Extension seam (not yet built):** same SortableItem / DroppableZone / drag-data union can add `kind: "task" | "asset" | "record"` with droppable prefixes — Tasks → status/area lanes; Assets → space/area drops (`assets.space_id`); Records → space-linked filing. Do not invent a second DnD kit.
+**Spaces — Areas nesting:** Centre Spaces organisation uses **Areas** (parent spaces) and **rooms** (`spaces.parent_space_id`). Type-group cards remain the catalog axis; Areas are the place hierarchy. Chip DnD (`onboardingAreasDnd`) reparents rooms.
+
+**Assets — Spaces nesting:** Centre Assets organisation uses category-group cards as the catalog axis and **Spaces** as the place hierarchy. Assets remain in their type groups and nest under spaces via `assets.space_id`. Chip DnD extends the same `onboardingAreasDnd` kit (`kind: "asset" | "asset-suggestion" | "unassigned-asset"`; droppable `space-drop:` prefixes). Do not invent a second DnD kit.
+
+**Chip options chevron:** Fact chips with a dropdown hide the chevron until hover (or focus-within / open menu). The chip expands right to reveal it — same pattern as the removable X.
+
+**Remaining seam:** same SortableItem / DroppableZone / drag-data union can add `kind: "task" | "record"` — Tasks → status/area lanes; Records → space-linked filing.
 
 **Workbench column geometry (single system)**
 

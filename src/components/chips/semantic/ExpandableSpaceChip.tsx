@@ -20,7 +20,7 @@ export interface ExpandableSpaceChipProps {
   onView?: () => void;
   onRename?: () => void;
   onDuplicate?: () => void;
-  /** Chip body click (not chevron) — select / deselect. */
+  /** Chip body click (not chevron). Omit to open the options menu instead. */
   onPress?: () => void;
   color?: string;
   className?: string;

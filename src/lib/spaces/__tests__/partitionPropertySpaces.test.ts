@@ -28,4 +28,21 @@ describe("partitionPropertySpaces", () => {
     expect(areas[0]).toMatchObject({ id: "a1", name: "Ground Floor" });
     expect(areas[0].color).toMatch(/^#/);
   });
+
+  it("treats layers+floor_level area inserts as areas before they have children", () => {
+    const spaces = [
+      {
+        id: "a1",
+        name: "Wing A",
+        parent_space_id: null,
+        icon_name: "layers",
+        floor_level: "Wing A",
+        created_at: "2026-01-01",
+      },
+      { id: "r1", name: "Kitchen", parent_space_id: null, created_at: "2026-01-02" },
+    ];
+    const { areas, unassigned } = partitionPropertySpaces(spaces);
+    expect(areas.map((a) => a.id)).toEqual(["a1"]);
+    expect(unassigned.map((r) => r.id)).toEqual(["r1"]);
+  });
 });

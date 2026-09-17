@@ -14,7 +14,9 @@ export type SpaceLike = {
   id: string;
   name: string | null;
   parent_space_id?: string | null;
-  created_at?: string;
+  created_at?: string | null;
+  icon_name?: string | null;
+  floor_level?: string | null;
 };
 
 export function isKnownAreaName(name: string | null | undefined): boolean {
@@ -23,11 +25,18 @@ export function isKnownAreaName(name: string | null | undefined): boolean {
   return ONBOARDING_PROPERTY_AREAS.some((a) => a.label.toLowerCase() === key);
 }
 
-/** Area = root space that has children, or matches a known area label. */
+/** Area = root space that has children, matches a known area label, or was created as an area. */
 export function isAreaSpace(space: SpaceLike, all: SpaceLike[]): boolean {
   if (space.parent_space_id) return false;
   if (all.some((s) => s.parent_space_id === space.id)) return true;
-  return isKnownAreaName(space.name);
+  if (isKnownAreaName(space.name)) return true;
+  // Property Areas card inserts use icon_name "layers" + floor_level = name.
+  const nameKey = (space.name ?? "").trim().toLowerCase();
+  const floorKey = (space.floor_level ?? "").trim().toLowerCase();
+  if (space.icon_name === "layers" && nameKey && floorKey === nameKey) {
+    return true;
+  }
+  return false;
 }
 
 export function partitionPropertySpaces<T extends SpaceLike>(spaces: T[]) {

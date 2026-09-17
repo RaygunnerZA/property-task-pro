@@ -23,7 +23,9 @@ import {
   ONBOARDING_SPACE_GROUPS,
   getGroupIdFromDefaultUiGroup,
   getSpaceGroupById,
+  inferSpaceGroupIdFromName,
   isCustomCollectionGroupId,
+  normalizeSpaceMatchKey,
   type GroupExtraSpace,
   type OnboardingCustomCollection,
   type SuggestionLabelOverrides,
@@ -34,6 +36,7 @@ import {
 import {
   type OnboardingDragData,
   parseSpaceIdSortableId,
+  onboardingDragLabel,
 } from "@/components/onboarding/onboardingAreasDnd";
 import {
   createPropertyCustomCollection,
@@ -67,6 +70,8 @@ type PropertySpaceGroupCarouselProps = {
   className?: string;
   /** Filters space chips across group cards (case-insensitive). */
   spaceFilter?: string;
+  /** Open space/area detail in the parent surface (panel / modal). */
+  onViewSpace?: (spaceId: string) => void;
 };
 
 function resolveSpaceGroupId(
@@ -79,27 +84,24 @@ function resolveSpaceGroupId(
   }
   const defaultUiGroup = space.space_types?.default_ui_group;
   if (defaultUiGroup) {
-    return getGroupIdFromDefaultUiGroup(defaultUiGroup);
+    const fromType = getGroupIdFromDefaultUiGroup(defaultUiGroup);
+    if (fromType) return fromType;
   }
-  const name = space.name?.trim();
-  if (!name) return undefined;
-  const matching = ONBOARDING_SPACE_GROUPS.filter((g) =>
-    g.suggestedSpaces.some((s) => s.toLowerCase() === name.toLowerCase())
-  );
-  return matching.length === 1 ? matching[0].id : undefined;
+  return inferSpaceGroupIdFromName(space.name ?? "");
 }
 
 function isSuggestionForGroup(name: string, groupId: string): boolean {
   const group = getSpaceGroupById(groupId);
   if (!group) return false;
-  const key = name.toLowerCase().trim();
-  return group.suggestedSpaces.some((s) => s.toLowerCase().trim() === key);
+  const key = normalizeSpaceMatchKey(name);
+  return group.suggestedSpaces.some((s) => normalizeSpaceMatchKey(s) === key);
 }
 
 export function PropertySpaceGroupCarousel({
   propertyId,
   className,
   spaceFilter = "",
+  onViewSpace,
 }: PropertySpaceGroupCarouselProps) {
   const navigate = useNavigate();
   const { orgId } = useActiveOrg();
@@ -441,13 +443,36 @@ export function PropertySpaceGroupCarousel({
   const handleSelectArea = useCallback(
     async (name: string, _color: string) => {
       const trimmed = name.trim();
-      if (!trimmed || !orgId) return;
+      if (!trimmed) return;
+      if (!orgId) {
+        toast.error("Organisation not found");
+        return;
+      }
       const key = trimmed.toLowerCase();
-      const existing = areas.find((a) => a.name.toLowerCase() === key);
-      if (existing) {
-        setActiveAreaId(existing.id);
-        setViewingAreaId(existing.id);
+      const existingArea = areas.find((a) => a.name.toLowerCase() === key);
+      if (existingArea) {
+        setActiveAreaId(existingArea.id);
+        setViewingAreaId(existingArea.id);
         triggerAreaInstruction();
+        return;
+      }
+      // Same name already on the property (e.g. flat room) — promote / activate.
+      const existingSpace = spaces.find(
+        (s) => (s.name ?? "").toLowerCase().trim() === key
+      );
+      if (existingSpace) {
+        if (existingSpace.parent_space_id) {
+          toast.error("A space with that name already exists in an area");
+          return;
+        }
+        setAreaOrderIds((prev) =>
+          prev.includes(existingSpace.id) ? prev : [...prev, existingSpace.id]
+        );
+        setActiveAreaId(existingSpace.id);
+        setViewingAreaId(existingSpace.id);
+        triggerAreaInstruction();
+        toast.success(`Using ${trimmed} as an area`);
+        await invalidateSpaces();
         return;
       }
       setBusy(true);
@@ -480,7 +505,7 @@ export function PropertySpaceGroupCarousel({
         setBusy(false);
       }
     },
-    [areas, orgId, propertyId, invalidateSpaces, triggerAreaInstruction]
+    [areas, spaces, orgId, propertyId, invalidateSpaces, triggerAreaInstruction]
   );
 
   const handleActivateArea = useCallback(
@@ -488,8 +513,9 @@ export function PropertySpaceGroupCarousel({
       setActiveAreaId(areaId);
       setViewingAreaId((prev) => (prev === areaId ? null : areaId));
       triggerAreaInstruction();
+      onViewSpace?.(areaId);
     },
-    [triggerAreaInstruction]
+    [triggerAreaInstruction, onViewSpace]
   );
 
   const purgeArea = useCallback(
@@ -754,11 +780,15 @@ export function PropertySpaceGroupCarousel({
       if (!key || handlers[key]) continue;
       const spaceId = space.id;
       handlers[key] = () => {
+        if (onViewSpace) {
+          onViewSpace(spaceId);
+          return;
+        }
         navigate(`/properties/${propertyId}/spaces/${spaceId}`);
       };
     }
     return handlers;
-  }, [rooms, navigate, propertyId]);
+  }, [rooms, navigate, propertyId, onViewSpace]);
 
   const openViewSpace = useCallback(
     (name: string) => {
@@ -773,9 +803,24 @@ export function PropertySpaceGroupCarousel({
         toast.error("Space not found");
         return;
       }
+      if (onViewSpace) {
+        onViewSpace(space.id);
+        return;
+      }
       navigate(`/properties/${propertyId}/spaces/${space.id}`);
     },
-    [viewSpaceByNameKey, findSpaceByName, navigate, propertyId]
+    [viewSpaceByNameKey, findSpaceByName, navigate, propertyId, onViewSpace]
+  );
+
+  const openViewSpaceById = useCallback(
+    (spaceId: string) => {
+      if (onViewSpace) {
+        onViewSpace(spaceId);
+        return;
+      }
+      navigate(`/properties/${propertyId}/spaces/${spaceId}`);
+    },
+    [onViewSpace, navigate, propertyId]
   );
 
   const getSuggestedCopyName = useCallback(
@@ -1148,9 +1193,7 @@ export function PropertySpaceGroupCarousel({
                 setRenameModal({ spaceId, currentName: name, groupId });
                 setRenameInput(name);
               }}
-              onViewSpace={(spaceId) =>
-                navigate(`/properties/${propertyId}/spaces/${spaceId}`)
-              }
+              onViewSpace={openViewSpaceById}
             />
           ) : null}
         </div>
@@ -1158,11 +1201,12 @@ export function PropertySpaceGroupCarousel({
         <DragOverlay>
           {activeDrag ? (
             <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
-              {activeDrag.kind === "area"
-                ? areas.find((a) => a.id === activeDrag.areaId)?.name ?? "Area"
-                : activeDrag.kind === "space" || activeDrag.kind === "unassigned"
-                  ? activeDrag.spaceName
-                  : activeDrag.spaceName}
+              {onboardingDragLabel(
+                activeDrag,
+                activeDrag.kind === "area"
+                  ? areas.find((a) => a.id === activeDrag.areaId)?.name
+                  : undefined
+              )}
             </div>
           ) : null}
         </DragOverlay>

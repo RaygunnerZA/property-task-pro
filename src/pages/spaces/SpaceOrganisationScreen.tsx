@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useParams, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { propertySubPath, propertyActivitySpacesPath } from "@/lib/propertyRoutes";
 import { useProperty } from "@/hooks/property/useProperty";
@@ -7,7 +7,7 @@ import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
-import { AllSpacesDirectory } from "@/components/spaces/AllSpacesDirectory";
+import { SpaceDetailPanel } from "@/components/spaces/SpaceDetailPanel";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
@@ -28,8 +28,24 @@ import {
   useWorkbenchControls,
 } from "@/contexts/WorkbenchControlsContext";
 import { FILLA_TURQUOISE } from "@/lib/brandColors";
+import { LAYOUT_BREAKPOINTS } from "@/lib/layoutBreakpoints";
 
 const SPACES_ILLUSTRATION = "/centre-workbench/spaces.png";
+const WORKSPACE_WIDE_MQ = `(min-width: ${LAYOUT_BREAKPOINTS.layout}px)`;
+
+function useWorkspaceWide() {
+  const [wide, setWide] = useState(
+    () => (typeof window !== "undefined" ? window.matchMedia(WORKSPACE_WIDE_MQ).matches : false)
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(WORKSPACE_WIDE_MQ);
+    const onChange = () => setWide(mq.matches);
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return wide;
+}
 
 type SpacesWorkTab = "groups" | "issues";
 type CreatePanelTab = "space" | "property";
@@ -41,6 +57,7 @@ type CreatePanelTab = "space" | "property";
 function SpaceOrganisationScreenInner() {
   const { id: paramPropertyId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const propertyId = paramPropertyId || searchParams.get("property") || undefined;
@@ -48,12 +65,36 @@ function SpaceOrganisationScreenInner() {
   const { spaces } = useSpaces(propertyId);
   const { data: tasksData = [] } = useTasksQuery(propertyId);
   const { searchQuery: spaceSearchQuery } = useWorkbenchControls();
+  const isWide = useWorkspaceWide();
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
   const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [createPanelTab, setCreatePanelTab] = useState<CreatePanelTab>("space");
+
+  const spaceIdFromUrl = searchParams.get("spaceId")?.trim() || null;
+
+  useEffect(() => {
+    if (spaceIdFromUrl) {
+      setSelectedSpaceId(spaceIdFromUrl);
+    }
+  }, [spaceIdFromUrl]);
+
+  const openSpace = useCallback(
+    (spaceId: string | null) => {
+      setSelectedSpaceId(spaceId);
+      const next = new URLSearchParams(searchParams);
+      if (spaceId) {
+        next.set("spaceId", spaceId);
+      } else {
+        next.delete("spaceId");
+      }
+      const qs = next.toString();
+      navigate(`${location.pathname}${qs ? `?${qs}` : ""}`, { replace: true });
+    },
+    [navigate, location.pathname, searchParams]
+  );
 
   const tasks = useMemo(() => {
     return tasksData.map((task: any) => ({
@@ -76,18 +117,6 @@ function SpaceOrganisationScreenInner() {
       }
     }
     return ids;
-  }, [tasks]);
-
-  const openTaskCountsBySpaceId = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const t of tasks) {
-      if (t.status === "completed" || t.status === "archived") continue;
-      for (const s of t.spaces || []) {
-        if (!s?.id) continue;
-        counts[s.id] = (counts[s.id] || 0) + 1;
-      }
-    }
-    return counts;
   }, [tasks]);
 
   /** Spaces linked to at least one non-done task with urgent/high priority (matches property hub tile). */
@@ -199,9 +228,8 @@ function SpaceOrganisationScreenInner() {
       <PropertySpacesList
         propertyId={propertyId}
         tasks={tasks}
-        onSpaceClick={setSelectedSpaceId}
+        onSpaceClick={openSpace}
         selectedSpaceId={selectedSpaceId}
-        defaultView="list"
       />
       <WorkspaceSurfaceCard
         className="hover:shadow-e1"
@@ -258,7 +286,7 @@ function SpaceOrganisationScreenInner() {
               <li key={s.id}>
                 <button
                   type="button"
-                  onClick={() => navigate(`/properties/${propertyId}/spaces/${s.id}`)}
+                  onClick={() => openSpace(s.id)}
                   className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
                 >
                   {s.name}
@@ -278,15 +306,11 @@ function SpaceOrganisationScreenInner() {
         </div>
       ) : (
         <div className="space-y-4">
-          <PropertySpaceGroupCarousel propertyId={propertyId} spaceFilter={spaceSearchQuery} />
-          <div className="border-t border-border/30 pt-5">
-            <AllSpacesDirectory
-              propertyId={propertyId}
-              spaceFilter={spaceSearchQuery}
-              openTaskSpaceIds={openTaskSpaceIds}
-              openTaskCountsBySpaceId={openTaskCountsBySpaceId}
-            />
-          </div>
+          <PropertySpaceGroupCarousel
+            propertyId={propertyId}
+            spaceFilter={spaceSearchQuery}
+            onViewSpace={openSpace}
+          />
         </div>
       )}
     </div>
@@ -297,9 +321,9 @@ function SpaceOrganisationScreenInner() {
     queryClient.invalidateQueries({ queryKey: ["spaces-with-types"] });
   };
 
-  const actionColumn = (
+  const createColumn = (
     <div className="space-y-4">
-      <div className="hidden workspace:block">
+      <div className="hidden layout:block">
         <WorkspaceSurfaceCard
           title={createPanelTab === "space" ? "Create space" : "Add property"}
           description={
@@ -349,7 +373,7 @@ function SpaceOrganisationScreenInner() {
           )}
         </WorkspaceSurfaceCard>
       </div>
-      <div className="workspace:hidden">
+      <div className="layout:hidden">
         <WorkspaceSurfaceCard
           title="Create space"
           description="Add a space when you already know the name and type."
@@ -380,6 +404,18 @@ function SpaceOrganisationScreenInner() {
     </div>
   );
 
+  const actionColumn =
+    selectedSpaceId && isWide ? (
+      <SpaceDetailPanel
+        spaceId={selectedSpaceId}
+        propertyId={propertyId}
+        onClose={() => openSpace(null)}
+        variant="column"
+      />
+    ) : (
+      createColumn
+    );
+
   const workspace = (
     <PropertyWorkspaceLayout
       pageTitle="Spaces"
@@ -395,6 +431,14 @@ function SpaceOrganisationScreenInner() {
     <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="w-full pt-[20px]">{workspace}</div>
+      {selectedSpaceId && !isWide ? (
+        <SpaceDetailPanel
+          spaceId={selectedSpaceId}
+          propertyId={propertyId}
+          onClose={() => openSpace(null)}
+          variant="modal"
+        />
+      ) : null}
       {showAddSpace && (
         <AddSpaceDialog
           open={showAddSpace}

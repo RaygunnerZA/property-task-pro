@@ -58,6 +58,66 @@ export function getGroupColor(groupId: string): string {
   return getSpaceGroupById(groupId)?.color ?? "#8EC9CE";
 }
 
+/** Compare space names across "Rm"/"Room" and punctuation. */
+export function normalizeSpaceMatchKey(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\brm\b/g, "room")
+    .replace(/\ben[\s-]?suite\b/g, "ensuite")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const SPACE_NAME_GROUP_KEYWORDS: Array<{ pattern: RegExp; groupId: string }> = [
+  { pattern: /\bfirst aid\b/, groupId: "service" },
+  { pattern: /\belectrical\b/, groupId: "technical" },
+  { pattern: /\bmechanical\b/, groupId: "technical" },
+  { pattern: /\bboiler\b/, groupId: "technical" },
+  { pattern: /\bplant\b/, groupId: "technical" },
+  { pattern: /\bserver\b/, groupId: "technical" },
+  { pattern: /\btech\b/, groupId: "technical" },
+  { pattern: /\bbathroom\b|\bshower\b|\btoilet\b|\bwc\b|\bensuite\b|\bspa\b|\bjacuzzi\b/, groupId: "sanitary" },
+  { pattern: /\bbedroom\b|\bsuite\b|\bliving\b|\blounge\b|\boffice\b|\bmeeting\b|\bdining\b|\bgym\b/, groupId: "habitable" },
+  { pattern: /\bkitchen\b/, groupId: "habitable" },
+  { pattern: /\bhallway\b|\bcorridor\b|\blobby\b|\bentrance\b|\bstair|\bmezzanine\b|\bhall\b/, groupId: "circulation" },
+  { pattern: /\bexterior\b|\boutside\b|\bgarden\b|\bterrace\b|\byard\b|\broof\b|\bgarage\b|\bparking\b|\bcar park\b/, groupId: "external" },
+  { pattern: /\bstorage\b|\barchive\b|\bcloset\b|\bcupboard\b|\battic\b/, groupId: "storage" },
+  { pattern: /\bpantry\b|\butility\b|\bstaff\b|\blaundry\b|\bbreak\b/, groupId: "service" },
+];
+
+/**
+ * Place a space on a type-group card (not an area) from its name.
+ * Used when space_type / collection membership is missing.
+ */
+export function inferSpaceGroupIdFromName(name: string): string | undefined {
+  const key = normalizeSpaceMatchKey(name);
+  if (!key) return undefined;
+
+  const exactGroups = ONBOARDING_SPACE_GROUPS.filter((g) =>
+    g.suggestedSpaces.some((s) => normalizeSpaceMatchKey(s) === key)
+  );
+  if (exactGroups.length >= 1) return exactGroups[0].id;
+
+  const containedGroups = ONBOARDING_SPACE_GROUPS.filter((g) =>
+    g.suggestedSpaces.some((s) => {
+      const suggestionKey = normalizeSpaceMatchKey(s);
+      return (
+        key.includes(suggestionKey) ||
+        suggestionKey.includes(key)
+      );
+    })
+  );
+  if (containedGroups.length === 1) return containedGroups[0].id;
+
+  for (const { pattern, groupId } of SPACE_NAME_GROUP_KEYWORDS) {
+    if (pattern.test(key)) return groupId;
+  }
+
+  return undefined;
+}
+
 /** Map default_ui_group (DB) to group id. Used for filtering spaces by group. */
 export function getGroupIdFromDefaultUiGroup(defaultUiGroup: string): string | undefined {
   const group = ONBOARDING_SPACE_GROUPS.find(

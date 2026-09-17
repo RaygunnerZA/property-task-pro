@@ -15,6 +15,7 @@ import {
   SPACE_GROUP_ADD_INPUT_SHADOW,
 } from "./spaceGroupCardInputStyles";
 import { DroppableZone, areaDroppableId } from "./onboardingAreasDnd";
+import { ChipCloud } from "./ChipCloud";
 
 const DASHED_LINE_STYLE = {
   height: "1px",
@@ -97,10 +98,11 @@ export function OnboardingPropertyAreasCard({
 
           <div
             className={cn(
-              "mt-[6px] flex min-h-0 flex-1 flex-wrap content-start items-start gap-x-1.5 gap-y-2 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y",
+              "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y",
               "[scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
             )}
           >
+            <ChipCloud>
             {chipNames.map((name) => {
               const key = name.toLowerCase().trim();
               const selected = selectedByKey.get(key);
@@ -108,7 +110,7 @@ export function OnboardingPropertyAreasCard({
                 const isActive = selected.id === activeAreaId;
                 const count = spaceCounts[selected.id] ?? 0;
                 return (
-                  <DroppableZone key={selected.id} id={areaDroppableId(selected.id)}>
+                  <DroppableZone key={selected.id} id={areaDroppableId(selected.id)} className="inline-flex max-w-full shrink-0 align-top">
                     <ExpandableSpaceChip
                       variant="area"
                       label={`${shortAreaLabel(name).toUpperCase()}${count ? ` · ${count}` : ""}`}
@@ -133,7 +135,11 @@ export function OnboardingPropertyAreasCard({
                 <button
                   key={name}
                   type="button"
-                  onClick={() => onSelectArea(name, suggestion?.color ?? "")}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSelectArea(name, suggestion?.color ?? "");
+                  }}
                   className={cn(
                     AREA_CHIP_BASE_CLASS,
                     "bg-background text-muted-foreground",
@@ -147,6 +153,7 @@ export function OnboardingPropertyAreasCard({
                 </button>
               );
             })}
+            </ChipCloud>
           </div>
 
           <div className="mt-auto flex w-full shrink-0 items-center gap-1.5 pt-1">

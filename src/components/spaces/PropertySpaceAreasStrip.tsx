@@ -3,6 +3,7 @@
  * Mirrors onboarding “Your areas” / “{AREA} SPACES” with persisted UUIDs.
  */
 
+import { useMemo } from "react";
 import {
   SortableContext,
   horizontalListSortingStrategy,
@@ -24,6 +25,7 @@ import {
   unassignedSortableId,
   areaDroppableId,
 } from "@/components/onboarding/onboardingAreasDnd";
+import { ChipCloud } from "@/components/onboarding/ChipCloud";
 import { shortSpaceLabel } from "@/components/onboarding/onboardingSpaceGroups";
 import { cn } from "@/lib/utils";
 import type { SpaceLike } from "@/lib/spaces/partitionPropertySpaces";
@@ -60,6 +62,17 @@ export function PropertySpaceAreasStrip({
   const viewingArea = areas.find((a) => a.id === viewingAreaId) ?? null;
   const viewingRooms = viewingArea ? roomsByAreaId[viewingArea.id] ?? [] : [];
 
+  const sortedUnassigned = useMemo(
+    () =>
+      [...unassigned].sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+          numeric: true,
+        })
+      ),
+    [unassigned]
+  );
+
   return (
     <div className="space-y-3">
       {areas.length > 0 ? (
@@ -81,7 +94,10 @@ export function PropertySpaceAreasStrip({
                     id={areaSortableId(area.id)}
                     data={{ kind: "area", areaId: area.id }}
                   >
-                    <DroppableZone id={areaDroppableId(area.id)}>
+                    <DroppableZone
+                      id={areaDroppableId(area.id)}
+                      className="inline-flex max-w-full shrink-0 align-top"
+                    >
                       <ExpandableSpaceChip
                         variant="area"
                         label={`${shortAreaLabel(area.name).toUpperCase()} · ${count}`}
@@ -140,7 +156,7 @@ export function PropertySpaceAreasStrip({
                           onAddSubSpace={() => undefined}
                           onRename={() => onRenameSpace(space.id, name)}
                           onView={() => onViewSpace(space.id)}
-                          onPress={() => onRemoveSpace(space.id, name)}
+                          onPress={() => onViewSpace(space.id)}
                           className={cn("!shadow-none", AREA_CHIP_NEUMO_RAISED)}
                         />
                       </SortableItem>
@@ -153,7 +169,7 @@ export function PropertySpaceAreasStrip({
         </div>
       ) : null}
 
-      {unassigned.length > 0 ? (
+      {sortedUnassigned.length > 0 ? (
         <div>
           <p className="mb-2 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
             Unassigned spaces
@@ -162,11 +178,14 @@ export function PropertySpaceAreasStrip({
             Drag onto an area chip to nest under that area.
           </p>
           <SortableContext
-            items={unassigned.map((s) => unassignedSortableId(s.id))}
+            items={sortedUnassigned.map((s) => unassignedSortableId(s.id))}
             strategy={horizontalListSortingStrategy}
           >
-            <div className="flex flex-wrap gap-[5px]">
-              {unassigned.map((space) => {
+            <ChipCloud
+              maxRows={4}
+              className="[scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
+            >
+              {sortedUnassigned.map((space) => {
                 const name = (space.name ?? "").trim() || "Space";
                 return (
                   <SortableItem
@@ -185,13 +204,13 @@ export function PropertySpaceAreasStrip({
                       onAddSubSpace={() => undefined}
                       onRename={() => onRenameSpace(space.id, name)}
                       onView={() => onViewSpace(space.id)}
-                      onPress={() => onRemoveSpace(space.id, name)}
+                      onPress={() => onViewSpace(space.id)}
                       className={cn("!shadow-none", AREA_CHIP_NEUMO_RAISED)}
                     />
                   </SortableItem>
                 );
               })}
-            </div>
+            </ChipCloud>
           </SortableContext>
         </div>
       ) : null}

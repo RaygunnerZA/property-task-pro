@@ -7,7 +7,7 @@ import type {
   SpaceGroup,
   SuggestionLabelOverrides,
 } from "./onboardingSpaceGroups";
-import { shortSpaceLabel } from "./onboardingSpaceGroups";
+import { normalizeSpaceMatchKey, shortSpaceLabel } from "./onboardingSpaceGroups";
 import { SpaceGroupCardBanner } from "@/components/spaces/SpaceGroupCardBanner";
 import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 import {
@@ -17,6 +17,7 @@ import {
 import { hexToRgba } from "./onboardingPropertyAreas";
 import { DroppableZone, groupDroppableId } from "./onboardingAreasDnd";
 import { DraggableChipShell } from "./DraggableChipShell";
+import { ChipCloud } from "./ChipCloud";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -185,7 +186,6 @@ export function OnboardingSpaceGroupCard({
       suggestions.push(displayName);
     }
 
-    // Contract: extraSpaces[0] is newest — pin those chips to the top (fallback path).
     const extrasNewestFirst: string[] = [];
     const extrasInsertAfter: { name: string; afterKey: string }[] = [];
     for (const extra of extraSpaces) {
@@ -208,57 +208,47 @@ export function OnboardingSpaceGroupCard({
         });
         continue;
       }
-      if (!suggestionSeen.has(key)) {
-        extrasNewestFirst.push(extraName);
-      }
+      extrasNewestFirst.push(extraName);
     }
 
-    const selectedSuggestions: string[] = [];
-    const unselectedSuggestions: string[] = [];
-    for (const displayName of suggestions) {
-      const key = displayName.toLowerCase().trim();
-      if (selectedSpacesSet.has(key)) selectedSuggestions.push(displayName);
-      else unselectedSuggestions.push(displayName);
-    }
+    const added: string[] = [];
+    const addedNorm = new Set<string>();
+    const pushAdded = (name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed) return;
+      const norm = normalizeSpaceMatchKey(trimmed);
+      if (addedNorm.has(norm)) return;
+      addedNorm.add(norm);
+      added.push(trimmed);
+    };
 
-    // Prefer explicit newest-first order so newly added / selected chips pin to the top.
-    let selectedOrdered: string[];
     if (selectedSpacesNewestFirst && selectedSpacesNewestFirst.length > 0) {
-      const seenSelected = new Set<string>();
-      selectedOrdered = [];
       for (const name of selectedSpacesNewestFirst) {
-        if (!name?.trim()) continue;
-        const key = name.toLowerCase().trim();
-        if (seenSelected.has(key)) continue;
-        if (!selectedSpacesSet.has(key)) continue;
-        seenSelected.add(key);
-        selectedOrdered.push(name);
+        if (!selectedSpacesSet.has(name.toLowerCase().trim())) continue;
+        pushAdded(name);
       }
-      for (const name of extrasNewestFirst) {
-        const key = name.toLowerCase().trim();
-        if (seenSelected.has(key)) continue;
-        seenSelected.add(key);
-        selectedOrdered.push(name);
+    }
+    for (const name of extrasNewestFirst) {
+      if (selectedSpacesSet.has(name.toLowerCase().trim()) || !selectedSpacesNewestFirst?.length) {
+        pushAdded(name);
       }
-      for (const name of selectedSuggestions) {
-        const key = name.toLowerCase().trim();
-        if (seenSelected.has(key)) continue;
-        seenSelected.add(key);
-        selectedOrdered.push(name);
+    }
+    for (const displayName of suggestions) {
+      if (selectedSpacesSet.has(displayName.toLowerCase().trim())) {
+        pushAdded(displayName);
       }
-    } else {
-      selectedOrdered = [...extrasNewestFirst, ...selectedSuggestions];
     }
 
-    const selectedKeys = new Set(selectedOrdered.map((n) => n.toLowerCase().trim()));
+    const suggestionOnly = suggestions.filter((name) => {
+      const norm = normalizeSpaceMatchKey(name);
+      return !addedNorm.has(norm);
+    });
+
     const names = [
-      ...selectedOrdered.filter(matchesFilter),
-      ...unselectedSuggestions.filter(
-        (name) => !selectedKeys.has(name.toLowerCase().trim()) && matchesFilter(name)
-      ),
+      ...added.filter(matchesFilter),
+      ...suggestionOnly.filter(matchesFilter),
     ];
 
-    // Duplicates (Bedroom 2 after Bedroom) keep sibling placement when not already ordered.
     for (const { name, afterKey } of extrasInsertAfter) {
       if (!matchesFilter(name)) continue;
       const key = name.toLowerCase().trim();
@@ -383,17 +373,18 @@ export function OnboardingSpaceGroupCard({
             {group.description}
           </p>
 
-          {/* Space chips — scroll vertically when they overflow the card */}
+          {/* Space chips — pack full width minus hover-expand reserve; scroll when tall */}
           <div
             ref={chipsScrollRef}
             className={cn(
-              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-2 pt-0 pb-0 transition-[opacity,transform,margin] ease-out",
+              "pt-0 pb-0 transition-[opacity,transform,margin] ease-out",
               isExpanded
                 ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                 : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
             )}
             style={transitionStyle}
           >
+            <ChipCloud>
             {visibleSpaceNames.map((name) => {
               const key = name.toLowerCase().trim();
               const isSelected = selectedSpacesSet.has(key);
@@ -424,8 +415,8 @@ export function OnboardingSpaceGroupCard({
                         onRenameSpace ? () => onRenameSpace(name, group.id) : undefined
                       }
                       onView={viewHandler}
+                      onPress={viewHandler}
                       onDuplicate={onCopySpace ? () => onCopySpace(name, group.id) : undefined}
-                      onPress={() => onRemoveSpace?.(name)}
                       className={cn("!shadow-none", dimmed && "opacity-40")}
                     />
                   </DraggableChipShell>
@@ -443,10 +434,12 @@ export function OnboardingSpaceGroupCard({
                     removable
                     onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
                     onPress={() => handleChipClick(name)}
+                    className="text-muted-foreground/40"
                   />
                 </DraggableChipShell>
               );
             })}
+            </ChipCloud>
           </div>
 
           {/* Add Space — pinned to card bottom when expanded */}

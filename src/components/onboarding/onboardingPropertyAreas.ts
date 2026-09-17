@@ -53,6 +53,10 @@ export function areaSpacesRowLabel(areaName: string): string {
   return `${areaName.trim().toUpperCase()} SPACES`;
 }
 
+export function spaceAssetsRowLabel(spaceName: string): string {
+  return `${spaceName.trim().toUpperCase()} ASSETS`;
+}
+
 export function getSuggestedAreaColor(name: string): string {
   const key = name.toLowerCase().trim();
   const match = ONBOARDING_PROPERTY_AREAS.find((a) => a.label.toLowerCase() === key);

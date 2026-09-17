@@ -5,9 +5,9 @@ import type { ReactNode, CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Shared chip DnD payload for Areas→Spaces (onboarding + Spaces screen).
- * Extension seam for Tasks / Assets / Records: add kinds (e.g. task, asset)
- * and droppable id prefixes without forking SortableItem / DroppableZone.
+ * Shared chip DnD payload for Areas→Spaces and Assets→Spaces.
+ * Extension seam for Tasks / Records: add kinds and droppable id prefixes
+ * without forking SortableItem / DroppableZone.
  */
 export type OnboardingDragData =
   | { kind: "area"; areaId: string }
@@ -19,7 +19,15 @@ export type OnboardingDragData =
       spaceId?: string;
     }
   | { kind: "suggestion"; spaceName: string; groupId: string }
-  | { kind: "unassigned"; spaceName: string; spaceId: string };
+  | { kind: "unassigned"; spaceName: string; spaceId: string }
+  | {
+      kind: "asset";
+      assetId: string;
+      assetName: string;
+      spaceId?: string | null;
+    }
+  | { kind: "asset-suggestion"; assetName: string; groupId: string }
+  | { kind: "unassigned-asset"; assetId: string; assetName: string };
 
 export function areaSortableId(areaId: string) {
   return `area:${areaId}`;
@@ -68,6 +76,70 @@ export function areaDroppableId(areaId: string) {
 
 export function spacesListDroppableId() {
   return "spaces-list";
+}
+
+export function spaceDroppableId(spaceId: string) {
+  return `space-drop:${spaceId}`;
+}
+
+export function parseSpaceDroppableId(id: string): string | null {
+  if (!id.startsWith("space-drop:")) return null;
+  const spaceId = id.slice("space-drop:".length);
+  return spaceId || null;
+}
+
+export function assetSortableId(assetId: string) {
+  return `asset:${assetId}`;
+}
+
+export function unassignedAssetSortableId(assetId: string) {
+  return `unassigned-asset:${assetId}`;
+}
+
+export function parseAssetSortableId(id: string): string | null {
+  if (!id.startsWith("asset:")) return null;
+  const assetId = id.slice("asset:".length);
+  return assetId || null;
+}
+
+export function parseUnassignedAssetSortableId(id: string): string | null {
+  if (!id.startsWith("unassigned-asset:")) return null;
+  const assetId = id.slice("unassigned-asset:".length);
+  return assetId || null;
+}
+
+export function spaceAssetsListDroppableId() {
+  return "space-assets-list";
+}
+
+export function unassignedAssetsListDroppableId() {
+  return "unassigned-assets-list";
+}
+
+export function assetChipDragId(assetId: string) {
+  return `asset-chip:${assetId}`;
+}
+
+export function assetSuggestionDragId(groupId: string, nameKey: string) {
+  return `asset-suggestion:${groupId}:${nameKey}`;
+}
+
+export function onboardingDragLabel(
+  drag: OnboardingDragData,
+  areaName?: string
+): string {
+  switch (drag.kind) {
+    case "area":
+      return areaName ?? "Area";
+    case "space":
+    case "unassigned":
+    case "suggestion":
+      return drag.spaceName;
+    case "asset":
+    case "unassigned-asset":
+    case "asset-suggestion":
+      return drag.assetName;
+  }
 }
 
 export function SortableItem({

@@ -14,6 +14,9 @@ import {
   SPACE_GROUP_ADD_INPUT_SHADOW,
 } from "./spaceGroupCardInputStyles";
 import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
+import { DraggableChipShell } from "./DraggableChipShell";
+import { assetChipDragId, assetSuggestionDragId } from "./onboardingAreasDnd";
+import { ChipCloud } from "./ChipCloud";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -41,6 +44,10 @@ interface OnboardingAssetGroupCardProps {
   onViewAsset?: (name: string, groupId: string) => void;
   viewAssetByNameKey?: Record<string, () => void>;
   onCopyAsset?: (name: string, groupId: string) => void;
+  assetIdByNameKey?: Record<string, string>;
+  assetSpaceByNameKey?: Record<string, string>;
+  selectedAssetColors?: Record<string, string>;
+  activeSpaceId?: string | null;
   className?: string;
 }
 
@@ -60,6 +67,10 @@ export function OnboardingAssetGroupCard({
   onViewAsset,
   viewAssetByNameKey = {},
   onCopyAsset,
+  assetIdByNameKey = {},
+  assetSpaceByNameKey = {},
+  selectedAssetColors = {},
+  activeSpaceId = null,
   className,
 }: OnboardingAssetGroupCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -308,13 +319,14 @@ export function OnboardingAssetGroupCard({
           <div
             ref={chipsScrollRef}
             className={cn(
-              "flex flex-wrap content-start items-start gap-x-1.5 gap-y-2 pt-0 pb-0 transition-[opacity,transform,margin] ease-out",
+              "pt-0 pb-0 transition-[opacity,transform,margin] ease-out",
               isExpanded
                 ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                 : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
             )}
             style={transitionStyle}
           >
+            <ChipCloud>
             {visibleAssetNames.map((name) => {
               const key = name.toLowerCase().trim();
               const label = displayNameWithoutSampleCue(name);
@@ -323,32 +335,56 @@ export function OnboardingAssetGroupCard({
                 const viewHandler =
                   viewAssetByNameKey[key] ??
                   (onViewAsset ? () => onViewAsset(name, group.id) : undefined);
-                return (
+                const assetId = assetIdByNameKey[key];
+                const ownerSpaceId = assetSpaceByNameKey[key];
+                const dimmed =
+                  !!activeSpaceId && !!ownerSpaceId && ownerSpaceId !== activeSpaceId;
+                const chip = (
                   <ExpandableAssetChip
-                    key={name}
                     label={label}
-                    color={SELECTED_CHIP_TEAL}
+                    color={selectedAssetColors[key] ?? SELECTED_CHIP_TEAL}
                     onRemove={() => onRemoveAsset?.(name)}
                     onRename={
                       onRenameAsset ? () => onRenameAsset(name, group.id) : undefined
                     }
                     onView={viewHandler}
                     onDuplicate={onCopyAsset ? () => onCopyAsset(name, group.id) : undefined}
-                    className="!shadow-none"
+                    className={cn("!shadow-none", dimmed && "opacity-40")}
                   />
+                );
+                if (!assetId) return <span key={name}>{chip}</span>;
+                return (
+                  <DraggableChipShell
+                    key={name}
+                    id={assetChipDragId(assetId)}
+                    data={{
+                      kind: "asset",
+                      assetId,
+                      assetName: name,
+                      spaceId: ownerSpaceId ?? null,
+                    }}
+                  >
+                    {chip}
+                  </DraggableChipShell>
                 );
               }
               return (
-                <SemanticChip
+                <DraggableChipShell
                   key={name}
-                  epistemic="proposal"
-                  label={label}
-                  removable
-                  onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
-                  onPress={() => handleChipClick(name)}
-                />
+                  id={assetSuggestionDragId(group.id, key)}
+                  data={{ kind: "asset-suggestion", assetName: name, groupId: group.id }}
+                >
+                  <SemanticChip
+                    epistemic="proposal"
+                    label={label}
+                    removable
+                    onRemove={() => handleDismissSuggestion(resolveSuggestionSourceKey(name))}
+                    onPress={() => handleChipClick(name)}
+                  />
+                </DraggableChipShell>
               );
             })}
+            </ChipCloud>
           </div>
 
           <div

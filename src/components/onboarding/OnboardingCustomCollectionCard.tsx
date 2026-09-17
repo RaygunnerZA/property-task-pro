@@ -10,8 +10,10 @@ import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
 import {
   SPACE_GROUP_ADD_INPUT_CLASS,
   SPACE_GROUP_ADD_INPUT_SHADOW,
+  CHIP_CLOUD_GAP_Y_PX,
 } from "./spaceGroupCardInputStyles";
 import { resizeImageForCardBanner } from "@/utils/image-optimization";
+import { ChipCloud } from "./ChipCloud";
 import {
   Dialog,
   DialogContent,
@@ -310,7 +312,7 @@ export function OnboardingCustomCollectionCard({
 
             <div
               className={cn(
-                "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-[opacity,transform,margin] ease-out",
+                "transition-[opacity,transform,margin] ease-out",
                 isExpanded
                   ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                   : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
@@ -322,7 +324,8 @@ export function OnboardingCustomCollectionCard({
                   No spaces yet
                 </p>
               ) : (
-                visibleSpaceNames.map((name) => {
+                <ChipCloud gapYPx={CHIP_CLOUD_GAP_Y_PX - 4}>
+                {visibleSpaceNames.map((name) => {
                   const key = name.toLowerCase().trim();
                   const viewHandler =
                     viewSpaceByNameKey[key] ??
@@ -343,16 +346,17 @@ export function OnboardingCustomCollectionCard({
                           : undefined
                       }
                       onView={viewHandler}
+                      onPress={viewHandler}
                       onDuplicate={
                         onCopySpace
                           ? () => onCopySpace(name, collection.id)
                           : undefined
                       }
-                      onPress={() => onRemoveSpace?.(name)}
                       className="!shadow-sm"
                     />
                   );
-                })
+                })}
+                </ChipCloud>
               )}
             </div>
 

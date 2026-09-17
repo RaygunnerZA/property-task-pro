@@ -24,6 +24,7 @@ import {
   spaceSortableId,
   spacesListDroppableId,
   type OnboardingDragData,
+  onboardingDragLabel,
 } from "@/components/onboarding/onboardingAreasDnd";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingContainer } from "@/components/onboarding/OnboardingContainer";
@@ -40,6 +41,7 @@ import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
 import {
   ONBOARDING_SPACE_GROUPS,
   createCustomCollectionId,
+  inferSpaceGroupIdFromName,
   shortSpaceLabel,
   type GroupExtraSpace,
   type OnboardingCustomCollection,
@@ -848,7 +850,7 @@ export default function AddSpaceScreen() {
     );
     if (groupsWithSuggestion.length === 1) return groupsWithSuggestion[0].id;
 
-    return undefined;
+    return inferSpaceGroupIdFromName(name);
   };
 
   const openCopyModal = (name: string, groupId?: string) => {
@@ -1248,7 +1250,6 @@ export default function AddSpaceScreen() {
                           onAddSubSpace={(name) => handleAddSubSpace(space, name)}
                           onRename={() => openRenameModal(space)}
                           onDuplicate={() => openCopyModal(space)}
-                          onPress={() => handleRemoveSpaceByName(space)}
                           className={cn("!shadow-none", AREA_CHIP_NEUMO_RAISED)}
                         />
                       </SortableItem>
@@ -1264,11 +1265,12 @@ export default function AddSpaceScreen() {
         <DragOverlay>
           {activeDrag ? (
             <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
-              {activeDrag.kind === "area"
-                ? areas.find((a) => a.id === activeDrag.areaId)?.name ?? "Area"
-                : activeDrag.kind === "space"
-                  ? activeDrag.spaceName
-                  : activeDrag.spaceName}
+              {onboardingDragLabel(
+                activeDrag,
+                activeDrag.kind === "area"
+                  ? areas.find((a) => a.id === activeDrag.areaId)?.name
+                  : undefined
+              )}
             </div>
           ) : null}
         </DragOverlay>

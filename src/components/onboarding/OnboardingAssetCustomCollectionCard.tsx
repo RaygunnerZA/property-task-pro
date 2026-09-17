@@ -15,8 +15,10 @@ import { getAssetGroupCardIllustration } from "@/lib/assetGroupIllustrations";
 import {
   SPACE_GROUP_ADD_INPUT_CLASS,
   SPACE_GROUP_ADD_INPUT_SHADOW,
+  CHIP_CLOUD_GAP_Y_PX,
 } from "./spaceGroupCardInputStyles";
 import { resizeImageForCardBanner } from "@/utils/image-optimization";
+import { ChipCloud } from "./ChipCloud";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +28,8 @@ import {
 } from "@/components/ui/dialog";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
 import { displayNameWithoutSampleCue } from "@/lib/onboardingEducation";
+import { DraggableChipShell } from "./DraggableChipShell";
+import { assetChipDragId } from "./onboardingAreasDnd";
 
 const HOVER_EXPAND_DELAY_MS = 450;
 const EXPAND_DURATION_MS = 350;
@@ -58,6 +62,10 @@ interface OnboardingAssetCustomCollectionCardProps {
   viewAssetByNameKey?: Record<string, () => void>;
   onCopyAsset?: (name: string, groupId: string) => void;
   onUpdateCollection: (id: string, updates: { name?: string; imageSrc?: string }) => void;
+  assetIdByNameKey?: Record<string, string>;
+  assetSpaceByNameKey?: Record<string, string>;
+  selectedAssetColors?: Record<string, string>;
+  activeSpaceId?: string | null;
   className?: string;
 }
 
@@ -73,6 +81,10 @@ export function OnboardingAssetCustomCollectionCard({
   viewAssetByNameKey = {},
   onCopyAsset,
   onUpdateCollection,
+  assetIdByNameKey = {},
+  assetSpaceByNameKey = {},
+  selectedAssetColors = {},
+  activeSpaceId = null,
   className,
 }: OnboardingAssetCustomCollectionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -306,7 +318,7 @@ export function OnboardingAssetCustomCollectionCard({
 
             <div
               className={cn(
-                "flex flex-wrap content-start items-start gap-x-1.5 gap-y-1 transition-[opacity,transform,margin] ease-out",
+                "transition-[opacity,transform,margin] ease-out",
                 isExpanded
                   ? "mt-[6px] min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain touch-pan-y opacity-100 translate-y-0 [scrollbar-width:thin] [scrollbar-color:hsl(185_40%_68%_/_0.45)_transparent]"
                   : "pointer-events-none max-h-0 overflow-hidden opacity-0 translate-y-3"
@@ -318,18 +330,22 @@ export function OnboardingAssetCustomCollectionCard({
                   No assets yet
                 </p>
               ) : (
-                visibleAssetNames.map((name) => {
+                <ChipCloud gapYPx={CHIP_CLOUD_GAP_Y_PX - 4}>
+                {visibleAssetNames.map((name) => {
                   const key = name.toLowerCase().trim();
                   const viewHandler =
                     viewAssetByNameKey[key] ??
                     (onViewAsset
                       ? () => onViewAsset(name, collection.id)
                       : undefined);
-                  return (
+                  const assetId = assetIdByNameKey[key];
+                  const ownerSpaceId = assetSpaceByNameKey[key];
+                  const dimmed =
+                    !!activeSpaceId && !!ownerSpaceId && ownerSpaceId !== activeSpaceId;
+                  const chip = (
                     <ExpandableAssetChip
-                      key={name}
                       label={displayNameWithoutSampleCue(name)}
-                      color={SELECTED_CHIP_TEAL}
+                      color={selectedAssetColors[key] ?? SELECTED_CHIP_TEAL}
                       onRemove={() => onRemoveAsset?.(name)}
                       onRename={
                         onRenameAsset
@@ -342,10 +358,26 @@ export function OnboardingAssetCustomCollectionCard({
                           ? () => onCopyAsset(name, collection.id)
                           : undefined
                       }
-                      className="!shadow-sm"
+                      className={cn("!shadow-sm", dimmed && "opacity-40")}
                     />
                   );
-                })
+                  if (!assetId) return <span key={name}>{chip}</span>;
+                  return (
+                    <DraggableChipShell
+                      key={name}
+                      id={assetChipDragId(assetId)}
+                      data={{
+                        kind: "asset",
+                        assetId,
+                        assetName: name,
+                        spaceId: ownerSpaceId ?? null,
+                      }}
+                    >
+                      {chip}
+                    </DraggableChipShell>
+                  );
+                })}
+                </ChipCloud>
               )}
             </div>
 

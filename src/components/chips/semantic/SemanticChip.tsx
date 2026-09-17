@@ -16,6 +16,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  parseCssRgb,
+  shouldUseLightChipText,
+} from "@/lib/color/chipFillText";
 
 export type EpistemicState = "fact" | "proposal";
 export type InteractionState = "idle" | "entry";
@@ -84,7 +88,8 @@ export function SemanticChip({
   const [useLightText, setUseLightText] = useState(false);
 
   // Custom-coloured chips (often CSS vars we can't parse statically): read the
-  // resolved background and flip to white text when it's dark enough.
+  // resolved fill, composite translucent washes onto the surface behind, then
+  // use white text only when the perceived fill is dark.
   useLayoutEffect(() => {
     if (!color) {
       setUseLightText(false);
@@ -92,13 +97,25 @@ export function SemanticChip({
     }
     const el = chipRef.current;
     if (!el) return;
-    const bg = getComputedStyle(el).backgroundColor;
-    const m = bg.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
-    if (!m) return;
-    const yiq = (Number(m[1]) * 299 + Number(m[2]) * 587 + Number(m[3]) * 114) / 1000;
-    setUseLightText(yiq < 186);
+    const fill = parseCssRgb(getComputedStyle(el).backgroundColor);
+    if (!fill) {
+      setUseLightText(false);
+      return;
+    }
+    let backdrop = { r: 245, g: 241, b: 232 };
+    let node: HTMLElement | null = el.parentElement;
+    while (node) {
+      const parsed = parseCssRgb(getComputedStyle(node).backgroundColor);
+      if (parsed && parsed.a >= 0.95) {
+        backdrop = parsed;
+        break;
+      }
+      node = node.parentElement;
+    }
+    setUseLightText(shouldUseLightChipText(fill, backdrop));
   }, [color]);
   const [isTransferCollapsing, setIsTransferCollapsing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const firedOnPointerDown = useRef(false);
   const transferTimeoutRef = useRef<number | null>(null);
   const entryInputRef = useRef<HTMLInputElement>(null);
@@ -118,6 +135,11 @@ export function SemanticChip({
   }, [interaction]);
 
   const shouldTransferOnPress = transferOnPress || (epistemic === "proposal" && pressOnPointerDown);
+  const notifyMenuOpenChange = (open: boolean) => {
+    setMenuOpen(open);
+    onDropdownOpenChange?.(open);
+  };
+
   const triggerPress = (e?: React.SyntheticEvent) => {
     if (!onPress) return;
     e?.stopPropagation();
@@ -130,6 +152,11 @@ export function SemanticChip({
     transferTimeoutRef.current = window.setTimeout(() => {
       onPress();
     }, TRANSFER_COLLAPSE_MS);
+  };
+
+  const openOptionsMenu = (e?: React.SyntheticEvent) => {
+    e?.stopPropagation();
+    notifyMenuOpenChange(!menuOpen);
   };
 
   if (epistemic === "fact" && interaction === "entry") {
@@ -158,6 +185,10 @@ export function SemanticChip({
     }
     if (onPress) {
       triggerPress(e);
+      return;
+    }
+    if (dropdown && dropdownContent) {
+      openOptionsMenu(e);
     }
   };
   const handleRemove = (e: React.MouseEvent) => {
@@ -177,7 +208,7 @@ export function SemanticChip({
   const interactionStyles =
     interaction === "entry"
       ? "shadow-inset bg-background min-w-[140px] max-w-[200px] px-2 animate-in fade-in duration-200"
-      : isPressed && onPress
+      : isPressed && (onPress || dropdown)
         ? "shadow-inset"
         : "";
 
@@ -191,7 +222,13 @@ export function SemanticChip({
     interactionStyles,
     epistemic === "fact" &&
       !removable &&
-      cn("min-w-[40px] max-w-[120px]", dropdown ? "pl-2 pr-[2px]" : "px-2"),
+      cn(
+        "min-w-[40px]",
+        dropdown
+          ? // Soft cap; expands in-flow on hover when the chevron appears.
+            "max-w-[120px] pl-2 pr-[2px] group-hover:max-w-[140px] group-focus-within:max-w-[140px] data-[menu-open]:max-w-[140px]"
+          : "max-w-[120px] px-2"
+      ),
     epistemic === "fact" &&
       removable &&
       "px-2 min-w-[40px] max-w-[200px] group-hover:max-w-none group-hover:z-10",
@@ -208,6 +245,7 @@ export function SemanticChip({
     isTransferCollapsing &&
       "absolute z-10 origin-left pointer-events-none animate-[chip-collapse-x_260ms_cubic-bezier(0.22,1,0.36,1)_forwards]",
     useLightText && "text-white",
+    color && !useLightText && "text-foreground",
     className
   );
 
@@ -280,11 +318,19 @@ export function SemanticChip({
         </span>
       )}
       {dropdown && (
-        <span className="flex w-[12px] items-center justify-end flex-shrink-0">
+        <span
+          className={cn(
+            "inline-flex items-center justify-center flex-shrink-0 overflow-hidden",
+            "w-0 opacity-0 pointer-events-none",
+            "transition-[width,opacity] duration-200 ease-out",
+            "group-hover:w-[18px] group-hover:opacity-100",
+            "group-focus-within:w-[18px] group-focus-within:opacity-100"
+          )}
+        >
           <ChevronDown
             className={cn(
               "h-3 w-3 flex-shrink-0 group-data-[state=open]:rotate-180 transition-transform duration-150",
-              useLightText ? "text-white/80" : "text-muted-foreground"
+              useLightText ? "text-white/80" : "text-foreground"
             )}
           />
         </span>
@@ -306,28 +352,28 @@ export function SemanticChip({
 
   if (dropdown && dropdownContent) {
     return (
-      <DropdownMenu onOpenChange={onDropdownOpenChange}>
+      <DropdownMenu open={menuOpen} onOpenChange={notifyMenuOpenChange}>
         <span
           ref={chipRef as React.Ref<HTMLSpanElement>}
-          role={onPress ? "button" : undefined}
-          tabIndex={onPress ? 0 : undefined}
+          role="button"
+          tabIndex={0}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+          data-menu-open={menuOpen ? "" : undefined}
           className={baseStyles}
           style={color ? { backgroundColor: color } : undefined}
-          aria-label={ariaLabel}
-          onClick={onPress ? handleClick : undefined}
-          onPointerDown={onPress ? handlePointerDown : undefined}
-          onPointerUp={onPress ? handlePointerUp : undefined}
-          onPointerLeave={onPress ? () => setIsPressed(false) : undefined}
-          onKeyDown={
-            onPress
-              ? (e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    triggerPress(e);
-                  }
-                }
-              : undefined
-          }
+          aria-label={ariaLabel ?? (onPress ? label : `${label} options`)}
+          onClick={handleClick}
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={() => setIsPressed(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              if (onPress) triggerPress(e);
+              else openOptionsMenu(e);
+            }
+          }}
         >
           {icon && <span className="flex-shrink-0">{icon}</span>}
           {pending && (
@@ -370,9 +416,14 @@ export function SemanticChip({
               type="button"
               aria-label="Open options"
               className={cn(
-                "inline-flex h-full w-[18px] shrink-0 items-center justify-center rounded-sm",
+                "inline-flex h-full shrink-0 items-center justify-center overflow-hidden rounded-sm",
                 "outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                "[&[data-state=open]>svg]:rotate-180"
+                "[&[data-state=open]>svg]:rotate-180",
+                "w-0 opacity-0 pointer-events-none",
+                "transition-[width,opacity] duration-200 ease-out",
+                "group-hover:w-[18px] group-hover:opacity-100 group-hover:pointer-events-auto",
+                "group-focus-within:w-[18px] group-focus-within:opacity-100 group-focus-within:pointer-events-auto",
+                menuOpen && "w-[18px] opacity-100 pointer-events-auto"
               )}
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}
@@ -380,7 +431,7 @@ export function SemanticChip({
               <ChevronDown
                 className={cn(
                   "h-3 w-3 flex-shrink-0 transition-transform duration-150",
-                  useLightText ? "text-white/80" : "text-muted-foreground"
+                  useLightText ? "text-white/80" : "text-foreground"
                 )}
               />
             </button>

@@ -22,9 +22,11 @@ interface SpaceCardProps {
   groupColor?: string;
   className?: string;
   onFilterClick?: (spaceId: string) => void;
+  /** When set, card body opens this instead of navigating to the space page. */
+  onOpen?: (spaceId: string) => void;
 }
 
-export function SpaceCard({ space, groupColor, className, onFilterClick }: SpaceCardProps) {
+export function SpaceCard({ space, groupColor, className, onFilterClick, onOpen }: SpaceCardProps) {
   const navigate = useNavigate();
 
   const displayName = space.name || space.type || "Unnamed Space";
@@ -46,6 +48,10 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
 
   const handleNavigate = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (onOpen) {
+      onOpen(space.id);
+      return;
+    }
     if (space.property_id && space.id) {
       navigate(`/properties/${space.property_id}/spaces/${space.id}`);
     } else if (space.property_id) {
@@ -55,6 +61,10 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (onOpen) {
+      onOpen(space.id);
+      return;
+    }
     if (space.property_id && space.id) {
       navigate(`/properties/${space.property_id}/spaces/${space.id}`);
     }
@@ -70,7 +80,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
   return (
     <div
       className={cn(
-        "group/space-card relative bg-card/60 rounded-card overflow-hidden shadow-e1 h-[137px]",
+        "group/space-card relative bg-card/60 rounded-card overflow-hidden shadow-e1 h-[127px]",
         "flex flex-col text-center transition-all duration-200",
         className
       )}
@@ -89,11 +99,11 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
         <Pencil className="h-3.5 w-3.5" />
       </button>
 
-      {/* Illustration */}
+      {/* Illustration — 20px less top space than prior 137px / max-h-108 layout */}
       <div
         className={cn(
-          "w-full overflow-hidden relative flex items-center justify-center cursor-pointer active:scale-[0.99]",
-          hasTasks ? "h-[86px] shrink-0" : "flex-1 min-h-0"
+          "w-full overflow-hidden relative flex items-center justify-center cursor-pointer active:scale-[0.99] pt-0",
+          hasTasks ? "h-[66px] shrink-0" : "flex-1 min-h-0"
         )}
         style={{
           backgroundColor: illustrationSrc ? undefined : iconColor,
@@ -106,7 +116,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
             alt=""
             className={cn(
               "object-contain",
-              hasTasks ? "h-[80px] w-[80px]" : "h-full max-h-[108px] w-auto max-w-full px-1"
+              hasTasks ? "h-[60px] w-[60px]" : "h-full max-h-[88px] w-auto max-w-full px-1"
             )}
             loading="lazy"
           />
@@ -114,9 +124,12 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
       </div>
 
       {hasTasks ? (
-        <div className="px-2.5 pb-2 pt-0 flex flex-col items-center gap-1.5 h-[68px] shrink-0">
-          <div onClick={handleNavigate} className="cursor-pointer active:scale-[0.99] w-full">
-            <h3 className="font-semibold text-sm text-foreground leading-[15px] line-clamp-2">
+        <div className="flex min-h-0 flex-1 flex-col items-center px-2.5 pb-2 pt-0">
+          <div
+            onClick={handleNavigate}
+            className="w-full cursor-pointer pb-2.5 active:scale-[0.99]"
+          >
+            <h3 className="line-clamp-1 font-semibold text-sm leading-[15px] text-foreground">
               {displayName}
             </h3>
           </div>
@@ -133,14 +146,17 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
             }}
           />
 
-          <div onClick={handleMetaZoneClick} className="cursor-pointer active:scale-[0.99] w-full">
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
+          <div
+            onClick={handleMetaZoneClick}
+            className="mt-1.5 w-full cursor-pointer active:scale-[0.99]"
+          >
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
                 <CheckSquare className="h-3 w-3" />
                 {taskCount} Task{taskCount !== 1 ? "s" : ""}
               </span>
               {urgentCount > 0 && (
-                <span className="text-xs text-destructive font-medium flex items-center gap-1">
+                <span className="flex items-center gap-1 text-xs font-medium text-destructive">
                   <AlertTriangle className="h-3 w-3" />
                   {urgentCount}
                 </span>
@@ -151,7 +167,7 @@ export function SpaceCard({ space, groupColor, className, onFilterClick }: Space
       ) : (
         <div
           onClick={handleNavigate}
-          className="px-2.5 pb-2.5 pt-1 shrink-0 cursor-pointer active:scale-[0.99]"
+          className="px-2.5 pb-5 pt-1 shrink-0 cursor-pointer active:scale-[0.99]"
         >
           <h3 className="font-semibold text-sm text-foreground leading-[15px] line-clamp-2">
             {displayName}
