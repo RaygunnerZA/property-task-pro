@@ -8,6 +8,7 @@ import {
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -17,6 +18,7 @@ export type CentreWorkbenchMobileCalendarProps = {
   tasksLoading?: boolean;
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
+  onMonthTitleClick?: () => void;
   selectedPropertyIds?: Set<string>;
   /** When set (e.g. from Tasks All / My tabs), scopes calendar to all or assigned-to-me. */
   taskScope?: CalendarTaskScope;
@@ -33,12 +35,14 @@ export function CentreWorkbenchMobileCalendar({
   tasksLoading = false,
   selectedDate,
   onDateSelect,
+  onMonthTitleClick,
   selectedPropertyIds,
   taskScope,
   className,
 }: CentreWorkbenchMobileCalendarProps) {
   const { userId } = useDataContext();
   const workbenchControls = useOptionalWorkbenchControls();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const allPropertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
 
   const calendarTasks = useMemo(() => {
@@ -56,6 +60,7 @@ export function CentreWorkbenchMobileCalendar({
       taskScope:
         taskScope ??
         (workbenchControls?.selectedFilters?.has("filter-assigned-me") ? "mine" : "all"),
+      autoUrgentHorizon,
     });
   }, [
     allPropertyIds,
@@ -66,6 +71,7 @@ export function CentreWorkbenchMobileCalendar({
     workbenchControls?.selectedFilters,
     userId,
     taskScope,
+    autoUrgentHorizon,
   ]);
 
   const tasksByDate = useMemo(() => buildTasksByDate(calendarTasks), [calendarTasks]);
@@ -81,6 +87,7 @@ export function CentreWorkbenchMobileCalendar({
             tasksByDate={tasksByDate}
             selectedDate={selectedDate}
             onDateSelect={onDateSelect}
+            onMonthTitleClick={onMonthTitleClick}
             defaultExpanded={false}
             collapseOnDateSelect
             className="bg-transparent px-0 py-px shadow-none"

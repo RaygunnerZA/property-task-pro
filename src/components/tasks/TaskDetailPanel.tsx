@@ -108,6 +108,8 @@ import {
 import { patchTasksCacheStatus, assertTaskReadyToComplete } from "@/lib/completeTask";
 import { resolveTaskAssignerUser } from "@/lib/userDisplayHelpers";
 import { isTaskSpaceIllustrationUrl } from "@/lib/taskIllustration";
+import { isDueDateAutoUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { isSignatureEvidenceAttachment } from "@/lib/isSignatureEvidenceAttachment";
 import {
   getTaskStatusVisual,
@@ -140,6 +142,7 @@ export function TaskDetailPanel({
 }: TaskDetailPanelProps) {
   const { task, loading, error, refresh: refreshTask } = useTaskDetails(taskId);
   const { capture: captureGeo } = useGeoCaptureOnAction();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
 
   useEffect(() => {
     if (taskId) writeLastTaskId(taskId);
@@ -910,8 +913,12 @@ export function TaskDetailPanel({
         priority,
         due_date: dueDate || null,
         status,
+        autoUrgent: isDueDateAutoUrgent(
+          { due_date: dueDate || null, status },
+          autoUrgentHorizon
+        ),
       }),
-    [priority, dueDate, status]
+    [priority, dueDate, status, autoUrgentHorizon]
   );
 
   const statusChipTextClass = useMemo(() => {

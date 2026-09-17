@@ -17,6 +17,7 @@ type CalendarLeftColumnProps = {
   onPropertySelectionChange: (ids: Set<string>) => void;
   selectedDate?: Date;
   onDateSelect: (date: Date | undefined) => void;
+  onMonthTitleClick?: () => void;
   calendarMonth: Date;
   onCalendarMonthChange: (month: Date) => void;
   selectedCalendarTypes: Set<CalendarTypeId>;
@@ -32,6 +33,7 @@ export function CalendarLeftColumn({
   onPropertySelectionChange,
   selectedDate,
   onDateSelect,
+  onMonthTitleClick,
   calendarMonth,
   onCalendarMonthChange,
   selectedCalendarTypes,
@@ -72,6 +74,7 @@ export function CalendarLeftColumn({
           tasksByDate={tasksByDate}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          onMonthTitleClick={onMonthTitleClick}
           month={calendarMonth}
           onMonthChange={onCalendarMonthChange}
           className="shadow-e1"

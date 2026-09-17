@@ -30,6 +30,7 @@ export function resolveTaskSignalChip(input: {
   status?: string | null;
   /** Explicit expiry (e.g. compliance validity). Not inferred from due date. */
   expired?: boolean | null;
+  autoUrgent?: boolean;
 }): TaskSignalChip | null {
   const status = (input.status ?? "").toLowerCase();
   if (TERMINAL_STATUSES.has(status)) return null;
@@ -49,6 +50,9 @@ export function resolveTaskSignalChip(input: {
   }
   if (priority === "high") {
     return { kind: "high", label: "HIGH", tone: "amber" };
+  }
+  if (input.autoUrgent) {
+    return { kind: "urgent", label: "URGENT", tone: "coral" };
   }
 
   if (due === "due_soon") {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Plus, Mic, FileText, Inbox } from 'lucide-react';
 import { IntakeModal } from '@/components/intake/IntakeModal';
 import { AddToFillaSheet } from '@/components/intake/AddToFillaSheet';
@@ -14,6 +15,9 @@ interface FloatingAddButtonProps {
 }
 
 export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddToFilla, setShowAddToFilla] = useState(false);
   const [fabIntakeMode, setFabIntakeMode] = useState<IntakeMode>('report_issue');
@@ -41,8 +45,26 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
     setExpanded(false);
   };
 
+  const openHomePendingReview = () => {
+    const next = new URLSearchParams(
+      typeof window !== "undefined" ? window.location.search : searchParams
+    );
+    next.set("inflow", "pending");
+    const qs = next.toString();
+    const path = location.pathname;
+    if (path === "/" || path === "/home" || path === "/dashboard") {
+      setSearchParams(next, { replace: false });
+    } else {
+      navigate(`/home${qs ? `?${qs}` : ""}`);
+    }
+  };
+
   const handleAddToFillaClick = () => {
-    setShowAddToFilla(true);
+    if (readyCount > 0) {
+      openHomePendingReview();
+    } else {
+      setShowAddToFilla(true);
+    }
     setExpanded(false);
   };
 

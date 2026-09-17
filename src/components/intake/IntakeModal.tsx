@@ -482,6 +482,9 @@ export function IntakeModal({
   const shouldShowTitleField =
     (hasDescriptionDraft && (showTitleField || aiLoading || Boolean(title.trim()))) ||
     (intakeMode === "add_record" && Boolean(title.trim()));
+  /** Calendar day "+" — reveal Who/Where/Due before the user types. */
+  const [staggerFromCalendar, setStaggerFromCalendar] = useState(false);
+  const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Chip row state (simplified: labels only for display; full IDs for submit)
   const [dueDate, setDueDate] = useState("");
@@ -523,6 +526,11 @@ export function IntakeModal({
     if (!/^\d{4}-\d{2}-\d{2}$/.test(defaultDueDate)) return;
     userClearedDueDateRef.current = false;
     setDueDate(defaultDueDate);
+    setStaggerFromCalendar(true);
+    const focusTimer = window.setTimeout(() => {
+      descriptionTextareaRef.current?.focus({ preventScroll: true });
+    }, 180);
+    return () => window.clearTimeout(focusTimer);
   }, [dueDatePrefillNonce, defaultDueDate]);
   const prevOpenChipSlotRef = useRef<typeof openChipSlot>(null);
   /** When REPEAT opens the WHEN slot, keep that tab — the enter-slot effect would otherwise reset to due. */
@@ -4008,6 +4016,7 @@ export function IntakeModal({
     autoLinkedAssetIdsRef.current = new Set();
     setOpenChipSlot(null);
     setDueDate("");
+    setStaggerFromCalendar(false);
     setWhenTab("due");
     setMilestones([]);
     setMilestoneDraftDate(format(startOfDay(new Date()), "yyyy-MM-dd"));
@@ -4616,6 +4625,7 @@ export function IntakeModal({
             )}
             <div className="rounded-lg bg-input shadow-engraved overflow-hidden" {...descriptionDropBind}>
               <textarea
+                ref={descriptionTextareaRef}
                 {...descriptionDropBind}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -4817,7 +4827,8 @@ export function IntakeModal({
           {/* 4. Context: staggered Create Task sections, or chip rail for Add Record */}
           {intakeMode === "report_issue" ? (
             <IntakeStaggeredSections
-              active={hasDescriptionDraft}
+              active={hasDescriptionDraft || staggerFromCalendar}
+              forceVisibleCount={staggerFromCalendar ? 3 : undefined}
               whoFacts={intakeRowChips
                 .filter((c) => c.slot === "who")
                 .map((c) => ({ id: c.id, label: c.label, onRemove: c.onRemove, onPress: c.onPress }))}

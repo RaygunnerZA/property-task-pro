@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useRef } from "react";
-import { format, startOfDay } from "date-fns";
+import { format, isSameDay, startOfDay } from "date-fns";
+import { Plus } from "lucide-react";
 import TaskCard from "@/components/TaskCard";
 import MagneticScrollArea from "@/components/ui/MagneticScrollArea";
 import {
@@ -8,6 +9,7 @@ import {
   hasAssigneeDefinedScheduleTime,
   parseScheduleDateTime,
 } from "@/lib/calendarTaskSchedule";
+import { intakeReportIssueMicroClassName } from "@/lib/intake-action-buttons";
 import { cn } from "@/lib/utils";
 
 const SCHEDULE_TIME_COLUMN_CLASS = "w-[81px] sm:w-[5.5rem] flex-shrink-0";
@@ -27,6 +29,7 @@ function formatScheduleTimeLabel(time: Date, hasSpecificTime: boolean): string |
   if (hhmm === CALENDAR_AFTERNOON_TIME) return "AFTERNOON";
   return hhmm;
 }
+
 interface ScheduleViewProps {
   tasks: any[];
   properties?: any[];
@@ -34,6 +37,31 @@ interface ScheduleViewProps {
   onTaskClick?: (taskId: string) => void;
   selectedTaskId?: string;
   showDateHeaders?: boolean;
+  onCreateForDate?: (date: Date) => void;
+}
+
+function ScheduleCreateTaskRow({
+  date,
+  onCreate,
+}: {
+  date: Date;
+  onCreate: (date: Date) => void;
+}) {
+  const dateLabel = format(date, "MMMM d");
+  return (
+    <div className="flex items-start gap-3 pt-1">
+      <div className={SCHEDULE_TIME_COLUMN_CLASS} />
+      <button
+        type="button"
+        onClick={() => onCreate(date)}
+        className={cn(intakeReportIssueMicroClassName, "h-8 px-3")}
+        aria-label={`Create task on ${dateLabel}`}
+      >
+        <Plus className="h-3.5 w-3.5" strokeWidth={2.4} aria-hidden />
+        Create Task
+      </button>
+    </div>
+  );
 }
 
 /**
@@ -43,6 +71,7 @@ interface ScheduleViewProps {
  * - Day, date, and time labels live in the left column beside each task card
  * - Only shows hours that have tasks (no empty hour slots)
  * - Time-scheduled tasks first, "Any Time" tasks at bottom
+ * - Hover (or selected day) expands a Create Task action after that day's tasks
  */
 export function ScheduleView({
   tasks,
@@ -50,6 +79,7 @@ export function ScheduleView({
   selectedDate,
   onTaskClick,
   selectedTaskId,
+  onCreateForDate,
 }: ScheduleViewProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const propertyMap = useMemo(() => {
@@ -110,10 +140,14 @@ export function ScheduleView({
     return grouped;
   }, [datedTasks]);
 
-  // Get dates sorted chronologically
+  // Dates with tasks, plus the selected day so empty days still appear
   const dates = useMemo(() => {
-    return Array.from(tasksByDate.keys()).sort();
-  }, [tasksByDate]);
+    const keys = new Set(tasksByDate.keys());
+    if (selectedDate) {
+      keys.add(format(startOfDay(selectedDate), "yyyy-MM-dd"));
+    }
+    return Array.from(keys).sort();
+  }, [tasksByDate, selectedDate]);
 
   useEffect(() => {
     if (!selectedDate) return;
@@ -144,18 +178,20 @@ export function ScheduleView({
           {/* Dated tasks grouped by date */}
           {dates.map((dateKey, dayIndex) => {
             const dateTasks = tasksByDate.get(dateKey) || [];
-            if (dateTasks.length === 0) return null;
-
             const date = parseScheduleDateTime(dateKey) ?? new Date(dateKey);
             const isTodayDate = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
             const weekdayLabel = isTodayDate ? "Today" : format(date, "EEEE");
             const dateLabel = format(date, "MMMM d");
+            const isSelectedDay = selectedDate ? isSameDay(date, selectedDate) : false;
 
             return (
               <div
                 key={dateKey}
                 id={`schedule-day-${dateKey}`}
-                className={cn("list-stagger space-y-3", dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS)}
+                className={cn(
+                  "group/day list-stagger space-y-3",
+                  dayIndex > 0 && SCHEDULE_DAY_DIVIDER_CLASS
+                )}
               >
                 {dateTasks.map(({ task, time, hasSpecificTime }, taskIndex) => {
                   const property = task.property_id
@@ -200,6 +236,42 @@ export function ScheduleView({
                     </div>
                   );
                 })}
+
+                {dateTasks.length === 0 ? (
+                  <div className="flex items-start gap-3">
+                    <div
+                      className={cn(
+                        SCHEDULE_TIME_COLUMN_CLASS,
+                        "pt-3 flex flex-col gap-0.5 leading-tight"
+                      )}
+                    >
+                      <span className="text-base font-semibold text-foreground tracking-wide">
+                        {weekdayLabel}
+                      </span>
+                      <span className={SCHEDULE_DATE_LABEL_CLASS}>{dateLabel}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 pt-3 text-sm text-muted-foreground">
+                      No tasks
+                    </div>
+                  </div>
+                ) : null}
+
+                {onCreateForDate ? (
+                  <div
+                    data-open={isSelectedDay || dateTasks.length === 0 ? "true" : undefined}
+                    className={cn(
+                      "grid transition-[grid-template-rows] duration-200 ease-out",
+                      "grid-rows-[0fr]",
+                      "group-hover/day:grid-rows-[1fr] group-focus-within/day:grid-rows-[1fr]",
+                      "data-[open=true]:grid-rows-[1fr]",
+                      "max-md:grid-rows-[1fr]"
+                    )}
+                  >
+                    <div className="min-h-0 overflow-hidden">
+                      <ScheduleCreateTaskRow date={date} onCreate={onCreateForDate} />
+                    </div>
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -236,7 +308,7 @@ export function ScheduleView({
           )}
 
           {/* Empty state */}
-          {datedTasks.length === 0 && anyTimeTasks.length === 0 && (
+          {dates.length === 0 && anyTimeTasks.length === 0 && (
             <div className="flex items-center justify-center h-64 text-muted-foreground">
               <p>No scheduled tasks</p>
             </div>

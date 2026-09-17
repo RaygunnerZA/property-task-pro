@@ -2,6 +2,7 @@ import { format } from "date-fns";
 import type { CalendarTypeId } from "@/lib/calendarTypes";
 import { inferCalendarType } from "@/lib/calendarTypes";
 import { parseScheduleDateTime } from "@/lib/calendarTaskSchedule";
+import { isTaskEffectivelyUrgent, type AutoUrgentHorizonId } from "@/lib/autoUrgent";
 import {
   defaultRepeatCalendarRange,
   expandRepeatOccurrenceDateKeys,
@@ -263,9 +264,10 @@ export function applyCalendarDisplayFilters(
      * - due: due/milestone within the next 7 days
      */
     taskScope?: CalendarTaskScope;
+    autoUrgentHorizon?: AutoUrgentHorizonId;
   }
 ): any[] {
-  const { searchQuery, propertyMap, selectedWorkbenchFilters, userId, taskScope } = options;
+  const { searchQuery, propertyMap, selectedWorkbenchFilters, userId, taskScope, autoUrgentHorizon } = options;
   let list = tasks;
   const filters = selectedWorkbenchFilters ?? new Set<string>();
 
@@ -329,7 +331,7 @@ export function applyCalendarDisplayFilters(
   }
 
   if (filters.has("filter-urgent")) {
-    list = list.filter((t) => t.priority === "urgent" || t.priority === "high");
+    list = list.filter((t) => isTaskEffectivelyUrgent(t, autoUrgentHorizon));
   }
 
   const statusFilters = [
@@ -363,4 +365,12 @@ export function applyCalendarDisplayFilters(
   }
 
   return list;
+}
+
+/** True when the mini-calendar / schedule day has at least one open placement. */
+export function dayHasCalendarTasks(
+  tasksByDate: Map<string, TaskDateData>,
+  date: Date
+): boolean {
+  return (tasksByDate.get(format(date, "yyyy-MM-dd"))?.total ?? 0) > 0;
 }

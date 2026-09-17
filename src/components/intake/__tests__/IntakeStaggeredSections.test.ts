@@ -16,6 +16,13 @@ describe("IntakeStaggeredSections visibility", () => {
     expect(shouldShowStaggerSection(3, 1, true)).toBe(true);
   });
 
+  it("shows Who/Where/Due when forceVisibleCount is 3", () => {
+    expect(shouldShowStaggerSection(0, 3, false)).toBe(true);
+    expect(shouldShowStaggerSection(1, 3, false)).toBe(true);
+    expect(shouldShowStaggerSection(2, 3, false)).toBe(true);
+    expect(shouldShowStaggerSection(3, 3, false)).toBe(false);
+  });
+
   it("shows Asset/Tag/Compliance early when those rows already have facts", () => {
     expect(shouldShowMetaSection(false, false)).toBe(false);
     expect(shouldShowMetaSection(false, true)).toBe(true);

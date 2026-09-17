@@ -121,7 +121,7 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
 | Column | Role |
 |--------|------|
-| Left | Title image block (~160px) · section health tabs (no radial) · perforation · expandable calendar (Tasks & Records only, collapsed by default) · ≤3 suggested actions · Recent |
+| Left | Title image block (~160px) · section health tabs (no radial) · perforation · expandable calendar (Tasks & Records collapsed by default; Calendar **Schedule** also shows it; omitted on Calendar **Planner**) · ≤3 suggested actions · Recent |
 | Centre | Page content for the active nav destination |
 | Right | Create Task / Add Record / relevant detail (≥1280px) |
 
@@ -318,7 +318,7 @@ All design tokens are defined in:
 1. **Title block** — large section illustration to the left of H1 (`font-display` / Fraunces) + short description
 2. **Section health dashboard** — three informational tabs styled like the Inflow property card stats (**omit** the radial completion graph)
 3. **Perforation** line
-4. **Expandable calendar** — **Tasks** and **Records** only; **collapsed by default**. Omitted on **Calendar** (centre owns the calendar) and on Spaces / Assets / People / Home
+4. **Expandable calendar** — **Tasks** and **Records**: collapsed by default. **Calendar Schedule**: shown in the left column (date picker for the agenda). **Omitted on Calendar Planner** (centre owns the month grid) and on Spaces / Assets / People / Home. Month/title opens Calendar Planner. Date click opens Schedule for that day; empty days open Create Task with the due date prefilled and description focused. Weekdays and day titles stagger in, then pressed-box fill stamps (full intro ≤1500ms). Hovering a Schedule day expands **Create Task** below that day's tasks (always visible on the selected day).
 5. **Filla suggested actions** — up to 3
 6. **Recent** — compact list via shared `RecentPanel` / `RecentPanelRow`: calendar day-cell **pressed paper** on each row, mono uppercase section label, `text-sm` title + caption. **No outer card wrapping rows** (no boxes on boxes).
 

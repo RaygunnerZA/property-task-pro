@@ -25,6 +25,8 @@ export type CentreWorkbenchProps = MyWorkPanelProps & {
    */
   hideTabStrip?: boolean;
   onCreateForDate?: (date: Date) => void;
+  onCalendarViewChange?: (view: CentreCalendarView) => void;
+  onMonthTitleClick?: () => void;
   /** Optional override for Records centre content (defaults to RecordsWorkbenchPanel). */
   recordsContent?: ReactNode;
   recordsView?: RecordsView;
@@ -55,6 +57,8 @@ export function CentreWorkbench({
   hideViewAllLinks = false,
   hideTabStrip: _hideTabStrip = false,
   onCreateForDate,
+  onCalendarViewChange,
+  onMonthTitleClick,
   recordsContent,
   recordsView = "all",
 }: CentreWorkbenchProps) {
@@ -107,6 +111,7 @@ export function CentreWorkbench({
               tasksLoading={tasksLoading}
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
+              onMonthTitleClick={onMonthTitleClick}
               selectedPropertyIds={selectedPropertyIds}
               taskScope={tasksCalendarScope}
               className="mb-0"
@@ -135,6 +140,7 @@ export function CentreWorkbench({
               selectedDate={selectedDate}
               initialCalendarView={initialCalendarView}
               onCreateForDate={onCreateForDate}
+              onCalendarViewChange={onCalendarViewChange}
             />
           )}
           {activeTab === "records" &&

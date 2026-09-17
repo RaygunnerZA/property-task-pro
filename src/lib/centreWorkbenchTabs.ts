@@ -9,6 +9,9 @@ export const WORKBENCH_DATE_QUERY = "date";
 /** Centre calendar sub-view: `calendar` (month grid) or `schedule` (agenda). */
 export const WORKBENCH_CALENDAR_VIEW_QUERY = "calendarView";
 
+/** Open Create Task for the `date` query (`compose=task`). Survives `/tasks` → `/calendar` remount. */
+export const WORKBENCH_COMPOSE_QUERY = "compose";
+
 export type CentreCalendarView = "calendar" | "schedule";
 
 /** Dedicated work-surface routes. */

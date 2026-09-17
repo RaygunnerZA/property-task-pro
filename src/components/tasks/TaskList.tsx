@@ -36,6 +36,8 @@ import { AutoArchiveCard } from "@/components/tasks/AutoArchiveCard";
 import { RestoreArchivedTasksSheet } from "@/components/tasks/RestoreArchivedTasksSheet";
 import { useAutoArchivePreference } from "@/hooks/useAutoArchivePreference";
 import { useAutoArchiveRunner } from "@/hooks/useAutoArchiveRunner";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -158,6 +160,7 @@ export function TaskList({
   const useHeaderControls = embeddedInIssuesWorkbench && workbenchControls != null;
   const { intervalId: autoArchiveIntervalId, toggleInterval: toggleAutoArchiveInterval } =
     useAutoArchivePreference();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const [restoreSheetOpen, setRestoreSheetOpen] = useState(false);
   useAutoArchiveRunner(tasksData, autoArchiveIntervalId);
   
@@ -248,7 +251,7 @@ export function TaskList({
     }
 
     if (selectedFilters.has("filter-urgent")) {
-      filtered = filtered.filter((task) => task.priority === "urgent" || task.priority === "high");
+      filtered = filtered.filter((task) => isTaskEffectivelyUrgent(task, autoUrgentHorizon));
     }
 
     if (selectedFilters.has("filter-assigned-me")) {
@@ -435,7 +438,7 @@ export function TaskList({
     }
 
     return filtered;
-  }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties, taskSearchQuery, propertyMap]);
+  }, [tasks, selectedFilters, userId, taskThemes, selectedPropertyIdsProp, properties, taskSearchQuery, propertyMap, autoUrgentHorizon]);
 
   // Group filtered tasks by status.
   // When the Done section is shown (All), keep completed in the primary list so

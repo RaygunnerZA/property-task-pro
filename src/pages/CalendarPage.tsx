@@ -18,6 +18,7 @@ import { useAssistantContext } from "@/contexts/AssistantContext";
 import { WorkbenchControlsProvider, useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +42,7 @@ function CalendarPageContent() {
   const { data: properties = [], isLoading: propertiesLoading } = usePropertiesQuery();
   const { userId } = useDataContext();
   const { orgId } = useActiveOrg();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const { searchQuery, selectedFilters } = useWorkbenchControls();
   const { openAssistant, onSendMessage } = useAssistantContext();
   const updateTaskMutation = useUpdateTaskMutation();
@@ -114,6 +116,7 @@ function CalendarPageContent() {
       selectedWorkbenchFilters: selectedFilters,
       userId,
       taskScope,
+      autoUrgentHorizon,
     });
   }, [
     tasks,
@@ -125,6 +128,7 @@ function CalendarPageContent() {
     selectedFilters,
     userId,
     taskScope,
+    autoUrgentHorizon,
   ]);
 
   const headerAccentColor = useMemo(() => {

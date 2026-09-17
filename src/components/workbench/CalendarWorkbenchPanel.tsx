@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { addMonths, startOfMonth, subMonths } from "date-fns";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid";
 import { CalendarMonthYearLabel } from "@/components/calendar/CalendarMonthYearLabel";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
@@ -12,6 +12,7 @@ import {
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -56,6 +57,7 @@ export type CalendarWorkbenchPanelProps = MyWorkPanelProps & {
   selectedDate?: Date;
   initialCalendarView?: CentreCalendarView;
   onCreateForDate?: (date: Date) => void;
+  onCalendarViewChange?: (view: CentreCalendarView) => void;
 };
 
 /**
@@ -71,9 +73,11 @@ export function CalendarWorkbenchPanel({
   selectedDate: selectedDateProp,
   initialCalendarView = "calendar",
   onCreateForDate,
+  onCalendarViewChange,
 }: CalendarWorkbenchPanelProps) {
   const { userId } = useDataContext();
   const { orgId } = useActiveOrg();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const workbenchControls = useOptionalWorkbenchControls();
   const updateTaskMutation = useUpdateTaskMutation();
   const { toast } = useToast();
@@ -160,6 +164,7 @@ export function CalendarWorkbenchPanel({
       selectedWorkbenchFilters: displayFilters,
       userId,
       taskScope,
+      autoUrgentHorizon,
     });
   }, [
     parsedTasks,
@@ -171,6 +176,7 @@ export function CalendarWorkbenchPanel({
     propertyMap,
     userId,
     taskScope,
+    autoUrgentHorizon,
   ]);
 
   /** Agenda from today forward (plus overdue), limited by All / Urgent / My filters. */
@@ -265,7 +271,10 @@ export function CalendarWorkbenchPanel({
                       type="button"
                       role="tab"
                       aria-selected={selected}
-                      onClick={() => setView(tab.id)}
+                      onClick={() => {
+                        setView(tab.id);
+                        onCalendarViewChange?.(tab.id);
+                      }}
                       className={cn(
                         "inline-flex items-center gap-1 whitespace-nowrap transition-colors md:gap-1.5",
                         selected
@@ -365,24 +374,15 @@ export function CalendarWorkbenchPanel({
                 <div className="h-20 animate-pulse rounded-xl bg-muted/50" />
                 <div className="h-20 animate-pulse rounded-xl bg-muted/50" />
               </div>
-            ) : scheduleTasks.length > 0 ? (
+            ) : (
               <ScheduleView
                 tasks={scheduleTasks}
                 properties={properties}
                 selectedDate={selectedDate}
                 onTaskClick={onTaskClick}
                 selectedTaskId={selectedTaskId}
+                onCreateForDate={onCreateForDate}
               />
-            ) : (
-              <div className="flex h-full min-h-[200px] flex-col items-center justify-center px-4 text-center">
-                <Calendar className="mb-3 h-12 w-12 text-muted-foreground/50" />
-                <p className="mb-1 text-sm font-medium text-foreground">
-                  No scheduled tasks
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Create a task with a due date, or adjust All / Urgent / My tasks filters.
-                </p>
-              </div>
             )}
           </div>
         </section>

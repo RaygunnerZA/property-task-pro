@@ -167,7 +167,7 @@ export function IntakeInboxPanel({ className, onReview }: IntakeInboxPanelProps)
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-primary" />
         <PanelSectionTitle as="h3" className="mb-0">
-          Pending review
+          Uploads to review
           {readyCount > 0 ? ` (${readyCount})` : ""}
         </PanelSectionTitle>
       </div>

@@ -13,6 +13,7 @@ import {
 } from "@/components/property-workspace/WorkspaceHealthGrid";
 import { cn } from "@/lib/utils";
 import { useCountUp } from "@/hooks/useCountUp";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { computePropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import type { PropertySummaryMetrics } from "@/lib/propertySummaryMetrics";
 import type { PropertyAiSummaryLine, PropertyAiSummaryTarget } from "@/lib/propertyAiSummary";
@@ -402,6 +403,7 @@ export function PropertySummaryPanel({
    */
   const showPhoneWorkEntries = showCentreNavBelowPhone || variant === "compact";
   const navigate = useNavigate();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const [searchParams] = useSearchParams();
   const [metricsExpanded, setMetricsExpanded] = useState(true);
   const metricsAutoCollapsedRef = useRef(false);
@@ -470,9 +472,10 @@ export function PropertySummaryPanel({
         tasks as Parameters<typeof computePropertySummaryMetrics>[1],
         documents,
         0,
-        urgentOpenTaskCount
+        urgentOpenTaskCount,
+        autoUrgentHorizon
       ),
-    [property, tasks, documents, urgentOpenTaskCount, metricsOverride]
+    [property, tasks, documents, urgentOpenTaskCount, metricsOverride, autoUrgentHorizon]
   );
 
   const tasksSecondary = useMemo(() => {

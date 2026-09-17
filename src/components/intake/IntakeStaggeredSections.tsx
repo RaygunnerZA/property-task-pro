@@ -35,6 +35,11 @@ type CoreSection = {
 
 export type IntakeStaggeredSectionsProps = {
   active: boolean;
+  /**
+   * Minimum core rows to show immediately when `active` (1–4).
+   * Calendar date "+" uses 3 so Who / Where / Due appear without waiting to type.
+   */
+  forceVisibleCount?: number;
   whoFacts: StaggerFactChip[];
   whereFacts: StaggerFactChip[];
   whenFacts: StaggerFactChip[];
@@ -215,6 +220,7 @@ function StaggerRow({
 
 export function IntakeStaggeredSections({
   active,
+  forceVisibleCount,
   whoFacts,
   whereFacts,
   whenFacts,
@@ -242,17 +248,21 @@ export function IntakeStaggeredSections({
       setVisibleCount(0);
       return;
     }
-    setVisibleCount(1);
+    const start = Math.min(
+      CORE_ORDER.length,
+      Math.max(1, forceVisibleCount ?? 1)
+    );
+    setVisibleCount(start);
     const timers: number[] = [];
-    for (let i = 2; i <= CORE_ORDER.length; i += 1) {
+    for (let i = start + 1; i <= CORE_ORDER.length; i += 1) {
       timers.push(
         window.setTimeout(() => {
           setVisibleCount(i);
-        }, (i - 1) * STAGGER_MS)
+        }, (i - start) * STAGGER_MS)
       );
     }
     return () => timers.forEach((id) => window.clearTimeout(id));
-  }, [active]);
+  }, [active, forceVisibleCount]);
 
   const coreSections: CoreSection[] = [
     { id: "who", word: "Who?", icon: User, facts: whoFacts, hoverChips: whoHover },

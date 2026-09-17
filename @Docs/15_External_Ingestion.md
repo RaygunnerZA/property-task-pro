@@ -18,7 +18,7 @@ System-detected intake (`signals`):
 Unknown external sender email → `emit_signal` (`kind=email`, `disposition=needs_review`, `review_state=needs_classification`) → Issues / Needs review. Managers triage; does **not** appear in the member's Add to Filla pending list.
 
 Manager promote (Issues Action Layer):
-*   **Convert to review** calls `promote_external_email_signal(signal_id)` → creates `intake_items` (`source_type=forwarded_email`, `created_by` = manager) from `payload.attachment_paths` (or a text-only row from preview), marks the signal `converted_to_record`, then runs `intake-process` and opens Add to Filla.
+*   **Convert to review** calls `promote_external_email_signal(signal_id)` → creates `intake_items` (`source_type=forwarded_email`, `created_by` = manager) from `payload.attachment_paths` (or a text-only row from preview), marks the signal `converted_to_record`, then runs `intake-process` and opens Home Inflow pending review.
 *   **Dismiss** resolves the signal without creating intake rows.
 
 Member email routing:
@@ -36,7 +36,7 @@ Webhook: `POST /functions/v1/inbound-email` — Svix signature via `RESEND_WEBHO
 Dedupe: `dedupe_key = email_inbound:{org_id}:{message_id}` on external signals.
 
 **15.5 — THE INBOX (`intake_items`)**
-A holding state for user-deliberate uploads and member forwards. AI suggests filing destination. External unknown emails use the signals layer instead.
+A holding state for user-deliberate uploads and member forwards. AI suggests filing destination. **Review UI:** Home Inflow (“Uploads to review” under Needs review) — not the Add to Filla capture sheet. External unknown emails use the signals layer instead.
 
 **15.6 — CONNECTED ACCOUNTS (Phase 2+)**
 `connected_accounts` stores per-user OAuth connections (Google, Microsoft). Settings → Integrations. Calendar import and cloud pickers require an active connection; token storage is encrypted at the app layer.

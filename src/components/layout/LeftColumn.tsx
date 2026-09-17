@@ -20,7 +20,9 @@ import { WorkspaceContextColumn } from "@/components/workbench/WorkspaceContextC
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { CentreWorkbenchTab } from "@/lib/centreWorkbenchTabs";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
+import type { CentreWorkbenchTab, CentreCalendarView } from "@/lib/centreWorkbenchTabs";
 import { isHomeHubPath, shouldShowPortfolioCarousel } from "@/lib/workbenchLayoutMode";
 import { RecordsContextColumn } from "@/components/records/RecordsContextColumn";
 import { PageContentTitle } from "@/components/design-system/PageContentTitle";
@@ -34,6 +36,8 @@ interface LeftColumnProps {
   propertiesLoading?: boolean;
   selectedDate?: Date | undefined;
   onDateSelect?: (date: Date | undefined) => void;
+  onMonthTitleClick?: () => void;
+  calendarView?: CentreCalendarView;
   tasksByDate?: Map<string, {
     total: number;
     high: number;
@@ -72,6 +76,8 @@ export function LeftColumn({
   propertiesLoading = false,
   selectedDate,
   onDateSelect,
+  onMonthTitleClick,
+  calendarView = "calendar",
   tasksByDate,
   urgentCount,
   overdueCount,
@@ -95,6 +101,7 @@ export function LeftColumn({
   const isScheduleWorkbench = workbenchPanel === "schedule";
   const isRecordsWorkbench = workbenchPanel === "records";
   const isMobile = useIsMobile();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const isScheduleMobile = isScheduleWorkbench && isMobile;
   const isHomeSurface =
     isHubHome || workbenchPanel === "home" || workbenchPanel === "issues";
@@ -166,7 +173,7 @@ export function LeftColumn({
     tasks.forEach((task) => {
       if (
         task.property_id &&
-        (task.priority === 'urgent' || task.priority === 'high') &&
+        isTaskEffectivelyUrgent(task, autoUrgentHorizon) &&
         task.status !== 'completed' &&
         task.status !== 'archived'
       ) {
@@ -174,7 +181,7 @@ export function LeftColumn({
       }
     });
     return counts;
-  }, [tasks]);
+  }, [tasks, autoUrgentHorizon]);
 
   // Single selected property: identity strip below the selector stack.
   const focusedProperty = useMemo(() => {
@@ -203,6 +210,7 @@ export function LeftColumn({
         propertyMap,
         selectedWorkbenchFilters: workbenchControls.selectedFilters,
         userId,
+        autoUrgentHorizon,
       });
     }
     return scoped;
@@ -215,6 +223,7 @@ export function LeftColumn({
     tasks,
     userId,
     workbenchControls,
+    autoUrgentHorizon,
   ]);
 
   const scopedTasksByDate = useMemo(
@@ -262,6 +271,7 @@ export function LeftColumn({
           tasks={calendarTasks}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          onMonthTitleClick={onMonthTitleClick}
           tasksByDate={scopedTasksByDate}
           className="shadow-e1"
           defaultExpanded={
@@ -291,6 +301,8 @@ export function LeftColumn({
           tasksLoading={tasksLoading}
           selectedDate={selectedDate}
           onDateSelect={onDateSelect}
+          onMonthTitleClick={onMonthTitleClick}
+          calendarView={calendarView}
           selectedPropertyIds={selectedPropertyIds}
           onFilterClick={onFilterClick}
           onTaskClick={onTaskClick}

@@ -39,6 +39,7 @@
     --duration-fast: 120ms;
     --duration-default: 200ms;
     --duration-slow: 320ms;
+    --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -1121,6 +1122,108 @@
   .list-stagger > *:nth-child(10) { animation-delay: 270ms; }
   .list-stagger > *:nth-child(11) { animation-delay: 300ms; }
   .list-stagger > *:nth-child(n+12) { animation-delay: 330ms; }
+
+  /* ── Mini-calendar intro (≤1500ms): weekdays + day titles stagger, then stamp ─
+     Weekdays 0–240ms, titles 160–820ms, pressed fill stamps 760–1288ms. */
+  @keyframes mini-cal-label-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes mini-cal-stamp {
+    0% {
+      opacity: 0;
+      transform: scale(0.82);
+    }
+    55% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .filla-mini-calendar .mini-cal-day-stamp {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .filla-mini-calendar .rdp-row:nth-child(1) { --mini-cal-row: 0; }
+  .filla-mini-calendar .rdp-row:nth-child(2) { --mini-cal-row: 1; }
+  .filla-mini-calendar .rdp-row:nth-child(3) { --mini-cal-row: 2; }
+  .filla-mini-calendar .rdp-row:nth-child(4) { --mini-cal-row: 3; }
+  .filla-mini-calendar .rdp-row:nth-child(5) { --mini-cal-row: 4; }
+  .filla-mini-calendar .rdp-row:nth-child(6) { --mini-cal-row: 5; }
+  .filla-mini-calendar .rdp-cell:nth-child(1) { --mini-cal-col: 0; }
+  .filla-mini-calendar .rdp-cell:nth-child(2) { --mini-cal-col: 1; }
+  .filla-mini-calendar .rdp-cell:nth-child(3) { --mini-cal-col: 2; }
+  .filla-mini-calendar .rdp-cell:nth-child(4) { --mini-cal-col: 3; }
+  .filla-mini-calendar .rdp-cell:nth-child(5) { --mini-cal-col: 4; }
+  .filla-mini-calendar .rdp-cell:nth-child(6) { --mini-cal-col: 5; }
+  .filla-mini-calendar .rdp-cell:nth-child(7) { --mini-cal-col: 6; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(1) { --mini-cal-col: 0; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(2) { --mini-cal-col: 1; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(3) { --mini-cal-col: 2; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(4) { --mini-cal-col: 3; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(5) { --mini-cal-col: 4; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(6) { --mini-cal-col: 5; }
+  .filla-mini-calendar .rdp-head_cell:nth-child(7) { --mini-cal-col: 6; }
+
+  .filla-mini-calendar .mini-cal-weekday,
+  .filla-mini-calendar .mini-cal-day-title {
+    animation: mini-cal-label-in 220ms var(--ease-out) both;
+  }
+
+  .filla-mini-calendar .mini-cal-weekday {
+    animation-delay: calc(var(--mini-cal-col, 0) * 40ms);
+  }
+
+  .filla-mini-calendar .mini-cal-day-title {
+    animation-delay: calc(
+      160ms + var(--mini-cal-row, 0) * 40ms + var(--mini-cal-col, 0) * 40ms
+    );
+  }
+
+  .filla-mini-calendar .mini-cal-day-stamp,
+  .filla-mini-calendar .mini-cal-day-dot {
+    animation: mini-cal-stamp 360ms var(--ease-emphasized, cubic-bezier(0.2, 0, 0, 1)) both;
+    animation-delay: calc(760ms + var(--mini-cal-col, 0) * 28ms);
+  }
+
+  /* Collapsed week strip: don't run the hidden month-grid intro. */
+  .filla-mini-calendar[data-collapsed="true"] .rdp-head_cell,
+  .filla-mini-calendar[data-collapsed="true"] .rdp-day .mini-cal-day-title,
+  .filla-mini-calendar[data-collapsed="true"] .rdp-day .mini-cal-day-stamp,
+  .filla-mini-calendar[data-collapsed="true"] .rdp-day .mini-cal-day-dot {
+    animation: none;
+  }
+
+  /* Expanded month: don't run the hidden week-strip intro. */
+  .filla-mini-calendar[data-collapsed="false"] .mini-cal-weekdays .mini-cal-weekday,
+  .filla-mini-calendar[data-collapsed="false"] .mini-cal-days .mini-cal-day-title,
+  .filla-mini-calendar[data-collapsed="false"] .mini-cal-days .mini-cal-day-stamp,
+  .filla-mini-calendar[data-collapsed="false"] .mini-cal-days .mini-cal-day-dot {
+    animation: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .filla-mini-calendar .mini-cal-weekday,
+    .filla-mini-calendar .mini-cal-day-title,
+    .filla-mini-calendar .mini-cal-day-stamp,
+    .filla-mini-calendar .mini-cal-day-dot {
+      animation: none !important;
+    }
+  }
 
   /* ── Magnetic scroll areas (MagneticScrollArea) ──────────────────────────
      Subtle magnetism: items gently settle onto list positions at the end of a

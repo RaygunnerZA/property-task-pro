@@ -79,6 +79,10 @@ Owners and Managers set required fields in organisation Settings → General (`o
 
 Create-task and complete-task are blocked until the required fields are present. Completion is also enforced in the database so reports can filter on evidence, place, and trade. Defaults are off.
 
+### Auto-urgent (due-date classification)
+
+The Urgent queue includes tasks with stored priority `urgent` or `high`, plus open tasks whose due date falls inside a user preference horizon (default: due today or already overdue). This does **not** rewrite `tasks.priority`. Set the horizon in Settings → General → Task urgency.
+
 ---
 
 ## 5.3 — CHECKLISTS (FIRST-CLASS OBJECTS)

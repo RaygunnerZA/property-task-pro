@@ -62,4 +62,20 @@ describe("hubSummaryMetrics", () => {
     expect(metrics.overdueCount).toBe(1);
     expect(metrics.missingInfoCount).toBe(1);
   });
+
+  it("counts overdue work as urgent when the horizon includes overdue", () => {
+    const properties = [{ id: "p1", open_tasks_count: 1 }];
+    const tasks = [
+      {
+        property_id: "p1",
+        status: "open",
+        priority: "normal",
+        due_date: "2020-01-01",
+      },
+    ];
+    const metrics = computeHubSummaryMetrics(tasks, properties, new Set(["p1"]), "today");
+    expect(metrics.urgentCount).toBe(1);
+    const off = computeHubSummaryMetrics(tasks, properties, new Set(["p1"]), "off");
+    expect(off.urgentCount).toBe(0);
+  });
 });

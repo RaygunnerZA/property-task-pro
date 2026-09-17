@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { MessageSquare, MessageSquareMore } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { WorkbenchTaskFilterBar } from "@/components/workbench/WorkbenchTaskFilterBar";
@@ -16,6 +16,8 @@ import {
 import { useDataContext } from "@/contexts/DataContext";
 import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
 import { useTaskMessageActivity } from "@/hooks/useTaskMessageActivity";
 import { setTasksMessagesTabActive } from "@/lib/tasksMessagesTab";
 import {
@@ -155,6 +157,10 @@ export function TasksWorkbenchPanel({
   const [authorFilterKey, setAuthorFilterKey] = useState<string | null>(null);
   const { latestByTask, recentAuthors } = useTaskMessageActivity();
   const allTasksIllustrationSrc = useAllTasksIllustrationSrc();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
+  const headerRef = useRef<HTMLDivElement>(null);
+  const tablistRef = useRef<HTMLDivElement>(null);
+  const [hideHeaderArt, setHideHeaderArt] = useState(false);
 
   // List tabs replace Due / Urgent / My Tasks chips — clear them so they don't double-filter.
   useEffect(() => {
@@ -219,11 +225,8 @@ export function TasksWorkbenchPanel({
   );
 
   const urgentTasks = useMemo(
-    () =>
-      scopedOpenTasks.filter(
-        (t) => t.priority === "urgent" || t.priority === "high"
-      ),
-    [scopedOpenTasks]
+    () => scopedOpenTasks.filter((t) => isTaskEffectivelyUrgent(t, autoUrgentHorizon)),
+    [scopedOpenTasks, autoUrgentHorizon]
   );
 
   const myTasks = useMemo(
@@ -286,6 +289,7 @@ export function TasksWorkbenchPanel({
       properties,
       selectedPropertyIds,
       searchQuery,
+      autoUrgentHorizon,
     });
     // Default Messages order: new (unread) first, then most recent message.
     // Other sorts override that.
@@ -305,6 +309,7 @@ export function TasksWorkbenchPanel({
     selectedPropertyIds,
     searchQuery,
     sortBy,
+    autoUrgentHorizon,
   ]);
 
   const tabCounts: Record<Exclude<TasksListTab, "messages">, number> = {
@@ -327,6 +332,48 @@ export function TasksWorkbenchPanel({
   const activeIllustrationSrc =
     listTab === "all" ? allTasksIllustrationSrc : activeTabMeta.illustrationSrc;
 
+  useLayoutEffect(() => {
+    const header = headerRef.current;
+    const tabs = tablistRef.current;
+    if (!header || !tabs) return;
+
+    const measure = () => {
+      if (window.matchMedia("(max-width: 767px)").matches) {
+        setHideHeaderArt(true);
+        return;
+      }
+      const headerRect = header.getBoundingClientRect();
+      const tabButtons = tabs.querySelectorAll('[role="tab"]');
+      const lastTab = tabButtons[tabButtons.length - 1] ?? tabs;
+      const tabsRight = lastTab.getBoundingClientRect().right;
+      const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      const maxArt = (listTab === "all" ? 7.5 : 6.25) * rem;
+      const pct = listTab === "all" ? 0.31 : 0.26;
+      const artWidth = Math.min(maxArt, headerRect.width * pct);
+      const artInset = 8;
+      const gap = 12;
+      const slack = 16;
+      const artLeft = headerRect.right - artInset - artWidth;
+      setHideHeaderArt((hidden) => {
+        const overlaps = tabsRight + gap > artLeft;
+        if (!hidden) return overlaps;
+        // Stay hidden until there is clear space — measuring the last tab
+        // (not the stretched tablist box) so widening can show the art again.
+        return tabsRight + gap + slack > artLeft;
+      });
+    };
+
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(header);
+    ro.observe(tabs);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [listTab, activeIllustrationSrc, tabCounts.all, tabCounts.urgent, tabCounts.my]);
+
   const MessagesIcon = unreadMessageCount > 1 ? MessageSquareMore : MessageSquare;
 
   const handleSelectTaskFromMessages = (taskId: string) => {
@@ -340,6 +387,7 @@ export function TasksWorkbenchPanel({
       <section className="flex min-h-0 min-w-0 w-full flex-col rounded-2xl bg-transparent pt-0 pb-1">
         {/* Align All / Urgent / My with left-rail section H1 (shared title-band pt). */}
         <div
+          ref={headerRef}
           className={cn(
             "relative flex w-full min-w-0 items-start gap-3 px-0",
             workbenchTitleBandPtClassName
@@ -349,13 +397,14 @@ export function TasksWorkbenchPanel({
             className={cn(
               "min-w-0 flex-1",
               workbenchTitleBandLabelOffsetClassName,
-              // Reserve space for the illustration only from md up (hidden on mobile).
-              listTab === "all"
-                ? "md:pr-[min(7.8rem,33%)]"
-                : "md:pr-[min(6.5rem,28%)]"
+              !hideHeaderArt &&
+                (listTab === "all"
+                  ? "md:pr-[min(7.8rem,33%)]"
+                  : "md:pr-[min(6.5rem,28%)]")
             )}
           >
             <div
+              ref={tablistRef}
               role="tablist"
               aria-label="Task lists"
               className="flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
@@ -463,8 +512,9 @@ export function TasksWorkbenchPanel({
 
           <div
             className={cn(
-              "pointer-events-none absolute right-2 top-0 hidden aspect-square items-start justify-end md:flex",
+              "pointer-events-none absolute right-2 top-0 aspect-square items-start justify-end",
               workbenchTitleBandPtClassName,
+              hideHeaderArt ? "hidden" : "hidden md:flex",
               // All-tasks art: +20% vs other tab illustrations (grows upward from the header).
               listTab === "all"
                 ? "mt-[-6px] md:w-[min(7.5rem,31%)] md:max-h-[7.5rem]"

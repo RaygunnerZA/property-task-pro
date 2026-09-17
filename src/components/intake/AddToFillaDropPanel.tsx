@@ -108,7 +108,7 @@ export function AddToFillaDropPanel({
     if (uploaded > 0 && failures.length === 0) {
       toast({
         title: "Added to Filla",
-        description: `${uploaded} file${uploaded === 1 ? "" : "s"} uploaded — AI is processing.`,
+        description: `${uploaded} file${uploaded === 1 ? "" : "s"} uploaded — AI is processing. Review on Home when ready.`,
       });
       return;
     }
@@ -246,7 +246,9 @@ export function AddToFillaDropPanel({
               Add to Filla
             </p>
             <p className={cn("text-muted-foreground leading-snug", compact || collapsedHeight ? "text-2xs" : "text-xs")}>
-              {uploading ? "Uploading…" : "Drop anything here. Filla will understand it."}
+              {uploading
+                ? "Uploading…"
+                : "Drop anything here. Processed files appear on Home to review."}
             </p>
             {readyCount > 0 && onReviewClick && (
               <button
@@ -260,7 +262,7 @@ export function AddToFillaDropPanel({
                   compact || collapsedHeight ? "text-2xs h-[20px]" : "text-2xs h-[24px]"
                 )}
               >
-                {readyCount} ready to review
+                {readyCount} ready on Home
               </button>
             )}
           </div>
@@ -272,7 +274,7 @@ export function AddToFillaDropPanel({
           {lastUploaded > 0 && (
             <div className="text-2xs text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="h-3 w-3" />
-              Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}.
+              Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}. Review on Home when ready.
             </div>
           )}
           {lastFailures.length > 0 && (

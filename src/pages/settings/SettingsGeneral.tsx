@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { useOrgSettings } from "@/hooks/useOrgSettings";
 import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
 import { TaskCaptureRequirementsCard } from "@/components/settings/TaskCaptureRequirementsCard";
+import { TaskAutoUrgentCard } from "@/components/settings/TaskAutoUrgentCard";
 import { useToast } from "@/hooks/use-toast";
 import { toast } from "sonner";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -682,6 +683,7 @@ export default function SettingsGeneral() {
       </Card>
 
       <TaskCaptureRequirementsCard />
+      <TaskAutoUrgentCard />
       </div>
 
       {/* Edit Profile Dialog */}

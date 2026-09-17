@@ -5,6 +5,8 @@ import TaskCard from "@/components/TaskCard";
 import { Button } from "@/components/ui/button";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import { FilterChip } from "@/components/chips/filter";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 
 interface PropertyTasksSectionProps {
   propertyId: string;
@@ -35,6 +37,7 @@ export function PropertyTasksSection({
   selectedTaskId,
 }: PropertyTasksSectionProps) {
   const navigate = useNavigate();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const [selectedFilter, setSelectedFilter] = useState<FilterType | null>('urgent');
 
   // Create property map for quick lookup
@@ -79,7 +82,7 @@ export function PropertyTasksSection({
         // Urgent: priority is 'urgent' or 'high', and status is not completed
         filtered = filtered.filter(
           (task) =>
-            (task.priority === 'urgent' || task.priority === 'high') &&
+            isTaskEffectivelyUrgent(task, autoUrgentHorizon) &&
             task.status !== 'completed' &&
             task.status !== 'archived'
         );
@@ -137,7 +140,7 @@ export function PropertyTasksSection({
       if (b.due_date) return 1;
       return 0;
     });
-  }, [spaceFilteredTasks, propertyId, selectedFilter]);
+  }, [spaceFilteredTasks, propertyId, selectedFilter, autoUrgentHorizon]);
 
   const handleViewAll = () => {
     // Navigate to work/tasks with property filter

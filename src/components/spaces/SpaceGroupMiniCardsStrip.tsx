@@ -6,6 +6,8 @@ import { useMemo } from "react";
 import { SpaceCard } from "@/components/spaces/SpaceCard";
 import { useSpacesWithTypes } from "@/hooks/useSpacesWithTypes";
 import { Skeleton } from "@/components/ui/skeleton";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 
 interface SpaceGroupMiniCardsStripProps {
   propertyId: string;
@@ -25,6 +27,7 @@ export function SpaceGroupMiniCardsStrip({
   selectedSpaceId,
 }: SpaceGroupMiniCardsStripProps) {
   const { spaces, loading } = useSpacesWithTypes(propertyId, groupSlug);
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
 
   const spaceTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -37,7 +40,7 @@ export function SpaceGroupMiniCardsStrip({
             taskSpaces.forEach((space: { id?: string }) => {
               if (space?.id && task.status !== "completed" && task.status !== "archived") {
                 counts[space.id] = (counts[space.id] || 0) + 1;
-                if (task.priority === "urgent" || task.priority === "high") {
+                if (isTaskEffectivelyUrgent(task, autoUrgentHorizon)) {
                   urgentCounts[space.id] = (urgentCounts[space.id] || 0) + 1;
                 }
               }
@@ -49,7 +52,7 @@ export function SpaceGroupMiniCardsStrip({
       }
     });
     return { counts, urgentCounts };
-  }, [tasks]);
+  }, [tasks, autoUrgentHorizon]);
 
   const displaySpaces = useMemo(() => {
     return [...spaces].sort((a, b) => {

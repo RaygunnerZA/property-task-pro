@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  forwardRef,
+  type MouseEvent,
+} from "react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   addDays,
@@ -95,12 +104,84 @@ function miniCalDayButtonClassName(
 ) {
   const geo = MINI_CAL_DAY[variant];
   return cn(
-    "relative box-border flex shrink-0 flex-col items-center justify-center",
+    "mini-cal-day relative box-border flex shrink-0 flex-col items-center justify-center",
     "rounded-card font-mono font-medium",
     "transition-[background-color,transform] duration-150 ease-out hover:bg-white/60 active:scale-90",
     geo.sizeClass,
     opts.isWeekend && !opts.isSelected && "text-muted-foreground/50",
     opts.isToday && !opts.isSelected && "ring-1 ring-primary/40"
+  );
+}
+
+/** Monday-first column index for intro stagger (matches WEEK_STARTS_ON). */
+function miniCalColumnIndex(date: Date): number {
+  return (date.getDay() + 6) % 7;
+}
+
+function MiniCalDayButton({
+  date,
+  dateData,
+  selectedDate,
+  variant,
+  onClick,
+  className,
+}: {
+  date: Date;
+  dateData: TaskDateData | undefined;
+  selectedDate?: Date;
+  variant: MiniCalVariant;
+  onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
+  className?: string;
+}) {
+  const maxUrgency = resolveDayUrgency(dateData);
+  const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
+  const isTodayDate = isToday(date);
+  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+  const fill = dayCellBackground(maxUrgency, isSelected);
+  const dot = dayDotColor(maxUrgency);
+  const geo = MINI_CAL_DAY[variant];
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        miniCalDayButtonClassName(variant, {
+          isWeekend,
+          isSelected,
+          isToday: isTodayDate,
+        }),
+        className
+      )}
+      style={{ ["--mini-cal-col" as string]: String(miniCalColumnIndex(date)) }}
+    >
+      {fill ? (
+        <span
+          className="mini-cal-day-stamp"
+          style={{
+            backgroundColor: fill,
+            boxShadow: MINI_CALENDAR_DAY_SHADOW,
+          }}
+          aria-hidden
+        />
+      ) : null}
+      <span
+        className={cn(
+          "mini-cal-day-title relative z-[1] font-medium",
+          geo.textClass,
+          isTodayDate && !isSelected && "font-semibold"
+        )}
+      >
+        {date.getDate()}
+      </span>
+      {dot ? (
+        <span
+          className="mini-cal-day-dot absolute left-[3px] top-[3px] z-[1] h-1 w-1 rounded-full"
+          style={{ backgroundColor: dot }}
+          aria-hidden
+        />
+      ) : null}
+    </button>
   );
 }
 
@@ -138,7 +219,7 @@ function miniCalMonthClassNames(variant: MiniCalVariant) {
     head: isEmbedded ? undefined : "h-6",
     head_row: "flex w-full justify-between mb-0",
     head_cell: cn(
-      "flex-1 text-center font-mono font-medium uppercase text-foreground",
+      "mini-cal-weekday flex-1 text-center font-mono font-medium uppercase text-foreground",
       "[&:nth-child(6)]:opacity-50 [&:nth-child(7)]:opacity-50",
       geo.weekdayClass
     ),
@@ -203,61 +284,38 @@ function WeekStripRow({
 
   return (
     <div className="w-full shrink-0">
-      <div className="mb-1.5 flex w-full justify-between px-0.5">
-        {weekDays.map((date) => {
+      <div className="mini-cal-weekdays mb-1.5 flex w-full justify-between px-0.5">
+        {weekDays.map((date, col) => {
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           return (
             <div
               key={format(date, "yyyy-MM-dd-dow")}
               className={cn(
-                "min-w-0 flex-1 text-center font-mono font-medium uppercase",
+                "mini-cal-weekday min-w-0 flex-1 text-center font-mono font-medium uppercase",
                 geo.weekdayClass,
                 isWeekend ? "text-muted-foreground/50" : "text-muted-foreground"
               )}
+              style={{ ["--mini-cal-col" as string]: String(col) }}
             >
               {formatDate(date, "EEE").toUpperCase()}
             </div>
           );
         })}
       </div>
-      <div className="flex w-full justify-between px-0.5">
+      <div className="mini-cal-days flex w-full justify-between px-0.5">
         {weekDays.map((date) => {
           const dateKey = format(date, "yyyy-MM-dd");
-          const dateData = tasksByDate.get(dateKey);
-          const maxUrgency = resolveDayUrgency(dateData);
-          const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
-          const isTodayDate = isToday(date);
-          const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-          const fill = dayCellBackground(maxUrgency, isSelected);
-          const dot = dayDotColor(maxUrgency);
           const variant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
 
           return (
             <div key={dateKey} className="flex min-w-0 flex-1 items-center justify-center">
-              <button
-                type="button"
+              <MiniCalDayButton
+                date={date}
+                dateData={tasksByDate.get(dateKey)}
+                selectedDate={selectedDate}
+                variant={variant}
                 onClick={() => onDateSelect?.(date)}
-                className={miniCalDayButtonClassName(variant, {
-                  isWeekend,
-                  isSelected,
-                  isToday: isTodayDate,
-                })}
-                style={{
-                  backgroundColor: fill,
-                  ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
-                }}
-              >
-                <span className={cn(geo.textClass, isTodayDate && !isSelected && "font-semibold")}>
-                  {date.getDate()}
-                </span>
-                {dot ? (
-                  <span
-                    className="absolute left-[3px] top-[3px] h-1 w-1 rounded-full"
-                    style={{ backgroundColor: dot }}
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
+              />
             </div>
           );
         })}
@@ -807,6 +865,8 @@ export interface FillaMiniCalendarProps {
   tasksByDate?: Map<string, TaskDateData>;
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
+  /** Month/title click — typically opens the Calendar planner. */
+  onMonthTitleClick?: () => void;
   month?: Date;
   onMonthChange?: (month: Date) => void;
   className?: string;
@@ -826,6 +886,7 @@ export function FillaMiniCalendar({
   tasks = [],
   selectedDate,
   onDateSelect,
+  onMonthTitleClick,
   month,
   onMonthChange,
   className,
@@ -859,6 +920,13 @@ export function FillaMiniCalendar({
     if (collapseOnDateSelect && selectedDate) return false;
     return true;
   });
+  const [introNonce, setIntroNonce] = useState(0);
+  const prevExpandedRef = useRef(isExpanded);
+  useEffect(() => {
+    if (prevExpandedRef.current === isExpanded) return;
+    prevExpandedRef.current = isExpanded;
+    setIntroNonce((n) => n + 1);
+  }, [isExpanded]);
   const [internalMonth, setInternalMonth] = useState(
     () => month ?? selectedDate ?? new Date()
   );
@@ -922,60 +990,38 @@ export function FillaMiniCalendar({
 
   const renderDayButton = (props: {
     date: Date;
-    onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+    onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
     className?: string;
   }) => {
     const { date, onClick, className: propClassName } = props;
     const dateKey = format(date, "yyyy-MM-dd");
-    const dateData = tasksByDate.get(dateKey);
-    const maxUrgency = resolveDayUrgency(dateData);
-    const isSelected = selectedDate ? isSameDay(date, selectedDate) : false;
-    const isTodayDate = isToday(date);
-    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const fill = dayCellBackground(maxUrgency, isSelected);
-    const dot = dayDotColor(maxUrgency);
-    const variant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
-    const geo = MINI_CAL_DAY[variant];
+    const dayVariant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
 
     return (
-      <button
-        type="button"
+      <MiniCalDayButton
+        date={date}
+        dateData={tasksByDate.get(dateKey)}
+        selectedDate={selectedDate}
+        variant={dayVariant}
         onClick={(e) => {
           onClick?.(e);
           handleDateSelect(date);
         }}
-        className={cn(
-          miniCalDayButtonClassName(variant, {
-            isWeekend,
-            isSelected,
-            isToday: isTodayDate,
-          }),
-          stripDayPickerGeometryClasses(propClassName)
-        )}
-        style={{
-          backgroundColor: fill,
-          ...(fill ? { boxShadow: MINI_CALENDAR_DAY_SHADOW } : undefined),
-        }}
-      >
-        <span
-          className={cn(
-            geo.textClass,
-            "font-medium",
-            isTodayDate && !isSelected && "font-semibold"
-          )}
-        >
-          {date.getDate()}
-        </span>
-        {dot ? (
-          <span
-            className="absolute left-[3px] top-[3px] h-1 w-1 rounded-full"
-            style={{ backgroundColor: dot }}
-            aria-hidden
-          />
-        ) : null}
-      </button>
+        className={stripDayPickerGeometryClasses(propClassName)}
+      />
     );
   };
+
+  const monthTitleLabel = (captionMonth: Date) => (
+    <CalendarMonthYearLabel
+      date={captionMonth}
+      onClick={onMonthTitleClick}
+      monthClassName={cn(
+        "font-semibold text-ink pl-[7px]",
+        isEmbedded ? "text-base" : "text-xl"
+      )}
+    />
+  );
 
   return (
     <div
@@ -987,6 +1033,7 @@ export function FillaMiniCalendar({
         className
       )}
       data-collapsed={showWeekStrip ? "true" : "false"}
+      data-intro={String(introNonce)}
     >
       {isCollapsible ? (
         <>
@@ -1000,6 +1047,7 @@ export function FillaMiniCalendar({
           >
             <div className="min-h-0 overflow-hidden">
               <Calendar
+                key={`month-${introNonce}`}
                 mode="single"
                 selected={selectedDate}
                 onSelect={handleDateSelect}
@@ -1020,15 +1068,7 @@ export function FillaMiniCalendar({
                   IconRight: () => (
                     <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />
                   ),
-                  CaptionLabel: ({ displayMonth: captionMonth }) => (
-                    <CalendarMonthYearLabel
-                      date={captionMonth}
-                      monthClassName={cn(
-                        "font-semibold text-ink pl-[7px]",
-                        isEmbedded ? "text-base" : "text-xl"
-                      )}
-                    />
-                  ),
+                  CaptionLabel: ({ displayMonth: captionMonth }) => monthTitleLabel(captionMonth),
                   Day: renderDayButton,
                 }}
                 styles={{
@@ -1046,15 +1086,9 @@ export function FillaMiniCalendar({
             )}
           >
             <div className="min-h-0 overflow-hidden">
-              <div ref={collapsedWeekRef} className="w-full">
+              <div ref={collapsedWeekRef} className="w-full" key={`week-${introNonce}`}>
                 <div className="mb-2 flex items-center justify-between px-0.5">
-                  <CalendarMonthYearLabel
-                    date={displayMonth}
-                    monthClassName={cn(
-                      "font-semibold text-ink pl-[7px]",
-                      isEmbedded ? "text-base" : "text-xl"
-                    )}
-                  />
+                  {monthTitleLabel(displayMonth)}
                   <div className="flex h-[26px] items-center gap-[17px] pt-[3px]">
                     <button
                       type="button"
@@ -1089,6 +1123,7 @@ export function FillaMiniCalendar({
         </>
       ) : (
         <Calendar
+          key={`embedded-${introNonce}`}
           mode="single"
           selected={selectedDate}
           onSelect={handleDateSelect}
@@ -1103,15 +1138,7 @@ export function FillaMiniCalendar({
           components={{
             IconLeft: () => <ChevronLeft className="h-6 w-6 text-accent" strokeWidth={2.2} />,
             IconRight: () => <ChevronRight className="h-6 w-6 text-accent" strokeWidth={2.2} />,
-            CaptionLabel: ({ displayMonth: captionMonth }) => (
-              <CalendarMonthYearLabel
-                date={captionMonth}
-                monthClassName={cn(
-                  "font-semibold text-ink pl-[7px]",
-                  isEmbedded ? "text-base" : "text-xl"
-                )}
-              />
-            ),
+            CaptionLabel: ({ displayMonth: captionMonth }) => monthTitleLabel(captionMonth),
             Day: renderDayButton,
           }}
         />

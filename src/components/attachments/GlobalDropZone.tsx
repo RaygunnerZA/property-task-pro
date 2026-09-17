@@ -81,7 +81,7 @@ export function GlobalDropZone({ className, compact = false, onUploadComplete }:
     if (uploaded > 0 && failures.length === 0) {
       toast({
         title: "Added to Filla",
-        description: `${uploaded} file${uploaded === 1 ? "" : "s"} uploaded — AI is processing.`,
+        description: `${uploaded} file${uploaded === 1 ? "" : "s"} uploaded — AI is processing. Review on Home when ready.`,
       });
       return;
     }
@@ -160,7 +160,7 @@ export function GlobalDropZone({ className, compact = false, onUploadComplete }:
             {uploading ? "Uploading…" : "Drop files here or click to upload"}
           </p>
           <p className="text-xs text-muted-foreground">
-            Photos, PDFs, and documents up to 50MB
+            Photos, PDFs, and documents up to 50MB. Processed files appear on Home → Needs review.
           </p>
         </div>
       </div>
@@ -170,7 +170,8 @@ export function GlobalDropZone({ className, compact = false, onUploadComplete }:
           {lastUploaded > 0 && (
             <div className="text-xs text-success-foreground flex items-center gap-1">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}.
+              Uploaded {lastUploaded} file{lastUploaded === 1 ? "" : "s"}. They’ll appear on Home
+              under Needs review when ready.
             </div>
           )}
           {lastFailures.length > 0 && (

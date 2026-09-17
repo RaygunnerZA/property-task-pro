@@ -3,6 +3,7 @@ import { addDays, format, subDays } from "date-fns";
 import {
   applyCalendarDisplayFilters,
   buildTasksByDate,
+  dayHasCalendarTasks,
 } from "../calendarDayMeta";
 
 describe("buildTasksByDate", () => {
@@ -130,5 +131,17 @@ describe("applyCalendarDisplayFilters", () => {
       { taskScope: "due" }
     );
     expect(result.map((t) => t.id)).toEqual(["milestone-week"]);
+  });
+});
+
+describe("dayHasCalendarTasks", () => {
+  it("is true when the day has at least one open placement", () => {
+    const dueKey = format(addDays(new Date(), 2), "yyyy-MM-dd");
+    const map = buildTasksByDate([
+      { id: "1", status: "open", priority: "normal", due_date: dueKey },
+    ]);
+    const [y, m, d] = dueKey.split("-").map(Number);
+    expect(dayHasCalendarTasks(map, new Date(y, m - 1, d))).toBe(true);
+    expect(dayHasCalendarTasks(map, new Date(1999, 0, 1))).toBe(false);
   });
 });

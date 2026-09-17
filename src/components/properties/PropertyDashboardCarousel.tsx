@@ -4,6 +4,7 @@ import { Edit2 } from "lucide-react";
 import allPropertiesHero from "@/assets/multiple-properties2.png";
 import { AllPropertiesDisplaySettingsSheet } from "@/components/properties/AllPropertiesDisplaySettingsSheet";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import {
   getAllPropertiesDisplaySettings,
   resolveAllPropertiesSubtitle,
@@ -106,6 +107,7 @@ function AllPropertiesCarouselSlide({
   onSelectSlide?: () => void;
 }) {
   const { orgId } = useActiveOrg();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const [showDisplaySettings, setShowDisplaySettings] = useState(false);
   const [displayRevision, setDisplayRevision] = useState(0);
   const { settled: heroSettled, hoverBind: heroHoverBind } = usePropertyHeroSettle();
@@ -137,9 +139,10 @@ function AllPropertiesCarouselSlide({
       computeAllPropertiesSummaryMetrics(
         properties,
         tasks as Parameters<typeof computeAllPropertiesSummaryMetrics>[1],
-        totalUrgent
+        totalUrgent,
+        autoUrgentHorizon
       ),
-    [properties, tasks, totalUrgent]
+    [properties, tasks, totalUrgent, autoUrgentHorizon]
   );
 
   const placeholderProperty = properties[0];

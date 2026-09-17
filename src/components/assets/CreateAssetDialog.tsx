@@ -57,7 +57,13 @@ const ASSET_TYPES = [
   "Plumbing",
   "Electrical",
   "Other",
-];
+] as const;
+
+const ASSET_TYPE_PRESETS = ASSET_TYPES.filter((t) => t !== "Other");
+
+function isAssetTypePreset(value: string) {
+  return ASSET_TYPE_PRESETS.some((t) => t === value);
+}
 
 function isImageFile(file: File) {
   const t = file.type?.toLowerCase() || "";
@@ -86,6 +92,8 @@ export function CreateAssetDialog({
     if (open && defaultName) setName(defaultName);
   }, [open, defaultName]);
   const [type, setType] = useState("");
+  const [typeOther, setTypeOther] = useState(false);
+  const [customType, setCustomType] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [iconName, setIconName] = useState("");
   const [loading, setLoading] = useState(false);
@@ -95,10 +103,16 @@ export function CreateAssetDialog({
   const resetForm = () => {
     setName("");
     setType("");
+    setTypeOther(false);
+    setCustomType("");
     setSerialNumber("");
     setIconName("");
     setPendingFiles([]);
   };
+
+  const resolvedAssetType = typeOther
+    ? customType.trim() || "Other"
+    : type || null;
 
   const handleFileSelect = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -217,7 +231,7 @@ export function CreateAssetDialog({
           property_id: propertyId,
           space_id: spaceId || null,
           name: name.trim(),
-          asset_type: type || null,
+          asset_type: resolvedAssetType,
           serial_number: serialNumber.trim() || null,
           condition_score: 100,
           status: "active",
@@ -274,7 +288,7 @@ export function CreateAssetDialog({
     onOpenChange(nextOpen);
   };
 
-  const searchText = [name, type].filter(Boolean).join(" ").trim();
+  const searchText = [name, typeOther ? customType : type].filter(Boolean).join(" ").trim();
   const busy = loading || isUploadingFile;
 
   return (
@@ -379,7 +393,20 @@ export function CreateAssetDialog({
           </div>
           <div className="grid gap-2">
             <Label htmlFor="type">Type</Label>
-            <Select value={type} onValueChange={setType} disabled={busy}>
+            <Select
+              value={typeOther || (type && !isAssetTypePreset(type)) ? "Other" : type}
+              onValueChange={(next) => {
+                if (next === "Other") {
+                  setTypeOther(true);
+                  if (isAssetTypePreset(type)) setCustomType("");
+                  return;
+                }
+                setTypeOther(false);
+                setCustomType("");
+                setType(next);
+              }}
+              disabled={busy}
+            >
               <SelectTrigger id="type">
                 <SelectValue placeholder="Select asset type" />
               </SelectTrigger>
@@ -391,6 +418,15 @@ export function CreateAssetDialog({
                 ))}
               </SelectContent>
             </Select>
+            {typeOther ? (
+              <Input
+                value={customType}
+                onChange={(e) => setCustomType(e.target.value)}
+                placeholder="Enter asset type"
+                disabled={busy}
+                aria-label="Custom asset type"
+              />
+            ) : null}
           </div>
           <div className="grid gap-2">
             <Label htmlFor="serial">Serial Number (optional)</Label>

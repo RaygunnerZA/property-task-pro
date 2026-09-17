@@ -86,7 +86,8 @@ export function CalendarImportSection({ className }: CalendarImportSectionProps)
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 pt-2">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Pull upcoming inspection or maintenance events from a connected calendar into Add to Filla review.
+          Pull upcoming inspection or maintenance events from a connected calendar. They appear on
+          Home under Needs review when ready to file.
         </p>
         <Button
           type="button"
@@ -139,7 +140,8 @@ export function CloudPickerSection({ className }: CloudPickerSectionProps) {
       </CollapsibleTrigger>
       <CollapsibleContent className="space-y-2 pt-2">
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Pick a file from Google Drive or OneDrive — it will go through the same review flow as uploads.
+          Pick a file from Google Drive or OneDrive — it processes like an upload and appears on
+          Home under Needs review.
         </p>
         <div className="flex gap-2">
           <Button

@@ -13,6 +13,7 @@ import {
   isPropertySubsetSelected,
   scopedPropertyIdSet,
 } from "@/utils/propertyFilter";
+import { isTaskEffectivelyUrgent, type AutoUrgentHorizonId } from "@/lib/autoUrgent";
 
 const PRIORITY_RANK: Record<string, number> = {
   urgent: 0,
@@ -28,6 +29,7 @@ export type WorkbenchTaskFilterContext = {
   /** Scope property chips from the left rail (ALL = show all). */
   selectedPropertyIds?: Set<string>;
   searchQuery?: string;
+  autoUrgentHorizon?: AutoUrgentHorizonId;
 };
 
 function parseSpaces(task: any): any[] {
@@ -77,7 +79,7 @@ export function filterTasksByWorkbenchFilters(
   selectedFilters: Set<string> | ReadonlySet<string>,
   ctx: WorkbenchTaskFilterContext = {}
 ): any[] {
-  const { userId, properties = [], selectedPropertyIds, searchQuery = "" } = ctx;
+  const { userId, properties = [], selectedPropertyIds, searchQuery = "", autoUrgentHorizon } = ctx;
   const propertyMap = new Map(properties.map((p) => [p.id, p]));
   let filtered = [...tasks];
 
@@ -93,9 +95,7 @@ export function filterTasksByWorkbenchFilters(
   }
 
   if (selectedFilters.has("filter-urgent")) {
-    filtered = filtered.filter(
-      (task) => task.priority === "urgent" || task.priority === "high"
-    );
+    filtered = filtered.filter((task) => isTaskEffectivelyUrgent(task, autoUrgentHorizon));
   }
 
   if (selectedFilters.has("filter-assigned-me")) {

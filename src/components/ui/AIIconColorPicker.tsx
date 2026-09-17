@@ -3,7 +3,7 @@
  * - 5 icon slots: thematic defaults on load; when user types, AI replaces first slot if relevant
  * - 6 distinct color options
  */
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useDebounce } from "@/hooks/useDebounce";
 import { getAssetIcon, isValidLucideIcon, filterValidLucideIcons } from "@/lib/icon-resolver";
@@ -25,6 +25,11 @@ const DEFAULT_FALLBACK = ["home", "building", "landmark", "store", "tag"];
 
 /** @deprecated Use PROPERTY_COLOR_PALETTE from @/lib/propertyVisualUniqueness */
 const COLORS_6 = [...PROPERTY_COLOR_PALETTE];
+
+function sameIconList(a: string[], b: string[]) {
+  if (a.length !== b.length) return false;
+  return a.every((name, i) => name === b[i]);
+}
 
 interface AIIconColorPickerProps {
   /** Search text (e.g. space name, asset name, property nickname) — AI uses this to suggest icons */
@@ -75,6 +80,12 @@ export function AIIconColorPicker({
   const [loading, setLoading] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [localSearchText, setLocalSearchText] = useState(searchText);
+  const valueRef = useRef(value);
+  const onChangeRef = useRef(onChange);
+  const searchRequestIdRef = useRef(0);
+  valueRef.current = value;
+  onChangeRef.current = onChange;
+
   useEffect(() => {
     setLocalSearchText(searchText);
   }, [searchText]);
@@ -114,15 +125,25 @@ export function AIIconColorPicker({
     return pickIconsFromRotationPool(rotationPool, rotationOffset, count, exclude);
   }, [rotationPool, rotationOffset, nameMatchedIcon]);
 
-  const rawDisplayIcons = iconRotationPool?.length
-    ? nameMatchedIcon
-      ? [nameMatchedIcon, ...poolRotationIcons].slice(0, 5)
-      : poolRotationIcons.slice(0, 5)
-    : aiIcons.length > 0
-      ? aiIcons
-      : suggestedIcon
-        ? [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5)
-        : themeIcons;
+  const rawDisplayIcons = useMemo(() => {
+    if (iconRotationPool?.length) {
+      return nameMatchedIcon
+        ? [nameMatchedIcon, ...poolRotationIcons].slice(0, 5)
+        : poolRotationIcons.slice(0, 5);
+    }
+    if (aiIcons.length > 0) return aiIcons;
+    if (suggestedIcon) {
+      return [suggestedIcon, ...themeIcons.filter((t) => t !== suggestedIcon)].slice(0, 5);
+    }
+    return themeIcons;
+  }, [
+    iconRotationPool,
+    nameMatchedIcon,
+    poolRotationIcons,
+    aiIcons,
+    suggestedIcon,
+    themeIcons,
+  ]);
 
   const displayIcons = useMemo(() => {
     const validRaw = rawDisplayIcons.filter(isValidLucideIcon);
@@ -178,6 +199,7 @@ export function AIIconColorPicker({
     }
 
     let cancelled = false;
+    const requestId = ++searchRequestIdRef.current;
     setLoading(true);
     void Promise.resolve(supabase.rpc("ai_icon_search", { query_text: query }))
       .then(({ data }) => {
@@ -191,7 +213,9 @@ export function AIIconColorPicker({
         if (!cancelled) setNameMatchedIcon(null);
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && searchRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
       });
 
     return () => {
@@ -200,27 +224,31 @@ export function AIIconColorPicker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedSearch, refreshKey, effectiveSearchText, iconRotationPool]);
 
+  // Keep a free icon selected for property rotation pools without re-entering AI search.
   useEffect(() => {
-    if (iconRotationPool?.length) {
-      const pickDefaultIcon = () =>
-        firstFreeIconFromList(rawDisplayIcons, iconTakenSet) ??
-        firstFreeIconFromList([...PROPERTY_DEFAULT_ICON_POOL], iconTakenSet) ??
-        rawDisplayIcons[0];
+    if (!iconRotationPool?.length) return;
+    const current = valueRef.current;
+    const pickDefaultIcon = () =>
+      firstFreeIconFromList(rawDisplayIcons, iconTakenSet) ??
+      firstFreeIconFromList([...PROPERTY_DEFAULT_ICON_POOL], iconTakenSet) ??
+      rawDisplayIcons[0];
 
-      if (
-        !value.iconName ||
-        !rawDisplayIcons.some(
-          (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(value.iconName)
-        ) ||
-        iconTakenSet.has(normalizePropertyIconKey(value.iconName))
-      ) {
-        const d = pickDefaultIcon();
-        if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
-          onChange(d, value.color);
-        }
+    if (
+      !current.iconName ||
+      !rawDisplayIcons.some(
+        (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(current.iconName)
+      ) ||
+      iconTakenSet.has(normalizePropertyIconKey(current.iconName))
+    ) {
+      const d = pickDefaultIcon();
+      if (d && normalizePropertyIconKey(current.iconName) !== normalizePropertyIconKey(d)) {
+        onChangeRef.current(d, current.color);
       }
-      return;
     }
+  }, [iconRotationPool, rawDisplayIcons, iconTakenSet, takenPropertyIconsFingerprint]);
+
+  useEffect(() => {
+    if (iconRotationPool?.length) return;
 
     const pickDefaultIcon = () =>
       firstFreeIconFromList(themeIcons, iconTakenSet) ??
@@ -232,34 +260,36 @@ export function AIIconColorPicker({
       pickDefaultIcon() ??
       names[0];
 
+    const applyIconIfNeeded = (next: string | undefined) => {
+      if (!next) return;
+      const current = valueRef.current;
+      if (normalizePropertyIconKey(current.iconName) === normalizePropertyIconKey(next)) return;
+      onChangeRef.current(next, current.color);
+    };
+
     const shouldAiSearch = !!debouncedSearch || refreshKey > 0;
 
     if (!shouldAiSearch) {
       setAiIcons((prev) => (prev.length === 0 ? prev : []));
       setLoading(false);
+      const current = valueRef.current;
       if (suggestedIcon) {
         const sKey = normalizePropertyIconKey(suggestedIcon);
         const suggestedOk = !iconTakenSet.has(sKey);
-        if (suggestedOk && (!value.iconName || value.iconName !== suggestedIcon)) {
-          onChange(suggestedIcon, value.color);
+        if (suggestedOk && (!current.iconName || current.iconName !== suggestedIcon)) {
+          applyIconIfNeeded(suggestedIcon);
         } else if (
-          !value.iconName ||
-          iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+          !current.iconName ||
+          iconTakenSet.has(normalizePropertyIconKey(current.iconName))
         ) {
-          const d = pickDefaultIcon();
-          if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
-            onChange(d, value.color);
-          }
+          applyIconIfNeeded(pickDefaultIcon());
         }
       } else if (
-        !value.iconName ||
-        !themeIcons.includes(value.iconName) ||
-        iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+        !current.iconName ||
+        !themeIcons.includes(current.iconName) ||
+        iconTakenSet.has(normalizePropertyIconKey(current.iconName))
       ) {
-        const d = pickDefaultIcon();
-        if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
-          onChange(d, value.color);
-        }
+        applyIconIfNeeded(pickDefaultIcon());
       }
       return;
     }
@@ -268,6 +298,7 @@ export function AIIconColorPicker({
     if (!query) return;
 
     let cancelled = false;
+    const requestId = ++searchRequestIdRef.current;
     setLoading(true);
     void Promise.resolve(supabase.rpc("ai_icon_search", { query_text: query }))
       .then(({ data }) => {
@@ -277,41 +308,40 @@ export function AIIconColorPicker({
           .map((r: { name?: string }) => r?.name)
           .filter(Boolean) as string[];
         if (names.length > 0) {
-          setAiIcons(names);
+          setAiIcons((prev) => (sameIconList(prev, names) ? prev : names));
+          const current = valueRef.current;
           const next = pickFromAi(names);
           const keepCurrent =
-            value.iconName &&
+            current.iconName &&
             names.some(
-              (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(value.iconName)
+              (n) => normalizePropertyIconKey(n) === normalizePropertyIconKey(current.iconName)
             ) &&
-            !iconTakenSet.has(normalizePropertyIconKey(value.iconName));
-          if (!keepCurrent && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(next)) {
-            onChange(next, value.color);
-          }
+            !iconTakenSet.has(normalizePropertyIconKey(current.iconName));
+          if (!keepCurrent) applyIconIfNeeded(next);
         } else {
-          setAiIcons([]);
+          setAiIcons((prev) => (prev.length === 0 ? prev : []));
+          const current = valueRef.current;
           if (
-            !value.iconName ||
-            !themeIcons.includes(value.iconName) ||
-            iconTakenSet.has(normalizePropertyIconKey(value.iconName))
+            !current.iconName ||
+            !themeIcons.includes(current.iconName) ||
+            iconTakenSet.has(normalizePropertyIconKey(current.iconName))
           ) {
-            const d = pickDefaultIcon();
-            if (d && normalizePropertyIconKey(value.iconName) !== normalizePropertyIconKey(d)) {
-              onChange(d, value.color);
-            }
+            applyIconIfNeeded(pickDefaultIcon());
           }
         }
       })
       .catch(() => {
-        if (!cancelled) setAiIcons([]);
+        if (!cancelled) setAiIcons((prev) => (prev.length === 0 ? prev : []));
       })
       .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && searchRequestIdRef.current === requestId) {
+          setLoading(false);
+        }
       });
     return () => {
       cancelled = true;
     };
-    // onChange omitted: parent often passes an inline callback; including it would re-run every render.
+    // value/onChange read via refs — including them re-triggers search after every icon pick.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     debouncedSearch,
@@ -321,10 +351,7 @@ export function AIIconColorPicker({
     effectiveSearchText,
     themeIcons,
     iconRotationPool,
-    rawDisplayIcons,
     takenPropertyIconsFingerprint,
-    value.iconName,
-    value.color,
   ]);
 
   const handleRefresh = () => {

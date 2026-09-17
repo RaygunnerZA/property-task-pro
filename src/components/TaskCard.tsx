@@ -57,6 +57,8 @@ import { useOrgMembers } from "@/hooks/useOrgMembers";
 import { useAuth } from "@/hooks/useAuth";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { formatTaskDueRelative, getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { isDueDateAutoUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { resolveTaskSignalChip } from "@/lib/taskSignalChip";
 import { TaskCardMediaZone } from "@/components/tasks/TaskCardMediaZone";
 import { TaskStatusDropdown } from "@/components/tasks/TaskStatusDropdown";
@@ -234,6 +236,7 @@ function TaskCardComponent({
   messagePreview?: TaskMessagePreview | null;
 }) {
   const { orgId, role: orgRole } = useActiveOrg();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const { members } = useOrgMembers();
   const { user: currentUser } = useAuth();
   const { data: orgProperties = [] } = usePropertiesQuery();
@@ -588,6 +591,7 @@ function TaskCardComponent({
     priority: task?.priority,
     due_date: task?.due_date ?? t.due_at,
     status: task?.status,
+    autoUrgent: isDueDateAutoUrgent(task, autoUrgentHorizon),
   });
   const dueDateRaw = task?.due_date ?? t.due_at;
   const educationChipLabel = isStaffTrainingTask(task)

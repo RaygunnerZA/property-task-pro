@@ -1,5 +1,6 @@
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { computeTodayActionGauge } from "@/lib/todayActionGauge";
+import { isTaskEffectivelyUrgent, type AutoUrgentHorizonId } from "@/lib/autoUrgent";
 
 const TERMINAL_STATUSES = new Set(["completed", "archived", "done"]);
 
@@ -58,7 +59,8 @@ type HubProperty = {
 export function computeHubSummaryMetrics(
   tasks: HubTask[],
   properties: HubProperty[],
-  selectedPropertyIds: Set<string>
+  selectedPropertyIds: Set<string>,
+  autoUrgentHorizon?: AutoUrgentHorizonId
 ): HubSummaryMetrics {
   const allPropertyIds = properties.map((p) => p.id);
   const scopeAll =
@@ -75,10 +77,9 @@ export function computeHubSummaryMetrics(
   const activeTasks = scopedTasks.filter((t) => (t.status ?? "").toLowerCase() !== "archived");
   const openTasks = activeTasks.filter(isOpenTask);
 
-  const urgentCount = openTasks.filter((t) => {
-    const pr = (t.priority ?? "").toLowerCase();
-    return pr === "urgent" || pr === "high";
-  }).length;
+  const urgentCount = openTasks.filter((t) =>
+    isTaskEffectivelyUrgent(t, autoUrgentHorizon)
+  ).length;
 
   let dueSoonCount = 0;
   let overdueCount = 0;

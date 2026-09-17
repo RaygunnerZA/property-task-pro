@@ -24,7 +24,12 @@ import {
 } from "@/lib/assetIconDefaults";
 import { cn } from "@/lib/utils";
 
-const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"];
+const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"] as const;
+const ASSET_TYPE_PRESETS = ASSET_TYPES.filter((t) => t !== "Other");
+
+function isAssetTypePreset(value: string) {
+  return ASSET_TYPE_PRESETS.some((t) => t === value);
+}
 
 type PendingFile = {
   id: string;
@@ -117,19 +122,57 @@ export function AddAssetWorkspaceForm({
   const I = (b: string) => idFor(b, variant);
   const [detailsOpen, setDetailsOpen] = useState(!lockProperty && !propertyId);
   const [iconEditOpen, setIconEditOpen] = useState(false);
+  const [typeOther, setTypeOther] = useState(
+    () => Boolean(type) && !isAssetTypePreset(type)
+  );
+  const [customType, setCustomType] = useState(() =>
+    type && !isAssetTypePreset(type) && type !== "Other" ? type : ""
+  );
   const Icon = getAssetIcon(iconName || "package");
-  const defaultIcons = defaultIconsForAssetType(type);
+  const defaultIcons = defaultIconsForAssetType(typeOther ? "Other" : type);
 
   useEffect(() => {
     if (lockProperty) return;
     if (!propertyId) setDetailsOpen(true);
   }, [lockProperty, propertyId]);
 
+  useEffect(() => {
+    if (!type) {
+      setTypeOther(false);
+      setCustomType("");
+      return;
+    }
+    if (type === "Other" || !isAssetTypePreset(type)) {
+      setTypeOther(true);
+      if (type !== "Other") setCustomType(type);
+      return;
+    }
+    setTypeOther(false);
+    setCustomType("");
+  }, [type]);
+
   const handleTypeChange = (next: string) => {
+    if (next === "Other") {
+      setTypeOther(true);
+      setCustomType("");
+      onTypeChange("Other");
+      onIconColorChange(defaultColorForAssetType("Other"));
+      const first = defaultIconsForAssetType("Other")[0];
+      if (first && !name.trim()) onIconChange(first);
+      return;
+    }
+    setTypeOther(false);
+    setCustomType("");
     onTypeChange(next);
     onIconColorChange(defaultColorForAssetType(next));
     const first = defaultIconsForAssetType(next)[0];
     if (first && !name.trim()) onIconChange(first);
+  };
+
+  const handleCustomTypeChange = (next: string) => {
+    setTypeOther(true);
+    setCustomType(next);
+    onTypeChange(next.trim() || "Other");
   };
 
   const uploadButtons = (
@@ -341,7 +384,10 @@ export function AddAssetWorkspaceForm({
           <div className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor={I("asset-type")}>Type</Label>
-              <Select value={type} onValueChange={handleTypeChange}>
+              <Select
+                value={typeOther || (type && !isAssetTypePreset(type)) ? "Other" : type}
+                onValueChange={handleTypeChange}
+              >
                 <SelectTrigger id={I("asset-type")} className="input-neomorphic">
                   <SelectValue placeholder="Select asset type" />
                 </SelectTrigger>
@@ -353,6 +399,15 @@ export function AddAssetWorkspaceForm({
                   ))}
                 </SelectContent>
               </Select>
+              {typeOther ? (
+                <NeomorphicInput
+                  id={I("asset-type-other")}
+                  placeholder="Enter asset type"
+                  value={customType}
+                  onChange={(e) => handleCustomTypeChange(e.target.value)}
+                  aria-label="Custom asset type"
+                />
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label htmlFor={I("asset-serial")}>Serial Number</Label>

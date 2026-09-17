@@ -3,6 +3,7 @@ import { Triangle } from "lucide-react";
 import { RadialProgress } from "@/components/ui/radial-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { computeHubSummaryMetrics } from "@/lib/hubSummaryMetrics";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { cn } from "@/lib/utils";
 
 const statNumberClass =
@@ -102,14 +103,16 @@ export function HubSummaryPanel({
   onMissingInfo,
   className,
 }: HubSummaryPanelProps) {
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const metrics = useMemo(
     () =>
       computeHubSummaryMetrics(
         tasks as Parameters<typeof computeHubSummaryMetrics>[0],
         properties,
-        selectedPropertyIds
+        selectedPropertyIds,
+        autoUrgentHorizon
       ),
-    [tasks, properties, selectedPropertyIds]
+    [tasks, properties, selectedPropertyIds, autoUrgentHorizon]
   );
 
   if (loading) {

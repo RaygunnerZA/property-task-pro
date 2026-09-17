@@ -18,7 +18,7 @@ import { useAssistantContext } from "@/contexts/AssistantContext";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useQueryClient } from "@tanstack/react-query";
-import { buildTasksByDate } from "@/lib/calendarDayMeta";
+import { buildTasksByDate, dayHasCalendarTasks } from "@/lib/calendarDayMeta";
 import { isAllPropertiesActive } from "@/utils/propertyFilter";
 import { getEffectiveDefaultPropertyId, getPinnedDefaultPropertyId } from "@/lib/propertySelectorPreferences";
 import type { IntakeMode } from "@/types/intake";
@@ -74,8 +74,10 @@ import {
   normalizeCentreWorkbenchTab,
   normalizeCentreCalendarView,
   WORKBENCH_CALENDAR_VIEW_QUERY,
+  WORKBENCH_COMPOSE_QUERY,
   WORKBENCH_DATE_QUERY,
   type CentreWorkbenchTab,
+  type CentreCalendarView,
 } from "@/lib/centreWorkbenchTabs";
 import {
   resolveWorkbenchLayout,
@@ -700,6 +702,62 @@ export default function Dashboard({
     [handleOpenIntake, isLargeScreen, pinThirdColumnTop]
   );
 
+  /** Uploads ready to file — Home Inflow pending section (not Add to Filla sheet). */
+  const openHomePendingReview = useCallback(() => {
+    const next = workbenchSearchParamsFromBrowser(searchParams);
+    next.set("inflow", "pending");
+    const qs = next.toString();
+    if (pathname === "/" || pathname === "/home" || pathname === "/dashboard") {
+      setSearchParams(next, { replace: false });
+      return;
+    }
+    navigate(`/home${qs ? `?${qs}` : ""}`);
+  }, [searchParams, pathname, setSearchParams, navigate]);
+
+  const handleCalendarMonthTitleClick = useCallback(() => {
+    const params = workbenchSearchParamsFromBrowser(searchParams);
+    params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
+    params.delete(WORKBENCH_COMPOSE_QUERY);
+    params.delete(WORKBENCH_PANEL_TAB_QUERY);
+    params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+    navigate(centreWorkbenchTasksPath("calendar", params));
+  }, [searchParams, navigate]);
+
+  const handleCalendarViewChange = useCallback(
+    (view: CentreCalendarView) => {
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      if (view === "schedule") {
+        params.set(WORKBENCH_CALENDAR_VIEW_QUERY, "schedule");
+      } else {
+        params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
+        params.delete(WORKBENCH_COMPOSE_QUERY);
+      }
+      navigate(centreWorkbenchTasksPath("calendar", params));
+    },
+    [searchParams, navigate]
+  );
+
+  const handleDateSelect = useCallback(
+    (date: Date | undefined) => {
+      setSelectedDate(date);
+      if (!date) return;
+
+      const dateKey = format(startOfDay(date), "yyyy-MM-dd");
+      const emptyDay = !dayHasCalendarTasks(tasksByDate, date);
+      const params = workbenchSearchParamsFromBrowser(searchParams);
+      params.set(WORKBENCH_DATE_QUERY, dateKey);
+      params.set(WORKBENCH_CALENDAR_VIEW_QUERY, "schedule");
+      if (emptyDay) params.set(WORKBENCH_COMPOSE_QUERY, "task");
+      else params.delete(WORKBENCH_COMPOSE_QUERY);
+      params.delete(WORKBENCH_PANEL_TAB_QUERY);
+      params.delete(WORKBENCH_TAB_ALIAS_QUERY);
+      navigate(centreWorkbenchTasksPath("calendar", params));
+    },
+    [searchParams, navigate, tasksByDate]
+  );
+
   /** Sidebar Create New and legacy `?add=true` deep links open Report Issue. */
   useEffect(() => {
     if (searchParams.get("add") !== "true") return;
@@ -708,6 +766,19 @@ export default function Dashboard({
     params.delete("add");
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams, handleOpenIntake]);
+
+  /** Empty-day date click: `compose=task` survives `/tasks` → `/calendar` remount. */
+  useEffect(() => {
+    if (searchParams.get(WORKBENCH_COMPOSE_QUERY) !== "task") return;
+    const raw = searchParams.get(WORKBENCH_DATE_QUERY);
+    if (!raw || !/^\d{4}-\d{2}-\d{2}$/.test(raw)) return;
+    const parsed = parseISO(raw);
+    if (!isValid(parsed)) return;
+    handleCreateForDate(startOfDay(parsed));
+    const params = workbenchSearchParamsFromBrowser(searchParams);
+    params.delete(WORKBENCH_COMPOSE_QUERY);
+    setSearchParams(params, { replace: true });
+  }, [searchParams, setSearchParams, handleCreateForDate]);
 
   const handleCreateTaskOpenChange = (open: boolean) => {
     setShowCreateTask(open);
@@ -740,41 +811,6 @@ export default function Dashboard({
     setSelectedItem(null);
   };
 
-  const handleDateSelect = useCallback(
-    (date: Date | undefined) => {
-      setSelectedDate(date);
-      if (!date) return;
-
-      if (usesCentreWorkbenchTabs) {
-        const params = workbenchSearchParamsFromBrowser(searchParams);
-        const dateKey = format(startOfDay(date), "yyyy-MM-dd");
-        params.set(WORKBENCH_DATE_QUERY, dateKey);
-        params.set(WORKBENCH_CALENDAR_VIEW_QUERY, "schedule");
-
-        if (shouldRouteCentreTabsToWorkSurface(workbenchLayout, isMobile)) {
-          navigate(centreWorkbenchTasksPath("calendar", params));
-          return;
-        }
-
-        params.set(WORKBENCH_PANEL_TAB_QUERY, "calendar");
-        params.delete(WORKBENCH_TAB_ALIAS_QUERY);
-        setSearchParams(params, { replace: true });
-        return;
-      }
-
-      handleWorkbenchTabChange("schedule");
-    },
-    [
-      usesCentreWorkbenchTabs,
-      workbenchLayout,
-      isMobile,
-      searchParams,
-      navigate,
-      setSearchParams,
-      handleWorkbenchTabChange,
-    ]
-  );
-
   const resolveScopedPropertyId = useCallback((): string | null => {
     if (selectedPropertyIds.size === 1) {
       return Array.from(selectedPropertyIds)[0];
@@ -791,6 +827,7 @@ export default function Dashboard({
       params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
       params.delete(WORKBENCH_DATE_QUERY);
       params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
+      params.delete(WORKBENCH_COMPOSE_QUERY);
       if (tab !== "records") {
         params.delete(WORKBENCH_RECORDS_VIEW_QUERY);
       }
@@ -811,6 +848,7 @@ export default function Dashboard({
         params.delete(WORKBENCH_TASK_PRIORITY_QUERY);
         params.delete(WORKBENCH_DATE_QUERY);
         params.delete(WORKBENCH_CALENDAR_VIEW_QUERY);
+        params.delete(WORKBENCH_COMPOSE_QUERY);
         if (tab === "home") {
           const qs = params.toString();
           navigate(qs ? `/?${qs}` : "/");
@@ -1093,7 +1131,7 @@ export default function Dashboard({
                           onClose={handleClosePanel}
                           variant="column"
                           onOpenIntake={handleOpenIntake}
-                          onOpenAddToFilla={() => setShowAddToFilla(true)}
+                          onOpenAddToFilla={openHomePendingReview}
                         />
                       )}
                     </div>
@@ -1108,7 +1146,7 @@ export default function Dashboard({
             children: (
               <AddToFillaDropPanel
                 collapsedHeight={tasksMessagesTabActive}
-                onReviewClick={() => setShowAddToFilla(true)}
+                onReviewClick={openHomePendingReview}
               />
             ),
           },
@@ -1258,6 +1296,8 @@ export default function Dashboard({
             propertiesLoading={propertiesLoading}
             selectedDate={selectedDate}
             onDateSelect={handleDateSelect}
+            onMonthTitleClick={handleCalendarMonthTitleClick}
+            calendarView={calendarInitialView}
             tasksByDate={tasksByDate}
             onFilterClick={handleFilterClick}
             selectedPropertyIds={selectedPropertyIds}
@@ -1298,7 +1338,7 @@ export default function Dashboard({
             onIssuesFilterChange={handleIssuesFilterChange}
             selectedPropertyIds={selectedPropertyIds}
             onOpenIntake={handleOpenIntake}
-            onOpenAddToFilla={() => setShowAddToFilla(true)}
+            onOpenAddToFilla={openHomePendingReview}
             recordsView={recordsView}
             onRecordsViewChange={handleRecordsViewChange}
             workbenchPanel={workbenchPanel}
@@ -1308,6 +1348,8 @@ export default function Dashboard({
             calendarInitialView={calendarInitialView}
             hideCentreTabStrip={workbenchLayout.hideCentreTabStripOnPhone}
             onCreateForDate={handleCreateForDate}
+            onCalendarViewChange={handleCalendarViewChange}
+            onMonthTitleClick={handleCalendarMonthTitleClick}
           />
           </ErrorBoundary>
         }
@@ -1367,7 +1409,7 @@ export default function Dashboard({
             onClose={handleClosePanel}
             variant="modal"
             onOpenIntake={handleOpenIntake}
-            onOpenAddToFilla={() => setShowAddToFilla(true)}
+            onOpenAddToFilla={openHomePendingReview}
           />
         )
       )}

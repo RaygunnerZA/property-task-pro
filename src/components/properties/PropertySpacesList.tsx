@@ -12,6 +12,8 @@ import { LayoutGrid, List, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { RecentPanel, RecentPanelRow } from "@/components/property-workspace";
 import { cn } from "@/lib/utils";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 
 type SpacesListView = "cards" | "list";
 
@@ -51,6 +53,7 @@ export function PropertySpacesList({
   defaultView = "cards",
 }: PropertySpacesListProps) {
   const navigate = useNavigate();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const { spaces: spacesAll, loading: loadingAll, refresh: refreshAll } = useSpaces(propertyId);
   const { spaces: spacesFiltered, loading: loadingFiltered, refresh: refreshFiltered } =
     useSpacesWithTypes(propertyId, groupSlug);
@@ -80,7 +83,7 @@ export function PropertySpacesList({
             taskSpaces.forEach((space: any) => {
               if (space?.id && task.status !== "completed" && task.status !== "archived") {
                 counts[space.id] = (counts[space.id] || 0) + 1;
-                if (task.priority === "urgent" || task.priority === "high") {
+                if (isTaskEffectivelyUrgent(task, autoUrgentHorizon)) {
                   urgentCounts[space.id] = (urgentCounts[space.id] || 0) + 1;
                 }
               }
@@ -92,7 +95,7 @@ export function PropertySpacesList({
       }
     });
     return { counts, urgentCounts };
-  }, [tasks]);
+  }, [tasks, autoUrgentHorizon]);
 
   const handleSpaceSelect = (spaceId: string) => {
     onSpaceClick?.(spaceId);

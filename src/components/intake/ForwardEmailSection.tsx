@@ -82,7 +82,9 @@ export function ForwardEmailSection({ className }: ForwardEmailSectionProps) {
           </Button>
         ) : null}
         <p className="text-caption leading-relaxed text-muted-foreground">
-          Allow up to a minute after forwarding. Nothing here? Check <strong className="font-medium">Issues → Needs review</strong> if you forwarded from a different address.
+          Allow up to a minute after forwarding — processed mail appears on{" "}
+          <strong className="font-medium">Home → Needs review</strong>. Forwarded from a different
+          address? Check Issues instead.
         </p>
       </CollapsibleContent>
     </Collapsible>

@@ -16,10 +16,13 @@ import {
 } from "@/components/property-workspace";
 import { cn } from "@/lib/utils";
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import type { IntakeMode } from "@/types/intake";
 import {
   CENTRE_WORKBENCH_TAB_META,
+  type CentreCalendarView,
   type CentreWorkbenchTab,
 } from "@/lib/centreWorkbenchTabs";
 import { useCountUp } from "@/hooks/useCountUp";
@@ -89,6 +92,8 @@ export type WorkspaceContextColumnProps = {
   tasksLoading?: boolean;
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
+  onMonthTitleClick?: () => void;
+  calendarView?: CentreCalendarView;
   selectedPropertyIds?: Set<string>;
   onFilterClick?: (filterId: string) => void;
   onTaskClick?: (taskId: string) => void;
@@ -176,6 +181,8 @@ export function WorkspaceContextColumn({
   tasksLoading = false,
   selectedDate,
   onDateSelect,
+  onMonthTitleClick,
+  calendarView = "calendar",
   selectedPropertyIds,
   onFilterClick,
   onTaskClick,
@@ -183,6 +190,7 @@ export function WorkspaceContextColumn({
   className,
 }: WorkspaceContextColumnProps) {
   const meta = CENTRE_WORKBENCH_TAB_META[section];
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const propertyIds = useMemo(() => properties.map((p) => p.id), [properties]);
 
   const scopedTasks = useMemo(
@@ -300,7 +308,7 @@ export function WorkspaceContextColumn({
     // Tasks
     const overdue = openTasks.filter((t) => getTaskDueUrgency(t) === "overdue");
     const dueSoon = openTasks.filter((t) => getTaskDueUrgency(t) === "due_soon");
-    const urgent = openTasks.filter((t) => (t.priority ?? "").toLowerCase() === "urgent");
+    const urgent = openTasks.filter((t) => isTaskEffectivelyUrgent(t, autoUrgentHorizon));
     const dueToday = openTasks.filter((t) => {
       const d = parseTaskDate(t.due_date || t.due_at);
       return d ? isToday(d) : false;
@@ -341,7 +349,7 @@ export function WorkspaceContextColumn({
         onActivate: () => onFilterClick?.("show-tasks-urgent"),
       },
     ];
-  }, [section, openTasks, onFilterClick]);
+  }, [section, openTasks, onFilterClick, autoUrgentHorizon]);
 
   const scopedPropertyIds = useMemo(
     () => (selectedPropertyIds && selectedPropertyIds.size > 0 ? Array.from(selectedPropertyIds) : undefined),
@@ -396,8 +404,8 @@ export function WorkspaceContextColumn({
 
       <div className="perforation-section pointer-events-none my-1" aria-hidden />
 
-      {/* Mini-calendar: Tasks & Records only, collapsed by default. Calendar centre owns the grid. */}
-      {section !== "calendar" ? (
+      {/* Mini-calendar: Tasks & Records (collapsed). Calendar Schedule also shows it. Planner omits it — centre owns the month grid. */}
+      {section !== "calendar" || calendarView === "schedule" ? (
         <div className="mt-1 w-full max-w-full rounded-lg bg-transparent px-0 pt-1 pb-1 shadow-none">
           {tasksLoading ? (
             <Skeleton className="h-12 w-full" />
@@ -406,8 +414,9 @@ export function WorkspaceContextColumn({
               tasks={scopedTasks as never[]}
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
+              onMonthTitleClick={onMonthTitleClick}
               className="shadow-e1"
-              defaultExpanded={false}
+              defaultExpanded={section === "calendar"}
             />
           )}
         </div>

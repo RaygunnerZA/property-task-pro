@@ -10,6 +10,7 @@ import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/Issu
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
 import { OnboardingAttentionFeed } from "@/components/onboarding/OnboardingAttentionFeed";
 import { AttentionEducationSummary } from "@/components/onboarding/AttentionEducationSummary";
+import { IntakePendingReviewSection } from "@/components/intake/IntakePendingReviewSection";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useWorkbenchAttentionStream } from "@/hooks/useWorkbenchAttentionStream";
@@ -266,10 +267,20 @@ export function InflowPanel({
   };
 
   const foundSignalsRef = useRef<HTMLElement | null>(null);
+  const pendingUploadsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (searchParams.get("inflow") !== "signals") return;
     const node = foundSignalsRef.current;
+    if (!node) return;
+    window.requestAnimationFrame(() => {
+      node.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, [searchParams, tasksLoading]);
+
+  useEffect(() => {
+    if (searchParams.get("inflow") !== "pending") return;
+    const node = pendingUploadsRef.current;
     if (!node) return;
     window.requestAnimationFrame(() => {
       node.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -288,6 +299,15 @@ export function InflowPanel({
     );
   }
 
+  const pendingUploadsBlock = (
+    <IntakePendingReviewSection
+      sectionRef={pendingUploadsRef}
+      defaultPropertyId={focusedPropertyId}
+      onTaskCreated={(taskId) => onTaskClick?.(taskId)}
+      className="mb-2"
+    />
+  );
+
   return (
     <div className="min-w-0 space-y-6 pt-0">
       {onboardingEducationMode && focusedPropertyId && (
@@ -297,6 +317,8 @@ export function InflowPanel({
           spacesCount={spacesCount}
         />
       )}
+
+      {pendingUploadsBlock}
 
       {onboardingEducationMode ? (
         <OnboardingAttentionFeed

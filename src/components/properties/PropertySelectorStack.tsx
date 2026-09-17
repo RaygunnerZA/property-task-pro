@@ -13,6 +13,8 @@ import { PropertySelectorRow, type PropertySelectorRowProperty } from "@/compone
 import { PropertySelectorAllThumbnail } from "@/components/properties/PropertySelectorAllThumbnail";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
+import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
@@ -49,6 +51,7 @@ export function PropertySelectorStack({
   suppressInteractions = false,
 }: PropertySelectorStackProps) {
   const { orgId } = useActiveOrg();
+  const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const [expanded, setExpanded] = useState(variant === "default");
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
@@ -83,7 +86,7 @@ export function PropertySelectorStack({
     tasks.forEach((task) => {
       if (
         task.property_id &&
-        (task.priority === "urgent" || task.priority === "high") &&
+        isTaskEffectivelyUrgent(task, autoUrgentHorizon) &&
         task.status !== "completed" &&
         task.status !== "archived"
       ) {
@@ -91,7 +94,7 @@ export function PropertySelectorStack({
       }
     });
     return counts;
-  }, [tasks]);
+  }, [tasks, autoUrgentHorizon]);
 
   const isGradientHeader = variant === "gradientHeader";
   const isMobileHeader = variant === "mobileHeader";

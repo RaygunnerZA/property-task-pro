@@ -91,9 +91,29 @@ describe("resolveTaskSignalChip", () => {
     ).toMatchObject({ kind: "urgent", label: "URGENT", tone: "coral" });
   });
 
-  it("shows URGENT with no due date", () => {
+  it("shows URGENT for due-today work when autoUrgent is set", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T12:00:00"));
     expect(
-      resolveTaskSignalChip({ priority: "urgent", status: "open" })
+      resolveTaskSignalChip({
+        due_date: "2026-05-25",
+        priority: "normal",
+        status: "open",
+        autoUrgent: true,
+      })
     ).toMatchObject({ kind: "urgent", label: "URGENT", tone: "coral" });
+  });
+
+  it("keeps OVERDUE ahead of autoUrgent", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-25T12:00:00"));
+    expect(
+      resolveTaskSignalChip({
+        due_date: "2026-05-20",
+        priority: "normal",
+        status: "open",
+        autoUrgent: true,
+      })
+    ).toMatchObject({ kind: "overdue", label: "OVERDUE", tone: "coral" });
   });
 });

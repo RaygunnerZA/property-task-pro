@@ -1,5 +1,6 @@
 import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { isTaskMissingInfo } from "@/lib/hubSummaryMetrics";
+import { isTaskEffectivelyUrgent, type AutoUrgentHorizonId } from "@/lib/autoUrgent";
 import {
   computeTodayActionGauge,
   type TodayActionGauge,
@@ -140,17 +141,16 @@ export function computePropertySummaryMetrics(
   tasks: TaskLike[],
   documents: PropertyDocument[],
   messagesCount: number,
-  urgentOpenTaskCount: number
+  urgentOpenTaskCount: number,
+  autoUrgentHorizon?: AutoUrgentHorizonId
 ): PropertySummaryMetrics {
   const openTasksFromView = property.open_tasks_count ?? 0;
   const openTasksFromList = tasks.filter(isOpenTask).length;
   const openTasks = openTasksFromView > 0 ? openTasksFromView : openTasksFromList;
 
-  const urgentFromTasks = tasks.filter((t) => {
-    if (!isOpenTask(t)) return false;
-    const pr = (t.priority ?? "").toLowerCase();
-    return pr === "urgent" || pr === "high";
-  }).length;
+  const urgentFromTasks = tasks.filter(
+    (t) => isOpenTask(t) && isTaskEffectivelyUrgent(t, autoUrgentHorizon)
+  ).length;
   const urgentItems = Math.max(urgentOpenTaskCount, urgentFromTasks);
 
   let dueSoonTasks = 0;
@@ -187,7 +187,8 @@ export function computePropertySummaryMetrics(
 export function computeAllPropertiesSummaryMetrics(
   properties: PropertyLike[],
   tasks: TaskLike[],
-  urgentOpenTaskCount: number
+  urgentOpenTaskCount: number,
+  autoUrgentHorizon?: AutoUrgentHorizonId
 ): PropertySummaryMetrics {
   const propertyIds = new Set(properties.map((p) => p.id));
   const scopedTasks = tasks.filter(
@@ -201,11 +202,9 @@ export function computeAllPropertiesSummaryMetrics(
   const openTasksFromList = scopedTasks.filter(isOpenTask).length;
   const openTasks = openFromProperties > 0 ? openFromProperties : openTasksFromList;
 
-  const urgentFromTasks = scopedTasks.filter((t) => {
-    if (!isOpenTask(t)) return false;
-    const pr = (t.priority ?? "").toLowerCase();
-    return pr === "urgent" || pr === "high";
-  }).length;
+  const urgentFromTasks = scopedTasks.filter(
+    (t) => isOpenTask(t) && isTaskEffectivelyUrgent(t, autoUrgentHorizon)
+  ).length;
   const urgentItems = Math.max(urgentOpenTaskCount, urgentFromTasks);
 
   let dueSoonTasks = 0;
