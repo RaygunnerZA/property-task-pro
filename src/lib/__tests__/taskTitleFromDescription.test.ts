@@ -39,6 +39,22 @@ describe("buildFallbackTitleFromDescription", () => {
     expect(buildFallbackTitleFromDescription("Hi")).toBe("");
   });
 
+  it("uses a labeled topic when the note leads with work type", () => {
+    const title = buildFallbackTitleFromDescription(
+      "Address Change - France address to be changed to UK address for trail 324"
+    );
+    expect(title.toLowerCase()).toMatch(/address/);
+    expect(title.toLowerCase()).toMatch(/change/);
+  });
+
+  it("falls back to a compact first clause when no verb patterns match", () => {
+    const title = buildFallbackTitleFromDescription(
+      "Gas certificate for the flat needs sorting before the new tenants move in next month"
+    );
+    expect(title.length).toBeGreaterThan(5);
+    expect(title.split(" ").length).toBeLessThanOrEqual(6);
+  });
+
   it("clips reason clauses instead of ending on 'as'", () => {
     const title = buildFallbackTitleFromDescription(
       "Oliver suggested we need to replace the boiler before spring as there are currently specials on at the moment."

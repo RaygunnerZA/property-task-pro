@@ -3,6 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 /**
  * Sync a task↔entity junction table by diff (add missing, remove extras).
  * Safer than delete-all + insert-all when RLS delete is missing or races occur.
+ *
+ * For `task_spaces`, also mirrors into `tasks.space_ids` — `tasks_view.spaces`
+ * is built from that array, not the junction (@Docs / capture requirements).
  */
 export async function syncTaskJunctionIds(args: {
   table: "task_spaces" | "task_assets" | "task_themes";
@@ -43,5 +46,13 @@ export async function syncTaskJunctionIds(args: {
       .from(table)
       .insert(toAdd.map((id) => ({ task_id: taskId, [idColumn]: id })));
     if (insertError) throw insertError;
+  }
+
+  if (table === "task_spaces") {
+    const { error: spaceIdsError } = await supabase
+      .from("tasks")
+      .update({ space_ids: desired })
+      .eq("id", taskId);
+    if (spaceIdsError) throw spaceIdsError;
   }
 }

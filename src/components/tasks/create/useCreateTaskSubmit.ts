@@ -28,7 +28,7 @@ import type { SubtaskInput } from "./SubtasksSection";
 import type { PendingTaskFile } from "./ImageUploadSection";
 import type { PendingInvitation } from "./tabs/WhoTab";
 import type { CreateTaskPrefill } from "../CreateTaskModal";
-import { resolveTaskTitle } from "@/lib/taskTitleFromDescription";
+import { resolveTaskTitle, buildFallbackTitleFromDescription } from "@/lib/taskTitleFromDescription";
 import { toErrorMessage } from "@/lib/error";
 import { buildSubtaskPersistFields } from "@/lib/subtaskPersist";
 import { nextRunFromRepeatRule } from "@/lib/taskWhenNormalize";
@@ -154,7 +154,21 @@ export function useCreateTaskSubmit({
 
     // ── Title resolution ─────────────────────────────────────────────────────
 
-    const finalTitle = resolveTaskTitle(title, aiTitleGenerated ?? "", description);
+    // Prefer live AI/heuristic if the title field is still empty (settle race).
+    const imageHint =
+      images
+        .map((img) => {
+          const meta = img.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+          return typeof meta?.task_title_hint === "string" ? meta.task_title_hint.trim() : "";
+        })
+        .find((value) => value.length >= 3) || "";
+    const settledAi =
+      (aiTitleGenerated ?? "").trim() ||
+      imageHint ||
+      (description.trim().length >= 8
+        ? buildFallbackTitleFromDescription(description.trim())
+        : "");
+    const finalTitle = resolveTaskTitle(title, settledAi, description);
     if (!finalTitle) {
       toast({ title: "Add a description", description: "Enter a task title or description to continue.", variant: "destructive" });
       return;

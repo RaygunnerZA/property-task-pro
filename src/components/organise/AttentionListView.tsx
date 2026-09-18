@@ -41,23 +41,25 @@ export function AttentionListView({ sections, emptyState, className }: Attention
       {sections.map((section, index) => (
         <div key={section.id} className="min-w-0">
           {index > 0 ? (
-            <div className="my-4 border-t border-dashed border-border/50" aria-hidden />
+            <div className="my-4" aria-hidden>
+              <div className="perforation-list" />
+            </div>
           ) : null}
           <div className="flex min-w-0 items-start gap-3">
-            {/* Left rail — entity icon above name (Schedule's day/date slot) */}
+            {/* Left rail — centred entity icon above name (Schedule's day/date slot) */}
             <div className="w-[81px] flex-shrink-0 pt-1 sm:w-[5.5rem]">
               <button
                 type="button"
                 onClick={section.onOpen}
                 disabled={!section.onOpen}
                 className={cn(
-                  "flex w-full flex-col items-start gap-1.5 rounded-[10px] p-1 text-left",
+                  "flex w-full flex-col items-center gap-1.5 rounded-[10px] p-1 text-center",
                   section.onOpen &&
                     "transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
                 )}
               >
                 <span
-                  className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-[10px] bg-card shadow-e1"
+                  className="flex h-[45px] w-[45px] shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-card shadow-e1"
                   style={
                     section.accentColor
                       ? { backgroundColor: `${section.accentColor}22` }
@@ -72,11 +74,13 @@ export function AttentionListView({ sections, emptyState, className }: Attention
                       loading="lazy"
                     />
                   ) : (
-                    <span className="text-muted-foreground">{section.icon}</span>
+                    <span className="text-muted-foreground [&_svg]:h-5 [&_svg]:w-5">
+                      {section.icon}
+                    </span>
                   )}
                 </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">
+                <span className="min-w-0 w-full">
+                  <span className="block text-[14px] font-semibold leading-tight text-foreground [overflow-wrap:anywhere]">
                     {section.title}
                   </span>
                   {section.subtitle ? (

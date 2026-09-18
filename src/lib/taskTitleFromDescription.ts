@@ -60,7 +60,7 @@ const TITLE_FILLER = new Set([
 ]);
 
 const ACTION_VERBS =
-  "fix|repair|replace|check|clean|install|inspect|paint|upload|service|clear|unblock|reset|arrange|book|call|chase|file|renew|submit|drain|unclog";
+  "fix|repair|replace|change|update|move|review|send|add|remove|check|clean|install|inspect|paint|upload|service|clear|unblock|reset|arrange|book|call|chase|file|renew|submit|drain|unclog|investigate|schedule|follow|chase";
 
 /** Idle / blur delay before committing a non-AI summary title. */
 export const TASK_TITLE_SETTLE_MS = 2000;
@@ -258,6 +258,41 @@ function extractNeedToAction(normalized: string): string | null {
 }
 
 /**
+ * "Address Change - France address…" / "Boiler: not heating" → topic label.
+ * Useful when notes lead with a work type rather than an imperative verb.
+ */
+function extractLabeledTopic(normalized: string): string | null {
+  const match = normalized.match(
+    /^([A-Za-z][A-Za-z0-9/#&'’\s-]{1,40}?)\s*[-–—:|]\s+\S/
+  );
+  if (!match?.[1]) return null;
+  const topic = compactTitlePhrase(match[1], 4);
+  const words = topic.split(" ").filter(Boolean);
+  if (words.length < 2) return null;
+  if (/^(this|that|hi|hey|hello|re|fw|fwd)\b/i.test(topic)) return null;
+  return capitalizeTitle(topic);
+}
+
+/** Last-resort compact first clause when no verb/problem patterns match. */
+function extractFirstClauseSummary(normalized: string): string | null {
+  const firstClause = normalized.split(/[.!?\n]/)[0] ?? normalized;
+  const withoutLeadIn = firstClause
+    .replace(/^(?:hi|hey|hello)[,!\s]+/i, "")
+    .replace(/^(?:just\s+a\s+quick\s+note[:\s]*|quick\s+note[:\s]*)/i, "");
+  // Prefer the segment after a topic dash if present.
+  const afterDash = withoutLeadIn.replace(/^[^–—:\-|]{1,40}?\s*[-–—:|]\s+/, "");
+  const compact = compactTitlePhrase(afterDash || withoutLeadIn, MAX_TITLE_WORDS);
+  if (compact.split(" ").filter(Boolean).length < 2) return null;
+  const titled = capitalizeTitle(compact);
+  if (isTitleEchoOfDescription(titled, normalized)) {
+    const tighter = capitalizeTitle(compactTitlePhrase(compact, 4));
+    if (tighter && !isTitleEchoOfDescription(tighter, normalized)) return tighter;
+    return null;
+  }
+  return titled;
+}
+
+/**
  * Heuristic summary title — actionable, short, not a narrative opening.
  * Returns "" when nothing usable can be derived.
  */
@@ -268,6 +303,7 @@ export function buildFallbackTitleFromDescription(input: string): string {
   const problems = extractProblemFixes(normalized);
   const actions = extractActionPhrases(normalized);
   const needTo = extractNeedToAction(normalized);
+  const labeled = extractLabeledTopic(normalized);
 
   // Merge unique phrases (case-insensitive), prefer problems + concrete verbs.
   const ordered: string[] = [];
@@ -296,8 +332,11 @@ export function buildFallbackTitleFromDescription(input: string): string {
   for (const p of problems) push(p);
   for (const p of actions) push(p);
   push(needTo);
+  push(labeled);
 
-  if (ordered.length === 0) return "";
+  if (ordered.length === 0) {
+    return extractFirstClauseSummary(normalized) || "";
+  }
 
   // One strong phrase, or two short ones joined.
   if (ordered.length === 1) {
@@ -306,7 +345,7 @@ export function buildFallbackTitleFromDescription(input: string): string {
       // Try compacting further
       const tighter = capitalizeTitle(compactTitlePhrase(one, 4));
       if (tighter && !isTitleEchoOfDescription(tighter, normalized)) return tighter;
-      return "";
+      return extractFirstClauseSummary(normalized) || "";
     }
     return one;
   }
@@ -323,7 +362,7 @@ export function buildFallbackTitleFromDescription(input: string): string {
 
   if (!isTitleEchoOfDescription(a, normalized)) return a;
   if (!isTitleEchoOfDescription(b, normalized)) return b;
-  return "";
+  return extractFirstClauseSummary(normalized) || "";
 }
 
 /** Reject partial / mid-typing title fragments. Optional description rejects echoes. */

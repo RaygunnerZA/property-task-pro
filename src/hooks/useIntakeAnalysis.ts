@@ -284,12 +284,20 @@ export function useIntakeAnalysis({
       pendingFiles
     );
 
+    const metaTitle =
+      images
+        .map((img) => {
+          const meta = img.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+          return typeof meta?.task_title_hint === "string" ? meta.task_title_hint.trim() : "";
+        })
+        .find((value) => value.length >= 3) || "";
     const task_title_hint =
-      composedText.trim().length >= 5
+      metaTitle ||
+      (composedText.trim().length >= 5
         ? composedText.trim().slice(0, 60)
         : derived.hasIssueSignals && ocrText.trim()
           ? ocrText.trim().slice(0, 60)
-          : null;
+          : null);
 
     return {
       workflow_hint: derived.hint,

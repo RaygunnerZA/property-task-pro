@@ -1,27 +1,17 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import {
-  AlertTriangle,
-  ChevronRight,
-  FileText,
-  Shield,
-  ShieldCheck,
-  Waves,
-} from "lucide-react";
+import { AlertTriangle, ChevronRight } from "lucide-react";
 import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 import {
   usePropertyDocuments,
   type PropertyDocument,
 } from "@/hooks/property/usePropertyDocuments";
 import { useSpaces } from "@/hooks/useSpaces";
-import { useComplianceRules } from "@/hooks/useComplianceRules";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
-import { OperationalStreamCard } from "@/components/dashboard/OperationalStreamCard";
-import { WorkspaceSectionHeading } from "@/components/property-workspace";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { useAttachmentSpaceLinks } from "@/hooks/property/useAttachmentSpaceLinks";
@@ -31,11 +21,10 @@ import { propertyComplianceSetupPath, type RecordsView } from "@/lib/propertyRou
 import type { IntakeMode } from "@/types/intake";
 import {
   buildComplianceRecordsFromPortfolio,
-  formatDueText,
-  getComplianceStatusText,
   type ComplianceRecord,
 } from "./complianceRecordModel";
 import { RecordsExplorer } from "./RecordsExplorer";
+import { RecordsObligationAttentionRow } from "./RecordsObligationAttentionRow";
 import {
   partitionPropertySpaces,
   toOnboardingAreas,
@@ -46,7 +35,6 @@ import {
   removedLinkToastMessage,
   spaceIdsToAdd,
 } from "@/lib/records/attachmentSpaces";
-import { documentExpiryState } from "@/lib/records/explorerFilters";
 import { cn } from "@/lib/utils";
 
 const RECORDS_FILE_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
@@ -67,14 +55,14 @@ export type PropertyRecordsTabProps = {
 
 /**
  * Records centre workspace — document explorer (category × location × attention).
- * Compliance obligations stay in a demoted attention strip; they are not draggable files.
+ * Compliance obligations needing action surface in Attention (non-draggable).
  */
 export function PropertyRecordsTab({
   properties,
   selectedPropertyIds,
   recordsView,
   onRecordsViewChange: _onRecordsViewChange,
-  onOpenIntake,
+  onOpenIntake: _onOpenIntake,
   extraComplianceRecords = [],
   recordsSearch: recordsSearchProp,
   onRecordsSearchChange,
@@ -91,6 +79,7 @@ export function PropertyRecordsTab({
 
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
+  const [explorerView, setExplorerView] = useState<"attention" | "types">("attention");
 
   // Deep link: `?documentId=` opens the document detail (detail chrome rule,
   // @Docs/04_UI_System.md — selection is deep-linkable on all three surfaces).
@@ -115,7 +104,6 @@ export function PropertyRecordsTab({
     },
     [setSearchParams]
   );
-  const [showObligations, setShowObligations] = useState(false);
 
   const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
   const lastRailPickerOpenMs = useRef(0);
@@ -127,7 +115,6 @@ export function PropertyRecordsTab({
 
   const filingEnabled = Boolean(scopedPropertyId);
 
-  const { data: complianceRules = [] } = useComplianceRules(scopedPropertyId ?? undefined);
   const { upload: uploadPropertyDocuments, uploading: recordsUploading } = useDocumentUpload(
     scopedPropertyId ?? ""
   );
@@ -180,7 +167,7 @@ export function PropertyRecordsTab({
 
   useEffect(() => {
     if (recordsView === "expiring" || recordsView === "overdue" || recordsView === "missing") {
-      setShowObligations(true);
+      setExplorerView("attention");
     }
   }, [recordsView]);
 
@@ -433,15 +420,6 @@ export function PropertyRecordsTab({
     setComplianceDrawerOpen(Boolean(selectedComplianceRecord));
   }, [selectedComplianceRecord]);
 
-  const attentionDocCount = useMemo(
-    () =>
-      documents.filter((d) => {
-        const s = documentExpiryState(d);
-        return s === "overdue" || s === "expiring";
-      }).length,
-    [documents]
-  );
-
   return (
     <div className="flex h-full min-h-0 flex-col px-[10px] pb-[11px] pt-0 max-sm:px-0 max-pane:px-2">
       {recordsUploading ? (
@@ -451,15 +429,16 @@ export function PropertyRecordsTab({
       ) : null}
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        {attentionObligations.length > 0 || attentionDocCount > 0 ? (
+        {attentionObligations.length > 0 ? (
           <button
             type="button"
-            onClick={() => setShowObligations((v) => !v)}
+            onClick={() => setExplorerView("attention")}
             className={cn(
               "inline-flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide",
               "bg-card shadow-e1 transition-colors hover:bg-primary/10",
-              showObligations && "ring-1 ring-primary/40"
+              explorerView === "attention" && "ring-1 ring-destructive/40"
             )}
+            aria-label={`${attentionObligations.length} obligations need attention`}
           >
             <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-hidden />
             Obligations
@@ -468,100 +447,24 @@ export function PropertyRecordsTab({
             </span>
           </button>
         ) : null}
+        {scopedPropertyId && attentionObligations.length > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs text-primary"
+            onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
+          >
+            Manage
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        ) : null}
         {!scopedPropertyId ? (
           <p className="text-xs text-muted-foreground">
             Select one property to organise records by space.
           </p>
         ) : null}
       </div>
-
-      {showObligations ? (
-        <section className="mb-4 space-y-2 rounded-[12px] bg-card/50 p-3 shadow-e1">
-          <div className="flex items-center justify-between gap-2">
-            <WorkspaceSectionHeading>Obligations needing attention</WorkspaceSectionHeading>
-            {scopedPropertyId ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1 text-xs text-primary"
-                onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
-              >
-                Manage
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            ) : null}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            These are compliance obligations — not filed documents. Use the explorer below for
-            certificates and evidence files.
-          </p>
-          {attentionObligations.length === 0 ? (
-            <p className="text-xs text-muted-foreground">No obligations need attention.</p>
-          ) : (
-            <div className="max-h-[220px] space-y-2 overflow-y-auto">
-              {attentionObligations.map((record) => (
-                <OperationalStreamCard
-                  key={record.id}
-                  id={`compliance-card-${record.id}`}
-                  onClick={() => setSelectedComplianceId(record.id)}
-                  typeChip="COMPLIANCE"
-                  icon={
-                    record.status === "overdue" ? (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    ) : record.status === "expiring" ? (
-                      <Waves className="h-4 w-4 text-warning-foreground" />
-                    ) : record.status === "missing" ? (
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <ShieldCheck className="h-4 w-4 text-success-foreground" />
-                    )
-                  }
-                  title={record.title}
-                  context={`${record.propertyName} · ${record.complianceType}`}
-                  hint={`Expires: ${formatDueText(record.nextDueDate || record.expiryDate)}`}
-                  statusText={getComplianceStatusText(record)}
-                  accent={
-                    record.status === "overdue"
-                      ? "red"
-                      : record.status === "expiring"
-                        ? "amber"
-                        : record.status === "healthy"
-                          ? "green"
-                          : "slate"
-                  }
-                  actions={[
-                    {
-                      id: "create-inspection-task",
-                      label: "Create inspection task",
-                      onClick: () => onOpenIntake?.("report_issue"),
-                    },
-                    {
-                      id: "upload-certificate",
-                      label: "Upload document",
-                      onClick: () =>
-                        scopedPropertyId
-                          ? openRecordsFilePicker()
-                          : onOpenIntake?.("add_record"),
-                    },
-                    {
-                      id: "view-record",
-                      label: "View detail",
-                      onClick: () => setSelectedComplianceId(record.id),
-                    },
-                  ]}
-                />
-              ))}
-            </div>
-          )}
-          {scopedPropertyId && complianceRules.length === 0 ? (
-            <p className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Shield className="h-3.5 w-3.5 text-primary" />
-              No compliance rules yet — set up recurring obligations in Manage.
-            </p>
-          ) : null}
-        </section>
-      ) : null}
 
       <div className="min-h-0 flex-1">
         {scopedPropertyId ? (
@@ -575,6 +478,10 @@ export function PropertyRecordsTab({
             docsLoading={docsLoading}
             searchQuery={recordsSearch}
             onSearchQueryChange={setRecordsSearch}
+            view={explorerView}
+            onViewChange={setExplorerView}
+            attentionObligations={attentionObligations}
+            onOpenObligation={setSelectedComplianceId}
             onOpenDocument={openDocument}
             onAddRecord={openRecordsFilePicker}
             onFileToSpace={handleFileToSpace}
@@ -589,9 +496,24 @@ export function PropertyRecordsTab({
             <p className="text-sm text-muted-foreground">
               Select a single property to browse and file documents.
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Portfolio compliance obligations remain available via Obligations above.
-            </p>
+            {attentionObligations.length > 0 ? (
+              <div className="mx-auto mt-4 max-w-lg space-y-2 text-left">
+                <p className="text-xs text-muted-foreground">
+                  Portfolio obligations needing attention:
+                </p>
+                {attentionObligations.map((record) => (
+                  <RecordsObligationAttentionRow
+                    key={record.id}
+                    record={record}
+                    onOpen={() => setSelectedComplianceId(record.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Portfolio compliance obligations appear here when they need action.
+              </p>
+            )}
           </div>
         )}
       </div>

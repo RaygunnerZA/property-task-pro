@@ -372,7 +372,9 @@ export function TaskDetailPanel({
     };
   }, [taskId]);
 
-  // Collection ids: replace when switching tasks; merge on refresh (preserve optimistic edits)
+  // Collection ids: replace when switching tasks; trust server on refresh when clean.
+  // While contextSessionDirty, keep local selection so a mid-save tasks_view refetch
+  // (still on old space_ids) does not wipe Attic before the dual-write lands.
   useEffect(() => {
     if (!task) return;
     const fromTaskSpaces = (task.spaces as any[])?.map((s: any) => s.id).filter(Boolean) || [];
@@ -385,20 +387,28 @@ export function TaskDetailPanel({
       return;
     }
 
+    if (contextSessionDirty) return;
+
     setSelectedSpaceIds((prev) => {
-      if (prev.length === 0) return fromTaskSpaces;
-      const merged = new Set([...prev, ...fromTaskSpaces]);
-      const next = [...merged];
-      return next.length === prev.length && prev.every((id) => merged.has(id)) ? prev : next;
+      if (
+        prev.length === fromTaskSpaces.length &&
+        prev.every((id) => fromTaskSpaces.includes(id))
+      ) {
+        return prev;
+      }
+      return fromTaskSpaces;
     });
 
     setSelectedThemeIds((prev) => {
-      if (prev.length === 0) return fromTaskThemes;
-      const merged = new Set([...prev, ...fromTaskThemes]);
-      const next = [...merged];
-      return next.length === prev.length && prev.every((id) => merged.has(id)) ? prev : next;
+      if (
+        prev.length === fromTaskThemes.length &&
+        prev.every((id) => fromTaskThemes.includes(id))
+      ) {
+        return prev;
+      }
+      return fromTaskThemes;
     });
-  }, [task, taskId]);
+  }, [task, taskId, contextSessionDirty]);
 
   // Initialize asset IDs from separate query (replace on task switch; merge on refetch)
   useEffect(() => {

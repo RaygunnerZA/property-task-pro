@@ -388,6 +388,17 @@ export function useCreateTaskAIPipeline({
   // ─── AI auto-apply effects ────────────────────────────────────────────────
 
   useEffect(() => {
+    if (userEditedTitle) return;
+    const imageTitle = images
+      .map((img) => {
+        const meta = img.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+        return typeof meta?.task_title_hint === "string" ? meta.task_title_hint.trim() : "";
+      })
+      .find((value) => value.length >= 3);
+    if (imageTitle) applyGeneratedTitle(imageTitle);
+  }, [images, userEditedTitle, applyGeneratedTitle]);
+
+  useEffect(() => {
     const aiRaw = aiResult?.title?.trim() || "";
     if (aiRaw) applyGeneratedTitle(aiRaw);
   }, [aiResult?.title, applyGeneratedTitle]);

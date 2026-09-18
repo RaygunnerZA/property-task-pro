@@ -145,7 +145,7 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
 Below the tabs sits the standard controls row **[FILTER] [SORT] [SEARCH]** — the same `FilterBar` + `SortBar` components as Tasks/Calendar, plus an inline search field. No surface invents its own filter chrome.
 
-1. **Attention view** — the Schedule pattern rotated onto places: the left rail shows the entity (icon above name — space, asset, or urgency bucket) instead of day/date; the right side lists the open work (task cards; Records lists documents grouped **Urgent · Expiring soon · Needs attention**). Dashed dividers between sections.
+1. **Attention view** — the Schedule pattern rotated onto places: the left rail shows the entity (centred **45×45** icon above **14px** name — space, asset, or urgency bucket) instead of day/date; the right side lists the open work (task cards; Records lists **documents and compliance obligations** grouped **Urgent · Expiring soon · Needs info**). Obligations are non-draggable. **Perforation-list** dividers between clusters.
 2. **Category / Types view** — compact paper-cut collection slider (shelf, leading **All** card, selected card shows its description) above a **mini-card grid**. Mini cards are draggable:
    - drop on a **collection card** → reassign category (`group:` droppable);
    - drop on **another mini card** → the two-zone gesture: the picked-up card drops to ~40% opacity; the card below splits into two dark overlays — top **Group** (shared custom collection), bottom **Add sub space** (`spaces.parent_space_id` nesting; Spaces only — Assets offer Group only). The hovered zone highlights; release commits. Mini cards with sub-spaces show an offset, semi-concealed chip below the card that expands on hover.
@@ -161,7 +161,7 @@ All drag interactions use the single `onboardingAreasDnd` kit (`group:` / `area-
 
 **Chip options chevron:** Fact chips with a dropdown hide the chevron until hover (or focus-within / open menu). The chip expands right to reveal it — same pattern as the removable X.
 
-**Records explorer:** Centre Records uses the organise-views grammar (Attention · Types). Category and location are intersecting filters; `attachment_spaces` links are additive. Compliance obligations remain a separate non-draggable strip above the explorer.
+**Records explorer:** Centre Records uses the organise-views grammar (Attention · Types). Category and location are intersecting filters; `attachment_spaces` links are additive. Compliance obligations that need action appear in **Attention** (non-draggable); Types stays evidence-filing only. An Obligations count chip above the explorer deep-links into Attention.
 
 **Workbench column geometry (single system)**
 

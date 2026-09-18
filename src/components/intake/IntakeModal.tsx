@@ -353,7 +353,7 @@ export function IntakeModal({
     [userEditedTitle, description]
   );
 
-  // AI / document-scan titles only while composing — never a live description prefix.
+  // AI / document-scan / image titles only while composing — never a live description prefix.
   useEffect(() => {
     if (userEditedTitle) return;
     const scanTitle = taskFiles
@@ -363,9 +363,19 @@ export function IntakeModal({
       applyGeneratedTitle(scanTitle, { fromScan: true });
       return;
     }
+    const imageTitle = images
+      .map((img) => {
+        const meta = img.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+        return typeof meta?.task_title_hint === "string" ? meta.task_title_hint.trim() : "";
+      })
+      .find((value) => value.length >= 3);
+    if (imageTitle) {
+      applyGeneratedTitle(imageTitle);
+      return;
+    }
     const aiRaw = aiResult?.title?.trim() || "";
     if (aiRaw) applyGeneratedTitle(aiRaw);
-  }, [aiResult?.title, userEditedTitle, taskFiles, applyGeneratedTitle]);
+  }, [aiResult?.title, userEditedTitle, taskFiles, images, applyGeneratedTitle]);
 
   // After idle settle: if AI has not produced a usable title, commit a summary heuristic.
   useEffect(() => {
@@ -3793,14 +3803,71 @@ export function IntakeModal({
       return;
     }
 
+    // Settle title before insert — submit often races the 2s AI/heuristic settle timer.
+    flushAiExtract();
+
+    const scanTitle =
+      taskFiles.map((file) => file.scanTitle?.trim()).find((value) => value && value.length >= 3) ||
+      "";
+    const imageTitle =
+      images
+        .map((img) => {
+          const meta = img.rawAnalysis?.metadata as Record<string, unknown> | undefined;
+          return typeof meta?.task_title_hint === "string" ? meta.task_title_hint.trim() : "";
+        })
+        .find((value) => value.length >= 3) || "";
+
+    let settledAiTitle = aiTitleGenerated;
+    if (!userEditedTitle) {
+      const candidate =
+        scanTitle ||
+        imageTitle ||
+        aiResult?.title?.trim() ||
+        (description.trim().length >= 8
+          ? buildFallbackTitleFromDescription(description.trim())
+          : "") ||
+        "";
+      if (candidate) {
+        const processed = finalizeGeneratedTitle(candidate);
+        const ok = scanTitle
+          ? processed.length >= 3
+          : isUsableGeneratedTitle(processed, description);
+        if (ok && processed) {
+          settledAiTitle = processed;
+          titleRef.current = processed;
+          setAiTitleGenerated(processed);
+          setTitle(processed);
+          setShowTitleField(true);
+        }
+      }
+    }
+
     const finalTitle =
-      title.trim() ||
-      aiTitleGenerated.trim() ||
-      resolveTaskTitle("", "", description) ||
-      "New task";
+      resolveTaskTitle(titleRef.current, settledAiTitle, description) || scanTitle || null;
+
+    if (!finalTitle) {
+      showIntakeError(
+        "Add a title",
+        description.trim()
+          ? "Couldn’t summarise this note yet — enter a short title above."
+          : "Add a short title, or a note Filla can summarise."
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     try {
+      if (hasUpload) {
+        try {
+          await waitForIntakePreScans({
+            waitForDocumentScans,
+            waitForImageAnalysis,
+          });
+        } catch {
+          // Best-effort — title may already be set from description/AI.
+        }
+      }
+
       let dueDateValue: string | null = null;
       if (dueDate) {
         const dateObj = new Date(dueDate);

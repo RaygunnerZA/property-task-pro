@@ -58,8 +58,10 @@ import { PlacesTree } from "@/components/organise/PlacesTree";
 import { RecordsExplorerCategoryCard } from "@/components/records/RecordsExplorerCategoryCard";
 import { RecordsExplorerDocumentRow } from "@/components/records/RecordsExplorerDocumentRow";
 import { RecordsExplorerBulkBar } from "@/components/records/RecordsExplorerBulkBar";
+import { RecordsObligationAttentionRow } from "@/components/records/RecordsObligationAttentionRow";
 import { FileToSpacesDialog } from "@/components/records/FileToSpacesDialog";
 import { ChangeCategoryDialog } from "@/components/records/ChangeCategoryDialog";
+import type { ComplianceRecord } from "@/components/records/complianceRecordModel";
 
 export type RecordsOrganiseView = "attention" | "types";
 
@@ -67,7 +69,8 @@ const VIEW_TABS: readonly OrganiseViewTab<RecordsOrganiseView>[] = [
   {
     id: "attention",
     label: "Attention",
-    subtitle: "Documents that need action — urgent, expiring soon, or missing info.",
+    subtitle:
+      "Documents and obligations that need action — urgent, expiring soon, or missing info.",
   },
   {
     id: "types",
@@ -114,6 +117,9 @@ type RecordsExplorerProps = {
     category: string | null
   ) => Promise<void>;
   onDeleteDocument: (doc: PropertyDocument) => Promise<void>;
+  /** Compliance obligations needing action — shown in Attention only (non-draggable). */
+  attentionObligations?: ComplianceRecord[];
+  onOpenObligation?: (id: string) => void;
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
   view?: RecordsOrganiseView;
@@ -137,13 +143,15 @@ export function RecordsExplorer({
   onAddSpaceLinksBulk,
   onChangeCategory,
   onDeleteDocument,
+  attentionObligations = [],
+  onOpenObligation,
   searchQuery: searchProp,
   onSearchQueryChange,
   view: viewProp,
   onViewChange,
   className,
 }: RecordsExplorerProps) {
-  const [internalView, setInternalView] = useState<RecordsOrganiseView>("types");
+  const [internalView, setInternalView] = useState<RecordsOrganiseView>("attention");
   const view = viewProp ?? internalView;
   const setView = useCallback(
     (next: RecordsOrganiseView) => {
@@ -466,47 +474,75 @@ export function RecordsExplorer({
     [documents, category, locationFilter, search, sortDocs]
   );
 
+  const filteredObligations = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return attentionObligations;
+    return attentionObligations.filter((r) => {
+      const hay = `${r.title} ${r.complianceType} ${r.propertyName}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [attentionObligations, search]);
+
   const attentionSections: AttentionSection[] = (() => {
-    const urgent = attentionBase.filter((d) => documentExpiryState(d) === "overdue");
-    const expiring = attentionBase.filter((d) => documentExpiryState(d) === "expiring");
-    const missing = attentionBase.filter(
+    const urgentDocs = attentionBase.filter((d) => documentExpiryState(d) === "overdue");
+    const expiringDocs = attentionBase.filter((d) => documentExpiryState(d) === "expiring");
+    const missingDocs = attentionBase.filter(
       (d) => documentHasMissingInfo(d) && documentExpiryState(d) === "none"
     );
-    const toContent = (docs: PropertyDocument[]) => (
+    const urgentObligations = filteredObligations.filter((r) => r.status === "overdue");
+    const expiringObligations = filteredObligations.filter((r) => r.status === "expiring");
+    const missingObligations = filteredObligations.filter((r) => r.status === "missing");
+
+    const toContent = (
+      docs: PropertyDocument[],
+      obligations: ComplianceRecord[]
+    ) => (
       <ul className="space-y-2">
+        {obligations.map((record) => (
+          <li key={`obligation-${record.id}`}>
+            <RecordsObligationAttentionRow
+              record={record}
+              onOpen={onOpenObligation ? () => onOpenObligation(record.id) : undefined}
+            />
+          </li>
+        ))}
         {docs.map((doc) => (
           <li key={doc.id}>{renderDocRow(doc)}</li>
         ))}
       </ul>
     );
+
     const sections: AttentionSection[] = [];
-    if (urgent.length > 0) {
+    const urgentCount = urgentDocs.length + urgentObligations.length;
+    if (urgentCount > 0) {
       sections.push({
         id: "urgent",
         title: "Urgent",
-        subtitle: `${urgent.length} overdue`,
+        subtitle: `${urgentCount} overdue`,
         icon: <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />,
         accentColor: "#EB6834",
-        content: toContent(urgent),
+        content: toContent(urgentDocs, urgentObligations),
       });
     }
-    if (expiring.length > 0) {
+    const expiringCount = expiringDocs.length + expiringObligations.length;
+    if (expiringCount > 0) {
       sections.push({
         id: "expiring",
         title: "Expiring soon",
-        subtitle: `${expiring.length} within 30 days`,
+        subtitle: `${expiringCount} within 30 days`,
         icon: <Clock className="h-5 w-5" aria-hidden />,
         accentColor: "#C4A35A",
-        content: toContent(expiring),
+        content: toContent(expiringDocs, expiringObligations),
       });
     }
-    if (missing.length > 0) {
+    const missingCount = missingDocs.length + missingObligations.length;
+    if (missingCount > 0) {
       sections.push({
         id: "missing",
         title: "Needs info",
-        subtitle: `${missing.length} incomplete`,
+        subtitle: `${missingCount} incomplete`,
         icon: <FileQuestion className="h-5 w-5" aria-hidden />,
-        content: toContent(missing),
+        content: toContent(missingDocs, missingObligations),
       });
     }
     return sections;
@@ -582,6 +618,7 @@ export function RecordsExplorer({
               emptyState={
                 <span>
                   Nothing needs attention — no overdue, expiring, or incomplete records
+                  or obligations
                   {search.trim() ? " match your search" : ""}.
                 </span>
               }
