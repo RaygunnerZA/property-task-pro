@@ -7,7 +7,9 @@ import {
   type UkEpcStatus,
 } from "./ukEpc.ts";
 
-const EPC_SEARCH_URL = "https://epc.opendatacommunities.org/api/v1/domestic/search";
+const EPC_API_BASE = "https://api.get-energy-performance-data.communities.gov.uk";
+const EPC_SEARCH_PATH = "/api/domestic/search";
+const EPC_CERTIFICATE_PATH = "/api/certificate";
 const FETCH_TIMEOUT_MS = 12_000;
 
 type ExistingEnrichment = {
@@ -15,14 +17,19 @@ type ExistingEnrichment = {
   retrieved_at: string;
 };
 
+export function normaliseEpcBearerToken(raw: string | undefined): string | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  return trimmed.replace(/^Bearer\s+/i, "").trim() || undefined;
+}
+
 export async function maybeEnrichUkEpc(input: {
   admin: SupabaseClient;
   orgId: string;
   propertyId: string;
   countryCode: string | null;
   postalCode: string | null;
-  email: string | undefined;
-  apiKey: string | undefined;
+  token: string | undefined;
   now?: Date;
   fetchImpl?: typeof fetch;
 }): Promise<void> {
@@ -30,9 +37,8 @@ export async function maybeEnrichUkEpc(input: {
     return;
   }
 
-  const email = input.email?.trim();
-  const apiKey = input.apiKey?.trim();
-  if (!email || !apiKey) return;
+  const token = normaliseEpcBearerToken(input.token);
+  if (!token) return;
 
   const now = input.now ?? new Date();
   const { data: existing } = await input.admin
@@ -54,8 +60,7 @@ export async function maybeEnrichUkEpc(input: {
   try {
     const result = await searchDomesticEpc({
       postcode: input.postalCode!,
-      email,
-      apiKey,
+      token,
       fetchImpl: input.fetchImpl ?? fetch,
     });
 
@@ -92,48 +97,99 @@ export async function maybeEnrichUkEpc(input: {
   }
 }
 
-async function searchDomesticEpc(input: {
-  postcode: string;
-  email: string;
-  apiKey: string;
-  fetchImpl: typeof fetch;
-}): Promise<{ status: UkEpcStatus; sourceId: string | null; facts: Record<string, unknown> }> {
-  const url = new URL(EPC_SEARCH_URL);
-  url.searchParams.set("postcode", input.postcode);
+function unwrapRecords(json: unknown): Record<string, unknown>[] {
+  if (Array.isArray(json)) {
+    return json.filter((row): row is Record<string, unknown> => !!row && typeof row === "object");
+  }
+  if (!json || typeof json !== "object") return [];
+  const obj = json as Record<string, unknown>;
+  for (const key of ["data", "rows", "results", "certificates"]) {
+    const value = obj[key];
+    if (Array.isArray(value)) {
+      return value.filter((row): row is Record<string, unknown> => !!row && typeof row === "object");
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return [value as Record<string, unknown>];
+    }
+  }
+  return [obj];
+}
 
+async function epcGet(
+  path: string,
+  params: Record<string, string>,
+  token: string,
+  fetchImpl: typeof fetch
+): Promise<{ ok: boolean; status: number; json: unknown }> {
+  const url = new URL(path, EPC_API_BASE);
+  for (const [key, value] of Object.entries(params)) {
+    url.searchParams.set(key, value);
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const token = btoa(`${input.email}:${input.apiKey}`);
-    const res = await input.fetchImpl(url.toString(), {
+    const res = await fetchImpl(url.toString(), {
       method: "GET",
       headers: {
         Accept: "application/json",
-        Authorization: `Basic ${token}`,
+        Authorization: `Bearer ${token}`,
       },
       signal: controller.signal,
     });
-
+    if (res.status === 404) {
+      return { ok: true, status: 404, json: null };
+    }
     if (!res.ok) {
-      return { status: "error", sourceId: null, facts: {} };
+      return { ok: false, status: res.status, json: null };
     }
-
-    const json = (await res.json()) as { rows?: unknown };
-    const rows = Array.isArray(json.rows) ? json.rows : [];
-    const first = rows[0];
-    if (!first || typeof first !== "object") {
-      return { status: "not_found", sourceId: null, facts: {} };
-    }
-
-    const mapped = mapDomesticSearchRow(first as Record<string, unknown>);
-    return {
-      status: "found",
-      sourceId: mapped.sourceId,
-      facts: mapped.facts,
-    };
+    return { ok: true, status: res.status, json: await res.json() };
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function searchDomesticEpc(input: {
+  postcode: string;
+  token: string;
+  fetchImpl: typeof fetch;
+}): Promise<{ status: UkEpcStatus; sourceId: string | null; facts: Record<string, unknown> }> {
+  const search = await epcGet(EPC_SEARCH_PATH, { postcode: input.postcode }, input.token, input.fetchImpl);
+  if (!search.ok) {
+    return { status: "error", sourceId: null, facts: {} };
+  }
+  if (search.status === 404) {
+    return { status: "not_found", sourceId: null, facts: {} };
+  }
+
+  const rows = unwrapRecords(search.json);
+  const first = rows[0];
+  if (!first) {
+    return { status: "not_found", sourceId: null, facts: {} };
+  }
+
+  let mapped = mapDomesticSearchRow(first);
+  const certificateNumber = mapped.sourceId;
+  if (certificateNumber) {
+    const detail = await epcGet(
+      EPC_CERTIFICATE_PATH,
+      { certificate_number: certificateNumber },
+      input.token,
+      input.fetchImpl
+    );
+    if (detail.ok && detail.status !== 404 && detail.json) {
+      const detailMapped = mapDomesticSearchRow(unwrapRecords(detail.json)[0] ?? (detail.json as Record<string, unknown>));
+      mapped = {
+        sourceId: detailMapped.sourceId ?? mapped.sourceId,
+        facts: { ...mapped.facts, ...detailMapped.facts },
+      };
+    }
+  }
+
+  return {
+    status: "found",
+    sourceId: mapped.sourceId,
+    facts: mapped.facts,
+  };
 }
 
 async function upsertEnrichment(

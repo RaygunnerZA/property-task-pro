@@ -14,6 +14,7 @@ import {
   WorkspaceHealthGrid,
 } from "@/components/property-workspace";
 import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
+import { ContactsDirectory } from "@/components/people/ContactsDirectory";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,6 +160,10 @@ function PropertyPeoplePageInner() {
     <div className="space-y-4">
       <WorkspaceHealthGrid stats={peopleHealthStats} ariaLabel="People health" />
       <div className="perforation-section pointer-events-none" aria-hidden />
+      <ContactsDirectory
+        propertyId={resolvedPropertyId}
+        searchQuery={searchQuery}
+      />
     </div>
   );
 

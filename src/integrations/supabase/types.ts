@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   public: {
     Tables: {
       activity_log: {
@@ -54,6 +49,75 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_batch_jobs: {
+        Row: {
+          capability: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          error_message: string | null
+          failed_count: number
+          id: string
+          item_count: number
+          item_ids: Json
+          metadata: Json
+          mode: string
+          model_used: string | null
+          org_id: string
+          prompt_version: string | null
+          provider: string
+          provider_batch_id: string | null
+          status: string
+          submitted_at: string | null
+          succeeded_count: number
+          updated_at: string
+        }
+        Insert: {
+          capability: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          error_message?: string | null
+          failed_count?: number
+          id?: string
+          item_count?: number
+          item_ids?: Json
+          metadata?: Json
+          mode: string
+          model_used?: string | null
+          org_id?: string
+          prompt_version?: string | null
+          provider?: string
+          provider_batch_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          succeeded_count?: number
+          updated_at?: string
+        }
+        Update: {
+          capability?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          error_message?: string | null
+          failed_count?: number
+          id?: string
+          item_count?: number
+          item_ids?: Json
+          metadata?: Json
+          mode?: string
+          model_used?: string | null
+          org_id?: string
+          prompt_version?: string | null
+          provider?: string
+          provider_batch_id?: string | null
+          status?: string
+          submitted_at?: string | null
+          succeeded_count?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       ai_capability_evals: {
         Row: {
@@ -622,6 +686,41 @@ export type Database = {
             columns: ["space_id"]
             isOneToOne: false
             referencedRelation: "spaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_logs: {
+        Row: {
+          action_type: string
+          created_at: string
+          id: string
+          org_id: string
+          payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          id?: string
+          org_id: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_logs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
             referencedColumns: ["id"]
           },
         ]
@@ -1954,12 +2053,144 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          kind: string
+          name: string
+          notes: string | null
+          org_id: string
+          phone: string | null
+          property_id: string | null
+          role_label: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          kind?: string
+          name: string
+          notes?: string | null
+          org_id: string
+          phone?: string | null
+          property_id?: string | null
+          role_label?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          notes?: string | null
+          org_id?: string
+          phone?: string | null
+          property_id?: string | null
+          role_label?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contacts_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "contacts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_format_briefs: {
+        Row: {
+          blocker: Json | null
+          body: Json
+          created_at: string
+          form_kind: string
+          gap_kind: string | null
+          id: string
+          is_primary: boolean
+          output_id: string | null
+          status: string
+          topic_id: string
+          updated_at: string
+        }
+        Insert: {
+          blocker?: Json | null
+          body?: Json
+          created_at?: string
+          form_kind: string
+          gap_kind?: string | null
+          id?: string
+          is_primary?: boolean
+          output_id?: string | null
+          status?: string
+          topic_id: string
+          updated_at?: string
+        }
+        Update: {
+          blocker?: Json | null
+          body?: Json
+          created_at?: string
+          form_kind?: string
+          gap_kind?: string | null
+          id?: string
+          is_primary?: boolean
+          output_id?: string | null
+          status?: string
+          topic_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_format_briefs_output_id_fkey"
+            columns: ["output_id"]
+            isOneToOne: false
+            referencedRelation: "content_outputs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_format_briefs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "content_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_outputs: {
         Row: {
           approved_at: string | null
           approved_by: string | null
           body: string | null
           created_at: string
+          format_brief_id: string | null
           id: string
           output_kind: string
           provenance: Json
@@ -1976,6 +2207,7 @@ export type Database = {
           approved_by?: string | null
           body?: string | null
           created_at?: string
+          format_brief_id?: string | null
           id?: string
           output_kind: string
           provenance?: Json
@@ -1992,6 +2224,7 @@ export type Database = {
           approved_by?: string | null
           body?: string | null
           created_at?: string
+          format_brief_id?: string | null
           id?: string
           output_kind?: string
           provenance?: Json
@@ -2005,7 +2238,56 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "content_outputs_format_brief_id_fkey"
+            columns: ["format_brief_id"]
+            isOneToOne: false
+            referencedRelation: "content_format_briefs"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "content_outputs_topic_id_fkey"
+            columns: ["topic_id"]
+            isOneToOne: false
+            referencedRelation: "content_topics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_topic_knowledge: {
+        Row: {
+          created_at: string
+          id: string
+          knowledge_id: string
+          role: string
+          sort_order: number
+          topic_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          knowledge_id: string
+          role?: string
+          sort_order?: number
+          topic_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          knowledge_id?: string
+          role?: string
+          sort_order?: number
+          topic_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_topic_knowledge_knowledge_id_fkey"
+            columns: ["knowledge_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_topic_knowledge_topic_id_fkey"
             columns: ["topic_id"]
             isOneToOne: false
             referencedRelation: "content_topics"
@@ -2017,6 +2299,8 @@ export type Database = {
         Row: {
           applicability_snapshot: Json
           brief: Json
+          channel: string
+          content_scope: string | null
           created_at: string
           created_by: string | null
           creative: Json
@@ -2026,6 +2310,7 @@ export type Database = {
           publishing: Json
           seo: Json
           status: string
+          strategy: Json
           title: string
           updated_at: string
           updated_by: string | null
@@ -2035,6 +2320,8 @@ export type Database = {
         Insert: {
           applicability_snapshot?: Json
           brief?: Json
+          channel?: string
+          content_scope?: string | null
           created_at?: string
           created_by?: string | null
           creative?: Json
@@ -2044,14 +2331,18 @@ export type Database = {
           publishing?: Json
           seo?: Json
           status?: string
+          strategy?: Json
           title: string
           updated_at?: string
           updated_by?: string | null
           upstream_hash?: string | null
+          workflow_status?: string
         }
         Update: {
           applicability_snapshot?: Json
           brief?: Json
+          channel?: string
+          content_scope?: string | null
           created_at?: string
           created_by?: string | null
           creative?: Json
@@ -2061,10 +2352,12 @@ export type Database = {
           publishing?: Json
           seo?: Json
           status?: string
+          strategy?: Json
           title?: string
           updated_at?: string
           updated_by?: string | null
           upstream_hash?: string | null
+          workflow_status?: string
         }
         Relationships: [
           {
@@ -2129,6 +2422,59 @@ export type Database = {
           },
           {
             foreignKeyName: "contractor_task_access_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contractor_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contractor_tokens_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_tokens_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_tokens_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contractor_tokens_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks_view"
@@ -2338,6 +2684,76 @@ export type Database = {
           trigger_type?: string
         }
         Relationships: []
+      }
+      evidence: {
+        Row: {
+          attachment_id: string
+          created_at: string
+          id: string
+          org_id: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          attachment_id: string
+          created_at?: string
+          id?: string
+          org_id: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          attachment_id?: string
+          created_at?: string
+          id?: string
+          org_id?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       extracted_assets: {
         Row: {
@@ -2773,6 +3189,131 @@ export type Database = {
           },
         ]
       }
+      geo_captures: {
+        Row: {
+          accuracy_m: number | null
+          asset_id: string | null
+          attachment_id: string | null
+          capture_context: Database["public"]["Enums"]["geo_capture_context"]
+          captured_at: string
+          compliance_document_id: string | null
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          metadata: Json
+          org_id: string
+          property_id: string | null
+          task_id: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy_m?: number | null
+          asset_id?: string | null
+          attachment_id?: string | null
+          capture_context: Database["public"]["Enums"]["geo_capture_context"]
+          captured_at?: string
+          compliance_document_id?: string | null
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          metadata?: Json
+          org_id: string
+          property_id?: string | null
+          task_id?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy_m?: number | null
+          asset_id?: string | null
+          attachment_id?: string | null
+          capture_context?: Database["public"]["Enums"]["geo_capture_context"]
+          captured_at?: string
+          compliance_document_id?: string | null
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          metadata?: Json
+          org_id?: string
+          property_id?: string | null
+          task_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "geo_captures_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_property_summary"
+            referencedColumns: ["property_id"]
+          },
+          {
+            foreignKeyName: "geo_captures_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "geo_captures_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       group_members: {
         Row: {
           archived_at: string | null
@@ -3163,6 +3704,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "invitations_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      issues: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          severity: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          severity?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          severity?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "issues_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organisations"
@@ -4923,6 +5499,221 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_items: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedule_items_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasonal_package_items: {
+        Row: {
+          created_at: string
+          cta_label: string
+          cta_type: string
+          display_order: number
+          id: string
+          knowledge_id: string
+          package_id: string
+          tip_output_id: string | null
+          tip_text: string
+          why_now: string | null
+        }
+        Insert: {
+          created_at?: string
+          cta_label: string
+          cta_type?: string
+          display_order?: number
+          id?: string
+          knowledge_id: string
+          package_id: string
+          tip_output_id?: string | null
+          tip_text: string
+          why_now?: string | null
+        }
+        Update: {
+          created_at?: string
+          cta_label?: string
+          cta_type?: string
+          display_order?: number
+          id?: string
+          knowledge_id?: string
+          package_id?: string
+          tip_output_id?: string | null
+          tip_text?: string
+          why_now?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasonal_package_items_knowledge_id_fkey"
+            columns: ["knowledge_id"]
+            isOneToOne: false
+            referencedRelation: "knowledge"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seasonal_package_items_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "seasonal_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seasonal_package_items_tip_output_id_fkey"
+            columns: ["tip_output_id"]
+            isOneToOne: false
+            referencedRelation: "content_outputs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasonal_package_user_state: {
+        Row: {
+          cta_completions: Json
+          dismissed_at: string | null
+          id: string
+          org_id: string
+          package_id: string
+          package_version: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cta_completions?: Json
+          dismissed_at?: string | null
+          id?: string
+          org_id: string
+          package_id: string
+          package_version: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cta_completions?: Json
+          dismissed_at?: string | null
+          id?: string
+          org_id?: string
+          package_id?: string
+          package_version?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasonal_package_user_state_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seasonal_package_user_state_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "seasonal_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      seasonal_packages: {
+        Row: {
+          applicability: Json
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          creative: Json
+          display_from: string
+          display_until: string
+          hemisphere: string
+          id: string
+          introduction: string
+          org_id: string | null
+          prep_window_label: string | null
+          season: string
+          slug: string
+          status: string
+          surfaces: Json
+          title: string
+          updated_at: string
+          urgency_band: string
+          version: number
+        }
+        Insert: {
+          applicability?: Json
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          creative?: Json
+          display_from: string
+          display_until: string
+          hemisphere?: string
+          id?: string
+          introduction: string
+          org_id?: string | null
+          prep_window_label?: string | null
+          season: string
+          slug: string
+          status?: string
+          surfaces?: Json
+          title: string
+          updated_at?: string
+          urgency_band?: string
+          version?: number
+        }
+        Update: {
+          applicability?: Json
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          creative?: Json
+          display_from?: string
+          display_until?: string
+          hemisphere?: string
+          id?: string
+          introduction?: string
+          org_id?: string | null
+          prep_window_label?: string | null
+          season?: string
+          slug?: string
+          status?: string
+          surfaces?: Json
+          title?: string
+          updated_at?: string
+          urgency_band?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "seasonal_packages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       signal_recommendation_templates: {
         Row: {
           action_type: string
@@ -5542,6 +6333,67 @@ export type Database = {
           },
         ]
       }
+      task_assets: {
+        Row: {
+          asset_id: string
+          created_at: string
+          task_id: string
+        }
+        Insert: {
+          asset_id: string
+          created_at?: string
+          task_id: string
+        }
+        Update: {
+          asset_id?: string
+          created_at?: string
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: false
+            referencedRelation: "assets_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_assets_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_attachments: {
         Row: {
           created_at: string | null
@@ -5694,6 +6546,66 @@ export type Database = {
           },
           {
             foreignKeyName: "task_compliance_events_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_followers: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          org_id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          org_id: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          org_id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_followers_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_followers_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks_view"
@@ -5875,6 +6787,91 @@ export type Database = {
           },
         ]
       }
+      task_image_annotation_versions: {
+        Row: {
+          annotations: Json
+          created_at: string
+          created_by: string
+          id: string
+          image_id: string
+          is_enabled: boolean
+          label: string | null
+          org_id: string
+          supersedes_id: string | null
+          task_id: string
+          version_number: number
+        }
+        Insert: {
+          annotations?: Json
+          created_at?: string
+          created_by: string
+          id?: string
+          image_id: string
+          is_enabled?: boolean
+          label?: string | null
+          org_id: string
+          supersedes_id?: string | null
+          task_id: string
+          version_number: number
+        }
+        Update: {
+          annotations?: Json
+          created_at?: string
+          created_by?: string
+          id?: string
+          image_id?: string
+          is_enabled?: boolean
+          label?: string | null
+          org_id?: string
+          supersedes_id?: string | null
+          task_id?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_image_annotation_versions_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_annotation_versions_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "task_image_annotation_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_annotation_versions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_annotation_versions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_annotation_versions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_image_annotation_versions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_image_versions: {
         Row: {
           ai_metadata: Json | null
@@ -6012,6 +7009,66 @@ export type Database = {
           },
           {
             foreignKeyName: "task_images_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_instances: {
+        Row: {
+          created_at: string
+          id: string
+          org_id: string
+          task_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_id: string
+          task_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_id?: string
+          task_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_instances_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organisations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_instances_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_upcoming"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_instances_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "task_repeat_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_instances_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_instances_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks_view"
@@ -7015,6 +8072,48 @@ export type Database = {
           updated_at: string | null
           valid_compliance_count: number | null
         }
+        Insert: {
+          address?: string | null
+          assets_count?: never
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          expired_compliance_count?: never
+          icon_color_hex?: string | null
+          icon_name?: string | null
+          id?: string | null
+          nickname?: string | null
+          open_tasks_count?: never
+          org_id?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          spaces_count?: never
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          valid_compliance_count?: never
+        }
+        Update: {
+          address?: string | null
+          assets_count?: never
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string | null
+          expired_compliance_count?: never
+          icon_color_hex?: string | null
+          icon_name?: string | null
+          id?: string | null
+          nickname?: string | null
+          open_tasks_count?: never
+          org_id?: string | null
+          owner_email?: string | null
+          owner_name?: string | null
+          spaces_count?: never
+          thumbnail_url?: string | null
+          updated_at?: string | null
+          valid_compliance_count?: never
+        }
         Relationships: [
           {
             foreignKeyName: "properties_org_fk"
@@ -7064,6 +8163,7 @@ export type Database = {
           created_at: string | null
           description: string | null
           due_date: string | null
+          follower_user_ids: string[] | null
           id: string | null
           images: Json | null
           milestones: Json | null
@@ -7120,6 +8220,13 @@ export type Database = {
         Args: { p_org_id: string }
         Returns: undefined
       }
+      active_ai_route_overrides: {
+        Args: never
+        Returns: {
+          capability: string
+          strategy: string
+        }[]
+      }
       admin_add_knowledge_source: {
         Args: {
           p_attachment_id?: string
@@ -7128,30 +8235,6 @@ export type Database = {
           p_label?: string
           p_metadata?: Json
           p_source_type: string
-          p_url?: string
-        }
-        Returns: {
-          attachment_id: string | null
-          created_at: string
-          external_ref: string | null
-          id: string
-          knowledge_id: string
-          label: string | null
-          metadata: Json
-          source_type: string
-          url: string | null
-        }
-        SetofOptions: {
-          from: "*"
-          to: "knowledge_sources"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      admin_update_knowledge_source: {
-        Args: {
-          p_label?: string
-          p_source_id: string
           p_url?: string
         }
         Returns: {
@@ -7201,6 +8284,78 @@ export type Database = {
         Args: { p_knowledge_ids?: string[] }
         Returns: Json
       }
+      admin_approve_content_plan: {
+        Args: { p_strategy?: Json; p_topic_id: string }
+        Returns: Json
+      }
+      admin_approve_content_topic_brief: {
+        Args: { p_brief?: Json; p_topic_id: string }
+        Returns: {
+          applicability_snapshot: Json
+          brief: Json
+          channel: string
+          content_scope: string | null
+          created_at: string
+          created_by: string | null
+          creative: Json
+          id: string
+          knowledge_id: string
+          knowledge_version: number
+          publishing: Json
+          seo: Json
+          status: string
+          strategy: Json
+          title: string
+          updated_at: string
+          updated_by: string | null
+          upstream_hash: string | null
+          workflow_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_approve_content_topic_seo: {
+        Args: { p_seo?: Json; p_topic_id: string }
+        Returns: {
+          applicability_snapshot: Json
+          brief: Json
+          channel: string
+          content_scope: string | null
+          created_at: string
+          created_by: string | null
+          creative: Json
+          id: string
+          knowledge_id: string
+          knowledge_version: number
+          publishing: Json
+          seo: Json
+          status: string
+          strategy: Json
+          title: string
+          updated_at: string
+          updated_by: string | null
+          upstream_hash: string | null
+          workflow_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_approve_seasonal_package: {
+        Args: { p_package_id: string }
+        Returns: Json
+      }
+      admin_archive_seasonal_package: {
+        Args: { p_package_id: string }
+        Returns: Json
+      }
       admin_billing_utilization_snapshot: {
         Args: never
         Returns: {
@@ -7237,33 +8392,71 @@ export type Database = {
         Returns: Json
       }
       admin_count_knowledge_missing_guidance: { Args: never; Returns: number }
-      admin_create_content_topic: {
-        Args: { p_knowledge_id: string; p_title?: string }
-        Returns: {
-          applicability_snapshot: Json
-          brief: Json
-          created_at: string
-          created_by: string | null
-          creative: Json
-          id: string
-          knowledge_id: string
-          knowledge_version: number
-          publishing: Json
-          seo: Json
-          status: string
-          title: string
-          updated_at: string
-          updated_by: string | null
-          upstream_hash: string | null
-          workflow_status: string
-        }
-        SetofOptions: {
-          from: "*"
-          to: "content_topics"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
+      admin_create_content_topic:
+        | {
+            Args: { p_knowledge_id: string; p_title?: string }
+            Returns: {
+              applicability_snapshot: Json
+              brief: Json
+              channel: string
+              content_scope: string | null
+              created_at: string
+              created_by: string | null
+              creative: Json
+              id: string
+              knowledge_id: string
+              knowledge_version: number
+              publishing: Json
+              seo: Json
+              status: string
+              strategy: Json
+              title: string
+              updated_at: string
+              updated_by: string | null
+              upstream_hash: string | null
+              workflow_status: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "content_topics"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_allow_duplicate?: boolean
+              p_knowledge_id: string
+              p_title?: string
+            }
+            Returns: {
+              applicability_snapshot: Json
+              brief: Json
+              channel: string
+              content_scope: string | null
+              created_at: string
+              created_by: string | null
+              creative: Json
+              id: string
+              knowledge_id: string
+              knowledge_version: number
+              publishing: Json
+              seo: Json
+              status: string
+              strategy: Json
+              title: string
+              updated_at: string
+              updated_by: string | null
+              upstream_hash: string | null
+              workflow_status: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "content_topics"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       admin_create_knowledge_intake_batch: {
         Args: {
           p_column_mapping?: Json
@@ -7333,6 +8526,51 @@ export type Database = {
         Args: { p_knowledge_id: string }
         Returns: Json
       }
+      admin_get_org: {
+        Args: { p_org_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          org_id: string
+          org_name: string
+          org_type: string
+        }[]
+      }
+      admin_get_org_activity: {
+        Args: { p_limit?: number; p_org_id: string }
+        Returns: {
+          action: string
+          actor_id: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+        }[]
+      }
+      admin_get_org_ai_requests: {
+        Args: { p_limit?: number; p_org_id: string }
+        Returns: {
+          cost_usd: number
+          created_at: string
+          entity_id: string
+          entity_type: string
+          error_message: string
+          function_name: string
+          id: string
+          input_tokens: number
+          latency_ms: number
+          model_used: string
+          output_tokens: number
+          provider: string
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_get_seasonal_package: {
+        Args: { p_package_id: string }
+        Returns: Json
+      }
       admin_knowledge_metrics_snapshot: {
         Args: never
         Returns: {
@@ -7347,11 +8585,50 @@ export type Database = {
           time_saved_minutes: number
         }[]
       }
+      admin_list_ai_batch_jobs: {
+        Args: { p_limit?: number }
+        Returns: {
+          capability: string
+          completed_at: string
+          created_at: string
+          created_by: string
+          error_message: string
+          failed_count: number
+          id: string
+          item_count: number
+          item_ids: Json
+          metadata: Json
+          mode: string
+          model_used: string
+          prompt_version: string
+          provider: string
+          provider_batch_id: string
+          status: string
+          submitted_at: string
+          succeeded_count: number
+          updated_at: string
+        }[]
+      }
+      admin_list_ai_route_overrides: {
+        Args: never
+        Returns: {
+          capability: string
+          created_at: string
+          expires_at: string
+          id: string
+          reason: string
+          set_by: string
+          strategy: string
+          updated_at: string
+        }[]
+      }
       admin_list_content_topics: {
         Args: { p_status?: string }
         Returns: {
           applicability_snapshot: Json
           brief: Json
+          channel: string
+          content_scope: string | null
           created_at: string
           created_by: string | null
           creative: Json
@@ -7361,6 +8638,7 @@ export type Database = {
           publishing: Json
           seo: Json
           status: string
+          strategy: Json
           title: string
           updated_at: string
           updated_by: string | null
@@ -7373,19 +8651,6 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
-      }
-      admin_list_ai_route_overrides: {
-        Args: never
-        Returns: {
-          capability: string
-          created_at: string
-          expires_at: string | null
-          id: string
-          reason: string
-          set_by: string | null
-          strategy: string
-          updated_at: string
-        }[]
       }
       admin_list_knowledge_review_queue: {
         Args: { p_scope?: string; p_statuses?: string[] }
@@ -7439,6 +8704,90 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_list_org_members: {
+        Args: { p_org_id: string }
+        Returns: {
+          email: string
+          joined_at: string
+          last_sign_in_at: string
+          role: string
+          user_id: string
+        }[]
+      }
+      admin_list_orgs: {
+        Args: never
+        Returns: {
+          created_at: string
+          last_activity: string
+          member_count: number
+          org_id: string
+          org_name: string
+          org_type: string
+          property_count: number
+          task_count: number
+        }[]
+      }
+      admin_list_seasonal_packages: { Args: never; Returns: Json }
+      admin_reject_content_topic_brief: {
+        Args: { p_reason?: string; p_topic_id: string }
+        Returns: {
+          applicability_snapshot: Json
+          brief: Json
+          channel: string
+          content_scope: string | null
+          created_at: string
+          created_by: string | null
+          creative: Json
+          id: string
+          knowledge_id: string
+          knowledge_version: number
+          publishing: Json
+          seo: Json
+          status: string
+          strategy: Json
+          title: string
+          updated_at: string
+          updated_by: string | null
+          upstream_hash: string | null
+          workflow_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_reject_content_topic_seo: {
+        Args: { p_reason?: string; p_topic_id: string }
+        Returns: {
+          applicability_snapshot: Json
+          brief: Json
+          channel: string
+          content_scope: string | null
+          created_at: string
+          created_by: string | null
+          creative: Json
+          id: string
+          knowledge_id: string
+          knowledge_version: number
+          publishing: Json
+          seo: Json
+          status: string
+          strategy: Json
+          title: string
+          updated_at: string
+          updated_by: string | null
+          upstream_hash: string | null
+          workflow_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_topics"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_set_content_output_status: {
         Args: { p_output_id: string; p_status: string }
         Returns: {
@@ -7446,6 +8795,7 @@ export type Database = {
           approved_by: string | null
           body: string | null
           created_at: string
+          format_brief_id: string | null
           id: string
           output_kind: string
           provenance: Json
@@ -7460,6 +8810,40 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "content_outputs"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      admin_set_content_topic_workflow_status: {
+        Args: {
+          p_generation_error?: string
+          p_topic_id: string
+          p_workflow_status: string
+        }
+        Returns: {
+          applicability_snapshot: Json
+          brief: Json
+          channel: string
+          content_scope: string | null
+          created_at: string
+          created_by: string | null
+          creative: Json
+          id: string
+          knowledge_id: string
+          knowledge_version: number
+          publishing: Json
+          seo: Json
+          status: string
+          strategy: Json
+          title: string
+          updated_at: string
+          updated_by: string | null
+          upstream_hash: string | null
+          workflow_status: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "content_topics"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -7533,6 +8917,26 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_update_knowledge_source: {
+        Args: { p_label?: string; p_source_id: string; p_url?: string }
+        Returns: {
+          attachment_id: string | null
+          created_at: string
+          external_ref: string | null
+          id: string
+          knowledge_id: string
+          label: string | null
+          metadata: Json
+          source_type: string
+          url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "knowledge_sources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_upsert_content_output: {
         Args: {
           p_body?: string
@@ -7548,6 +8952,7 @@ export type Database = {
           approved_by: string | null
           body: string | null
           created_at: string
+          format_brief_id: string | null
           id: string
           output_kind: string
           provenance: Json
@@ -7566,19 +8971,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
-      admin_upsert_content_topic_stage: {
+      admin_upsert_content_strategy: {
         Args: {
-          p_brief?: Json
-          p_creative?: Json
-          p_publishing?: Json
+          p_channel?: string
+          p_content_scope?: string
+          p_knowledge_ids?: string[]
           p_seo?: Json
-          p_status?: string
-          p_title?: string
+          p_strategy: Json
           p_topic_id: string
         }
         Returns: {
           applicability_snapshot: Json
           brief: Json
+          channel: string
+          content_scope: string | null
           created_at: string
           created_by: string | null
           creative: Json
@@ -7588,6 +8994,7 @@ export type Database = {
           publishing: Json
           seo: Json
           status: string
+          strategy: Json
           title: string
           updated_at: string
           updated_by: string | null
@@ -7601,6 +9008,84 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_upsert_content_topic_stage:
+        | {
+            Args: {
+              p_brief?: Json
+              p_creative?: Json
+              p_publishing?: Json
+              p_seo?: Json
+              p_status?: string
+              p_title?: string
+              p_topic_id: string
+            }
+            Returns: {
+              applicability_snapshot: Json
+              brief: Json
+              channel: string
+              content_scope: string | null
+              created_at: string
+              created_by: string | null
+              creative: Json
+              id: string
+              knowledge_id: string
+              knowledge_version: number
+              publishing: Json
+              seo: Json
+              status: string
+              strategy: Json
+              title: string
+              updated_at: string
+              updated_by: string | null
+              upstream_hash: string | null
+              workflow_status: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "content_topics"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
+        | {
+            Args: {
+              p_brief?: Json
+              p_creative?: Json
+              p_publishing?: Json
+              p_seo?: Json
+              p_status?: string
+              p_title?: string
+              p_topic_id: string
+              p_workflow_status?: string
+            }
+            Returns: {
+              applicability_snapshot: Json
+              brief: Json
+              channel: string
+              content_scope: string | null
+              created_at: string
+              created_by: string | null
+              creative: Json
+              id: string
+              knowledge_id: string
+              knowledge_version: number
+              publishing: Json
+              seo: Json
+              status: string
+              strategy: Json
+              title: string
+              updated_at: string
+              updated_by: string | null
+              upstream_hash: string | null
+              workflow_status: string
+            }
+            SetofOptions: {
+              from: "*"
+              to: "content_topics"
+              isOneToOne: true
+              isSetofReturn: false
+            }
+          }
       admin_upsert_platform_knowledge: {
         Args: {
           p_applicability?: Json
@@ -7644,6 +9129,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_upsert_seasonal_package: {
+        Args: { p_items?: Json; p_package: Json }
+        Returns: Json
+      }
       ai_icon_search: {
         Args: { query_text?: string }
         Returns: {
@@ -7686,21 +9175,54 @@ export type Database = {
             }
             Returns: Json
           }
+      apply_ai_batch_guidance_result: {
+        Args: {
+          p_draft_meta?: Json
+          p_job_id: string
+          p_knowledge_id: string
+          p_summary: string
+        }
+        Returns: {
+          applicability: Json
+          attributes: Json
+          body: string | null
+          cohort_size: number | null
+          content: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          org_id: string | null
+          provenance: Json
+          published_at: string | null
+          reviewed_by: string | null
+          scope: string
+          source_kind: string
+          status: string
+          summary: string | null
+          supersedes_id: string | null
+          title: string
+          trust_score: number | null
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "knowledge"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       apply_checklist_template: {
         Args: { p_org: string; p_task: string; p_template: string }
         Returns: undefined
       }
       apply_knowledge_claim_critic: {
         Args: {
-          p_critic_result?: Json
+          p_critic_result: Json
           p_knowledge_id: string
           p_passed: boolean
         }
         Returns: undefined
-      }
-      insert_knowledge_claims: {
-        Args: { p_claims?: Json; p_knowledge_id: string }
-        Returns: number
       }
       apply_knowledge_critic_result: {
         Args: {
@@ -7792,6 +9314,10 @@ export type Database = {
         Args: { p_address: string; p_org_id: string }
         Returns: boolean
       }
+      check_user_org_membership: {
+        Args: { p_org_id: string }
+        Returns: boolean
+      }
       clear_ai_route_override: {
         Args: { p_capability: string }
         Returns: boolean
@@ -7801,6 +9327,7 @@ export type Database = {
         Returns: undefined
       }
       compliance_event_daily_expiry_check: { Args: never; Returns: undefined }
+      content_form_to_output_kind: { Args: { p_form: string }; Returns: string }
       create_attachment_record: {
         Args: {
           p_file_name?: string
@@ -8082,6 +9609,10 @@ export type Database = {
         Args: { p_org: string; p_task_id: string }
         Returns: undefined
       }
+      dismiss_seasonal_package: {
+        Args: { p_org_id: string; p_package_id: string }
+        Returns: undefined
+      }
       emit_signal: {
         Args: {
           p_asset_id?: string
@@ -8167,6 +9698,10 @@ export type Database = {
               created_tasks: number
             }[]
           }
+      insert_knowledge_claims: {
+        Args: { p_claims?: Json; p_knowledge_id: string }
+        Returns: number
+      }
       is_org_member: { Args: { p_org_id: string }; Returns: boolean }
       is_org_owner_or_manager: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
@@ -8177,14 +9712,6 @@ export type Database = {
       knowledge_claims_from_attributes: {
         Args: { p_attributes: Json }
         Returns: Json
-      }
-      insert_knowledge_claims: {
-        Args: { p_claims?: Json; p_knowledge_id: string }
-        Returns: number
-      }
-      replace_knowledge_extracted_claims: {
-        Args: { p_claims?: Json; p_knowledge_id: string }
-        Returns: number
       }
       knowledge_critic_content_fingerprint: {
         Args: { p_knowledge_id: string }
@@ -8240,6 +9767,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      list_active_seasonal_packages: {
+        Args: { p_org_id: string }
+        Returns: Json
       }
       list_brain_patterns_for_community: {
         Args: { p_limit?: number }
@@ -8322,6 +9853,10 @@ export type Database = {
         Args: { p_org: string; p_template: string }
         Returns: undefined
       }
+      mark_seasonal_package_cta: {
+        Args: { p_item_id: string; p_org_id: string; p_package_id: string }
+        Returns: undefined
+      }
       match_org_member_by_email: {
         Args: { p_email: string; p_org_id: string }
         Returns: string
@@ -8331,6 +9866,10 @@ export type Database = {
         Returns: boolean
       }
       member_can_create_tasks: { Args: { p_org_id: string }; Returns: boolean }
+      member_can_mutate_task: {
+        Args: { p_assigned_user_id: string; p_org_id: string }
+        Returns: boolean
+      }
       normalize_knowledge_applicability: { Args: { p: Json }; Returns: Json }
       normalize_knowledge_attributes: { Args: { p: Json }; Returns: Json }
       org_ai_ops_used: { Args: { p_org_id: string }; Returns: number }
@@ -8453,6 +9992,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      replace_knowledge_extracted_claims: {
+        Args: { p_claims?: Json; p_knowledge_id: string }
+        Returns: number
+      }
       replace_property_image: {
         Args: {
           p_annotation_summary?: string
@@ -8481,6 +10024,10 @@ export type Database = {
       }
       save_ai_extraction: {
         Args: { p_data: Json; p_task: string }
+        Returns: undefined
+      }
+      seasonal_package_assert_approvable: {
+        Args: { p_package_id: string }
         Returns: undefined
       }
       seed_onboarding_demo_for_property: {
@@ -8790,6 +10337,13 @@ export type Database = {
         | "vertical_transport"
         | "external_area"
         | "external_logistics"
+      geo_capture_context:
+        | "task_complete"
+        | "inspection_complete"
+        | "photo_upload"
+        | "asset_verify"
+        | "compliance_record"
+        | "site_visit"
       intake_item_status:
         | "pending"
         | "processing"
@@ -8841,12 +10395,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8870,11 +10424,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8895,11 +10449,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8920,11 +10474,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
+    : never = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8937,11 +10491,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
+    : never = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -8994,6 +10548,14 @@ export const Constants = {
         "external_area",
         "external_logistics",
       ],
+      geo_capture_context: [
+        "task_complete",
+        "inspection_complete",
+        "photo_upload",
+        "asset_verify",
+        "compliance_record",
+        "site_visit",
+      ],
       intake_item_status: [
         "pending",
         "processing",
@@ -9038,3 +10600,4 @@ export const Constants = {
     },
   },
 } as const
+

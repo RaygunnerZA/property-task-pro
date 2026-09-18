@@ -146,6 +146,30 @@ export function propertyLevelDroppableId() {
   return "property-level";
 }
 
+/**
+ * Two-zone mini-card gesture (@Docs/04_UI_System.md — organise views):
+ * top half = Group (shared custom collection), bottom half = Add sub space.
+ */
+export function miniCardGroupDroppableId(entityId: string) {
+  return `minicard-group:${entityId}`;
+}
+
+export function parseMiniCardGroupDroppableId(id: string): string | null {
+  if (!id.startsWith("minicard-group:")) return null;
+  const entityId = id.slice("minicard-group:".length);
+  return entityId || null;
+}
+
+export function miniCardSubDroppableId(entityId: string) {
+  return `minicard-sub:${entityId}`;
+}
+
+export function parseMiniCardSubDroppableId(id: string): string | null {
+  if (!id.startsWith("minicard-sub:")) return null;
+  const entityId = id.slice("minicard-sub:".length);
+  return entityId || null;
+}
+
 export function onboardingDragLabel(
   drag: OnboardingDragData,
   areaName?: string

@@ -6,7 +6,10 @@ import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
-import { PropertySpaceGroupCarousel } from "@/components/spaces/PropertySpaceGroupCarousel";
+import {
+  PropertySpaceGroupCarousel,
+  type SpacesOrganiseView,
+} from "@/components/spaces/PropertySpaceGroupCarousel";
 import { SpaceDetailPanel } from "@/components/spaces/SpaceDetailPanel";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
 import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
@@ -17,7 +20,6 @@ import { LoadingState } from "@/components/design-system/LoadingState";
 import {
   PropertyWorkspaceLayout,
   WorkspaceSurfaceCard,
-  WorkspaceSectionHeading,
   WorkspaceTabList,
   WorkspaceTabTrigger,
   WorkspaceHealthGrid,
@@ -47,7 +49,6 @@ function useWorkspaceWide() {
   return wide;
 }
 
-type SpacesWorkTab = "groups" | "issues";
 type CreatePanelTab = "space" | "property";
 
 /**
@@ -68,7 +69,7 @@ function SpaceOrganisationScreenInner() {
   const isWide = useWorkspaceWide();
 
   const [selectedSpaceId, setSelectedSpaceId] = useState<string | null>(null);
-  const [workTab, setWorkTab] = useState<SpacesWorkTab>("groups");
+  const [organiseView, setOrganiseView] = useState<SpacesOrganiseView>("category");
   const [showAddSpace, setShowAddSpace] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [createPanelTab, setCreatePanelTab] = useState<CreatePanelTab>("space");
@@ -137,23 +138,10 @@ function SpaceOrganisationScreenInner() {
   const issuesRequested =
     searchParams.get("workTab") === "issues" || urgentOnly;
 
-  const spacesForIssuesList = useMemo(() => {
-    const q = spaceSearchQuery.trim().toLowerCase();
-    return spaces.filter((s) => {
-      if (!openTaskSpaceIds.has(s.id)) return false;
-      if (urgentOnly && !urgentPrioritySpaceIds.has(s.id)) return false;
-      if (q && !(s.name ?? "").toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [spaces, openTaskSpaceIds, urgentPrioritySpaceIds, urgentOnly, spaceSearchQuery]);
-
   const spacesWithIssuesCount = useMemo(
     () => spaces.filter((s) => openTaskSpaceIds.has(s.id)).length,
     [spaces, openTaskSpaceIds]
   );
-
-  /** Operational chrome only when a space actually needs work (or a deep link asks for it). */
-  const showOperationalView = spacesWithIssuesCount > 0 || issuesRequested;
 
   const clearSpacesCount = Math.max(0, spaces.length - spacesWithIssuesCount);
 
@@ -168,9 +156,9 @@ function SpaceOrganisationScreenInner() {
         value: spaces.length,
         secondaryCount: spacesWithIssuesCount,
         secondaryLabel: "OPEN",
-        secondaryTone: (spacesWithIssuesCount > 0 ? "urgent" : "neutral") as const,
-        onClick: () => setWorkTab("groups"),
-        selected: workTab === "groups",
+        secondaryTone: (spacesWithIssuesCount > 0 ? "urgent" : "neutral") as "urgent" | "warning" | "neutral",
+        onClick: () => setOrganiseView("category"),
+        selected: organiseView === "category",
       },
       {
         line1: "with",
@@ -178,9 +166,9 @@ function SpaceOrganisationScreenInner() {
         value: spacesWithIssuesCount,
         secondaryCount: urgentWithIssues,
         secondaryLabel: "HOT",
-        secondaryTone: (urgentWithIssues > 0 ? "urgent" : "neutral") as const,
-        onClick: spacesWithIssuesCount > 0 ? () => setWorkTab("issues") : undefined,
-        selected: workTab === "issues",
+        secondaryTone: (urgentWithIssues > 0 ? "urgent" : "neutral") as "urgent" | "warning" | "neutral",
+        onClick: spacesWithIssuesCount > 0 ? () => setOrganiseView("attention") : undefined,
+        selected: organiseView === "attention",
       },
       {
         line1: "clear",
@@ -188,8 +176,8 @@ function SpaceOrganisationScreenInner() {
         value: clearSpacesCount,
         secondaryCount: spacesWithIssuesCount,
         secondaryLabel: "WATCH",
-        secondaryTone: (spacesWithIssuesCount > 0 ? "warning" : "neutral") as const,
-        onClick: () => setWorkTab("groups"),
+        secondaryTone: (spacesWithIssuesCount > 0 ? "warning" : "neutral") as "urgent" | "warning" | "neutral",
+        onClick: () => setOrganiseView("areas"),
       },
     ];
   }, [
@@ -198,18 +186,12 @@ function SpaceOrganisationScreenInner() {
     urgentPrioritySpaceIds,
     spacesWithIssuesCount,
     clearSpacesCount,
-    workTab,
+    organiseView,
   ]);
 
   useEffect(() => {
-    if (issuesRequested) {
-      setWorkTab("issues");
-      return;
-    }
-    if (spacesWithIssuesCount === 0) {
-      setWorkTab("groups");
-    }
-  }, [issuesRequested, spacesWithIssuesCount]);
+    if (issuesRequested) setOrganiseView("attention");
+  }, [issuesRequested]);
 
   const headerAccent =
     (property as { icon_color_hex?: string | null } | undefined)?.icon_color_hex?.trim() ||
@@ -260,59 +242,14 @@ function SpaceOrganisationScreenInner() {
 
   const workColumn = (
     <div className="space-y-5">
-      {showOperationalView ? (
-        <div>
-          <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-          <WorkspaceTabList>
-            <WorkspaceTabTrigger selected={workTab === "groups"} onClick={() => setWorkTab("groups")}>
-              By group
-            </WorkspaceTabTrigger>
-            <WorkspaceTabTrigger selected={workTab === "issues"} onClick={() => setWorkTab("issues")}>
-              With issues ({spacesWithIssuesCount})
-            </WorkspaceTabTrigger>
-          </WorkspaceTabList>
-        </div>
-      ) : null}
-
-      {showOperationalView && workTab === "issues" ? (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            {urgentOnly
-              ? "Spaces linked to at least one urgent or high-priority open task."
-              : "Spaces linked to at least one open task — open a space to work it in detail."}
-          </p>
-          <ul className="space-y-2">
-            {spacesForIssuesList.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => openSpace(s.id)}
-                  className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
-                >
-                  {s.name}
-                </button>
-              </li>
-            ))}
-            {spacesForIssuesList.length === 0 && (
-              <p className="text-sm text-muted-foreground py-6">
-                {spaceSearchQuery.trim()
-                  ? "No spaces match your search."
-                  : urgentOnly
-                    ? "No spaces with urgent-priority open tasks."
-                    : "No spaces with open tasks."}
-              </p>
-            )}
-          </ul>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <PropertySpaceGroupCarousel
-            propertyId={propertyId}
-            spaceFilter={spaceSearchQuery}
-            onViewSpace={openSpace}
-          />
-        </div>
-      )}
+      <PropertySpaceGroupCarousel
+        propertyId={propertyId}
+        spaceFilter={spaceSearchQuery}
+        onViewSpace={openSpace}
+        tasks={tasks}
+        view={organiseView}
+        onViewChange={setOrganiseView}
+      />
     </div>
   );
 

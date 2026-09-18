@@ -48,7 +48,7 @@ describe("attachmentSpaces filing helpers", () => {
   });
 
   it("uses File / Filed wording, not Move", () => {
-    expect(filingDropOverlayLabel("Kitchen", false)).toBe("File to Kitchen");
+    expect(filingDropOverlayLabel("Kitchen", false)).toBe("+ File to Kitchen");
     expect(filingDropOverlayLabel(null, true)).toBe("Keep at property level");
     expect(filedToastMessage("Kitchen")).toBe("Filed to Kitchen");
     expect(removedLinkToastMessage("Kitchen")).toBe("Removed Kitchen link");

@@ -30,10 +30,12 @@ import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
 import { FilterChip } from "@/components/chips/filter";
-import { PropertyWorkspaceLayout, WorkspaceHealthGrid, WorkspaceSurfaceCard, WorkspaceSectionHeading, WorkspaceTabList, WorkspaceTabTrigger } from "@/components/property-workspace";
+import { PropertyWorkspaceLayout, WorkspaceHealthGrid, WorkspaceSurfaceCard } from "@/components/property-workspace";
 import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
-import { PropertyAssetGroupCarousel } from "@/components/assets/PropertyAssetGroupCarousel";
-import { AllAssetsDirectory } from "@/components/assets/AllAssetsDirectory";
+import {
+  PropertyAssetGroupCarousel,
+  type AssetsOrganiseView,
+} from "@/components/assets/PropertyAssetGroupCarousel";
 import { ManageTagsPanel } from "@/components/property/ManageTagsPanel";
 import { AddAssetWorkspaceForm } from "@/components/assets/AddAssetWorkspaceForm";
 import { cn } from "@/lib/utils";
@@ -73,8 +75,6 @@ const STATUS_FILTERS = [
   { value: "retired", label: "Retired" },
 ];
 
-type AssetsWorkTab = "groups" | "issues";
-
 const WORKSPACE_WIDE_MQ = `(min-width: ${LAYOUT_BREAKPOINTS.layout}px)`;
 
 function useWorkspaceWide() {
@@ -110,7 +110,7 @@ const Assets = () => {
   /** `?attention=1` — active assets with poor condition or open tasks (matches property hub tile). */
   const [attentionIssuesOnly, setAttentionIssuesOnly] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
-  const [assetsWorkTab, setAssetsWorkTab] = useState<AssetsWorkTab>("groups");
+  const [organiseView, setOrganiseView] = useState<AssetsOrganiseView>("category");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isWide = useWorkspaceWide();
@@ -191,7 +191,7 @@ const Assets = () => {
   useEffect(() => {
     setAttentionIssuesOnly(searchParams.get("attention") === "1");
     if (searchParams.get("attention") === "1") {
-      setAssetsWorkTab("issues");
+      setOrganiseView("attention");
     }
   }, [searchParams]);
 
@@ -434,26 +434,6 @@ const Assets = () => {
     return list.filter((a) => a.property_id === filterPropertyId);
   }, [assets, filterPropertyId]);
 
-  const assetsWithIssuesCount = useMemo(() => {
-    return contextAssets.filter((a) => {
-      const active = (a.status || "active") === "active";
-      if (!active) return false;
-      const score = a.condition_score ?? 100;
-      const openTasks = a.open_tasks_count ?? 0;
-      return score < 60 || openTasks > 0;
-    }).length;
-  }, [contextAssets]);
-
-  useEffect(() => {
-    if (searchParams.get("attention") === "1") return;
-    if (assetsWithIssuesCount === 0) {
-      setAssetsWorkTab("groups");
-    }
-  }, [searchParams, assetsWithIssuesCount]);
-
-  const assetsIssuesRequested = searchParams.get("attention") === "1";
-  const showAssetsOperationalView = assetsWithIssuesCount > 0 || assetsIssuesRequested;
-
   const assetsForIssuesList = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     return contextAssets.filter((a) => {
@@ -567,7 +547,7 @@ const Assets = () => {
       setStatusFilters(["active"]);
       setComplianceOnly(false);
       setNeedsInspectionOnly(false);
-      setAssetsWorkTab("groups");
+      setOrganiseView("category");
     }
     if (filter === "retired") {
       setStatusFilters(["retired"]);
@@ -578,7 +558,7 @@ const Assets = () => {
       setStatusFilters(["active"]);
       setComplianceOnly(false);
       setNeedsInspectionOnly(true);
-      setAssetsWorkTab("issues");
+      setOrganiseView("attention");
     }
     if (filter === "nonCompliant") {
       setStatusFilters(["active"]);
@@ -735,68 +715,13 @@ const Assets = () => {
           workColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-5">
-                {showAssetsOperationalView ? (
-                  <div>
-                    <WorkspaceSectionHeading>Operational view</WorkspaceSectionHeading>
-                    <WorkspaceTabList>
-                      <WorkspaceTabTrigger
-                        selected={assetsWorkTab === "groups"}
-                        onClick={() => setAssetsWorkTab("groups")}
-                      >
-                        By group
-                      </WorkspaceTabTrigger>
-                      <WorkspaceTabTrigger
-                        selected={assetsWorkTab === "issues"}
-                        onClick={() => setAssetsWorkTab("issues")}
-                      >
-                        With issues ({assetsWithIssuesCount})
-                      </WorkspaceTabTrigger>
-                    </WorkspaceTabList>
-                  </div>
-                ) : null}
-
-                {showAssetsOperationalView && assetsWorkTab === "issues" ? (
-                  <div className="space-y-3">
-                    <p className="text-sm text-muted-foreground">
-                      Active assets with poor condition or open tasks — open an asset to work it in detail.
-                    </p>
-                    <ul className="space-y-2">
-                      {assetsForIssuesList.map((a) => (
-                        <li key={a.id}>
-                          <button
-                            type="button"
-                            onClick={() => a.id && openAsset(a.id)}
-                            className="w-full text-left rounded-lg px-3 py-2.5 bg-card/80 shadow-e1 text-sm font-medium hover:shadow-md transition-shadow"
-                          >
-                            {a.name || "Unnamed asset"}
-                          </button>
-                        </li>
-                      ))}
-                      {assetsForIssuesList.length === 0 && (
-                        <p className="text-sm text-muted-foreground py-6">
-                          {searchQuery.trim()
-                            ? "No assets match your search."
-                            : "No assets need attention."}
-                        </p>
-                      )}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <PropertyAssetGroupCarousel
-                      propertyId={effectiveScopeId}
-                      assetFilter={searchQuery}
-                      onViewAsset={openAsset}
-                    />
-                    <div className="border-t border-border/30 pt-5">
-                      <AllAssetsDirectory
-                        propertyId={effectiveScopeId}
-                        assetFilter={searchQuery}
-                        onAssetClick={openAsset}
-                      />
-                    </div>
-                  </div>
-                )}
+                <PropertyAssetGroupCarousel
+                  propertyId={effectiveScopeId}
+                  assetFilter={searchQuery}
+                  onViewAsset={openAsset}
+                  view={organiseView}
+                  onViewChange={setOrganiseView}
+                />
               </div>
             ) : (
               <>
@@ -921,7 +846,7 @@ const Assets = () => {
           onClose={() => openAsset(null)}
           onOpenAsset={openAsset}
           siblingAssetIds={
-            isPropertyScoped && assetsWorkTab === "issues"
+            isPropertyScoped && organiseView === "attention"
               ? assetsForIssuesList.filter((a) => a.id).map((a) => a.id!)
               : filteredAssetIds
           }

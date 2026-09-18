@@ -91,6 +91,30 @@ export function PropertyRecordsTab({
 
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
+
+  // Deep link: `?documentId=` opens the document detail (detail chrome rule,
+  // @Docs/04_UI_System.md — selection is deep-linkable on all three surfaces).
+  const documentIdFromUrl = searchParams.get("documentId")?.trim() || null;
+
+  useEffect(() => {
+    if (documentIdFromUrl) setSelectedDocId(documentIdFromUrl);
+  }, [documentIdFromUrl]);
+
+  const openDocument = useCallback(
+    (docId: string | null) => {
+      setSelectedDocId(docId);
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (docId) next.set("documentId", docId);
+          else next.delete("documentId");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
   const [showObligations, setShowObligations] = useState(false);
 
   const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -369,7 +393,7 @@ export function PropertyRecordsTab({
         const created = await uploadPropertyDocuments(Array.from(fileList));
         toast({
           title: "Upload complete",
-          description: `${created.length} document(s) uploaded · kept at property level`,
+          description: `${created.length} document(s) uploaded · set a type so they don't sit in “Needs info”`,
           action:
             created.length > 0 ? (
               <ToastAction
@@ -551,7 +575,7 @@ export function PropertyRecordsTab({
             docsLoading={docsLoading}
             searchQuery={recordsSearch}
             onSearchQueryChange={setRecordsSearch}
-            onOpenDocument={setSelectedDocId}
+            onOpenDocument={openDocument}
             onAddRecord={openRecordsFilePicker}
             onFileToSpace={handleFileToSpace}
             onRemoveSpaceLink={handleRemoveSpaceLink}
@@ -602,7 +626,7 @@ export function PropertyRecordsTab({
       <DocumentDetailDrawer
         documentId={selectedDocId}
         propertyId={scopedPropertyId ?? ""}
-        onClose={() => setSelectedDocId(null)}
+        onClose={() => openDocument(null)}
         onRefresh={handleRefresh}
       />
 

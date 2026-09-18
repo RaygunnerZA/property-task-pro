@@ -4,19 +4,25 @@ import { useTrackpadHorizontalElementScroll } from "@/hooks/useTrackpadHorizonta
 import { cn } from "@/lib/utils";
 import { IconButton } from "@/components/ui/IconButton";
 
-type RecordsCategoryCarouselProps = {
+type CollectionShelfProps = {
   children: ReactNode;
   className?: string;
+  prevLabel?: string;
+  nextLabel?: string;
 };
 
 /**
- * Compact horizontal category scroller with discreet prev/next controls.
- * Keeps a peek of the next card as an affordance for more categories.
+ * Shelf — compact horizontal collection scroller with discreet prev/next
+ * controls. Shared across Spaces, Assets, and Records (shelf–bench–drawer
+ * grammar, @Docs/04_UI_System.md). Keeps a peek of the next card as an
+ * affordance for more collections.
  */
-export function RecordsCategoryCarousel({
+export function CollectionShelf({
   children,
   className,
-}: RecordsCategoryCarouselProps) {
+  prevLabel = "Previous",
+  nextLabel = "Next",
+}: CollectionShelfProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   useTrackpadHorizontalElementScroll(scrollRef);
 
@@ -34,8 +40,8 @@ export function RecordsCategoryCarousel({
           role="navigation"
           size={28}
           icon={<ChevronLeft className="h-3.5 w-3.5" />}
-          tooltip="Previous categories"
-          aria-label="Previous categories"
+          tooltip={prevLabel}
+          aria-label={prevLabel}
           className="pointer-events-auto opacity-80"
           onClick={() => scrollByCard(-1)}
         />
@@ -45,8 +51,8 @@ export function RecordsCategoryCarousel({
           role="navigation"
           size={28}
           icon={<ChevronRight className="h-3.5 w-3.5" />}
-          tooltip="Next categories"
-          aria-label="Next categories"
+          tooltip={nextLabel}
+          aria-label={nextLabel}
           className="pointer-events-auto opacity-80"
           onClick={() => scrollByCard(1)}
         />

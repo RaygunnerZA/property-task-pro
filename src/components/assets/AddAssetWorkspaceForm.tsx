@@ -234,6 +234,16 @@ export function AddAssetWorkspaceForm({
       </div>
     ) : null;
 
+  // Creation rule (@Docs/04_UI_System.md — organise views): Space + Category are
+  // mandatory when the property has spaces / a type list to choose from.
+  const spaceRequired = Boolean(propertyId) && formSpaces.length > 0;
+  const saveDisabled =
+    isSaving ||
+    !propertyId ||
+    !name.trim() ||
+    !type.trim() ||
+    (spaceRequired && (!spaceId || spaceId === "none"));
+
   const actionBar = (
     variant === "dialog" ? (
       <DialogFooter>
@@ -249,7 +259,7 @@ export function AddAssetWorkspaceForm({
         <Button
           type="button"
           onClick={onSave}
-          disabled={isSaving || !propertyId || !name.trim()}
+          disabled={saveDisabled}
         >
           {isSaving ? "Saving…" : "Save Asset"}
         </Button>
@@ -270,7 +280,7 @@ export function AddAssetWorkspaceForm({
         <Button
           type="button"
           onClick={onSave}
-          disabled={isSaving || !propertyId || !name.trim()}
+          disabled={saveDisabled}
         >
           {isSaving ? "Saving…" : "Save Asset"}
         </Button>
@@ -367,6 +377,57 @@ export function AddAssetWorkspaceForm({
           />
         </div>
 
+        <div className="space-y-2">
+          <Label htmlFor={I("asset-type")}>Type *</Label>
+          <Select
+            value={typeOther || (type && !isAssetTypePreset(type)) ? "Other" : type}
+            onValueChange={handleTypeChange}
+          >
+            <SelectTrigger id={I("asset-type")} className="input-neomorphic">
+              <SelectValue placeholder="Select asset type" />
+            </SelectTrigger>
+            <SelectContent>
+              {ASSET_TYPES.map((assetType) => (
+                <SelectItem key={assetType} value={assetType}>
+                  {assetType}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {typeOther ? (
+            <NeomorphicInput
+              id={I("asset-type-other")}
+              placeholder="Enter asset type"
+              value={customType}
+              onChange={(e) => handleCustomTypeChange(e.target.value)}
+              aria-label="Custom asset type"
+            />
+          ) : null}
+        </div>
+
+        {propertyId ? (
+          <div className="space-y-2">
+            <Label htmlFor={I("asset-space")}>
+              {spaceRequired ? "Space *" : "Space"}
+            </Label>
+            <Select value={spaceId || "none"} onValueChange={onSpaceChange}>
+              <SelectTrigger id={I("asset-space")} className="input-neomorphic">
+                <SelectValue
+                  placeholder={spaceRequired ? "Select a space" : "No spaces yet"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {!spaceRequired ? <SelectItem value="none">None</SelectItem> : null}
+                {formSpaces.map((space) => (
+                  <SelectItem key={space.id} value={space.id}>
+                    {space.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
+
         <button
           type="button"
           onClick={() => setDetailsOpen((open) => !open)}
@@ -382,33 +443,6 @@ export function AddAssetWorkspaceForm({
 
         {detailsOpen ? (
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor={I("asset-type")}>Type</Label>
-              <Select
-                value={typeOther || (type && !isAssetTypePreset(type)) ? "Other" : type}
-                onValueChange={handleTypeChange}
-              >
-                <SelectTrigger id={I("asset-type")} className="input-neomorphic">
-                  <SelectValue placeholder="Select asset type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ASSET_TYPES.map((assetType) => (
-                    <SelectItem key={assetType} value={assetType}>
-                      {assetType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {typeOther ? (
-                <NeomorphicInput
-                  id={I("asset-type-other")}
-                  placeholder="Enter asset type"
-                  value={customType}
-                  onChange={(e) => handleCustomTypeChange(e.target.value)}
-                  aria-label="Custom asset type"
-                />
-              ) : null}
-            </div>
             <div className="space-y-2">
               <Label htmlFor={I("asset-serial")}>Serial Number</Label>
               <NeomorphicInput
@@ -429,24 +463,6 @@ export function AddAssetWorkspaceForm({
                     {properties.map((property) => (
                       <SelectItem key={property.id} value={property.id}>
                         {property.address}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-            {propertyId ? (
-              <div className="space-y-2">
-                <Label htmlFor={I("asset-space")}>Space (Optional)</Label>
-                <Select value={spaceId || "none"} onValueChange={onSpaceChange}>
-                  <SelectTrigger id={I("asset-space")} className="input-neomorphic">
-                    <SelectValue placeholder="Select a space (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {formSpaces.map((space) => (
-                      <SelectItem key={space.id} value={space.id}>
-                        {space.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

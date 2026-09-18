@@ -58,7 +58,9 @@ export function filingDropOverlayLabel(
   isPropertyLevel: boolean
 ): string {
   if (isPropertyLevel) return "Keep at property level";
-  return `File to ${spaceName?.trim() || "space"}`;
+  // "+" marks the additive verb — filing links, it never moves the document
+  // (one gesture, three verbs — @Docs/04_UI_System.md).
+  return `+ File to ${spaceName?.trim() || "space"}`;
 }
 
 export function filedToastMessage(spaceName: string): string {

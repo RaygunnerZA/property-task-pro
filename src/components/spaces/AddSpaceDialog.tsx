@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 import { getSuggestedCopyName } from "@/lib/spaceNameUtils";
 import { uploadSpaceImage, validateSpaceImageFile } from "@/services/spaces/spaceImageUpload";
+import { partitionPropertySpaces } from "@/lib/spaces/partitionPropertySpaces";
 import { Copy, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -111,7 +112,7 @@ export function AddSpaceDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("spaces")
-        .select("id, name, icon_name")
+        .select("id, name, icon_name, parent_space_id, floor_level, created_at")
         .eq("org_id", orgId!)
         .eq("property_id", propertyId);
       if (error) throw error;
@@ -119,6 +120,18 @@ export function AddSpaceDialog({
     },
     enabled: !!orgId && !!propertyId && dialogActive,
   });
+
+  // Areas — creation rule (@Docs/04_UI_System.md — organise views): setting the
+  // area is mandatory whenever the property has areas.
+  const { areas } = partitionPropertySpaces(propertySpaces);
+  const [areaId, setAreaId] = useState<string>("");
+  const areaRequired = areas.length > 0;
+
+  useEffect(() => {
+    if (areaId && !areas.some((a) => a.id === areaId)) {
+      setAreaId("");
+    }
+  }, [areaId, areas]);
 
   const existingMatch = debouncedName
     ? propertySpaces.find(
@@ -148,6 +161,7 @@ export function AddSpaceDialog({
     setPendingUploadFile(null);
     setVisual(DEFAULT_VISUAL);
     setVisualTouched(false);
+    setAreaId("");
   }, [initialPropertyId]);
 
   const handleUploadForCreate = useCallback(async (file: File) => {
@@ -199,6 +213,7 @@ export function AddSpaceDialog({
           name: trimmed,
           icon_name: effectiveIcon,
           space_type_id: spaceTypeMatch?.id ?? null,
+          parent_space_id: areaId || null,
           thumbnail_url: thumbnailUrl,
         })
         .select()
@@ -241,6 +256,11 @@ export function AddSpaceDialog({
 
     if (!propertyId) {
       toast.error("Please select a property");
+      return;
+    }
+
+    if (areaRequired && !areaId) {
+      toast.error("Choose an area for this space");
       return;
     }
 
@@ -379,6 +399,25 @@ export function AddSpaceDialog({
         </div>
       )}
 
+      {/* Area — mandatory when the property has areas (organise views creation rule) */}
+      {areaRequired ? (
+        <div className="grid gap-2">
+          <Label htmlFor="space-area">Area *</Label>
+          <Select value={areaId} onValueChange={setAreaId} disabled={loading}>
+            <SelectTrigger id="space-area">
+              <SelectValue placeholder="Choose an area" />
+            </SelectTrigger>
+            <SelectContent>
+              {areas.map((area) => (
+                <SelectItem key={area.id} value={area.id}>
+                  {area.name || "Area"}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
       {/* Space Name */}
       <div className="grid gap-2">
         <Label htmlFor="name">Space name *</Label>
@@ -455,6 +494,7 @@ export function AddSpaceDialog({
             !!existingMatch ||
             !name.trim() ||
             !propertyId ||
+            (areaRequired && !areaId) ||
             (!initialPropertyId && properties.length === 0)
           }
           className="flex-1"

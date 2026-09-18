@@ -110,8 +110,7 @@ Deno.serve(async (req) => {
         propertyId,
         countryCode,
         postalCode,
-        email: Deno.env.get("UK_EPC_API_EMAIL"),
-        apiKey: Deno.env.get("UK_EPC_API_KEY"),
+        token: Deno.env.get("UK_EPC_API_TOKEN"),
       });
     } catch (err) {
       console.error(

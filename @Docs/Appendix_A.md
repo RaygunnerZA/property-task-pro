@@ -105,6 +105,8 @@ People represent staff, contractors, suppliers and contacts.
 
 Primary surface: `/property/people` (People nav item). Organisation membership / invites may still use Settings Team where appropriate; People is not buried only under Settings.
 
+Left column: **Contacts directory** (`contacts` — operational address book, not seats) with add/edit. Centre: team members.
+
 Context Areas
 
 * Overview

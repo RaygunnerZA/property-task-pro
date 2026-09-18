@@ -9,16 +9,13 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { arrayMove } from "@dnd-kit/sortable";
+import { AlertTriangle, Box, ClipboardList, Pencil, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useSpacesWithTypes, type SpaceWithType } from "@/hooks/useSpacesWithTypes";
-import { OnboardingSpaceGroupCard } from "@/components/onboarding/OnboardingSpaceGroupCard";
-import { OnboardingCustomCollectionCard } from "@/components/onboarding/OnboardingCustomCollectionCard";
-import { OnboardingCustomCollectionDraftCard } from "@/components/onboarding/OnboardingCustomCollectionDraftCard";
-import { OnboardingPropertyAreasCard } from "@/components/onboarding/OnboardingPropertyAreasCard";
 import {
   ONBOARDING_SPACE_GROUPS,
   getGroupIdFromDefaultUiGroup,
@@ -26,16 +23,22 @@ import {
   inferSpaceGroupIdFromName,
   isCustomCollectionGroupId,
   normalizeSpaceMatchKey,
-  type GroupExtraSpace,
+  shortSpaceLabel,
   type OnboardingCustomCollection,
   type SuggestionLabelOverrides,
 } from "@/components/onboarding/onboardingSpaceGroups";
+import { type OnboardingArea } from "@/components/onboarding/onboardingPropertyAreas";
+import { DraggableChipShell } from "@/components/onboarding/DraggableChipShell";
 import {
-  type OnboardingArea,
-} from "@/components/onboarding/onboardingPropertyAreas";
-import {
+  DroppableZone,
+  areaDroppableId,
+  groupDroppableId,
+  miniCardGroupDroppableId,
+  miniCardSubDroppableId,
+  parseMiniCardGroupDroppableId,
+  parseMiniCardSubDroppableId,
+  propertyLevelDroppableId,
   type OnboardingDragData,
-  parseSpaceIdSortableId,
   onboardingDragLabel,
 } from "@/components/onboarding/onboardingAreasDnd";
 import {
@@ -45,13 +48,22 @@ import {
 } from "@/lib/propertyCustomSpaceGroupsStorage";
 import {
   partitionPropertySpaces,
-  selectedSpaceColorsFromPartition,
-  spaceAreaByNameKeyFromPartition,
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
-import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
-import { PropertySpaceAreasStrip } from "@/components/spaces/PropertySpaceAreasStrip";
+import { getSpaceGroupCardIllustration } from "@/lib/spaceGroupIllustrations";
+import { CollectionShelf } from "@/components/organise/CollectionShelf";
+import {
+  CollectionShelfCard,
+  NewCollectionShelfCard,
+} from "@/components/organise/CollectionShelfCard";
+import { OrganiseViewTabs, type OrganiseViewTab } from "@/components/organise/OrganiseViewTabs";
+import { OrganiseControlsBar } from "@/components/organise/OrganiseControlsBar";
+import { AttentionListView, type AttentionSection } from "@/components/organise/AttentionListView";
+import { EntityMiniCard, type MiniCardAction } from "@/components/organise/EntityMiniCard";
+import TaskCard from "@/components/TaskCard";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -59,19 +71,54 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { FilterGroup, FilterOption } from "@/components/ui/filters/FilterBar";
+import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
 import { toast } from "sonner";
 import { resolveToCanonicalSpaceType } from "@/config/spaceTypeAliases";
 import { isFuzzyMatchSimilarity } from "@/services/ai/fuzzyMatch";
 import { resolveSpaceMiniCardIllustration } from "@/lib/spaceTypeIllustrations";
 import { cn } from "@/lib/utils";
 
+const ALL_SPACES_ILLUSTRATION = "/centre-workbench/spaces.png";
+const CUSTOM_COLLECTION_COLOR = "#C4A35A";
+
+export type SpacesOrganiseView = "attention" | "areas" | "category";
+
+const VIEW_TABS: readonly OrganiseViewTab<SpacesOrganiseView>[] = [
+  {
+    id: "attention",
+    label: "Attention",
+    subtitle: "Spaces with open work — tasks grouped by space, most loaded first.",
+  },
+  {
+    id: "areas",
+    label: "Areas",
+    subtitle: "Rooms grouped by floor or zone. Drag a card onto an area to move it.",
+  },
+  {
+    id: "category",
+    label: "Category",
+    subtitle:
+      "Spaces by type. Drag a card onto a category to refile it — or onto another space to group or nest.",
+  },
+] as const;
+
+const FILTER_OPEN_WORK = "filter-space-open";
+const FILTER_URGENT = "filter-space-urgent";
+const FILTER_UNASSIGNED = "filter-space-unassigned";
+const FILTER_AREA_PREFIX = "filter-space-area-";
+
 type PropertySpaceGroupCarouselProps = {
   propertyId: string;
   className?: string;
-  /** Filters space chips across group cards (case-insensitive). */
+  /** External search (workbench header) — combined with the inline SEARCH field. */
   spaceFilter?: string;
   /** Open space/area detail in the parent surface (panel / modal). */
   onViewSpace?: (spaceId: string) => void;
+  /** Parsed tasks (spaces arrays hydrated) for the Attention view. */
+  tasks?: any[];
+  view?: SpacesOrganiseView;
+  onViewChange?: (view: SpacesOrganiseView) => void;
 };
 
 function resolveSpaceGroupId(
@@ -97,16 +144,48 @@ function isSuggestionForGroup(name: string, groupId: string): boolean {
   return group.suggestedSpaces.some((s) => normalizeSpaceMatchKey(s) === key);
 }
 
+function spaceThumb(space: SpaceWithType): string {
+  const stored = (space as { thumbnail_url?: string | null }).thumbnail_url;
+  if (typeof stored === "string" && stored.trim()) return stored;
+  return resolveSpaceMiniCardIllustration((space.name ?? "").trim() || "Space");
+}
+
+/**
+ * Spaces centre — organise views (@Docs/04_UI_System.md):
+ * Attention | Areas | Category tabs, the standard [FILTER] [SORT] [SEARCH]
+ * controls row, and draggable mini cards with the Group / Add sub space
+ * two-zone gesture.
+ */
 export function PropertySpaceGroupCarousel({
   propertyId,
   className,
   spaceFilter = "",
   onViewSpace,
+  tasks = [],
+  view: viewProp,
+  onViewChange,
 }: PropertySpaceGroupCarouselProps) {
   const navigate = useNavigate();
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
   const { spaces, refresh } = useSpacesWithTypes(propertyId);
+
+  const [internalView, setInternalView] = useState<SpacesOrganiseView>("category");
+  const view = viewProp ?? internalView;
+  const setView = useCallback(
+    (next: SpacesOrganiseView) => {
+      setInternalView(next);
+      onViewChange?.(next);
+    },
+    [onViewChange]
+  );
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<WorkbenchSortBy>("title");
+  const [search, setSearch] = useState("");
+  const [dragOverLabel, setDragOverLabel] = useState<string | null>(null);
+  const [addSpaceName, setAddSpaceName] = useState("");
 
   const [renameModal, setRenameModal] = useState<{
     spaceId: string;
@@ -125,17 +204,12 @@ export function PropertySpaceGroupCarousel({
   const [spaceToCollection, setSpaceToCollection] = useState<Record<string, string>>({});
   const [suggestionLabelOverrides, setSuggestionLabelOverrides] =
     useState<SuggestionLabelOverrides>({});
-  /** Optimistic newest-first pins so chips appear at the top before refetch settles. */
+  /** Optimistic newest-first pins so cards appear before refetch settles. */
   const [pendingPinsByGroup, setPendingPinsByGroup] = useState<Record<string, string[]>>({});
   const skipPersistCustomGroupsRef = useRef(true);
 
   const [activeAreaId, setActiveAreaId] = useState<string | null>(null);
-  const [viewingAreaId, setViewingAreaId] = useState<string | null>(null);
-  const [areaOrderIds, setAreaOrderIds] = useState<string[]>([]);
   const [activeDrag, setActiveDrag] = useState<OnboardingDragData | null>(null);
-  const [showAddSpacesInstruction, setShowAddSpacesInstruction] = useState(false);
-  const [instructionOpacity, setInstructionOpacity] = useState(1);
-  const instructionFadeRef = useRef<number | null>(null);
   const [renameAreaModal, setRenameAreaModal] = useState<{
     areaId: string;
     name: string;
@@ -146,6 +220,7 @@ export function PropertySpaceGroupCarousel({
     spaceCount: number;
   } | null>(null);
   const [transferTargetAreaId, setTransferTargetAreaId] = useState("");
+  const [addAreaName, setAddAreaName] = useState("");
 
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -158,79 +233,55 @@ export function PropertySpaceGroupCarousel({
     unassigned,
   } = useMemo(() => partitionPropertySpaces(spaces), [spaces]);
 
-  const areas: OnboardingArea[] = useMemo(() => {
-    const mapped = toOnboardingAreas(partitionedAreas);
-    if (areaOrderIds.length === 0) return mapped;
-    const byId = new Map(mapped.map((a) => [a.id, a]));
-    const ordered: OnboardingArea[] = [];
-    for (const id of areaOrderIds) {
-      const area = byId.get(id);
-      if (area) {
-        ordered.push(area);
-        byId.delete(id);
-      }
-    }
-    for (const area of byId.values()) ordered.push(area);
-    return ordered;
-  }, [partitionedAreas, areaOrderIds]);
-
-  const spaceCounts = useMemo(() => {
-    const counts: Record<string, number> = {};
-    for (const area of areas) {
-      counts[area.id] = (roomsByAreaId[area.id] ?? []).length;
-    }
-    return counts;
-  }, [areas, roomsByAreaId]);
-
-  const spaceAreaByNameKey = useMemo(
-    () => spaceAreaByNameKeyFromPartition(roomsByAreaId, areas),
-    [roomsByAreaId, areas]
+  const areas: OnboardingArea[] = useMemo(
+    () => toOnboardingAreas(partitionedAreas),
+    [partitionedAreas]
   );
 
-  const selectedSpaceColors = useMemo(
-    () => selectedSpaceColorsFromPartition(spaceAreaByNameKey, areas),
-    [spaceAreaByNameKey, areas]
+  const areaIdSet = useMemo(
+    () => new Set(partitionedAreas.map((a) => a.id)),
+    [partitionedAreas]
   );
+
+  /** Sub-spaces — nested under a room (not an area). Shown as mini-card chips. */
+  const subSpacesByParentId = useMemo(() => {
+    const map: Record<string, SpaceWithType[]> = {};
+    for (const space of spaces) {
+      const parentId =
+        typeof space.parent_space_id === "string" ? space.parent_space_id : null;
+      if (!parentId || areaIdSet.has(parentId)) continue;
+      (map[parentId] ??= []).push(space);
+    }
+    return map;
+  }, [spaces, areaIdSet]);
+
+  const subSpaceIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const list of Object.values(subSpacesByParentId)) {
+      for (const s of list) set.add(s.id);
+    }
+    return set;
+  }, [subSpacesByParentId]);
+
+  /** Every top-level space on the property (nested rooms + unassigned, minus sub-spaces). */
+  const benchSpaces = useMemo(
+    () => [...rooms, ...unassigned].filter((s) => !subSpaceIds.has(s.id)),
+    [rooms, unassigned, subSpaceIds]
+  );
+
+  const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
+  const spaceById = useMemo(() => new Map(spaces.map((s) => [s.id, s])), [spaces]);
 
   const activeArea = areas.find((a) => a.id === activeAreaId) ?? null;
 
   useEffect(() => {
-    setAreaOrderIds((prev) => {
-      const ids = partitionedAreas.map((a) => a.id);
-      if (prev.length === 0) return ids;
-      const known = new Set(ids);
-      const kept = prev.filter((id) => known.has(id));
-      const missing = ids.filter((id) => !kept.includes(id));
-      return [...kept, ...missing];
-    });
-  }, [partitionedAreas]);
-
-  useEffect(() => {
     if (areas.length === 0) {
       setActiveAreaId(null);
-      setViewingAreaId(null);
       return;
     }
     if (activeAreaId && areas.some((a) => a.id === activeAreaId)) return;
     setActiveAreaId(areas[0].id);
-    setViewingAreaId(areas[0].id);
   }, [areas, activeAreaId]);
-
-  const triggerAreaInstruction = useCallback(() => {
-    setShowAddSpacesInstruction(true);
-    setInstructionOpacity(1);
-    if (instructionFadeRef.current) window.clearTimeout(instructionFadeRef.current);
-    instructionFadeRef.current = window.setTimeout(() => {
-      setInstructionOpacity(0);
-      window.setTimeout(() => setShowAddSpacesInstruction(false), 400);
-    }, 3000);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (instructionFadeRef.current) window.clearTimeout(instructionFadeRef.current);
-    };
-  }, []);
 
   useEffect(() => {
     skipPersistCustomGroupsRef.current = true;
@@ -288,7 +339,7 @@ export function PropertySpaceGroupCarousel({
 
   const selectedSpacesSet = useMemo(() => {
     const set = new Set(
-      rooms.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+      benchSpaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
     );
     for (const pins of Object.values(pendingPinsByGroup)) {
       for (const name of pins) {
@@ -297,11 +348,11 @@ export function PropertySpaceGroupCarousel({
       }
     }
     return set;
-  }, [rooms, pendingPinsByGroup]);
+  }, [benchSpaces, pendingPinsByGroup]);
 
   useEffect(() => {
     const existing = new Set(
-      rooms.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
+      benchSpaces.map((s) => (s.name ?? "").toLowerCase().trim()).filter(Boolean)
     );
     setPendingPinsByGroup((prev) => {
       let changed = false;
@@ -314,7 +365,7 @@ export function PropertySpaceGroupCarousel({
       }
       return changed ? next : prev;
     });
-  }, [rooms]);
+  }, [benchSpaces]);
 
   const pinSpaceOptimistic = useCallback((name: string, groupId: string) => {
     const trimmed = name.trim();
@@ -326,94 +377,188 @@ export function PropertySpaceGroupCarousel({
     });
   }, []);
 
-  const selectedSpacesNewestFirstByGroup = useMemo(() => {
-    const result: Record<string, string[]> = {};
-    const sorted = [...rooms].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    for (const space of sorted) {
-      const name = space.name?.trim();
-      if (!name) continue;
-      const groupId = resolveSpaceGroupId(space, spaceToCollection);
+  const groupIdBySpaceId = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const space of benchSpaces) {
+      map[space.id] = resolveSpaceGroupId(space, spaceToCollection);
+    }
+    return map;
+  }, [benchSpaces, spaceToCollection]);
+
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const space of benchSpaces) {
+      const groupId = groupIdBySpaceId[space.id];
       if (!groupId) continue;
-      if (!result[groupId]) result[groupId] = [];
-      result[groupId].push(name);
+      counts[groupId] = (counts[groupId] ?? 0) + 1;
     }
-    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
-      if (!pins.length) continue;
-      const existingKeys = new Set(
-        (result[groupId] ?? []).map((n) => n.toLowerCase().trim())
-      );
-      const pendingOnly = pins.filter((n) => !existingKeys.has(n.toLowerCase().trim()));
-      result[groupId] = [...pendingOnly, ...(result[groupId] ?? [])];
-    }
-    return result;
-  }, [rooms, spaceToCollection, pendingPinsByGroup]);
+    return counts;
+  }, [benchSpaces, groupIdBySpaceId]);
 
-  const extraSpacesByGroup = useMemo(() => {
-    const result: Record<string, GroupExtraSpace[]> = {};
-    const sorted = [...rooms].sort(
-      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    for (const space of sorted) {
-      const name = space.name?.trim();
-      if (!name) continue;
-      const groupId = resolveSpaceGroupId(space, spaceToCollection);
-      if (!groupId) continue;
-      if (isCustomCollectionGroupId(groupId)) {
-        if (!result[groupId]) result[groupId] = [];
-        result[groupId].push({ name });
-        continue;
-      }
-      if (isSuggestionForGroup(name, groupId)) continue;
-      if (!result[groupId]) result[groupId] = [];
-      result[groupId].push({ name });
-    }
-    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
-      if (!pins.length) continue;
-      const existingKeys = new Set(
-        (result[groupId] ?? []).map((e) => e.name.toLowerCase().trim())
-      );
-      const pendingExtras: GroupExtraSpace[] = [];
-      for (const name of pins) {
-        const key = name.toLowerCase().trim();
-        if (existingKeys.has(key)) continue;
-        if (!isCustomCollectionGroupId(groupId) && isSuggestionForGroup(name, groupId)) {
-          continue;
-        }
-        pendingExtras.push({ name });
-        existingKeys.add(key);
-      }
-      if (pendingExtras.length) {
-        result[groupId] = [...pendingExtras, ...(result[groupId] ?? [])];
+  /* ------------------------- attention (open work) ------------------------ */
+
+  const openTasksBySpaceId = useMemo(() => {
+    const map = new Map<string, any[]>();
+    for (const task of tasks) {
+      if (task.status === "completed" || task.status === "archived") continue;
+      const linked = Array.isArray(task.spaces) ? task.spaces : [];
+      for (const s of linked) {
+        if (!s?.id) continue;
+        const list = map.get(s.id) ?? [];
+        list.push(task);
+        map.set(s.id, list);
       }
     }
-    return result;
-  }, [rooms, spaceToCollection, pendingPinsByGroup]);
+    return map;
+  }, [tasks]);
 
-  const filterKey = spaceFilter.trim().toLowerCase();
+  const urgentSpaceIds = useMemo(() => {
+    const set = new Set<string>();
+    for (const [spaceId, list] of openTasksBySpaceId) {
+      const hot = list.some((t) => {
+        const pr = String(t.priority ?? "").toLowerCase();
+        return pr === "urgent" || pr === "high";
+      });
+      if (hot) set.add(spaceId);
+    }
+    return set;
+  }, [openTasksBySpaceId]);
 
-  /** While searching, only keep groups that already contain a matching space (not bare suggestions). */
-  const groupMatchesFilter = useCallback(
-    (groupId: string) => {
-      if (!filterKey) return true;
-      const selected = selectedSpacesNewestFirstByGroup[groupId] ?? [];
-      return selected.some((n) => n.toLowerCase().includes(filterKey));
+  /* ------------------------ controls (filter/sort/search) ----------------- */
+
+  const filterPrimaryOptions: FilterOption[] = useMemo(
+    () => [
+      {
+        id: FILTER_OPEN_WORK,
+        label: "Open work",
+        icon: <ClipboardList className="h-4 w-4" />,
+      },
+      {
+        id: FILTER_URGENT,
+        label: "Urgent",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        color: "#EB6834",
+      },
+      { id: FILTER_UNASSIGNED, label: "Unassigned" },
+    ],
+    []
+  );
+
+  const filterSecondaryGroups: FilterGroup[] = useMemo(
+    () => [
+      {
+        id: "areas",
+        label: "Area",
+        options: areas.map((a) => ({
+          id: `${FILTER_AREA_PREFIX}${a.id}`,
+          label: a.name,
+        })),
+      },
+    ],
+    [areas]
+  );
+
+  const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
+    setSelectedFilters((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(filterId);
+      else next.delete(filterId);
+      return next;
+    });
+  }, []);
+
+  const selectedAreaFilterIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of selectedFilters) {
+      if (f.startsWith(FILTER_AREA_PREFIX)) ids.add(f.slice(FILTER_AREA_PREFIX.length));
+    }
+    return ids;
+  }, [selectedFilters]);
+
+  const effectiveSearch = (search.trim() || spaceFilter.trim()).toLowerCase();
+
+  const passesControls = useCallback(
+    (space: SpaceWithType): boolean => {
+      if (selectedFilters.has(FILTER_OPEN_WORK) && !(openTasksBySpaceId.get(space.id)?.length)) {
+        return false;
+      }
+      if (selectedFilters.has(FILTER_URGENT) && !urgentSpaceIds.has(space.id)) return false;
+      const parentAreaId =
+        typeof space.parent_space_id === "string" ? space.parent_space_id : null;
+      if (selectedFilters.has(FILTER_UNASSIGNED) && parentAreaId) return false;
+      if (selectedAreaFilterIds.size > 0) {
+        if (!parentAreaId || !selectedAreaFilterIds.has(parentAreaId)) return false;
+      }
+      if (effectiveSearch && !(space.name ?? "").toLowerCase().includes(effectiveSearch)) {
+        return false;
+      }
+      return true;
     },
-    [filterKey, selectedSpacesNewestFirstByGroup]
+    [selectedFilters, selectedAreaFilterIds, openTasksBySpaceId, urgentSpaceIds, effectiveSearch]
   );
 
-  const visibleGroups = useMemo(
-    () => ONBOARDING_SPACE_GROUPS.filter((group) => groupMatchesFilter(group.id)),
-    [groupMatchesFilter]
+  const sortSpaces = useCallback(
+    (list: SpaceWithType[]): SpaceWithType[] => {
+      const sorted = [...list];
+      if (sortBy === "recent") {
+        sorted.sort(
+          (a, b) =>
+            new Date((b as { created_at?: string }).created_at ?? 0).getTime() -
+            new Date((a as { created_at?: string }).created_at ?? 0).getTime()
+        );
+      } else if (sortBy === "priority") {
+        sorted.sort(
+          (a, b) =>
+            (openTasksBySpaceId.get(b.id)?.length ?? 0) -
+            (openTasksBySpaceId.get(a.id)?.length ?? 0)
+        );
+      } else {
+        sorted.sort((a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+            sensitivity: "base",
+            numeric: true,
+          })
+        );
+      }
+      return sorted;
+    },
+    [sortBy, openTasksBySpaceId]
   );
 
-  const visibleCustomCollections = useMemo(
-    () => customCollections.filter((collection) => groupMatchesFilter(collection.id)),
-    [customCollections, groupMatchesFilter]
-  );
+  const visibleSpaces = useMemo(() => {
+    return sortSpaces(
+      benchSpaces.filter((space) => {
+        if (selectedGroupId !== "all" && groupIdBySpaceId[space.id] !== selectedGroupId) {
+          return false;
+        }
+        return passesControls(space);
+      })
+    );
+  }, [benchSpaces, selectedGroupId, groupIdBySpaceId, passesControls, sortSpaces]);
 
-  const hasVisibleGroups = visibleGroups.length > 0 || visibleCustomCollections.length > 0;
+  const selectedGroup = getSpaceGroupById(selectedGroupId);
+  const selectedCollection = customCollections.find((c) => c.id === selectedGroupId);
+  const benchTitle =
+    selectedGroupId === "all"
+      ? "All spaces"
+      : selectedGroup?.label ?? selectedCollection?.name ?? "Spaces";
+
+  const suggestionChips = useMemo(() => {
+    if (!selectedGroup) return [];
+    return selectedGroup.suggestedSpaces
+      .filter((name) => {
+        const key = normalizeSpaceMatchKey(name);
+        const override = suggestionLabelOverrides[name.toLowerCase().trim()];
+        const effective = (override ?? name).toLowerCase().trim();
+        return !selectedSpacesSet.has(effective) && !selectedSpacesSet.has(key);
+      })
+      .map((name) => ({
+        source: name,
+        label: suggestionLabelOverrides[name.toLowerCase().trim()] ?? name,
+      }));
+  }, [selectedGroup, selectedSpacesSet, suggestionLabelOverrides]);
+
+  /* ------------------------------ mutations ------------------------------- */
 
   const invalidateSpaces = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["spaces"] });
@@ -423,9 +568,9 @@ export function PropertySpaceGroupCarousel({
   const findSpaceByName = useCallback(
     (name: string) => {
       const key = name.toLowerCase().trim();
-      return rooms.find((s) => (s.name ?? "").toLowerCase().trim() === key);
+      return benchSpaces.find((s) => (s.name ?? "").toLowerCase().trim() === key);
     },
-    [rooms]
+    [benchSpaces]
   );
 
   const setSpaceParent = useCallback(
@@ -440,8 +585,8 @@ export function PropertySpaceGroupCarousel({
     [invalidateSpaces]
   );
 
-  const handleSelectArea = useCallback(
-    async (name: string, _color: string) => {
+  const handleAddArea = useCallback(
+    async (name: string) => {
       const trimmed = name.trim();
       if (!trimmed) return;
       if (!orgId) {
@@ -452,11 +597,8 @@ export function PropertySpaceGroupCarousel({
       const existingArea = areas.find((a) => a.name.toLowerCase() === key);
       if (existingArea) {
         setActiveAreaId(existingArea.id);
-        setViewingAreaId(existingArea.id);
-        triggerAreaInstruction();
         return;
       }
-      // Same name already on the property (e.g. flat room) — promote / activate.
       const existingSpace = spaces.find(
         (s) => (s.name ?? "").toLowerCase().trim() === key
       );
@@ -465,12 +607,7 @@ export function PropertySpaceGroupCarousel({
           toast.error("A space with that name already exists in an area");
           return;
         }
-        setAreaOrderIds((prev) =>
-          prev.includes(existingSpace.id) ? prev : [...prev, existingSpace.id]
-        );
         setActiveAreaId(existingSpace.id);
-        setViewingAreaId(existingSpace.id);
-        triggerAreaInstruction();
         toast.success(`Using ${trimmed} as an area`);
         await invalidateSpaces();
         return;
@@ -491,11 +628,7 @@ export function PropertySpaceGroupCarousel({
           .select("id")
           .single();
         if (error) throw error;
-        const id = data.id as string;
-        setAreaOrderIds((prev) => [...prev, id]);
-        setActiveAreaId(id);
-        setViewingAreaId(id);
-        triggerAreaInstruction();
+        setActiveAreaId(data.id as string);
         toast.success(`Added area ${trimmed}`);
         await invalidateSpaces();
       } catch (err: unknown) {
@@ -505,17 +638,7 @@ export function PropertySpaceGroupCarousel({
         setBusy(false);
       }
     },
-    [areas, spaces, orgId, propertyId, invalidateSpaces, triggerAreaInstruction]
-  );
-
-  const handleActivateArea = useCallback(
-    (areaId: string) => {
-      setActiveAreaId(areaId);
-      setViewingAreaId((prev) => (prev === areaId ? null : areaId));
-      triggerAreaInstruction();
-      onViewSpace?.(areaId);
-    },
-    [triggerAreaInstruction, onViewSpace]
+    [areas, spaces, orgId, propertyId, invalidateSpaces]
   );
 
   const purgeArea = useCallback(
@@ -542,12 +665,17 @@ export function PropertySpaceGroupCarousel({
         }
         const { error } = await supabase.from("spaces").delete().eq("id", areaId);
         if (error) throw error;
-        setAreaOrderIds((prev) => prev.filter((id) => id !== areaId));
         setActiveAreaId((prev) => {
           if (prev !== areaId) return prev;
           return areas.find((a) => a.id !== areaId)?.id ?? null;
         });
-        setViewingAreaId((prev) => (prev === areaId ? null : prev));
+        setSelectedFilters((prev) => {
+          const filterId = `${FILTER_AREA_PREFIX}${areaId}`;
+          if (!prev.has(filterId)) return prev;
+          const next = new Set(prev);
+          next.delete(filterId);
+          return next;
+        });
         toast.success("Area removed");
         await invalidateSpaces();
       } catch (err: unknown) {
@@ -596,9 +724,7 @@ export function PropertySpaceGroupCarousel({
           }
           const { error } = await supabase.from("spaces").delete().eq("id", areaId);
           if (error) throw error;
-          setAreaOrderIds((prev) => prev.filter((id) => id !== areaId));
           setActiveAreaId(transferTargetAreaId);
-          setViewingAreaId(transferTargetAreaId);
           toast.success("Spaces transferred");
           await invalidateSpaces();
         } catch (err: unknown) {
@@ -661,12 +787,11 @@ export function PropertySpaceGroupCarousel({
   }, [renameAreaModal, renameAreaInput, areas, invalidateSpaces]);
 
   const moveSpaceToArea = useCallback(
-    async (spaceId: string, targetAreaId: string) => {
+    async (spaceId: string, targetAreaId: string | null) => {
       setBusy(true);
       try {
         await setSpaceParent(spaceId, targetAreaId);
-        setActiveAreaId(targetAreaId);
-        setViewingAreaId(targetAreaId);
+        if (targetAreaId) setActiveAreaId(targetAreaId);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : "Failed to move space";
         toast.error(message);
@@ -677,47 +802,147 @@ export function PropertySpaceGroupCarousel({
     [setSpaceParent]
   );
 
+  /** Two-zone bottom half — nest dragged space under the target room. */
+  const nestSpaceUnder = useCallback(
+    async (spaceId: string, targetSpaceId: string) => {
+      if (spaceId === targetSpaceId) return;
+      const target = spaceById.get(targetSpaceId);
+      if (!target) return;
+      if (
+        typeof target.parent_space_id === "string" &&
+        target.parent_space_id === spaceId
+      ) {
+        toast.error("That space is already nested under the one you're dragging");
+        return;
+      }
+      setBusy(true);
+      try {
+        await setSpaceParent(spaceId, targetSpaceId);
+        toast.success(`Added sub space to ${(target.name ?? "").trim() || "space"}`);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Failed to nest space";
+        toast.error(message);
+      } finally {
+        setBusy(false);
+      }
+    },
+    [spaceById, setSpaceParent]
+  );
+
+  /** Two-zone top half — group dragged + target into a shared custom collection. */
+  const groupSpaces = useCallback(
+    (draggedName: string, targetSpaceId: string) => {
+      const target = spaceById.get(targetSpaceId);
+      if (!target) return;
+      const targetName = (target.name ?? "").trim();
+      if (!targetName || !draggedName.trim()) return;
+      const targetGroupId = groupIdBySpaceId[target.id];
+      let collectionId =
+        targetGroupId && isCustomCollectionGroupId(targetGroupId) ? targetGroupId : null;
+      if (!collectionId) {
+        const collection = createPropertyCustomCollection(`${targetName} group`);
+        setCustomCollections((prev) => [...prev, collection]);
+        collectionId = collection.id;
+        assignSpaceToCollection(targetName, collectionId);
+      }
+      assignSpaceToCollection(draggedName, collectionId);
+      setSelectedGroupId(collectionId);
+      setView("category");
+      toast.success(`Grouped with ${targetName}`);
+    },
+    [spaceById, groupIdBySpaceId, assignSpaceToCollection, setView]
+  );
+
   const createSpaceRef = useRef<
     (name: string, groupId: string, parentAreaId?: string | null) => Promise<void>
   >(async () => undefined);
 
+  /* --------------------------------- DnD ---------------------------------- */
+
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current as OnboardingDragData | undefined;
     setActiveDrag(data ?? null);
+    setDragOverLabel(null);
   }, []);
+
+  const draggedSpaceId = useMemo(() => {
+    if (!activeDrag) return null;
+    if (activeDrag.kind === "space") return activeDrag.spaceId ?? null;
+    if (activeDrag.kind === "unassigned") return activeDrag.spaceId;
+    return null;
+  }, [activeDrag]);
+
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const overId = event.over ? String(event.over.id) : null;
+      const drag = activeDrag;
+      if (!overId || !drag) {
+        setDragOverLabel(null);
+        return;
+      }
+      if (overId.startsWith("area-drop:")) {
+        const areaName = areaById.get(overId.slice("area-drop:".length))?.name ?? "area";
+        setDragOverLabel(
+          drag.kind === "suggestion" ? `Create in ${areaName}` : `Move to ${areaName}`
+        );
+        return;
+      }
+      if (overId === propertyLevelDroppableId()) {
+        setDragOverLabel(drag.kind === "suggestion" ? null : "Remove from area");
+        return;
+      }
+      if (overId.startsWith("group:")) {
+        const groupId = overId.slice("group:".length);
+        const label =
+          getSpaceGroupById(groupId)?.label ??
+          customCollections.find((c) => c.id === groupId)?.name ??
+          "category";
+        setDragOverLabel(
+          drag.kind === "suggestion" ? `Create in ${label}` : `Set category: ${label}`
+        );
+        return;
+      }
+      const groupTargetId = parseMiniCardGroupDroppableId(overId);
+      if (groupTargetId) {
+        const name = (spaceById.get(groupTargetId)?.name ?? "").trim() || "space";
+        setDragOverLabel(`Group with ${name}`);
+        return;
+      }
+      const subTargetId = parseMiniCardSubDroppableId(overId);
+      if (subTargetId) {
+        const name = (spaceById.get(subTargetId)?.name ?? "").trim() || "space";
+        setDragOverLabel(`Add sub space of ${name}`);
+        return;
+      }
+      setDragOverLabel(null);
+    },
+    [activeDrag, areaById, spaceById, customCollections]
+  );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      const drag = activeDrag;
       setActiveDrag(null);
-      const { active, over } = event;
-      if (!over) return;
-      const drag = active.data.current as OnboardingDragData | undefined;
+      setDragOverLabel(null);
+      const { over } = event;
+      if (!over || !drag) return;
       const overId = String(over.id);
 
-      if (drag?.kind === "area" && overId.startsWith("area:")) {
-        const activeId = drag.areaId;
-        const overAreaId = overId.slice("area:".length);
-        if (activeId === overAreaId) return;
-        setAreaOrderIds((prev) => {
-          const oldIndex = prev.indexOf(activeId);
-          const newIndex = prev.indexOf(overAreaId);
-          if (oldIndex < 0 || newIndex < 0) return prev;
-          return arrayMove(prev, oldIndex, newIndex);
-        });
-        return;
-      }
-
       const resolveSpaceId = (): string | null => {
-        if (drag?.kind === "space" && drag.spaceId) return drag.spaceId;
-        if (drag?.kind === "unassigned") return drag.spaceId;
-        if (drag?.kind === "space") {
+        if (drag.kind === "space" && drag.spaceId) return drag.spaceId;
+        if (drag.kind === "unassigned") return drag.spaceId;
+        if (drag.kind === "space") {
           return findSpaceByName(drag.spaceName)?.id ?? null;
         }
         return null;
       };
+      const dragName =
+        drag.kind === "space" || drag.kind === "unassigned" || drag.kind === "suggestion"
+          ? drag.spaceName
+          : null;
 
       if (
-        (drag?.kind === "space" || drag?.kind === "unassigned") &&
+        (drag.kind === "space" || drag.kind === "unassigned") &&
         overId.startsWith("area-drop:")
       ) {
         const spaceId = resolveSpaceId();
@@ -726,90 +951,69 @@ export function PropertySpaceGroupCarousel({
         return;
       }
 
-      if (drag?.kind === "space" && overId.startsWith("space-id:")) {
-        const overParsed = parseSpaceIdSortableId(overId);
-        if (!overParsed) return;
+      if (drag.kind === "space" && overId === propertyLevelDroppableId()) {
         const spaceId = resolveSpaceId();
-        if (!spaceId) return;
-        if (drag.areaId !== overParsed.areaId) {
-          void moveSpaceToArea(spaceId, overParsed.areaId);
-        }
+        if (spaceId) void moveSpaceToArea(spaceId, null);
         return;
       }
 
-      if (drag?.kind === "unassigned" && overId === "spaces-list" && activeAreaId) {
-        void moveSpaceToArea(drag.spaceId, activeAreaId);
-        return;
-      }
-
-      if (drag?.kind === "suggestion") {
-        if (overId.startsWith("area-drop:")) {
-          const targetAreaId = overId.slice("area-drop:".length);
-          setActiveAreaId(targetAreaId);
-          setViewingAreaId(targetAreaId);
-          void createSpaceRef.current(drag.spaceName, drag.groupId, targetAreaId);
+      if (overId.startsWith("group:")) {
+        const groupId = overId.slice("group:".length);
+        if (drag.kind === "suggestion") {
+          void createSpaceRef.current(drag.spaceName, groupId);
           return;
         }
-        if (overId === "spaces-list" || overId.startsWith("space-id:")) {
-          if (!activeAreaId) {
-            toast.error("Select a property area first");
-            return;
-          }
-          void createSpaceRef.current(drag.spaceName, drag.groupId, activeAreaId);
+        if (dragName) {
+          assignSpaceToCollection(dragName, groupId);
+          const label =
+            getSpaceGroupById(groupId)?.label ??
+            customCollections.find((c) => c.id === groupId)?.name ??
+            "category";
+          toast.success(`${dragName} filed under ${label}`);
         }
+        return;
+      }
+
+      const groupTargetId = parseMiniCardGroupDroppableId(overId);
+      if (groupTargetId && dragName && drag.kind !== "suggestion") {
+        if (groupTargetId !== resolveSpaceId()) groupSpaces(dragName, groupTargetId);
+        return;
+      }
+
+      const subTargetId = parseMiniCardSubDroppableId(overId);
+      if (subTargetId && (drag.kind === "space" || drag.kind === "unassigned")) {
+        const spaceId = resolveSpaceId();
+        if (spaceId) void nestSpaceUnder(spaceId, subTargetId);
+        return;
+      }
+
+      if (drag.kind === "suggestion" && overId.startsWith("area-drop:")) {
+        const targetAreaId = overId.slice("area-drop:".length);
+        setActiveAreaId(targetAreaId);
+        void createSpaceRef.current(drag.spaceName, drag.groupId, targetAreaId);
       }
     },
-    [findSpaceByName, moveSpaceToArea, activeAreaId]
+    [
+      activeDrag,
+      findSpaceByName,
+      moveSpaceToArea,
+      assignSpaceToCollection,
+      groupSpaces,
+      nestSpaceUnder,
+      customCollections,
+    ]
   );
+
+  /* ------------------------------ CRUD helpers ----------------------------- */
 
   const openRenameModal = useCallback(
-    (name: string, groupId: string) => {
-      const space = findSpaceByName(name);
-      if (!space) return;
-      setRenameModal({ spaceId: space.id, currentName: name, groupId });
+    (spaceId: string, name: string) => {
+      const space = benchSpaces.find((s) => s.id === spaceId);
+      const groupId = space ? resolveSpaceGroupId(space, spaceToCollection) ?? "" : "";
+      setRenameModal({ spaceId, currentName: name, groupId });
       setRenameInput(name);
     },
-    [findSpaceByName]
-  );
-
-  /** Stable name-key → open space detail. Enables View whenever the space exists in DB. */
-  const viewSpaceByNameKey = useMemo(() => {
-    const handlers: Record<string, () => void> = {};
-    for (const space of rooms) {
-      const key = (space.name ?? "").toLowerCase().trim();
-      if (!key || handlers[key]) continue;
-      const spaceId = space.id;
-      handlers[key] = () => {
-        if (onViewSpace) {
-          onViewSpace(spaceId);
-          return;
-        }
-        navigate(`/properties/${propertyId}/spaces/${spaceId}`);
-      };
-    }
-    return handlers;
-  }, [rooms, navigate, propertyId, onViewSpace]);
-
-  const openViewSpace = useCallback(
-    (name: string) => {
-      const key = name.toLowerCase().trim();
-      const direct = viewSpaceByNameKey[key];
-      if (direct) {
-        direct();
-        return;
-      }
-      const space = findSpaceByName(name);
-      if (!space) {
-        toast.error("Space not found");
-        return;
-      }
-      if (onViewSpace) {
-        onViewSpace(space.id);
-        return;
-      }
-      navigate(`/properties/${propertyId}/spaces/${space.id}`);
-    },
-    [viewSpaceByNameKey, findSpaceByName, navigate, propertyId, onViewSpace]
+    [benchSpaces, spaceToCollection]
   );
 
   const openViewSpaceById = useCallback(
@@ -852,7 +1056,7 @@ export function PropertySpaceGroupCarousel({
       return;
     }
     if (!parentAreaId) {
-      toast.error("Select a property area first");
+      toast.error("Add a property area first (Areas view)");
       return;
     }
     const trimmed = name.trim();
@@ -911,11 +1115,10 @@ export function PropertySpaceGroupCarousel({
         parent_space_id: parentAreaId,
       });
       if (error) throw error;
-      // Persist group membership for custom names (and suggestions) so chips
+      // Persist group membership for custom names (and suggestions) so cards
       // survive refresh — resolveSpaceGroupId needs this when there's no space_type.
       assignSpaceToCollection(trimmed, groupId);
       setActiveAreaId(parentAreaId);
-      setViewingAreaId(parentAreaId);
       toast.success(`Added ${trimmed}`);
       await invalidateSpaces();
     } catch (err: unknown) {
@@ -937,12 +1140,6 @@ export function PropertySpaceGroupCarousel({
   };
   createSpaceRef.current = createSpace;
 
-  const removeSpace = async (name: string) => {
-    const space = findSpaceByName(name);
-    if (!space) return;
-    await removeSpaceById(space.id, name);
-  };
-
   const removeSpaceById = async (spaceId: string, name: string) => {
     setBusy(true);
     try {
@@ -963,21 +1160,7 @@ export function PropertySpaceGroupCarousel({
   const handleCreateCustomCollection = (name: string) => {
     const collection = createPropertyCustomCollection(name);
     setCustomCollections((prev) => [...prev, collection]);
-  };
-
-  const handleUpdateCustomCollection = (
-    id: string,
-    updates: { name?: string; imageSrc?: string }
-  ) => {
-    setCustomCollections((prev) =>
-      prev.map((c) => {
-        if (c.id !== id) return c;
-        if (updates.imageSrc && c.imageSrc?.startsWith("blob:") && c.imageSrc !== updates.imageSrc) {
-          URL.revokeObjectURL(c.imageSrc);
-        }
-        return { ...c, ...updates };
-      })
-    );
+    setSelectedGroupId(collection.id);
   };
 
   const confirmRename = async () => {
@@ -1009,8 +1192,6 @@ export function PropertySpaceGroupCarousel({
 
       if (newKey !== oldKey) {
         // Always pin the renamed space to the group it was renamed from.
-        // Without this, suggestion/type-inferred membership is lost and the
-        // space falls out of the card into the property "recent" list.
         if (groupId) {
           setSpaceToCollection((prev) => {
             const next = { ...prev };
@@ -1024,13 +1205,11 @@ export function PropertySpaceGroupCarousel({
           const next: SuggestionLabelOverrides = { ...prev };
           let changed = false;
 
-          // Renaming a catalog suggestion: keep the chip in-place with the new label.
           if (groupId && isSuggestionForGroup(renameModal.currentName, groupId)) {
             next[oldKey] = trimmed;
             changed = true;
           }
 
-          // Renaming an already-overridden label: update the override value.
           for (const [source, label] of Object.entries(next)) {
             if (label.toLowerCase().trim() === oldKey) {
               next[source] = trimmed;
@@ -1067,9 +1246,440 @@ export function PropertySpaceGroupCarousel({
     setCopyInput("");
   };
 
-  if (filterKey && !hasVisibleGroups && areas.length === 0) {
-    return null;
-  }
+  const handleAddFromInput = () => {
+    const trimmed = addSpaceName.trim();
+    if (!trimmed) return;
+    const groupId =
+      selectedGroupId !== "all"
+        ? selectedGroupId
+        : inferSpaceGroupIdFromName(trimmed) ?? ONBOARDING_SPACE_GROUPS[0].id;
+    void createSpace(trimmed, groupId);
+    setAddSpaceName("");
+  };
+
+  /* ------------------------------- rendering ------------------------------- */
+
+  const isSpaceDragActive =
+    activeDrag != null && (activeDrag.kind === "space" || activeDrag.kind === "unassigned");
+
+  const renderSpaceMiniCard = (
+    space: SpaceWithType,
+    metaMode: "area" | "category"
+  ) => {
+    const name = (space.name ?? "").trim() || "Space";
+    const groupId = groupIdBySpaceId[space.id];
+    const group = groupId ? getSpaceGroupById(groupId) : undefined;
+    const collection = groupId
+      ? customCollections.find((c) => c.id === groupId)
+      : undefined;
+    const parentAreaId =
+      typeof space.parent_space_id === "string" ? space.parent_space_id : null;
+    const area = parentAreaId ? areaById.get(parentAreaId) : undefined;
+    const openCount = openTasksBySpaceId.get(space.id)?.length ?? 0;
+    const dragData: OnboardingDragData =
+      parentAreaId && areaIdSet.has(parentAreaId)
+        ? { kind: "space", spaceName: name, areaId: parentAreaId, spaceId: space.id }
+        : { kind: "unassigned", spaceName: name, spaceId: space.id };
+    const subItems = (subSpacesByParentId[space.id] ?? []).map((s) => ({
+      id: s.id,
+      label: (s.name ?? "").trim() || "Sub space",
+    }));
+    const actions: MiniCardAction[] = [
+      { label: "Open", onClick: () => openViewSpaceById(space.id) },
+      { label: "Rename", onClick: () => openRenameModal(space.id, name) },
+      {
+        label: "Duplicate",
+        onClick: () => {
+          const gid = groupId ?? ONBOARDING_SPACE_GROUPS[0].id;
+          const suggested = getSuggestedCopyName(name);
+          setCopyModal({ baseName: name, suggestedName: suggested, groupId: gid });
+          setCopyInput(suggested);
+        },
+      },
+      {
+        label: "Remove",
+        destructive: true,
+        onClick: () => void removeSpaceById(space.id, name),
+      },
+    ];
+    return (
+      <EntityMiniCard
+        key={space.id}
+        entityId={space.id}
+        title={name}
+        meta={
+          metaMode === "area"
+            ? group?.label ?? collection?.name ?? "Space"
+            : area?.name ?? "Unassigned"
+        }
+        thumbSrc={spaceThumb(space)}
+        accentColor={metaMode === "area" ? group?.color : area?.color}
+        badge={
+          openCount > 0 ? (
+            <span className="rounded-md bg-card/90 px-1.5 py-0.5 font-mono text-2xs font-semibold text-foreground shadow-e1">
+              {openCount}
+            </span>
+          ) : null
+        }
+        dragId={`minicard-space:${space.id}`}
+        dragData={dragData}
+        onOpen={() => openViewSpaceById(space.id)}
+        dropCandidate={isSpaceDragActive && draggedSpaceId !== space.id}
+        subZone
+        subZoneLabel="Add sub space"
+        subItems={subItems}
+        onOpenSubItem={openViewSpaceById}
+        actions={actions}
+      />
+    );
+  };
+
+  const attentionSections: AttentionSection[] = useMemo(() => {
+    const entries = benchSpaces
+      .filter((space) => (openTasksBySpaceId.get(space.id)?.length ?? 0) > 0)
+      .filter(passesControls);
+    const sorted =
+      sortBy === "title"
+        ? sortSpaces(entries)
+        : [...entries].sort(
+            (a, b) =>
+              (openTasksBySpaceId.get(b.id)?.length ?? 0) -
+              (openTasksBySpaceId.get(a.id)?.length ?? 0)
+          );
+    return sorted.map((space) => {
+      const name = (space.name ?? "").trim() || "Space";
+      const parentAreaId =
+        typeof space.parent_space_id === "string" ? space.parent_space_id : null;
+      const area = parentAreaId ? areaById.get(parentAreaId) : undefined;
+      const spaceTasks = openTasksBySpaceId.get(space.id) ?? [];
+      return {
+        id: space.id,
+        title: name,
+        subtitle: area?.name ?? null,
+        iconSrc: spaceThumb(space),
+        accentColor: area?.color,
+        onOpen: () => openViewSpaceById(space.id),
+        content: (
+          <>
+            {spaceTasks.map((task) => (
+              <TaskCard
+                key={task.id}
+                task={task}
+                onClick={() => navigate(`/task/${task.id}`)}
+                metaDensity="compact"
+              />
+            ))}
+          </>
+        ),
+      };
+    });
+  }, [
+    benchSpaces,
+    openTasksBySpaceId,
+    passesControls,
+    sortBy,
+    sortSpaces,
+    areaById,
+    openViewSpaceById,
+    navigate,
+  ]);
+
+  const shelfCards = (
+    <CollectionShelf prevLabel="Previous groups" nextLabel="Next groups">
+      <CollectionShelfCard
+        label="All spaces"
+        description="Every room and area on this property."
+        imageSrc={ALL_SPACES_ILLUSTRATION}
+        color={CUSTOM_COLLECTION_COLOR}
+        count={benchSpaces.length}
+        countNoun="space"
+        selected={selectedGroupId === "all"}
+        onSelect={() => setSelectedGroupId("all")}
+      />
+      {ONBOARDING_SPACE_GROUPS.map((group) => (
+        <DroppableZone key={group.id} id={groupDroppableId(group.id)} className="shrink-0">
+          <CollectionShelfCard
+            label={group.label}
+            description={group.description}
+            imageSrc={getSpaceGroupCardIllustration(group.id) ?? ALL_SPACES_ILLUSTRATION}
+            color={group.color}
+            count={groupCounts[group.id] ?? 0}
+            countNoun="space"
+            selected={selectedGroupId === group.id}
+            onSelect={() => setSelectedGroupId(group.id)}
+          />
+        </DroppableZone>
+      ))}
+      {customCollections.map((collection) => (
+        <DroppableZone
+          key={collection.id}
+          id={groupDroppableId(collection.id)}
+          className="shrink-0"
+        >
+          <CollectionShelfCard
+            label={collection.name}
+            description="Custom collection."
+            imageSrc={
+              collection.imageSrc ??
+              getSpaceGroupCardIllustration("custom") ??
+              ALL_SPACES_ILLUSTRATION
+            }
+            color={CUSTOM_COLLECTION_COLOR}
+            count={groupCounts[collection.id] ?? 0}
+            countNoun="space"
+            selected={selectedGroupId === collection.id}
+            onSelect={() => setSelectedGroupId(collection.id)}
+          />
+        </DroppableZone>
+      ))}
+      <NewCollectionShelfCard
+        placeholder="e.g. Guest wing"
+        onCreate={handleCreateCustomCollection}
+      />
+    </CollectionShelf>
+  );
+
+  const addSpaceInput = (
+    <div className="flex items-center gap-1.5">
+      <Input
+        value={addSpaceName}
+        onChange={(e) => setAddSpaceName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleAddFromInput();
+          }
+        }}
+        placeholder="Add space"
+        className="h-8 w-[150px] border-0 bg-background/80 text-sm shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus-visible:ring-1 focus-visible:ring-primary/40"
+        aria-label="Add space"
+      />
+      <Button
+        type="button"
+        size="sm"
+        className="h-8 gap-1"
+        disabled={!addSpaceName.trim() || busy}
+        onClick={handleAddFromInput}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add
+      </Button>
+    </div>
+  );
+
+  const categoryView = (
+    <div className="flex min-h-0 flex-col gap-4">
+      {shelfCards}
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+        <header className="mb-3 space-y-2.5">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-semibold text-foreground">{benchTitle}</h2>
+              <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                {visibleSpaces.length} space{visibleSpaces.length === 1 ? "" : "s"}
+                {activeArea ? ` · adding to ${activeArea.name}` : ""}
+              </p>
+            </div>
+            {addSpaceInput}
+          </div>
+
+          {suggestionChips.length > 0 && selectedGroup ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                Suggested:
+              </span>
+              {suggestionChips.map((s) => (
+                <DraggableChipShell
+                  key={s.source}
+                  id={`space-suggestion:${selectedGroup.id}:${normalizeSpaceMatchKey(s.source)}`}
+                  data={{
+                    kind: "suggestion",
+                    spaceName: s.label,
+                    groupId: selectedGroup.id,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void createSpace(s.label, selectedGroup.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-[8px] bg-background px-2 py-1",
+                      "font-mono text-2xs uppercase tracking-wide text-foreground/80 shadow-e1",
+                      "hover:text-foreground hover:shadow-md",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    )}
+                  >
+                    <Plus className="h-3 w-3 opacity-60" />
+                    {shortSpaceLabel(s.label)}
+                  </button>
+                </DraggableChipShell>
+              ))}
+            </div>
+          ) : null}
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {visibleSpaces.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+              <p className="text-sm text-foreground/90">
+                {selectedGroupId === "all" && selectedFilters.size === 0 && !effectiveSearch
+                  ? "No spaces yet — add areas in the Areas view, then add spaces."
+                  : `No ${selectedGroupId === "all" ? "spaces" : `${benchTitle} spaces`} match the current filters.`}
+              </p>
+              {selectedGroupId !== "all" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setSelectedGroupId("all")}
+                >
+                  Show all spaces
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3 pb-4">
+              {visibleSpaces.map((space) => renderSpaceMiniCard(space, "area"))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+
+  const areasView = (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      {areas.map((area) => {
+        const areaRooms = sortSpaces(
+          (roomsByAreaId[area.id] ?? []).filter(
+            (s) => !subSpaceIds.has(s.id) && passesControls(s)
+          )
+        );
+        return (
+          <div key={area.id} className="min-w-0">
+            <DroppableZone
+              id={areaDroppableId(area.id)}
+              className="rounded-[10px]"
+              activeClassName="ring-2 ring-primary/50 bg-primary/10"
+            >
+              <div className="group/areahead flex items-center gap-2 rounded-[10px] px-1.5 py-1">
+                <span
+                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: area.color }}
+                  aria-hidden
+                />
+                <h3 className="text-sm font-semibold text-foreground">{area.name}</h3>
+                <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                  {(roomsByAreaId[area.id] ?? []).length}
+                </span>
+                <span className="ml-auto flex items-center gap-1 opacity-0 transition-opacity group-hover/areahead:opacity-100">
+                  <button
+                    type="button"
+                    onClick={() => openRenameArea(area.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground hover:bg-muted/40 hover:text-foreground"
+                    aria-label={`Rename ${area.name}`}
+                  >
+                    <Pencil className="h-3 w-3" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveArea(area.id)}
+                    className="flex h-6 w-6 items-center justify-center rounded-[6px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`Remove ${area.name}`}
+                  >
+                    <Trash2 className="h-3 w-3" aria-hidden />
+                  </button>
+                </span>
+              </div>
+            </DroppableZone>
+            {areaRooms.length > 0 ? (
+              <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+                {areaRooms.map((space) => renderSpaceMiniCard(space, "category"))}
+              </div>
+            ) : (
+              <p className="px-1.5 pt-1 text-2xs text-muted-foreground/70">
+                Drop spaces here to move them into {area.name}.
+              </p>
+            )}
+            <div className="mt-3 border-t border-dashed border-border/45" aria-hidden />
+          </div>
+        );
+      })}
+
+      <div className="min-w-0">
+        <DroppableZone
+          id={propertyLevelDroppableId()}
+          className="rounded-[10px]"
+          activeClassName="ring-2 ring-primary/50 bg-primary/10"
+        >
+          <div className="flex items-center gap-2 rounded-[10px] px-1.5 py-1">
+            <Box className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <h3 className="text-sm font-semibold text-foreground">Unassigned</h3>
+            <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+              {unassigned.filter((s) => !subSpaceIds.has(s.id)).length}
+            </span>
+          </div>
+        </DroppableZone>
+        {(() => {
+          const rows = sortSpaces(
+            unassigned.filter((s) => !subSpaceIds.has(s.id) && passesControls(s))
+          );
+          return rows.length > 0 ? (
+            <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+              {rows.map((space) => renderSpaceMiniCard(space, "category"))}
+            </div>
+          ) : (
+            <p className="px-1.5 pt-1 text-2xs text-muted-foreground/70">
+              Drop a space here to take it out of its area.
+            </p>
+          );
+        })()}
+      </div>
+
+      <div className="mt-1 flex items-center gap-1.5">
+        <Input
+          value={addAreaName}
+          onChange={(e) => setAddAreaName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              void handleAddArea(addAreaName);
+              setAddAreaName("");
+            }
+          }}
+          placeholder="Add area (e.g. 1st floor)"
+          className="h-8 max-w-[240px] border-0 bg-background/80 text-sm shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus-visible:ring-1 focus-visible:ring-primary/40"
+          aria-label="Add area"
+        />
+        <Button
+          type="button"
+          size="sm"
+          className="h-8 shrink-0"
+          disabled={!addAreaName.trim() || busy}
+          onClick={() => {
+            void handleAddArea(addAreaName);
+            setAddAreaName("");
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+        {addSpaceInput}
+      </div>
+    </section>
+  );
+
+  const attentionView = (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      <AttentionListView
+        sections={attentionSections}
+        emptyState={
+          <span>
+            No spaces with open work
+            {selectedFilters.size > 0 || effectiveSearch ? " match the current filters" : ""}.
+          </span>
+        }
+      />
+    </section>
+  );
 
   return (
     <>
@@ -1077,136 +1687,40 @@ export function PropertySpaceGroupCarousel({
         sensors={dndSensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActiveDrag(null);
+          setDragOverLabel(null);
+        }}
       >
-        <div className={cn("space-y-4", className)}>
-          {!filterKey ? (
-            <p className="text-sm text-muted-foreground">
-              {areas.length === 0
-                ? "Start with Property Areas (floors and zones), then add spaces into the active area."
-                : activeArea
-                  ? `Active area: ${activeArea.name}. Add spaces from the groups, or drag chips onto area chips.`
-                  : "Select an area, then add spaces from the groups below."}
-            </p>
-          ) : null}
-          <SpaceGroupCarousel
-            onScroll={(e) => {
-              if (e.currentTarget.scrollLeft > 12) {
-                setInstructionOpacity(0);
-                if (instructionFadeRef.current) clearTimeout(instructionFadeRef.current);
-                window.setTimeout(() => setShowAddSpacesInstruction(false), 400);
-              }
-            }}
-          >
-            {!filterKey ? (
-              <OnboardingPropertyAreasCard
-                areas={areas}
-                activeAreaId={activeAreaId}
-                spaceCounts={spaceCounts}
-                onSelectArea={(name, color) => void handleSelectArea(name, color)}
-                onActivateArea={handleActivateArea}
-                onRemoveArea={handleRemoveArea}
-                onRenameArea={openRenameArea}
-              />
-            ) : null}
-            {visibleGroups.map((group, index) => (
-              <OnboardingSpaceGroupCard
-                key={group.id}
-                group={group}
-                selectedSpacesSet={selectedSpacesSet}
-                selectedSpaceColors={selectedSpaceColors}
-                spaceAreaByNameKey={spaceAreaByNameKey}
-                activeAreaId={activeAreaId}
-                extraSpaces={extraSpacesByGroup[group.id] ?? []}
-                selectedSpacesNewestFirst={selectedSpacesNewestFirstByGroup[group.id] ?? []}
-                spaceFilter={spaceFilter}
-                suggestionLabelOverrides={suggestionLabelOverrides}
-                disabled={areas.length === 0}
-                instructionOverlay={
-                  index === 0 &&
-                  showAddSpacesInstruction &&
-                  activeArea &&
-                  areas.length > 0
-                    ? {
-                        label: `Add spaces to ${activeArea.name}`,
-                        color: activeArea.color,
-                      }
-                    : null
-                }
-                instructionOpacity={instructionOpacity}
-                onAddSpace={(name) => void createSpace(name, group.id)}
-                onRemoveSpace={removeSpace}
-                onRenameSpace={openRenameModal}
-                onViewSpace={(name) => openViewSpace(name)}
-                viewSpaceByNameKey={viewSpaceByNameKey}
-                onCopySpace={(name, groupId) => {
-                  const suggested = getSuggestedCopyName(name);
-                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                  setCopyInput(suggested);
-                }}
-              />
-            ))}
-            {visibleCustomCollections.map((collection) => (
-              <OnboardingCustomCollectionCard
-                key={collection.id}
-                collection={collection}
-                selectedSpacesSet={selectedSpacesSet}
-                extraSpaces={extraSpacesByGroup[collection.id] ?? []}
-                spaceFilter={spaceFilter}
-                onAddSpace={(name) => void createSpace(name, collection.id)}
-                onRemoveSpace={removeSpace}
-                onRenameSpace={openRenameModal}
-                onViewSpace={(name) => openViewSpace(name)}
-                viewSpaceByNameKey={viewSpaceByNameKey}
-                onCopySpace={(name, groupId) => {
-                  const suggested = getSuggestedCopyName(name);
-                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                  setCopyInput(suggested);
-                }}
-                onUpdateCollection={handleUpdateCustomCollection}
-              />
-            ))}
-            {!filterKey ? (
-              <OnboardingCustomCollectionDraftCard
-                onCreateCollection={handleCreateCustomCollection}
-              />
-            ) : null}
-          </SpaceGroupCarousel>
+        <div className={cn("flex min-h-[420px] flex-col gap-4", className)}>
+          <OrganiseViewTabs
+            tabs={VIEW_TABS}
+            active={view}
+            onChange={setView}
+            ariaLabel="Spaces views"
+          />
 
-          {!filterKey ? (
-            <PropertySpaceAreasStrip
-              areas={areas}
-              activeAreaId={activeAreaId}
-              viewingAreaId={viewingAreaId}
-              roomsByAreaId={roomsByAreaId}
-              unassigned={unassigned}
-              onActivateArea={handleActivateArea}
-              onRemoveArea={handleRemoveArea}
-              onRenameArea={openRenameArea}
-              onRemoveSpace={(spaceId, name) => void removeSpaceById(spaceId, name)}
-              onRenameSpace={(spaceId, name) => {
-                const groupId =
-                  resolveSpaceGroupId(
-                    rooms.find((r) => r.id === spaceId) ?? ({} as SpaceWithType),
-                    spaceToCollection
-                  ) ?? "";
-                setRenameModal({ spaceId, currentName: name, groupId });
-                setRenameInput(name);
-              }}
-              onViewSpace={openViewSpaceById}
-            />
-          ) : null}
+          <OrganiseControlsBar
+            primaryOptions={filterPrimaryOptions}
+            secondaryGroups={filterSecondaryGroups}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search spaces"
+          />
+
+          {view === "attention" ? attentionView : view === "areas" ? areasView : categoryView}
         </div>
 
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {activeDrag ? (
-            <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
-              {onboardingDragLabel(
-                activeDrag,
-                activeDrag.kind === "area"
-                  ? areas.find((a) => a.id === activeDrag.areaId)?.name
-                  : undefined
-              )}
+            <div className="rounded-[10px] bg-card px-3 py-2 text-sm font-medium shadow-md ring-2 ring-primary/50">
+              {dragOverLabel ?? onboardingDragLabel(activeDrag)}
             </div>
           ) : null}
         </DragOverlay>

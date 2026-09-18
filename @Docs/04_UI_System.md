@@ -131,17 +131,37 @@ Platform flow: Signal → Task → Checklist → Evidence → Record → Insight
 
 | Column | Role |
 |--------|------|
-| Left | Title image block (160px) · section health tabs (no radial) · perforation · ≤3 suggested · Recent (spaces / assets / people / contractors / teams) |
+| Left | Title image block (160px) · section health tabs (no radial) · perforation · ≤3 suggested · Recent (spaces / assets) or **Contacts directory** (People — list + add/edit) |
 | Centre | Active entity screen · sub-tabs · collection slider · filter/sort · lists |
 | Right | Create Space / Add Asset / Invite Member · Manage Tags below |
 
-**Spaces — Areas nesting:** Centre Spaces organisation uses **Areas** (parent spaces) and **rooms** (`spaces.parent_space_id`). Type-group cards remain the catalog axis; Areas are the place hierarchy. Chip DnD (`onboardingAreasDnd`) reparents rooms.
+**Organise views (shared grammar for Spaces · Assets · Records):** each centre opens with **workbench view tabs** — the Calendar Planner | Schedule pattern (Fraunces tabs, `|` separators, one-line descriptor beneath):
 
-**Assets — Spaces nesting:** Centre Assets organisation uses category-group cards as the catalog axis and **Spaces** as the place hierarchy. Assets remain in their type groups and nest under spaces via `assets.space_id`. Chip DnD extends the same `onboardingAreasDnd` kit (`kind: "asset" | "asset-suggestion" | "unassigned-asset"`; droppable `space-drop:` prefixes). Do not invent a second DnD kit.
+| Surface | View tabs |
+|---------|-----------|
+| Spaces | **Attention · Areas · Category** |
+| Assets | **Attention · Spaces · Category** |
+| Records | **Attention · Types** |
+
+Below the tabs sits the standard controls row **[FILTER] [SORT] [SEARCH]** — the same `FilterBar` + `SortBar` components as Tasks/Calendar, plus an inline search field. No surface invents its own filter chrome.
+
+1. **Attention view** — the Schedule pattern rotated onto places: the left rail shows the entity (icon above name — space, asset, or urgency bucket) instead of day/date; the right side lists the open work (task cards; Records lists documents grouped **Urgent · Expiring soon · Needs attention**). Dashed dividers between sections.
+2. **Category / Types view** — compact paper-cut collection slider (shelf, leading **All** card, selected card shows its description) above a **mini-card grid**. Mini cards are draggable:
+   - drop on a **collection card** → reassign category (`group:` droppable);
+   - drop on **another mini card** → the two-zone gesture: the picked-up card drops to ~40% opacity; the card below splits into two dark overlays — top **Group** (shared custom collection), bottom **Add sub space** (`spaces.parent_space_id` nesting; Spaces only — Assets offer Group only). The hovered zone highlights; release commits. Mini cards with sub-spaces show an offset, semi-concealed chip below the card that expands on hover.
+3. **Places view (Areas / Spaces)** — sections per Area (Spaces) or per space (Assets) with the same mini-card grid; dropping a mini card on a section header reparents (`area-drop:`) or reassigns (`space-drop:`). Records keeps the right-edge location drawer for additive `attachment_spaces` filing (drag verb **+ File to**).
+
+**Creation rule:** creating a Space requires an **Area + category**; an Asset requires a **Space + category**; a Record requires a **Type**. Quick-add inputs inherit the selected collection and active place.
+
+All drag interactions use the single `onboardingAreasDnd` kit (`group:` / `area-drop:` / `space-drop:` / `minicard-group:` / `minicard-sub:` droppables). Do not invent a second DnD kit.
+
+**Detail chrome rule:** entity detail opens in the right column (replacing the create panel) when the layout is wide, and as an overlay when narrow — on all three surfaces. Selection is deep-linkable (`?spaceId` / `?assetId` / `?documentId`).
+
+**Illustration roles:** paper-cut art appears on the left-column page hero, shelf collection cards, and mini-card thumbnails. Attention rails and drawers stay dense (small icons, monospace counts).
 
 **Chip options chevron:** Fact chips with a dropdown hide the chevron until hover (or focus-within / open menu). The chip expands right to reveal it — same pattern as the removable X.
 
-**Records explorer:** Centre Records uses a compact horizontal paper-cut category carousel above a full-width document workspace. Locations open in a right drawer (browse filter or drag-to-file). Category and location are intersecting filters; `attachment_spaces` links are additive.
+**Records explorer:** Centre Records uses the organise-views grammar (Attention · Types). Category and location are intersecting filters; `attachment_spaces` links are additive. Compliance obligations remain a separate non-draggable strip above the explorer.
 
 **Workbench column geometry (single system)**
 
@@ -324,7 +344,7 @@ All design tokens are defined in:
 5. **Filla suggested actions** — up to 3
 6. **Recent** — compact list via shared `RecentPanel` / `RecentPanelRow`: calendar day-cell **pressed paper** on each row, mono uppercase section label, `text-sm` title + caption. **No outer card wrapping rows** (no boxes on boxes).
 
-**Centre — Spaces · Assets · People:** page sub-tabs → collection slider (no collection title/description above; match Spaces Groups / Records slider patterns for Assets and People) → filter bar + sort → responsive lists. No centre Spaces/Assets/People tab strip — left-nav + left-column illustration identify the screen.
+**Centre — Spaces · Assets · People:** workbench view tabs (Attention · places · Category) → [FILTER] [SORT] [SEARCH] controls row → view content (attention rail, mini-card sections, or collection slider + mini-card grid). Left-nav + left-column illustration identify the screen.
 
 **Reports / Settings / Knowledge (admin):** Settings may retain Back + activity header. Reports and Knowledge use the same primary workbench chrome (logo · Search · Create Task / Add Record) as Spaces · Assets · People. Knowledge is under **Filla Admin**, not user nav.
 

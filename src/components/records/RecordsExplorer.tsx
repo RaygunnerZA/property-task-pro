@@ -10,15 +10,8 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import { MapPin, Plus, Search, X } from "lucide-react";
+import { AlertTriangle, Clock, FileQuestion, MapPin, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { PropertyDocument } from "@/hooks/property/usePropertyDocuments";
 import type { OnboardingArea } from "@/components/onboarding/onboardingPropertyAreas";
@@ -44,18 +37,49 @@ import {
   type ExplorerLocationFilter,
   attentionCountForCategory,
   countByExplorerCategory,
+  documentExpiryState,
+  documentHasMissingInfo,
   filterExplorerDocuments,
 } from "@/lib/records/explorerFilters";
-import { RecordsCategoryCarousel } from "@/components/records/RecordsCategoryCarousel";
+import { CollectionShelf } from "@/components/organise/CollectionShelf";
+import {
+  OrganiseViewTabs,
+  type OrganiseViewTab,
+} from "@/components/organise/OrganiseViewTabs";
+import { OrganiseControlsBar } from "@/components/organise/OrganiseControlsBar";
+import {
+  AttentionListView,
+  type AttentionSection,
+} from "@/components/organise/AttentionListView";
+import type { FilterGroup, FilterOption } from "@/components/ui/filters/FilterBar";
+import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
+import { PlacesDrawer } from "@/components/organise/PlacesDrawer";
+import { PlacesTree } from "@/components/organise/PlacesTree";
 import { RecordsExplorerCategoryCard } from "@/components/records/RecordsExplorerCategoryCard";
-import { RecordsLocationTree } from "@/components/records/RecordsLocationTree";
 import { RecordsExplorerDocumentRow } from "@/components/records/RecordsExplorerDocumentRow";
 import { RecordsExplorerBulkBar } from "@/components/records/RecordsExplorerBulkBar";
 import { FileToSpacesDialog } from "@/components/records/FileToSpacesDialog";
 import { ChangeCategoryDialog } from "@/components/records/ChangeCategoryDialog";
 
-const ATTENTION_FILTERS: { id: ExplorerAttentionFilter; label: string }[] = [
-  { id: "all", label: "All" },
+export type RecordsOrganiseView = "attention" | "types";
+
+const VIEW_TABS: readonly OrganiseViewTab<RecordsOrganiseView>[] = [
+  {
+    id: "attention",
+    label: "Attention",
+    subtitle: "Documents that need action — urgent, expiring soon, or missing info.",
+  },
+  {
+    id: "types",
+    label: "Types",
+    subtitle: "Records by category. Drag a row onto a location to file it — filing links, it never moves.",
+  },
+] as const;
+
+const ATTENTION_FILTER_PREFIX = "filter-record-";
+const CATEGORY_FILTER_PREFIX = "filter-record-cat-";
+
+const ATTENTION_FILTER_OPTIONS: { id: ExplorerAttentionFilter; label: string }[] = [
   { id: "needs-attention", label: "Attention" },
   { id: "expiring", label: "Expiring" },
   { id: "missing-info", label: "Missing info" },
@@ -92,6 +116,8 @@ type RecordsExplorerProps = {
   onDeleteDocument: (doc: PropertyDocument) => Promise<void>;
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
+  view?: RecordsOrganiseView;
+  onViewChange?: (view: RecordsOrganiseView) => void;
   className?: string;
 };
 
@@ -113,8 +139,21 @@ export function RecordsExplorer({
   onDeleteDocument,
   searchQuery: searchProp,
   onSearchQueryChange,
+  view: viewProp,
+  onViewChange,
   className,
 }: RecordsExplorerProps) {
+  const [internalView, setInternalView] = useState<RecordsOrganiseView>("types");
+  const view = viewProp ?? internalView;
+  const setView = useCallback(
+    (next: RecordsOrganiseView) => {
+      setInternalView(next);
+      onViewChange?.(next);
+    },
+    [onViewChange]
+  );
+
+  const [sortBy, setSortBy] = useState<WorkbenchSortBy>("title");
   const [category, setCategory] = useState<ExplorerCategoryId>("all");
   const [locationFilter, setLocationFilter] = useState<ExplorerLocationFilter>({
     kind: "all",
@@ -181,17 +220,107 @@ export function RecordsExplorer({
     return map;
   }, [documents]);
 
+  const sortDocs = useCallback(
+    (list: PropertyDocument[]): PropertyDocument[] => {
+      const sorted = [...list];
+      if (sortBy === "recent") {
+        sorted.sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+        );
+      } else if (sortBy === "priority") {
+        const rank = (d: PropertyDocument) => {
+          const state = documentExpiryState(d);
+          if (state === "overdue") return 0;
+          if (state === "expiring") return 1;
+          if (documentHasMissingInfo(d)) return 2;
+          return 3;
+        };
+        sorted.sort((a, b) => rank(a) - rank(b));
+      } else {
+        sorted.sort((a, b) =>
+          documentDisplayTitle(a).localeCompare(documentDisplayTitle(b))
+        );
+      }
+      return sorted;
+    },
+    [sortBy]
+  );
+
   const visibleDocs = useMemo(
     () =>
-      filterExplorerDocuments(documents, {
-        category,
-        location: locationFilter,
-        attention,
-        search,
-      }).sort((a, b) =>
-        documentDisplayTitle(a).localeCompare(documentDisplayTitle(b))
+      sortDocs(
+        filterExplorerDocuments(documents, {
+          category,
+          location: locationFilter,
+          attention,
+          search,
+        })
       ),
-    [documents, category, locationFilter, attention, search]
+    [documents, category, locationFilter, attention, search, sortDocs]
+  );
+
+  /* ---------------- standard [FILTER] [SORT] [SEARCH] controls ---------------- */
+
+  const filterPrimaryOptions: FilterOption[] = useMemo(
+    () => [
+      {
+        id: `${ATTENTION_FILTER_PREFIX}needs-attention`,
+        label: "Attention",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        color: "#EB6834",
+      },
+      {
+        id: `${ATTENTION_FILTER_PREFIX}expiring`,
+        label: "Expiring",
+        icon: <Clock className="h-4 w-4" />,
+      },
+      {
+        id: `${ATTENTION_FILTER_PREFIX}missing-info`,
+        label: "Missing info",
+        icon: <FileQuestion className="h-4 w-4" />,
+      },
+    ],
+    []
+  );
+
+  const filterSecondaryGroups: FilterGroup[] = useMemo(
+    () => [
+      {
+        id: "record-category",
+        label: "Type",
+        options: EXPLORER_CATEGORY_ORDER.filter((id) => id !== "all").map((id) => ({
+          id: `${CATEGORY_FILTER_PREFIX}${id}`,
+          label: explorerCategoryLabel(id),
+        })),
+      },
+    ],
+    []
+  );
+
+  const selectedControlFilters = useMemo(() => {
+    const set = new Set<string>();
+    if (attention !== "all") set.add(`${ATTENTION_FILTER_PREFIX}${attention}`);
+    if (category !== "all") set.add(`${CATEGORY_FILTER_PREFIX}${category}`);
+    return set;
+  }, [attention, category]);
+
+  const handleControlFilterChange = useCallback(
+    (filterId: string, selected: boolean) => {
+      if (filterId.startsWith(CATEGORY_FILTER_PREFIX)) {
+        const id = filterId.slice(CATEGORY_FILTER_PREFIX.length) as ExplorerCategoryId;
+        setCategory(selected ? id : "all");
+        return;
+      }
+      if (filterId.startsWith(ATTENTION_FILTER_PREFIX)) {
+        const id = filterId.slice(
+          ATTENTION_FILTER_PREFIX.length
+        ) as ExplorerAttentionFilter;
+        const known = ATTENTION_FILTER_OPTIONS.some((o) => o.id === id);
+        if (known) setAttention(selected ? id : "all");
+      }
+    },
+    []
   );
 
   const selectedDocs = useMemo(
@@ -300,17 +429,110 @@ export function RecordsExplorer({
     locationLabel: activeLocationLabel,
   });
 
+  const renderDocRow = (doc: PropertyDocument) => (
+    <RecordsExplorerDocumentRow
+      document={doc}
+      selected={selectedIds.has(doc.id)}
+      onSelectedChange={(next) => toggleSelected(doc.id, next)}
+      filingEnabled={filingEnabled}
+      onOpen={() => onOpenDocument(doc.id)}
+      onEdit={() => onOpenDocument(doc.id)}
+      onFileTo={() => {
+        setFileToMode("reconcile");
+        setFileToDocs([doc]);
+      }}
+      onDownload={() => {
+        if (doc.file_url) window.open(doc.file_url, "_blank");
+      }}
+      onDelete={() => void onDeleteDocument(doc)}
+      onRemoveSpaceLink={(spaceId, spaceName) =>
+        void onRemoveSpaceLink(doc, spaceId, spaceName)
+      }
+    />
+  );
+
+  /* ------------------- Attention view — Urgent / Expiring / Needs info ------------------- */
+
+  const attentionBase = useMemo(
+    () =>
+      sortDocs(
+        filterExplorerDocuments(documents, {
+          category,
+          location: locationFilter,
+          attention: "all",
+          search,
+        })
+      ),
+    [documents, category, locationFilter, search, sortDocs]
+  );
+
+  const attentionSections: AttentionSection[] = (() => {
+    const urgent = attentionBase.filter((d) => documentExpiryState(d) === "overdue");
+    const expiring = attentionBase.filter((d) => documentExpiryState(d) === "expiring");
+    const missing = attentionBase.filter(
+      (d) => documentHasMissingInfo(d) && documentExpiryState(d) === "none"
+    );
+    const toContent = (docs: PropertyDocument[]) => (
+      <ul className="space-y-2">
+        {docs.map((doc) => (
+          <li key={doc.id}>{renderDocRow(doc)}</li>
+        ))}
+      </ul>
+    );
+    const sections: AttentionSection[] = [];
+    if (urgent.length > 0) {
+      sections.push({
+        id: "urgent",
+        title: "Urgent",
+        subtitle: `${urgent.length} overdue`,
+        icon: <AlertTriangle className="h-5 w-5 text-destructive" aria-hidden />,
+        accentColor: "#EB6834",
+        content: toContent(urgent),
+      });
+    }
+    if (expiring.length > 0) {
+      sections.push({
+        id: "expiring",
+        title: "Expiring soon",
+        subtitle: `${expiring.length} within 30 days`,
+        icon: <Clock className="h-5 w-5" aria-hidden />,
+        accentColor: "#C4A35A",
+        content: toContent(expiring),
+      });
+    }
+    if (missing.length > 0) {
+      sections.push({
+        id: "missing",
+        title: "Needs info",
+        subtitle: `${missing.length} incomplete`,
+        icon: <FileQuestion className="h-5 w-5" aria-hidden />,
+        content: toContent(missing),
+      });
+    }
+    return sections;
+  })();
+
   const locationPanel = (
-    <RecordsLocationTree
+    <PlacesTree
       areas={areas}
       roomsByAreaId={roomsByAreaId}
       unassignedRooms={unassignedRooms}
-      docCountBySpaceId={docCountBySpaceId}
-      propertyLevelCount={propertyLevelCount}
-      locationFilter={locationFilter}
-      onSelectLocation={handleSelectLocation}
-      filingEnabled={filingEnabled}
+      countBySpaceId={docCountBySpaceId}
+      propertyLevel={{
+        label: "Property level",
+        count: propertyLevelCount,
+        droppable: true,
+      }}
+      selected={locationFilter}
+      onSelect={handleSelectLocation}
+      enabled={filingEnabled}
+      disabledMessage="Select one property to organise records by space."
       mode={locationDrawerMode}
+      dropTargets="spaces"
+      showRooms
+      browseLabel="Browse by location"
+      filingLabel="File to location"
+      emptyHint="Add areas and rooms on Spaces to file documents by location."
       className="h-full"
     />
   );
@@ -334,8 +556,41 @@ export function RecordsExplorer({
           className
         )}
       >
-        {/* Compact category carousel */}
-        <RecordsCategoryCarousel>
+        <OrganiseViewTabs
+          tabs={VIEW_TABS}
+          active={view}
+          onChange={setView}
+          ariaLabel="Records views"
+        />
+
+        <OrganiseControlsBar
+          primaryOptions={filterPrimaryOptions}
+          secondaryGroups={filterSecondaryGroups}
+          selectedFilters={selectedControlFilters}
+          onFilterChange={handleControlFilterChange}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Search documents"
+        />
+
+        {view === "attention" ? (
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+            <AttentionListView
+              sections={attentionSections}
+              emptyState={
+                <span>
+                  Nothing needs attention — no overdue, expiring, or incomplete records
+                  {search.trim() ? " match your search" : ""}.
+                </span>
+              }
+            />
+          </section>
+        ) : (
+          <>
+        {/* Shelf — compact category carousel */}
+        <CollectionShelf prevLabel="Previous categories" nextLabel="Next categories">
           {EXPLORER_CATEGORY_ORDER.map((id) => (
             <RecordsExplorerCategoryCard
               key={id}
@@ -346,7 +601,7 @@ export function RecordsExplorer({
               onSelect={() => setCategory(id)}
             />
           ))}
-        </RecordsCategoryCarousel>
+        </CollectionShelf>
 
         {/* Full-width document workspace */}
         <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
@@ -360,93 +615,42 @@ export function RecordsExplorer({
                   {visibleDocs.length} document{visibleDocs.length === 1 ? "" : "s"}
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                className="h-8 gap-1"
-                onClick={onAddRecord}
-                disabled={!filingEnabled}
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add record
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-8 gap-1"
+                  onClick={() => openLocationDrawer("browse")}
+                  disabled={!filingEnabled}
+                >
+                  <MapPin className="h-3.5 w-3.5" />
+                  Locations
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 gap-1"
+                  onClick={onAddRecord}
+                  disabled={!filingEnabled}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add record
+                </Button>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative min-w-[180px] flex-1">
-                <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search documents"
-                  className="h-8 border-0 bg-background/80 pl-8 text-sm shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus-visible:ring-1 focus-visible:ring-primary/40"
-                  aria-label="Search documents"
-                />
-              </div>
-              <div
-                className="flex flex-wrap gap-1"
-                role="group"
-                aria-label="Attention filters"
-              >
-                {ATTENTION_FILTERS.map((f) => (
-                  <button
-                    key={f.id}
-                    type="button"
-                    onClick={() => setAttention(f.id)}
-                    className={cn(
-                      "rounded-[8px] px-2.5 py-1 font-mono text-2xs uppercase tracking-wide transition-colors",
-                      attention === f.id
-                        ? "bg-primary/20 text-foreground shadow-[inset_0_0_0_1px_rgba(142,201,206,0.7)]"
-                        : "bg-background/70 text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {f.label}
-                  </button>
-                ))}
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="secondary"
-                className="h-8 gap-1"
-                onClick={() => openLocationDrawer("browse")}
-                disabled={!filingEnabled}
-              >
-                <MapPin className="h-3.5 w-3.5" />
-                Locations
-              </Button>
-            </div>
-
-            {(category !== "all" ||
-              locationFilter.kind !== "all" ||
-              attention !== "all") && (
+            {activeLocationLabel ? (
               <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
-                  Active filters:
+                  Location:
                 </span>
-                {category !== "all" ? (
-                  <FilterChip
-                    label={categoryTitle}
-                    onClear={() => setCategory("all")}
-                  />
-                ) : null}
-                {activeLocationLabel ? (
-                  <FilterChip
-                    label={activeLocationLabel}
-                    onClear={() => setLocationFilter({ kind: "all" })}
-                  />
-                ) : null}
-                {attention !== "all" ? (
-                  <FilterChip
-                    label={
-                      ATTENTION_FILTERS.find((f) => f.id === attention)?.label ??
-                      attention
-                    }
-                    onClear={() => setAttention("all")}
-                  />
-                ) : null}
+                <FilterChip
+                  label={activeLocationLabel}
+                  onClear={() => setLocationFilter({ kind: "all" })}
+                />
               </div>
-            )}
+            ) : null}
           </header>
 
           <RecordsExplorerBulkBar
@@ -516,53 +720,28 @@ export function RecordsExplorer({
             ) : (
               <ul className="space-y-2 pb-2">
                 {visibleDocs.map((doc) => (
-                  <li key={doc.id}>
-                    <RecordsExplorerDocumentRow
-                      document={doc}
-                      selected={selectedIds.has(doc.id)}
-                      onSelectedChange={(next) => toggleSelected(doc.id, next)}
-                      filingEnabled={filingEnabled}
-                      onOpen={() => onOpenDocument(doc.id)}
-                      onEdit={() => onOpenDocument(doc.id)}
-                      onFileTo={() => {
-                        setFileToMode("reconcile");
-                        setFileToDocs([doc]);
-                      }}
-                      onDownload={() => {
-                        if (doc.file_url) window.open(doc.file_url, "_blank");
-                      }}
-                      onDelete={() => void onDeleteDocument(doc)}
-                      onRemoveSpaceLink={(spaceId, spaceName) =>
-                        void onRemoveSpaceLink(doc, spaceId, spaceName)
-                      }
-                    />
-                  </li>
+                  <li key={doc.id}>{renderDocRow(doc)}</li>
                 ))}
               </ul>
             )}
           </div>
         </section>
+          </>
+        )}
 
         {/* Location drawer — browse or filing */}
-        <Sheet
+        <PlacesDrawer
           open={locationDrawerOpen}
           onOpenChange={(open) => {
             setLocationDrawerOpen(open);
             if (!open) setLocationDrawerMode("browse");
           }}
+          mode={locationDrawerMode}
+          browseTitle="Locations"
+          filingTitle="File to location"
         >
-          <SheetContent
-            side="right"
-            className="w-[min(100%,380px)] border-l-0 bg-[hsl(var(--background))] p-4 shadow-e2 sm:max-w-md"
-          >
-            <SheetHeader className="mb-3">
-              <SheetTitle className="text-base">
-                {locationDrawerMode === "filing" ? "File to location" : "Locations"}
-              </SheetTitle>
-            </SheetHeader>
-            <div className="h-[calc(100vh-6rem)]">{locationPanel}</div>
-          </SheetContent>
-        </Sheet>
+          {locationPanel}
+        </PlacesDrawer>
       </div>
 
       <DragOverlay dropAnimation={null}>

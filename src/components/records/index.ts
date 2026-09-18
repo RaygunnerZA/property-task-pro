@@ -11,7 +11,5 @@ export { FiledDocumentsDirectory } from "./FiledDocumentsDirectory";
 export { FileToSpacesDialog } from "./FileToSpacesDialog";
 export { RecordDocumentRow } from "./RecordDocumentRow";
 export { RecordsExplorer } from "./RecordsExplorer";
-export { RecordsCategoryCarousel } from "./RecordsCategoryCarousel";
 export { RecordsExplorerCategoryCard } from "./RecordsExplorerCategoryCard";
-export { RecordsLocationTree } from "./RecordsLocationTree";
 export type { ComplianceRecord } from "./complianceRecordModel";

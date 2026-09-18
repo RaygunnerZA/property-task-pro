@@ -81,6 +81,32 @@ describe("mapDomesticSearchRow", () => {
     expect(mapped.facts).not.toHaveProperty("local-authority");
   });
 
+  it("maps the MHCLG Bearer API search/detail fields", () => {
+    const mapped = mapDomesticSearchRow({
+      certificateNumber: "1111-2222-3333-4444-5555",
+      currentEnergyEfficiencyBand: "C",
+      registrationDate: "2024-03-01",
+      postTown: "London",
+    });
+    expect(mapped.sourceId).toBe("1111-2222-3333-4444-5555");
+    expect(mapped.facts).toEqual({
+      current_rating: "C",
+      lodgement_date: "2024-03-01",
+    });
+  });
+
+  it("does not treat integer SAP codes as labels", () => {
+    const mapped = mapDomesticSearchRow({
+      certificate_number: "1111-2222-3333-4444-5555",
+      current_energy_efficiency_band: "D",
+      property_type: "2",
+      built_form: 4,
+    });
+    expect(mapped.facts.current_rating).toBe("D");
+    expect(mapped.facts.property_type).toBeUndefined();
+    expect(mapped.facts.built_form).toBeUndefined();
+  });
+
   it("handles empty rows", () => {
     expect(mapDomesticSearchRow(null)).toEqual({ sourceId: null, facts: {} });
     expect(mapDomesticSearchRow({})).toEqual({ sourceId: null, facts: {} });

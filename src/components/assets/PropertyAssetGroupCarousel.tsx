@@ -9,30 +9,32 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { AlertTriangle, Box, ClipboardList, Clock, Plus } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { format } from "date-fns";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
+import { useAssetLinkedTasks } from "@/hooks/useAssetLinkedTasks";
 import { useSpaces } from "@/hooks/useSpaces";
-import { OnboardingAssetGroupCard } from "@/components/onboarding/OnboardingAssetGroupCard";
-import { OnboardingAssetCustomCollectionCard } from "@/components/onboarding/OnboardingAssetCustomCollectionCard";
-import { OnboardingAssetCustomCollectionDraftCard } from "@/components/onboarding/OnboardingAssetCustomCollectionDraftCard";
-import { OnboardingPropertySpacesCard } from "@/components/onboarding/OnboardingPropertySpacesCard";
 import {
   ONBOARDING_ASSET_GROUPS,
   getAssetGroupById,
   getGroupIdFromAssetType,
-  isCustomAssetCollectionGroupId,
   type AssetSuggestionLabelOverrides,
-  type GroupExtraAsset,
   type OnboardingAssetCustomCollection,
 } from "@/components/onboarding/onboardingAssetGroups";
+import { DraggableChipShell } from "@/components/onboarding/DraggableChipShell";
 import {
-  type OnboardingDragData,
-  parseAssetSortableId,
+  DroppableZone,
+  groupDroppableId,
+  parseMiniCardGroupDroppableId,
   parseSpaceDroppableId,
-  parseUnassignedAssetSortableId,
+  propertyLevelDroppableId,
+  spaceDroppableId,
+  type OnboardingDragData,
   onboardingDragLabel,
 } from "@/components/onboarding/onboardingAreasDnd";
 import {
@@ -44,13 +46,20 @@ import {
   partitionPropertySpaces,
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
+import { getAssetGroupCardIllustration } from "@/lib/assetGroupIllustrations";
+import { getAssetIcon } from "@/lib/icon-resolver";
+import { CollectionShelf } from "@/components/organise/CollectionShelf";
 import {
-  assetCountsBySpaceId,
-  partitionAssetsBySpace,
-} from "@/lib/assets/partitionPropertyAssets";
-import { SpaceGroupCarousel } from "@/components/spaces/SpaceGroupCarousel";
-import { PropertyAssetSpacesStrip } from "@/components/assets/PropertyAssetSpacesStrip";
+  CollectionShelfCard,
+  NewCollectionShelfCard,
+} from "@/components/organise/CollectionShelfCard";
+import { OrganiseViewTabs, type OrganiseViewTab } from "@/components/organise/OrganiseViewTabs";
+import { OrganiseControlsBar } from "@/components/organise/OrganiseControlsBar";
+import { AttentionListView, type AttentionSection } from "@/components/organise/AttentionListView";
+import { EntityMiniCard, type MiniCardAction } from "@/components/organise/EntityMiniCard";
 import { NeomorphicButton } from "@/components/onboarding/NeomorphicButton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +67,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { FilterGroup, FilterOption } from "@/components/ui/filters/FilterBar";
+import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
 import { toast } from "sonner";
 import { markQuickWinComplete } from "@/lib/quickWins";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
@@ -66,11 +77,43 @@ import type { Tables } from "@/integrations/supabase/types";
 
 type AssetViewRow = Tables<"assets_view">;
 
+const ALL_ASSETS_ILLUSTRATION = "/centre-workbench/assets.png";
+const CUSTOM_COLLECTION_COLOR = "#C4A35A";
+
+export type AssetsOrganiseView = "attention" | "spaces" | "category";
+
+const VIEW_TABS: readonly OrganiseViewTab<AssetsOrganiseView>[] = [
+  {
+    id: "attention",
+    label: "Attention",
+    subtitle: "Assets with open work or poor condition — tasks grouped by asset.",
+  },
+  {
+    id: "spaces",
+    label: "Spaces",
+    subtitle: "Assets grouped by the space they live in. Drag a card onto a space to assign it.",
+  },
+  {
+    id: "category",
+    label: "Category",
+    subtitle:
+      "Assets by type. Drag a card onto a category to refile it — or onto another asset to group them.",
+  },
+] as const;
+
+const FILTER_OPEN_WORK = "filter-asset-open";
+const FILTER_CONDITION = "filter-asset-condition";
+const FILTER_UNASSIGNED = "filter-asset-unassigned";
+const FILTER_SPACE_PREFIX = "filter-asset-space-";
+
 type PropertyAssetGroupCarouselProps = {
   propertyId: string;
   className?: string;
+  /** External search (workbench header) — combined with the inline SEARCH field. */
   assetFilter?: string;
   onViewAsset?: (assetId: string) => void;
+  view?: AssetsOrganiseView;
+  onViewChange?: (view: AssetsOrganiseView) => void;
 };
 
 function resolveAssetGroupId(
@@ -107,11 +150,18 @@ function defaultAssetTypeForGroup(groupId: string): string | null {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+/**
+ * Assets centre — organise views (@Docs/04_UI_System.md):
+ * Attention | Spaces | Category tabs, the standard [FILTER] [SORT] [SEARCH]
+ * controls row, and draggable mini cards (drop on a peer = Group).
+ */
 export function PropertyAssetGroupCarousel({
   propertyId,
   className,
   assetFilter = "",
   onViewAsset,
+  view: viewProp,
+  onViewChange,
 }: PropertyAssetGroupCarouselProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
@@ -119,12 +169,28 @@ export function PropertyAssetGroupCarousel({
   const { data: assets = [], refetch } = useAssetsQuery(propertyId);
   const { spaces } = useSpaces(propertyId);
 
+  const [internalView, setInternalView] = useState<AssetsOrganiseView>("category");
+  const view = viewProp ?? internalView;
+  const setView = useCallback(
+    (next: AssetsOrganiseView) => {
+      setInternalView(next);
+      onViewChange?.(next);
+    },
+    [onViewChange]
+  );
+
   const dndSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
   const [activeDrag, setActiveDrag] = useState<OnboardingDragData | null>(null);
-  const [viewingAreaId, setViewingAreaId] = useState<string | null>(null);
+  const [dragOverLabel, setDragOverLabel] = useState<string | null>(null);
   const [activeSpaceId, setActiveSpaceId] = useState<string | null>(null);
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
+  const [selectedFilters, setSelectedFilters] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<WorkbenchSortBy>("title");
+  const [search, setSearch] = useState("");
+  const [addAssetName, setAddAssetName] = useState("");
 
   const [renameModal, setRenameModal] = useState<{
     assetId: string;
@@ -240,80 +306,10 @@ export function PropertyAssetGroupCarousel({
     });
   }, []);
 
-  const selectedAssetsNewestFirstByGroup = useMemo(() => {
-    const result: Record<string, string[]> = {};
-    const sorted = [...assets].sort((a, b) => {
-      const aDate = new Date((a as AssetViewRow & { updated_at?: string }).updated_at ?? 0).getTime();
-      const bDate = new Date((b as AssetViewRow & { updated_at?: string }).updated_at ?? 0).getTime();
-      return bDate - aDate;
-    });
-    for (const asset of sorted) {
-      const name = asset.name?.trim();
-      if (!name) continue;
-      const groupId = resolveAssetGroupId(asset, assetToCollection);
-      if (!groupId) continue;
-      if (!result[groupId]) result[groupId] = [];
-      result[groupId].push(name);
-    }
-    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
-      if (!pins.length) continue;
-      const existingKeys = new Set(
-        (result[groupId] ?? []).map((n) => n.toLowerCase().trim())
-      );
-      const pendingOnly = pins.filter((n) => !existingKeys.has(n.toLowerCase().trim()));
-      result[groupId] = [...pendingOnly, ...(result[groupId] ?? [])];
-    }
-    return result;
-  }, [assets, assetToCollection, pendingPinsByGroup]);
-
-  const extraAssetsByGroup = useMemo(() => {
-    const result: Record<string, GroupExtraAsset[]> = {};
-    const sorted = [...assets].sort((a, b) => {
-      const aDate = new Date((a as AssetViewRow & { updated_at?: string }).updated_at ?? 0).getTime();
-      const bDate = new Date((b as AssetViewRow & { updated_at?: string }).updated_at ?? 0).getTime();
-      return bDate - aDate;
-    });
-    for (const asset of sorted) {
-      const name = asset.name?.trim();
-      if (!name) continue;
-      const groupId = resolveAssetGroupId(asset, assetToCollection);
-      if (!groupId) continue;
-      if (isCustomAssetCollectionGroupId(groupId)) {
-        if (!result[groupId]) result[groupId] = [];
-        result[groupId].push({ name });
-        continue;
-      }
-      if (isSuggestionForGroup(name, groupId)) continue;
-      if (!result[groupId]) result[groupId] = [];
-      result[groupId].push({ name });
-    }
-    for (const [groupId, pins] of Object.entries(pendingPinsByGroup)) {
-      if (!pins.length) continue;
-      const existingKeys = new Set(
-        (result[groupId] ?? []).map((e) => e.name.toLowerCase().trim())
-      );
-      const pendingExtras: GroupExtraAsset[] = [];
-      for (const name of pins) {
-        const key = name.toLowerCase().trim();
-        if (existingKeys.has(key)) continue;
-        if (!isCustomAssetCollectionGroupId(groupId) && isSuggestionForGroup(name, groupId)) {
-          continue;
-        }
-        pendingExtras.push({ name });
-        existingKeys.add(key);
-      }
-      if (pendingExtras.length) {
-        result[groupId] = [...pendingExtras, ...(result[groupId] ?? [])];
-      }
-    }
-    return result;
-  }, [assets, assetToCollection, pendingPinsByGroup]);
-
   const {
     areas: partitionedAreas,
     rooms,
     roomsByAreaId,
-    unassigned: unassignedRooms,
   } = useMemo(() => partitionPropertySpaces(spaces), [spaces]);
 
   const areas = useMemo(
@@ -321,15 +317,13 @@ export function PropertyAssetGroupCarousel({
     [partitionedAreas]
   );
 
-  const { assetsBySpaceId, unassigned: unassignedAssets } = useMemo(
-    () => partitionAssetsBySpace(assets),
-    [assets]
-  );
-
-  const assetCountBySpace = useMemo(
-    () => assetCountsBySpaceId(assets),
-    [assets]
-  );
+  const spaceNameById = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const s of spaces) {
+      map[s.id] = (s.name ?? "").trim() || "Space";
+    }
+    return map;
+  }, [spaces]);
 
   const spaceColorById = useMemo(() => {
     const colors: Record<string, string> = {};
@@ -342,41 +336,17 @@ export function PropertyAssetGroupCarousel({
     return colors;
   }, [areas, roomsByAreaId]);
 
-  const assetIdByNameKey = useMemo(() => {
+  const roomAreaIdBySpaceId = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const asset of assets) {
-      const key = (asset.name ?? "").toLowerCase().trim();
-      if (key && asset.id && !map[key]) map[key] = asset.id;
+    for (const area of areas) {
+      for (const room of roomsByAreaId[area.id] ?? []) {
+        map[room.id] = area.id;
+      }
     }
     return map;
-  }, [assets]);
+  }, [areas, roomsByAreaId]);
 
-  const assetSpaceByNameKey = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const asset of assets) {
-      const key = (asset.name ?? "").toLowerCase().trim();
-      if (key && asset.space_id && !map[key]) map[key] = asset.space_id;
-    }
-    return map;
-  }, [assets]);
-
-  const selectedAssetColors = useMemo(() => {
-    const colors: Record<string, string> = {};
-    for (const [nameKey, spaceId] of Object.entries(assetSpaceByNameKey)) {
-      const color = spaceColorById[spaceId];
-      if (color) colors[nameKey] = color;
-    }
-    return colors;
-  }, [assetSpaceByNameKey, spaceColorById]);
-
-  useEffect(() => {
-    if (areas.length === 0) {
-      setViewingAreaId(null);
-      return;
-    }
-    if (viewingAreaId && areas.some((a) => a.id === viewingAreaId)) return;
-    setViewingAreaId(areas[0].id);
-  }, [areas, viewingAreaId]);
+  const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
 
   useEffect(() => {
     const places = [...rooms, ...partitionedAreas];
@@ -385,40 +355,191 @@ export function PropertyAssetGroupCarousel({
       return;
     }
     if (activeSpaceId && places.some((s) => s.id === activeSpaceId)) return;
-    const preferred =
-      (viewingAreaId ? roomsByAreaId[viewingAreaId] ?? [] : rooms)[0] ??
-      rooms[0] ??
-      partitionedAreas[0];
+    const preferred = rooms[0] ?? partitionedAreas[0];
     setActiveSpaceId(preferred?.id ?? null);
-  }, [rooms, partitionedAreas, roomsByAreaId, viewingAreaId, activeSpaceId]);
+  }, [rooms, partitionedAreas, activeSpaceId]);
 
-  const activeSpace =
-    rooms.find((s) => s.id === activeSpaceId) ??
-    partitionedAreas.find((s) => s.id === activeSpaceId) ??
-    null;
+  const groupIdByAssetId = useMemo(() => {
+    const map: Record<string, string | undefined> = {};
+    for (const asset of assets) {
+      if (!asset.id) continue;
+      map[asset.id] = resolveAssetGroupId(asset, assetToCollection);
+    }
+    return map;
+  }, [assets, assetToCollection]);
 
-  const filterKey = assetFilter.trim().toLowerCase();
+  const groupCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const asset of assets) {
+      if (!asset.id) continue;
+      const groupId = groupIdByAssetId[asset.id];
+      if (!groupId) continue;
+      counts[groupId] = (counts[groupId] ?? 0) + 1;
+    }
+    return counts;
+  }, [assets, groupIdByAssetId]);
 
-  const groupMatchesFilter = useCallback(
-    (groupId: string) => {
-      if (!filterKey) return true;
-      const selected = selectedAssetsNewestFirstByGroup[groupId] ?? [];
-      return selected.some((n) => n.toLowerCase().includes(filterKey));
+  /* ------------------------- attention (open work) ------------------------ */
+
+  const allAssetIds = useMemo(
+    () => assets.filter((a) => a.id).map((a) => a.id!),
+    [assets]
+  );
+  const { data: linkedTaskRows = [] } = useAssetLinkedTasks(allAssetIds);
+
+  const linkedTasksByAssetId = useMemo(() => {
+    const map = new Map<string, typeof linkedTaskRows>();
+    for (const row of linkedTaskRows) {
+      if (!row.assetId) continue;
+      const list = map.get(row.assetId) ?? [];
+      list.push(row);
+      map.set(row.assetId, list);
+    }
+    return map;
+  }, [linkedTaskRows]);
+
+  const assetNeedsAttention = useCallback((asset: AssetViewRow): boolean => {
+    if ((asset.status || "active") !== "active") return false;
+    const score = asset.condition_score ?? 100;
+    const openTasks = asset.open_tasks_count ?? 0;
+    return score < 60 || openTasks > 0;
+  }, []);
+
+  /* ------------------------ controls (filter/sort/search) ----------------- */
+
+  const filterPrimaryOptions: FilterOption[] = useMemo(
+    () => [
+      {
+        id: FILTER_OPEN_WORK,
+        label: "Open work",
+        icon: <ClipboardList className="h-4 w-4" />,
+      },
+      {
+        id: FILTER_CONDITION,
+        label: "Poor condition",
+        icon: <AlertTriangle className="h-4 w-4" />,
+        color: "#EB6834",
+      },
+      { id: FILTER_UNASSIGNED, label: "Unassigned" },
+    ],
+    []
+  );
+
+  const filterSecondaryGroups: FilterGroup[] = useMemo(
+    () => [
+      {
+        id: "spaces",
+        label: "Space",
+        options: rooms.map((room) => ({
+          id: `${FILTER_SPACE_PREFIX}${room.id}`,
+          label: (room.name ?? "").trim() || "Space",
+        })),
+      },
+    ],
+    [rooms]
+  );
+
+  const handleFilterChange = useCallback((filterId: string, selected: boolean) => {
+    setSelectedFilters((prev) => {
+      const next = new Set(prev);
+      if (selected) next.add(filterId);
+      else next.delete(filterId);
+      return next;
+    });
+  }, []);
+
+  const selectedSpaceFilterIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const f of selectedFilters) {
+      if (f.startsWith(FILTER_SPACE_PREFIX)) ids.add(f.slice(FILTER_SPACE_PREFIX.length));
+    }
+    return ids;
+  }, [selectedFilters]);
+
+  const effectiveSearch = (search.trim() || assetFilter.trim()).toLowerCase();
+
+  const passesControls = useCallback(
+    (asset: AssetViewRow): boolean => {
+      if (selectedFilters.has(FILTER_OPEN_WORK) && (asset.open_tasks_count ?? 0) === 0) {
+        return false;
+      }
+      if (selectedFilters.has(FILTER_CONDITION) && (asset.condition_score ?? 100) >= 60) {
+        return false;
+      }
+      if (selectedFilters.has(FILTER_UNASSIGNED) && asset.space_id) return false;
+      if (selectedSpaceFilterIds.size > 0) {
+        if (!asset.space_id || !selectedSpaceFilterIds.has(asset.space_id)) return false;
+      }
+      if (effectiveSearch) {
+        const hay = `${asset.name ?? ""} ${asset.serial_number ?? ""} ${asset.manufacturer ?? ""} ${asset.model ?? ""}`.toLowerCase();
+        if (!hay.includes(effectiveSearch)) return false;
+      }
+      return true;
     },
-    [filterKey, selectedAssetsNewestFirstByGroup]
+    [selectedFilters, selectedSpaceFilterIds, effectiveSearch]
   );
 
-  const visibleGroups = useMemo(
-    () => ONBOARDING_ASSET_GROUPS.filter((group) => groupMatchesFilter(group.id)),
-    [groupMatchesFilter]
+  const sortAssets = useCallback(
+    (list: AssetViewRow[]): AssetViewRow[] => {
+      const sorted = [...list];
+      if (sortBy === "recent") {
+        sorted.sort(
+          (a, b) =>
+            new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime()
+        );
+      } else if (sortBy === "priority") {
+        sorted.sort((a, b) => (b.open_tasks_count ?? 0) - (a.open_tasks_count ?? 0));
+      } else {
+        sorted.sort((a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+            sensitivity: "base",
+            numeric: true,
+          })
+        );
+      }
+      return sorted;
+    },
+    [sortBy]
   );
 
-  const visibleCustomCollections = useMemo(
-    () => customCollections.filter((collection) => groupMatchesFilter(collection.id)),
-    [customCollections, groupMatchesFilter]
-  );
+  const visibleAssets = useMemo(() => {
+    return sortAssets(
+      assets.filter((asset) => {
+        if (!asset.id) return false;
+        if (
+          selectedGroupId !== "all" &&
+          groupIdByAssetId[asset.id] !== selectedGroupId
+        ) {
+          return false;
+        }
+        return passesControls(asset);
+      })
+    );
+  }, [assets, selectedGroupId, groupIdByAssetId, passesControls, sortAssets]);
 
-  const hasVisibleGroups = visibleGroups.length > 0 || visibleCustomCollections.length > 0;
+  const selectedGroup = getAssetGroupById(selectedGroupId);
+  const selectedCollection = customCollections.find((c) => c.id === selectedGroupId);
+  const benchTitle =
+    selectedGroupId === "all"
+      ? "All assets"
+      : selectedGroup?.label ?? selectedCollection?.name ?? "Assets";
+
+  const suggestionChips = useMemo(() => {
+    if (!selectedGroup) return [];
+    return selectedGroup.suggestedAssets
+      .filter((name) => {
+        const key = name.toLowerCase().trim();
+        const override = suggestionLabelOverrides[key];
+        const effective = (override ?? name).toLowerCase().trim();
+        return !selectedAssetsSet.has(effective) && !selectedAssetsSet.has(key);
+      })
+      .map((name) => ({
+        source: name,
+        label: suggestionLabelOverrides[name.toLowerCase().trim()] ?? name,
+      }));
+  }, [selectedGroup, selectedAssetsSet, suggestionLabelOverrides]);
+
+  /* ------------------------------ mutations ------------------------------- */
 
   const invalidateAssets = useCallback(async () => {
     await invalidateAssetQueries(queryClient);
@@ -434,42 +555,12 @@ export function PropertyAssetGroupCarousel({
   );
 
   const openRenameModal = useCallback(
-    (name: string, groupId: string) => {
-      const asset = findAssetByName(name);
-      if (!asset?.id) return;
-      setRenameModal({ assetId: asset.id, currentName: name, groupId });
+    (assetId: string, name: string) => {
+      const groupId = groupIdByAssetId[assetId] ?? "";
+      setRenameModal({ assetId, currentName: name, groupId });
       setRenameInput(name);
     },
-    [findAssetByName]
-  );
-
-  const viewAssetByNameKey = useMemo(() => {
-    const handlers: Record<string, () => void> = {};
-    for (const asset of assets) {
-      const key = (asset.name ?? "").toLowerCase().trim();
-      if (!key || handlers[key] || !asset.id) continue;
-      const assetId = asset.id;
-      handlers[key] = () => onViewAsset?.(assetId);
-    }
-    return handlers;
-  }, [assets, onViewAsset]);
-
-  const openViewAsset = useCallback(
-    (name: string) => {
-      const key = name.toLowerCase().trim();
-      const direct = viewAssetByNameKey[key];
-      if (direct) {
-        direct();
-        return;
-      }
-      const asset = findAssetByName(name);
-      if (!asset?.id) {
-        toast.error("Asset not found");
-        return;
-      }
-      onViewAsset?.(asset.id);
-    },
-    [viewAssetByNameKey, findAssetByName, onViewAsset]
+    [groupIdByAssetId]
   );
 
   const getSuggestedCopyName = useCallback(
@@ -572,81 +663,146 @@ export function PropertyAssetGroupCarousel({
     [assets, invalidateAssets]
   );
 
-  const handleActivateArea = useCallback((areaId: string) => {
-    setViewingAreaId(areaId);
-    const firstRoom = roomsByAreaId[areaId]?.[0];
-    if (firstRoom) setActiveSpaceId(firstRoom.id);
-    else setActiveSpaceId(areaId);
-  }, [roomsByAreaId]);
-
-  const handleActivateSpace = useCallback(
-    (spaceId: string) => {
-      setActiveSpaceId(spaceId);
-      const room = rooms.find((s) => s.id === spaceId);
-      if (room?.parent_space_id) setViewingAreaId(room.parent_space_id);
-      else if (areas.some((a) => a.id === spaceId)) setViewingAreaId(spaceId);
+  /** Two-zone Group — dragged + target share a custom collection. */
+  const groupAssets = useCallback(
+    (draggedName: string, targetAssetId: string) => {
+      const target = assets.find((a) => a.id === targetAssetId);
+      if (!target) return;
+      const targetName = (target.name ?? "").trim();
+      if (!targetName || !draggedName.trim()) return;
+      const targetGroupId = target.id ? groupIdByAssetId[target.id] : undefined;
+      const isCustom = targetGroupId
+        ? customCollections.some((c) => c.id === targetGroupId)
+        : false;
+      let collectionId = isCustom ? targetGroupId! : null;
+      if (!collectionId) {
+        const collection = createPropertyAssetCustomCollection(`${targetName} group`);
+        setCustomCollections((prev) => [...prev, collection]);
+        collectionId = collection.id;
+        assignAssetToCollection(targetName, collectionId);
+      }
+      assignAssetToCollection(draggedName, collectionId);
+      setSelectedGroupId(collectionId);
+      setView("category");
+      toast.success(`Grouped with ${targetName}`);
     },
-    [rooms, areas]
+    [assets, groupIdByAssetId, customCollections, assignAssetToCollection, setView]
   );
+
+  /* --------------------------------- DnD ---------------------------------- */
 
   const handleDragStart = useCallback((event: DragStartEvent) => {
     const data = event.active.data.current as OnboardingDragData | undefined;
     setActiveDrag(data ?? null);
+    setDragOverLabel(null);
   }, []);
+
+  const draggedAssetId = useMemo(() => {
+    if (!activeDrag) return null;
+    if (activeDrag.kind === "asset" || activeDrag.kind === "unassigned-asset") {
+      return activeDrag.assetId;
+    }
+    return null;
+  }, [activeDrag]);
+
+  const handleDragOver = useCallback(
+    (event: DragOverEvent) => {
+      const overId = event.over ? String(event.over.id) : null;
+      const drag = activeDrag;
+      if (!overId || !drag) {
+        setDragOverLabel(null);
+        return;
+      }
+      const spaceId = parseSpaceDroppableId(overId);
+      if (spaceId) {
+        const target = spaceNameById[spaceId] ?? "space";
+        setDragOverLabel(
+          drag.kind === "asset-suggestion" ? `Create in ${target}` : `Assign to ${target}`
+        );
+        return;
+      }
+      if (overId === propertyLevelDroppableId()) {
+        setDragOverLabel(drag.kind === "asset-suggestion" ? null : "Unassign from space");
+        return;
+      }
+      if (overId.startsWith("group:")) {
+        const groupId = overId.slice("group:".length);
+        const label =
+          getAssetGroupById(groupId)?.label ??
+          customCollections.find((c) => c.id === groupId)?.name ??
+          "category";
+        setDragOverLabel(
+          drag.kind === "asset-suggestion" ? `Create in ${label}` : `Set category: ${label}`
+        );
+        return;
+      }
+      const groupTargetId = parseMiniCardGroupDroppableId(overId);
+      if (groupTargetId) {
+        const name =
+          (assets.find((a) => a.id === groupTargetId)?.name ?? "").trim() || "asset";
+        setDragOverLabel(`Group with ${name}`);
+        return;
+      }
+      setDragOverLabel(null);
+    },
+    [activeDrag, spaceNameById, customCollections, assets]
+  );
 
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
+      const drag = activeDrag;
       setActiveDrag(null);
-      const { active, over } = event;
-      if (!over) return;
-      const drag = active.data.current as OnboardingDragData | undefined;
+      setDragOverLabel(null);
+      const { over } = event;
+      if (!over || !drag) return;
       const overId = String(over.id);
 
-      const resolveDropSpaceId = (): string | null | undefined => {
-        const fromSpace = parseSpaceDroppableId(overId);
-        if (fromSpace) return fromSpace;
-        if (overId === "space-assets-list") return activeSpaceId;
-        if (overId === "unassigned-assets-list") return null;
-        const unassignedId = parseUnassignedAssetSortableId(overId);
-        if (unassignedId) return null;
-        const overAssetId = parseAssetSortableId(overId);
-        if (overAssetId) {
-          return assets.find((a) => a.id === overAssetId)?.space_id ?? null;
-        }
-        return undefined;
-      };
+      const isAssetDrag = drag.kind === "asset" || drag.kind === "unassigned-asset";
+      const dropSpaceId = parseSpaceDroppableId(overId);
 
-      const isAssetDrag = drag?.kind === "asset" || drag?.kind === "unassigned-asset";
       if (isAssetDrag) {
-        const target = resolveDropSpaceId();
-        if (target === undefined) return;
-        if (overId === "space-assets-list" && !activeSpaceId) {
-          toast.error("Select a space first");
+        if (dropSpaceId) {
+          void moveAssetToSpace(drag.assetId, dropSpaceId);
           return;
         }
-        void moveAssetToSpace(drag.assetId, target);
+        if (overId === propertyLevelDroppableId()) {
+          void moveAssetToSpace(drag.assetId, null);
+          return;
+        }
+        if (overId.startsWith("group:")) {
+          const groupId = overId.slice("group:".length);
+          assignAssetToCollection(drag.assetName, groupId);
+          const label =
+            getAssetGroupById(groupId)?.label ??
+            customCollections.find((c) => c.id === groupId)?.name ??
+            "category";
+          toast.success(`${drag.assetName} filed under ${label}`);
+          return;
+        }
+        const groupTargetId = parseMiniCardGroupDroppableId(overId);
+        if (groupTargetId && groupTargetId !== drag.assetId) {
+          groupAssets(drag.assetName, groupTargetId);
+        }
         return;
       }
 
-      if (drag?.kind === "asset-suggestion") {
-        const target = resolveDropSpaceId();
-        if (target === undefined) return;
-        if (overId === "space-assets-list" && !activeSpaceId) {
-          toast.error("Select a space first");
+      if (drag.kind === "asset-suggestion") {
+        if (dropSpaceId) {
+          void createAssetRef.current(drag.assetName, drag.groupId, dropSpaceId);
           return;
         }
-        void createAssetRef.current(drag.assetName, drag.groupId, target);
+        if (overId.startsWith("group:")) {
+          void createAssetRef.current(drag.assetName, overId.slice("group:".length));
+        }
       }
     },
-    [activeSpaceId, assets, moveAssetToSpace]
+    [activeDrag, moveAssetToSpace, assignAssetToCollection, groupAssets, customCollections]
   );
 
-  const removeAsset = async (name: string) => {
-    const asset = findAssetByName(name);
-    if (!asset?.id) return;
+  const removeAssetById = async (assetId: string, name: string) => {
     setBusy(true);
     try {
-      const { error } = await supabase.from("assets").delete().eq("id", asset.id);
+      const { error } = await supabase.from("assets").delete().eq("id", assetId);
       if (error) throw error;
       unassignAsset(name);
       clearSuggestionOverridesForName(name);
@@ -663,21 +819,7 @@ export function PropertyAssetGroupCarousel({
   const handleCreateCustomCollection = (name: string) => {
     const collection = createPropertyAssetCustomCollection(name);
     setCustomCollections((prev) => [...prev, collection]);
-  };
-
-  const handleUpdateCustomCollection = (
-    id: string,
-    updates: { name?: string; imageSrc?: string }
-  ) => {
-    setCustomCollections((prev) =>
-      prev.map((c) => {
-        if (c.id !== id) return c;
-        if (updates.imageSrc && c.imageSrc?.startsWith("blob:") && c.imageSrc !== updates.imageSrc) {
-          URL.revokeObjectURL(c.imageSrc);
-        }
-        return { ...c, ...updates };
-      })
-    );
+    setSelectedGroupId(collection.id);
   };
 
   const confirmRename = async () => {
@@ -762,11 +904,449 @@ export function PropertyAssetGroupCarousel({
     setCopyInput("");
   };
 
-  if (filterKey && !hasVisibleGroups) {
-    return null;
-  }
+  const handleAddFromInput = () => {
+    const trimmed = addAssetName.trim();
+    if (!trimmed) return;
+    const groupId =
+      selectedGroupId !== "all" ? selectedGroupId : ONBOARDING_ASSET_GROUPS[0].id;
+    void createAsset(trimmed, groupId);
+    setAddAssetName("");
+  };
 
-  const dragOverlayLabel = activeDrag ? onboardingDragLabel(activeDrag) : "";
+  /* ------------------------------- rendering ------------------------------- */
+
+  const isAssetDragActive =
+    activeDrag != null &&
+    (activeDrag.kind === "asset" || activeDrag.kind === "unassigned-asset");
+
+  const renderAssetMiniCard = (asset: AssetViewRow, metaMode: "space" | "category") => {
+    const assetId = asset.id!;
+    const name = (asset.name ?? "").trim() || "Asset";
+    const groupId = groupIdByAssetId[assetId];
+    const group = groupId ? getAssetGroupById(groupId) : undefined;
+    const collection = groupId
+      ? customCollections.find((c) => c.id === groupId)
+      : undefined;
+    const spaceName = asset.space_id ? spaceNameById[asset.space_id] : undefined;
+    const openCount = asset.open_tasks_count ?? 0;
+    const Icon = getAssetIcon(asset.icon_name);
+    const dragData: OnboardingDragData = asset.space_id
+      ? { kind: "asset", assetId, assetName: name, spaceId: asset.space_id }
+      : { kind: "unassigned-asset", assetId, assetName: name };
+    const actions: MiniCardAction[] = [
+      { label: "Open", onClick: () => onViewAsset?.(assetId) },
+      { label: "Rename", onClick: () => openRenameModal(assetId, name) },
+      {
+        label: "Duplicate",
+        onClick: () => {
+          const gid = groupId ?? ONBOARDING_ASSET_GROUPS[0].id;
+          const suggested = getSuggestedCopyName(name);
+          setCopyModal({ baseName: name, suggestedName: suggested, groupId: gid });
+          setCopyInput(suggested);
+        },
+      },
+      ...(asset.space_id
+        ? [
+            {
+              label: "View space",
+              onClick: () =>
+                navigate(`/properties/${propertyId}/spaces/${asset.space_id}`),
+            },
+          ]
+        : []),
+      {
+        label: "Remove",
+        destructive: true,
+        onClick: () => void removeAssetById(assetId, name),
+      },
+    ];
+    return (
+      <EntityMiniCard
+        key={assetId}
+        entityId={assetId}
+        title={name}
+        meta={
+          metaMode === "space"
+            ? group?.label ?? collection?.name ?? "Asset"
+            : spaceName ?? "Unassigned"
+        }
+        icon={<Icon className="h-7 w-7" aria-hidden />}
+        accentColor={
+          metaMode === "space"
+            ? group?.color
+            : asset.space_id
+              ? spaceColorById[asset.space_id]
+              : undefined
+        }
+        badge={
+          openCount > 0 ? (
+            <span className="rounded-md bg-card/90 px-1.5 py-0.5 font-mono text-2xs font-semibold text-foreground shadow-e1">
+              {openCount}
+            </span>
+          ) : null
+        }
+        dragId={`minicard-asset:${assetId}`}
+        dragData={dragData}
+        onOpen={() => onViewAsset?.(assetId)}
+        dropCandidate={isAssetDragActive && draggedAssetId !== assetId}
+        subZone={false}
+        groupZoneLabel="Group"
+        actions={actions}
+      />
+    );
+  };
+
+  const attentionSections: AttentionSection[] = useMemo(() => {
+    const entries = assets.filter(
+      (a) => a.id && assetNeedsAttention(a) && passesControls(a)
+    );
+    const sorted =
+      sortBy === "title"
+        ? sortAssets(entries)
+        : [...entries].sort(
+            (a, b) => (b.open_tasks_count ?? 0) - (a.open_tasks_count ?? 0)
+          );
+    return sorted.map((asset) => {
+      const assetId = asset.id!;
+      const name = (asset.name ?? "").trim() || "Asset";
+      const spaceName = asset.space_id ? spaceNameById[asset.space_id] : undefined;
+      const rows = linkedTasksByAssetId.get(assetId) ?? [];
+      const Icon = getAssetIcon(asset.icon_name);
+      const score = asset.condition_score ?? 100;
+      const openCount = asset.open_tasks_count ?? 0;
+      return {
+        id: assetId,
+        title: name,
+        subtitle: spaceName ?? "Unassigned",
+        iconSrc: rows[0]?.assetImageUrl ?? null,
+        icon: <Icon className="h-5 w-5" aria-hidden />,
+        accentColor: asset.space_id ? spaceColorById[asset.space_id] : undefined,
+        onOpen: () => onViewAsset?.(assetId),
+        content: (
+          <div className="space-y-2">
+            {score < 60 ? (
+              <div className="flex items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-xs shadow-e1">
+                <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-hidden />
+                <span className="text-foreground/90">
+                  Condition {score}/100 — inspection recommended.
+                </span>
+              </div>
+            ) : null}
+            {rows.map((row) => (
+              <button
+                key={row.taskId}
+                type="button"
+                onClick={() => navigate(`/task/${row.taskId}`)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-[10px] bg-card px-3 py-2.5 text-left shadow-e1",
+                  "transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
+                )}
+              >
+                <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                  {row.taskTitle}
+                </span>
+                {row.dueDate ? (
+                  <span className="flex shrink-0 items-center gap-1 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                    <Clock className="h-3 w-3" aria-hidden />
+                    {format(new Date(row.dueDate), "d MMM")}
+                  </span>
+                ) : null}
+              </button>
+            ))}
+            {rows.length === 0 && openCount > 0 ? (
+              <button
+                type="button"
+                onClick={() => onViewAsset?.(assetId)}
+                className="rounded-[10px] bg-card px-3 py-2 text-left text-xs text-muted-foreground shadow-e1 hover:shadow-md"
+              >
+                {openCount} open task{openCount === 1 ? "" : "s"} — open the asset for details.
+              </button>
+            ) : null}
+          </div>
+        ),
+      };
+    });
+  }, [
+    assets,
+    assetNeedsAttention,
+    passesControls,
+    sortBy,
+    sortAssets,
+    spaceNameById,
+    spaceColorById,
+    linkedTasksByAssetId,
+    onViewAsset,
+    navigate,
+  ]);
+
+  const shelfCards = (
+    <CollectionShelf prevLabel="Previous groups" nextLabel="Next groups">
+      <CollectionShelfCard
+        label="All assets"
+        description="Every maintainable item on this property."
+        imageSrc={ALL_ASSETS_ILLUSTRATION}
+        color={CUSTOM_COLLECTION_COLOR}
+        count={assets.length}
+        countNoun="asset"
+        selected={selectedGroupId === "all"}
+        onSelect={() => setSelectedGroupId("all")}
+      />
+      {ONBOARDING_ASSET_GROUPS.map((group) => (
+        <DroppableZone key={group.id} id={groupDroppableId(group.id)} className="shrink-0">
+          <CollectionShelfCard
+            label={group.label}
+            description={group.description}
+            imageSrc={getAssetGroupCardIllustration(group.id) ?? ALL_ASSETS_ILLUSTRATION}
+            color={group.color}
+            count={groupCounts[group.id] ?? 0}
+            countNoun="asset"
+            selected={selectedGroupId === group.id}
+            onSelect={() => setSelectedGroupId(group.id)}
+          />
+        </DroppableZone>
+      ))}
+      {customCollections.map((collection) => (
+        <DroppableZone
+          key={collection.id}
+          id={groupDroppableId(collection.id)}
+          className="shrink-0"
+        >
+          <CollectionShelfCard
+            label={collection.name}
+            description="Custom collection."
+            imageSrc={
+              collection.imageSrc ??
+              getAssetGroupCardIllustration("custom") ??
+              ALL_ASSETS_ILLUSTRATION
+            }
+            color={CUSTOM_COLLECTION_COLOR}
+            count={groupCounts[collection.id] ?? 0}
+            countNoun="asset"
+            selected={selectedGroupId === collection.id}
+            onSelect={() => setSelectedGroupId(collection.id)}
+          />
+        </DroppableZone>
+      ))}
+      <NewCollectionShelfCard
+        placeholder="e.g. Pool equipment"
+        onCreate={handleCreateCustomCollection}
+      />
+    </CollectionShelf>
+  );
+
+  const addAssetInput = (
+    <div className="flex items-center gap-1.5">
+      <Input
+        value={addAssetName}
+        onChange={(e) => setAddAssetName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleAddFromInput();
+          }
+        }}
+        placeholder="Add asset"
+        className="h-8 w-[150px] border-0 bg-background/80 text-sm shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus-visible:ring-1 focus-visible:ring-primary/40"
+        aria-label="Add asset"
+      />
+      <Button
+        type="button"
+        size="sm"
+        className="h-8 gap-1"
+        disabled={!addAssetName.trim() || busy}
+        onClick={handleAddFromInput}
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add
+      </Button>
+    </div>
+  );
+
+  const categoryView = (
+    <div className="flex min-h-0 flex-col gap-4">
+      {shelfCards}
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+        <header className="mb-3 space-y-2.5">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-lg font-semibold text-foreground">{benchTitle}</h2>
+              <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                {visibleAssets.length} asset{visibleAssets.length === 1 ? "" : "s"}
+              </p>
+            </div>
+            {addAssetInput}
+          </div>
+
+          {suggestionChips.length > 0 && selectedGroup ? (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                Suggested:
+              </span>
+              {suggestionChips.map((s) => (
+                <DraggableChipShell
+                  key={s.source}
+                  id={`asset-suggestion:${selectedGroup.id}:${s.source.toLowerCase().trim()}`}
+                  data={{
+                    kind: "asset-suggestion",
+                    assetName: s.label,
+                    groupId: selectedGroup.id,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void createAsset(s.label, selectedGroup.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1 rounded-[8px] bg-background px-2 py-1",
+                      "font-mono text-2xs uppercase tracking-wide text-foreground/80 shadow-e1",
+                      "hover:text-foreground hover:shadow-md",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    )}
+                  >
+                    <Plus className="h-3 w-3 opacity-60" />
+                    {s.label}
+                  </button>
+                </DraggableChipShell>
+              ))}
+            </div>
+          ) : null}
+        </header>
+
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {visibleAssets.length === 0 ? (
+            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+              <p className="text-sm text-foreground/90">
+                {selectedGroupId === "all" && selectedFilters.size === 0 && !effectiveSearch
+                  ? "No assets yet — add one above, or pick a suggestion from a group."
+                  : `No ${selectedGroupId === "all" ? "assets" : `${benchTitle} assets`} match the current filters.`}
+              </p>
+              {selectedGroupId !== "all" ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => setSelectedGroupId("all")}
+                >
+                  Show all assets
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-3 pb-4">
+              {visibleAssets.map((asset) => renderAssetMiniCard(asset, "space"))}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+
+  const assetsBySpaceId = useMemo(() => {
+    const map = new Map<string, AssetViewRow[]>();
+    for (const asset of visibleAssets) {
+      const key = asset.space_id ?? "__unassigned__";
+      const list = map.get(key) ?? [];
+      list.push(asset);
+      map.set(key, list);
+    }
+    return map;
+  }, [visibleAssets]);
+
+  const spacesView = (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      {rooms.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Add rooms on the Spaces screen to organise assets by place.
+        </p>
+      ) : (
+        rooms.map((room) => {
+          const roomAssets = assetsBySpaceId.get(room.id) ?? [];
+          const areaId = roomAreaIdBySpaceId[room.id];
+          const area = areaId ? areaById.get(areaId) : undefined;
+          return (
+            <div key={room.id} className="min-w-0">
+              <DroppableZone
+                id={spaceDroppableId(room.id)}
+                className="rounded-[10px]"
+                activeClassName="ring-2 ring-primary/50 bg-primary/10"
+              >
+                <div className="flex items-center gap-2 rounded-[10px] px-1.5 py-1">
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: area?.color ?? "#C4C4C4" }}
+                    aria-hidden
+                  />
+                  <h3 className="text-sm font-semibold text-foreground">
+                    {(room.name ?? "").trim() || "Space"}
+                  </h3>
+                  {area ? (
+                    <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                      {area.name}
+                    </span>
+                  ) : null}
+                  <span className="ml-auto font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+                    {roomAssets.length}
+                  </span>
+                </div>
+              </DroppableZone>
+              {roomAssets.length > 0 ? (
+                <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+                  {roomAssets.map((asset) => renderAssetMiniCard(asset, "category"))}
+                </div>
+              ) : (
+                <p className="px-1.5 pt-1 text-2xs text-muted-foreground/70">
+                  Drop assets here to assign them to {(room.name ?? "").trim() || "this space"}.
+                </p>
+              )}
+              <div className="mt-3 border-t border-dashed border-border/45" aria-hidden />
+            </div>
+          );
+        })
+      )}
+
+      <div className="min-w-0">
+        <DroppableZone
+          id={propertyLevelDroppableId()}
+          className="rounded-[10px]"
+          activeClassName="ring-2 ring-primary/50 bg-primary/10"
+        >
+          <div className="flex items-center gap-2 rounded-[10px] px-1.5 py-1">
+            <Box className="h-3.5 w-3.5 text-muted-foreground" aria-hidden />
+            <h3 className="text-sm font-semibold text-foreground">Unassigned</h3>
+            <span className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
+              {(assetsBySpaceId.get("__unassigned__") ?? []).length}
+            </span>
+          </div>
+        </DroppableZone>
+        {(assetsBySpaceId.get("__unassigned__") ?? []).length > 0 ? (
+          <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+            {(assetsBySpaceId.get("__unassigned__") ?? []).map((asset) =>
+              renderAssetMiniCard(asset, "category")
+            )}
+          </div>
+        ) : (
+          <p className="px-1.5 pt-1 text-2xs text-muted-foreground/70">
+            Drop an asset here to unassign it from its space.
+          </p>
+        )}
+      </div>
+
+      <div className="mt-1">{addAssetInput}</div>
+    </section>
+  );
+
+  const attentionView = (
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      <AttentionListView
+        sections={attentionSections}
+        emptyState={
+          <span>
+            No assets need attention
+            {selectedFilters.size > 0 || effectiveSearch ? " with the current filters" : ""}.
+          </span>
+        }
+      />
+    </section>
+  );
 
   return (
     <>
@@ -774,131 +1354,40 @@ export function PropertyAssetGroupCarousel({
         sensors={dndSensors}
         collisionDetection={closestCenter}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        onDragCancel={() => {
+          setActiveDrag(null);
+          setDragOverLabel(null);
+        }}
       >
-        <div className={cn("space-y-4", className)}>
-          {!filterKey ? (
-            <p className="text-sm text-muted-foreground">
-              {rooms.length === 0 && areas.length === 0
-                ? "Add rooms on the Spaces screen, then drop assets onto them — or add assets from the groups below."
-                : activeSpace
-                  ? `Active space: ${(activeSpace.name ?? "").trim() || "Space"}. Add assets from the groups, or drag chips onto space chips.`
-                  : "Select a space, then add assets from the groups below."}
-            </p>
-          ) : null}
-          <SpaceGroupCarousel>
-            {!filterKey ? (
-              <OnboardingPropertySpacesCard
-                areas={areas}
-                rooms={rooms}
-                activeSpaceId={activeSpaceId}
-                viewingAreaId={viewingAreaId}
-                assetCounts={assetCountBySpace}
-                spaceColorById={spaceColorById}
-                onActivateSpace={handleActivateSpace}
-                onViewSpace={(spaceId) =>
-                  navigate(`/properties/${propertyId}/spaces/${spaceId}`)
-                }
-              />
-            ) : null}
-            {visibleGroups.map((group) => (
-              <OnboardingAssetGroupCard
-                key={group.id}
-                group={group}
-                selectedAssetsSet={selectedAssetsSet}
-                extraAssets={extraAssetsByGroup[group.id] ?? []}
-                selectedAssetsNewestFirst={selectedAssetsNewestFirstByGroup[group.id] ?? []}
-                assetFilter={assetFilter}
-                suggestionLabelOverrides={suggestionLabelOverrides}
-                assetIdByNameKey={assetIdByNameKey}
-                assetSpaceByNameKey={assetSpaceByNameKey}
-                selectedAssetColors={selectedAssetColors}
-                activeSpaceId={activeSpaceId}
-                onAddAsset={(name) => createAsset(name, group.id)}
-                onRemoveAsset={removeAsset}
-                onRenameAsset={openRenameModal}
-                onViewAsset={(name) => openViewAsset(name)}
-                viewAssetByNameKey={viewAssetByNameKey}
-                onCopyAsset={(name, groupId) => {
-                  const suggested = getSuggestedCopyName(name);
-                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                  setCopyInput(suggested);
-                }}
-              />
-            ))}
-            {visibleCustomCollections.map((collection) => (
-              <OnboardingAssetCustomCollectionCard
-                key={collection.id}
-                collection={collection}
-                selectedAssetsSet={selectedAssetsSet}
-                extraAssets={extraAssetsByGroup[collection.id] ?? []}
-                assetFilter={assetFilter}
-                assetIdByNameKey={assetIdByNameKey}
-                assetSpaceByNameKey={assetSpaceByNameKey}
-                selectedAssetColors={selectedAssetColors}
-                activeSpaceId={activeSpaceId}
-                onAddAsset={(name) => createAsset(name, collection.id)}
-                onRemoveAsset={removeAsset}
-                onRenameAsset={openRenameModal}
-                onViewAsset={(name) => openViewAsset(name)}
-                viewAssetByNameKey={viewAssetByNameKey}
-                onCopyAsset={(name, groupId) => {
-                  const suggested = getSuggestedCopyName(name);
-                  setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                  setCopyInput(suggested);
-                }}
-                onUpdateCollection={handleUpdateCustomCollection}
-              />
-            ))}
-            {!filterKey ? (
-              <OnboardingAssetCustomCollectionDraftCard
-                onCreateCollection={handleCreateCustomCollection}
-              />
-            ) : null}
-          </SpaceGroupCarousel>
+        <div className={cn("flex min-h-[420px] flex-col gap-4", className)}>
+          <OrganiseViewTabs
+            tabs={VIEW_TABS}
+            active={view}
+            onChange={setView}
+            ariaLabel="Assets views"
+          />
 
-          {!filterKey ? (
-            <PropertyAssetSpacesStrip
-              areas={areas}
-              viewingAreaId={viewingAreaId}
-              activeSpaceId={activeSpaceId}
-              roomsByAreaId={roomsByAreaId}
-              unassignedRooms={unassignedRooms}
-              rooms={rooms}
-              assetsBySpaceId={assetsBySpaceId}
-              unassignedAssets={unassignedAssets}
-              spaceColorById={spaceColorById}
-              onActivateArea={handleActivateArea}
-              onActivateSpace={handleActivateSpace}
-              onViewSpace={(spaceId) =>
-                navigate(`/properties/${propertyId}/spaces/${spaceId}`)
-              }
-              onRemoveAsset={removeAsset}
-              onRenameAsset={(name) => {
-                const asset = findAssetByName(name);
-                const groupId = asset
-                  ? resolveAssetGroupId(asset, assetToCollection) ?? ""
-                  : "";
-                openRenameModal(name, groupId);
-              }}
-              onViewAsset={(assetId) => onViewAsset?.(assetId)}
-              onDuplicateAsset={(name) => {
-                const asset = findAssetByName(name);
-                const groupId = asset
-                  ? resolveAssetGroupId(asset, assetToCollection) ?? visibleGroups[0]?.id ?? ""
-                  : visibleGroups[0]?.id ?? "";
-                const suggested = getSuggestedCopyName(name);
-                setCopyModal({ baseName: name, suggestedName: suggested, groupId });
-                setCopyInput(suggested);
-              }}
-            />
-          ) : null}
+          <OrganiseControlsBar
+            primaryOptions={filterPrimaryOptions}
+            secondaryGroups={filterSecondaryGroups}
+            selectedFilters={selectedFilters}
+            onFilterChange={handleFilterChange}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search assets"
+          />
+
+          {view === "attention" ? attentionView : view === "spaces" ? spacesView : categoryView}
         </div>
 
-        <DragOverlay>
-          {activeDrag && dragOverlayLabel ? (
-            <div className="rounded-[8px] bg-card px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide shadow-e2">
-              {dragOverlayLabel}
+        <DragOverlay dropAnimation={null}>
+          {activeDrag ? (
+            <div className="rounded-[10px] bg-card px-3 py-2 text-sm font-medium shadow-md ring-2 ring-primary/50">
+              {dragOverLabel ?? onboardingDragLabel(activeDrag)}
             </div>
           ) : null}
         </DragOverlay>

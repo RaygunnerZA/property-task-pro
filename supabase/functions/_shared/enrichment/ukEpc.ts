@@ -78,6 +78,22 @@ function asFiniteNumber(value: unknown): number | undefined {
   return undefined;
 }
 
+function firstString(row: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = asTrimmedString(row[key]);
+    if (value) return value;
+  }
+  return undefined;
+}
+
+function firstNumber(row: Record<string, unknown>, keys: string[]): number | undefined {
+  for (const key of keys) {
+    const value = asFiniteNumber(row[key]);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
 export function mapDomesticSearchRow(row: Record<string, unknown> | null | undefined): {
   sourceId: string | null;
   facts: UkEpcFacts;
@@ -86,35 +102,80 @@ export function mapDomesticSearchRow(row: Record<string, unknown> | null | undef
     return { sourceId: null, facts: {} };
   }
 
+  const nested =
+    row.data && typeof row.data === "object" && !Array.isArray(row.data)
+      ? (row.data as Record<string, unknown>)
+      : row;
+
   const facts: UkEpcFacts = {};
-  const currentRating = asTrimmedString(row["current-energy-rating"]);
+  const currentRating = firstString(nested, [
+    "current_rating",
+    "current-energy-rating",
+    "current_energy_efficiency_band",
+    "currentEnergyEfficiencyBand",
+  ]);
   if (currentRating) facts.current_rating = currentRating;
 
-  const currentEfficiency = asFiniteNumber(row["current-energy-efficiency"]);
+  const currentEfficiency = firstNumber(nested, [
+    "current_efficiency",
+    "current-energy-efficiency",
+    "current_energy_efficiency",
+    "currentEnergyEfficiency",
+  ]);
   if (currentEfficiency !== undefined) facts.current_efficiency = currentEfficiency;
 
-  const potentialRating = asTrimmedString(row["potential-energy-rating"]);
+  const potentialRating = firstString(nested, [
+    "potential_rating",
+    "potential-energy-rating",
+    "potential_energy_efficiency_band",
+    "potentialEnergyEfficiencyBand",
+  ]);
   if (potentialRating) facts.potential_rating = potentialRating;
 
-  const potentialEfficiency = asFiniteNumber(row["potential-energy-efficiency"]);
+  const potentialEfficiency = firstNumber(nested, [
+    "potential_efficiency",
+    "potential-energy-efficiency",
+    "potential_energy_efficiency",
+    "potentialEnergyEfficiency",
+  ]);
   if (potentialEfficiency !== undefined) facts.potential_efficiency = potentialEfficiency;
 
-  const floorArea = asFiniteNumber(row["total-floor-area"]);
+  const floorArea = firstNumber(nested, [
+    "floor_area",
+    "total-floor-area",
+    "total_floor_area",
+    "totalFloorArea",
+  ]);
   if (floorArea !== undefined) facts.floor_area = floorArea;
 
-  const propertyType = asTrimmedString(row["property-type"]);
-  if (propertyType) facts.property_type = propertyType;
+  const propertyType = firstString(nested, ["property_type", "property-type", "propertyType"]);
+  if (propertyType && !/^\d+$/.test(propertyType)) facts.property_type = propertyType;
 
-  const builtForm = asTrimmedString(row["built-form"]);
-  if (builtForm) facts.built_form = builtForm;
+  const builtForm = firstString(nested, ["built_form", "built-form", "builtForm"]);
+  if (builtForm && !/^\d+$/.test(builtForm)) facts.built_form = builtForm;
 
-  const ageBand = asTrimmedString(row["construction-age-band"]);
-  if (ageBand) facts.construction_age_band = ageBand;
+  const ageBand = firstString(nested, [
+    "construction_age_band",
+    "construction-age-band",
+    "constructionAgeBand",
+  ]);
+  if (ageBand && !/^\d+$/.test(ageBand)) facts.construction_age_band = ageBand;
 
-  const lodgementDate = asTrimmedString(row["lodgement-date"]);
+  const lodgementDate = firstString(nested, [
+    "lodgement_date",
+    "lodgement-date",
+    "registration_date",
+    "registrationDate",
+  ]);
   if (lodgementDate) facts.lodgement_date = lodgementDate;
 
-  const sourceId = asTrimmedString(row["lmk-key"]) ?? null;
+  const sourceId =
+    firstString(nested, [
+      "lmk-key",
+      "lmk_key",
+      "certificate_number",
+      "certificateNumber",
+    ]) ?? null;
   return { sourceId, facts };
 }
 
