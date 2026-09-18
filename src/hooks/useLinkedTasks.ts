@@ -7,6 +7,7 @@ export interface LinkedTask {
   title: string | null;
   status: string | null;
   priority: string | null;
+  /** Display alias for tasks.due_at */
   due_date: string | null;
 }
 
@@ -27,15 +28,22 @@ export function useLinkedTasks(assetId: string | undefined) {
       const taskIds = (rows ?? []).map((r) => r.task_id);
       if (taskIds.length === 0) return [];
 
+      // Live schema uses due_at (not due_date).
       const { data: tasks, error: tasksErr } = await supabase
         .from("tasks")
-        .select("id, title, status, priority, due_date")
+        .select("id, title, status, priority, due_at")
         .eq("org_id", orgId)
         .in("id", taskIds)
-        .order("due_date", { ascending: true, nullsFirst: false });
+        .order("due_at", { ascending: true, nullsFirst: false });
 
       if (tasksErr) throw tasksErr;
-      return (tasks ?? []) as LinkedTask[];
+      return (tasks ?? []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        due_date: t.due_at,
+      })) as LinkedTask[];
     },
     enabled: !!assetId && !!orgId && !orgLoading,
     staleTime: 60000,

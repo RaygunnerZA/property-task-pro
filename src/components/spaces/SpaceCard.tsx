@@ -26,6 +26,10 @@ interface SpaceCardProps {
   onOpen?: (spaceId: string) => void;
 }
 
+/**
+ * Compact space card — matches EntityMiniCard visual language (centred 65×65
+ * illustration, transparent fill with soft white gradient, title below).
+ */
 export function SpaceCard({ space, groupColor, className, onFilterClick, onOpen }: SpaceCardProps) {
   const navigate = useNavigate();
 
@@ -80,100 +84,77 @@ export function SpaceCard({ space, groupColor, className, onFilterClick, onOpen 
   return (
     <div
       className={cn(
-        "group/space-card relative bg-card/60 rounded-card overflow-hidden shadow-e1 h-[127px]",
-        "flex flex-col text-center transition-all duration-200",
+        "group/space-card relative flex h-full w-full flex-col overflow-hidden rounded-[10px] bg-transparent pb-[10px]",
+        "shadow-[1px_1px_1px_rgba(255,255,255,0.8)]",
+        "text-center transition-all duration-200",
         className
       )}
     >
+      <div
+        className="pointer-events-none absolute inset-0 z-[1] rounded-[10px] bg-gradient-to-b from-transparent to-white/50"
+        aria-hidden
+      />
+
       <button
         type="button"
         onClick={handleEdit}
         className={cn(
-          "absolute top-1.5 right-1.5 z-10 flex h-7 w-7 items-center justify-center",
-          "rounded-md bg-white/90 text-muted-foreground shadow-sm",
+          "absolute right-1 top-1 z-10 flex h-5 w-5 items-center justify-center",
+          "rounded-[6px] text-muted-foreground",
           "opacity-0 transition-opacity group-hover/space-card:opacity-100",
-          "hover:bg-white hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          "hover:text-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
         )}
         aria-label={`Edit ${displayName}`}
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
 
-      {/* Illustration — 20px less top space than prior 137px / max-h-108 layout */}
-      <div
-        className={cn(
-          "w-full overflow-hidden relative flex items-center justify-center cursor-pointer active:scale-[0.99] pt-0",
-          hasTasks ? "h-[66px] shrink-0" : "flex-1 min-h-0"
-        )}
-        style={{
-          backgroundColor: illustrationSrc ? undefined : iconColor,
-        }}
+      <button
+        type="button"
         onClick={handleNavigate}
+        className="relative z-[2] flex w-full flex-1 flex-col items-center rounded-[10px] text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
       >
-        {illustrationSrc ? (
-          <img
-            src={illustrationSrc}
-            alt=""
-            className={cn(
-              "object-contain",
-              hasTasks ? "h-[60px] w-[60px]" : "h-full max-h-[88px] w-auto max-w-full px-1"
-            )}
-            loading="lazy"
-          />
-        ) : null}
-      </div>
-
-      {hasTasks ? (
-        <div className="flex min-h-0 flex-1 flex-col items-center px-2.5 pb-2 pt-0">
-          <div
-            onClick={handleNavigate}
-            className="w-full cursor-pointer pb-2.5 active:scale-[0.99]"
+        <span className="flex items-center justify-center px-1.5 pt-1.5">
+          <span
+            className="relative flex h-[65px] w-[65px] shrink-0 items-center justify-center overflow-hidden"
+            style={
+              !illustrationSrc
+                ? { backgroundColor: `${iconColor}1f` }
+                : undefined
+            }
           >
-            <h3 className="line-clamp-1 font-semibold text-sm leading-[15px] text-foreground">
-              {displayName}
-            </h3>
-          </div>
-
-          <div
-            className="w-full px-1"
-            style={{
-              height: "1px",
-              backgroundImage:
-                "repeating-linear-gradient(to right, #E2DBCB 0px, #E2DBCB 4px, transparent 4px, transparent 7px)",
-              backgroundSize: "7px 1px",
-              backgroundRepeat: "repeat-x",
-              boxShadow: "1px 1px 0px rgba(255, 255, 255, 1), -1px -1px 1px rgba(0, 0, 0, 0.075)",
-            }}
-          />
-
-          <div
-            onClick={handleMetaZoneClick}
-            className="mt-1.5 w-full cursor-pointer active:scale-[0.99]"
-          >
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <CheckSquare className="h-3 w-3" />
-                {taskCount} Task{taskCount !== 1 ? "s" : ""}
+            {illustrationSrc ? (
+              <img
+                src={illustrationSrc}
+                alt=""
+                className="h-[65px] w-[65px] object-cover"
+                loading="lazy"
+              />
+            ) : null}
+            {urgentCount > 0 ? (
+              <span className="absolute right-0.5 top-0.5 flex items-center gap-0.5 rounded-md bg-card/90 px-1 py-0.5 font-mono text-2xs font-semibold text-destructive shadow-e1">
+                <AlertTriangle className="h-2.5 w-2.5" aria-hidden />
+                {urgentCount}
               </span>
-              {urgentCount > 0 && (
-                <span className="flex items-center gap-1 text-xs font-medium text-destructive">
-                  <AlertTriangle className="h-3 w-3" />
-                  {urgentCount}
-                </span>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div
-          onClick={handleNavigate}
-          className="px-2.5 pb-5 pt-1 shrink-0 cursor-pointer active:scale-[0.99]"
-        >
-          <h3 className="font-semibold text-sm text-foreground leading-[15px] line-clamp-2">
+            ) : null}
+          </span>
+        </span>
+        <span className="min-w-0 w-full px-1.5 pb-1 pt-2">
+          <span className="block truncate text-sm font-semibold leading-snug text-foreground">
             {displayName}
-          </h3>
-        </div>
-      )}
+          </span>
+          {hasTasks ? (
+            <span
+              role="presentation"
+              onClick={handleMetaZoneClick}
+              className="mt-0.5 inline-flex items-center justify-center gap-1 font-mono text-2xs uppercase tracking-wide text-muted-foreground"
+            >
+              <CheckSquare className="h-3 w-3" aria-hidden />
+              {taskCount} task{taskCount === 1 ? "" : "s"}
+            </span>
+          ) : null}
+        </span>
+      </button>
     </div>
   );
 }

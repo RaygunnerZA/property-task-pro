@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -12,7 +12,7 @@ const DASHED_LINE_STYLE = {
 
 export type CollectionShelfCardProps = {
   label: string;
-  /** One-line description — revealed only while selected. */
+  /** Description — fades in as the card scrolls into the shelf viewport. */
   description: string;
   /** Paper-cut collection illustration. */
   imageSrc: string;
@@ -39,20 +39,45 @@ export function CollectionShelfCard({
   imageSrc,
   color,
   count,
-  countNoun,
+  countNoun: _countNoun,
   attentionCount = 0,
   attentionLabel = "need attention",
   selected = false,
   onSelect,
   className,
 }: CollectionShelfCardProps) {
+  const cardRef = useRef<HTMLButtonElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const root =
+      el.closest<HTMLElement>("[data-collection-shelf-scroll]") ?? null;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setInView(entry.isIntersecting && entry.intersectionRatio >= 0.45);
+      },
+      {
+        root,
+        threshold: [0, 0.45, 0.75, 1],
+        rootMargin: "0px -12px 0px -12px",
+      }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  const descriptionVisible = inView;
+
   return (
     <button
+      ref={cardRef}
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "group flex w-[min(42vw,200px)] shrink-0 flex-col self-start bg-transparent text-left sm:w-[200px]",
+        "group flex h-[210px] w-[min(42vw,200px)] shrink-0 flex-col bg-transparent text-left sm:w-[200px]",
         "transition-transform duration-200 hover:scale-[1.02] active:scale-[0.99]",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
         className
@@ -70,36 +95,45 @@ export function CollectionShelfCard({
 
       <div
         className={cn(
-          "flex flex-col gap-1.5 rounded-b-[10px] bg-card px-2.5 pb-2 pt-1 shadow-e1",
+          "flex min-h-0 flex-1 flex-col gap-1.5 rounded-b-[10px] bg-card px-2.5 pb-2 pt-1.5 shadow-e1",
           "transition-shadow duration-200",
           selected &&
             "shadow-md ring-1 ring-primary/70 ring-offset-1 ring-offset-[hsl(var(--background))]"
         )}
       >
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-sm font-semibold leading-tight text-foreground">{label}</h3>
+          <h3 className="text-base font-semibold leading-snug text-foreground">{label}</h3>
           <span
             className="mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 font-mono text-2xs uppercase tracking-wider text-white"
             style={{ backgroundColor: color }}
+            aria-label={`${count} items`}
           >
             {count}
           </span>
         </div>
         <div className="-mx-0.5" style={DASHED_LINE_STYLE} aria-hidden />
         {attentionCount > 0 && !selected ? (
-          <p className="font-mono text-2xs uppercase tracking-wide text-destructive">
+          <p
+            className={cn(
+              "font-mono text-2xs uppercase tracking-wide text-destructive",
+              "transition-opacity duration-300 ease-out",
+              inView ? "opacity-100" : "opacity-0"
+            )}
+          >
             {attentionCount} {attentionLabel}
           </p>
-        ) : (
-          <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
-            {count === 1 ? `1 ${countNoun}` : `${count} ${countNoun}s`}
-          </p>
-        )}
-        {selected ? (
-          <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
-            {description}
-          </p>
         ) : null}
+        {/* Height reserved on every card; fades in as the card enters the shelf */}
+        <p
+          className={cn(
+            "line-clamp-2 min-h-[2.5rem] flex-1 text-xs leading-snug text-muted-foreground",
+            "transition-opacity duration-300 ease-out",
+            descriptionVisible ? "opacity-100" : "opacity-0"
+          )}
+          aria-hidden={!descriptionVisible}
+        >
+          {description}
+        </p>
       </div>
     </button>
   );
@@ -129,7 +163,7 @@ export function NewCollectionShelfCard({
   return (
     <div
       className={cn(
-        "flex w-[min(42vw,200px)] shrink-0 flex-col justify-between self-stretch rounded-[10px]",
+        "flex h-[210px] w-[min(42vw,200px)] shrink-0 flex-col justify-between rounded-[10px]",
         "border border-dashed border-border/70 bg-card/50 px-2.5 py-2.5",
         className
       )}

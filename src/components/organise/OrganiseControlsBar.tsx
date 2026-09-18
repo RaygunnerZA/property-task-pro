@@ -1,12 +1,10 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useMemo, useState } from "react";
 import {
   FilterBar,
   type FilterGroup,
   type FilterOption,
 } from "@/components/ui/filters/FilterBar";
 import { SortBar, type SortOption } from "@/components/ui/filters/SortBar";
-import { Input } from "@/components/ui/input";
 import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
 import { cn } from "@/lib/utils";
 
@@ -31,9 +29,9 @@ type OrganiseControlsBarProps = {
 };
 
 /**
- * Standard organise controls row — [FILTER] [SORT] [SEARCH______] — shared by
- * Spaces · Assets · Records. Same FilterBar / SortBar chrome as Tasks and
- * Calendar (@Docs/04_UI_System.md — organise views).
+ * Standard organise controls row — [FILTER] [SORT] [SEARCH______] only.
+ * Quick filters live under FILTER → categories (no primary chips in the row).
+ * Search is a pressed neo input sharing the filter-chip mono style.
  */
 export function OrganiseControlsBar({
   primaryOptions,
@@ -50,10 +48,23 @@ export function OrganiseControlsBar({
 }: OrganiseControlsBarProps) {
   const [filterExpanded, setFilterExpanded] = useState(false);
 
+  const mergedSecondaryGroups = useMemo(() => {
+    const groups: FilterGroup[] = [];
+    if (primaryOptions.length > 0) {
+      groups.push({
+        id: "organise-quick",
+        label: "Quick",
+        options: primaryOptions,
+      });
+    }
+    groups.push(...secondaryGroups);
+    return groups;
+  }, [primaryOptions, secondaryGroups]);
+
   return (
     <FilterBar
-      primaryOptions={primaryOptions}
-      secondaryGroups={secondaryGroups}
+      primaryOptions={[]}
+      secondaryGroups={mergedSecondaryGroups}
       selectedFilters={selectedFilters}
       onFilterChange={onFilterChange}
       className={cn(className)}
@@ -67,16 +78,21 @@ export function OrganiseControlsBar({
             options={sortOptions}
             forceCollapsed={filterExpanded}
           />
-          <div className="relative min-w-[150px] max-w-[280px] flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={search}
-              onChange={(e) => onSearchChange(e.target.value)}
-              placeholder={searchPlaceholder}
-              className="h-8 border-0 bg-background/80 pl-8 text-sm shadow-[inset_1px_2px_4px_rgba(0,0,0,0.06)] focus-visible:ring-1 focus-visible:ring-primary/40"
-              aria-label={searchPlaceholder}
-            />
-          </div>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => onSearchChange(e.target.value)}
+            placeholder={searchPlaceholder}
+            aria-label={searchPlaceholder}
+            className={cn(
+              "h-[28px] min-w-[120px] max-w-[220px] flex-1 rounded-[8px] px-2.5",
+              "font-mono text-2xs uppercase tracking-wide leading-none text-foreground",
+              "placeholder:text-muted-foreground",
+              "bg-background",
+              "shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.55)]",
+              "outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
+            )}
+          />
         </>
       }
     />

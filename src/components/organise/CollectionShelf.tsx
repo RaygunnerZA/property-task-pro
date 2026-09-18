@@ -60,9 +60,10 @@ export function CollectionShelf({
 
       <div
         ref={scrollRef}
+        data-collection-shelf-scroll
         className={cn(
           "flex gap-3.5 overflow-x-auto overscroll-x-contain px-8 py-2",
-          "scrollbar-hz-teal items-start"
+          "scrollbar-hz-teal items-stretch"
         )}
       >
         {children}

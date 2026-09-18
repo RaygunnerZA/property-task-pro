@@ -7,7 +7,6 @@ import {
   Share2,
   Trash2,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,7 +18,7 @@ import { TaskStatusDropdown } from "@/components/tasks/TaskStatusDropdown";
 import type { TaskStatus } from "@/types/database";
 import { cn } from "@/lib/utils";
 
-/** Hide leading icons once Begin Task + Update no longer fit comfortably. */
+/** Hide leading icons once the primary CTA no longer fits comfortably. */
 const ACTION_ICONS_COMPACT_MAX_WIDTH = 220;
 
 type TaskDetailActionBarProps = {
@@ -28,7 +27,7 @@ type TaskDetailActionBarProps = {
   canManage: boolean;
   taskEditOpen: boolean;
   hasEdits: boolean;
-  /** Show turquoise UPDATE when title/checklist/details have pending saves. */
+  /** Pending edits — status CTA becomes “Update.” (status colour). */
   showUpdate: boolean;
   /** After assignee engagement on a Not started task — primary Begin Task CTA. */
   beginPrompt?: boolean;
@@ -46,7 +45,7 @@ type TaskDetailActionBarProps = {
 
 /**
  * Smart primary actions for Task Detail.
- * Change status + (optional turquoise UPDATE) + More
+ * Status CTA (Begin Task / Update. / status label) + More
  */
 export function TaskDetailActionBar({
   status,
@@ -78,6 +77,7 @@ export function TaskDetailActionBar({
   const isStarted =
     normalized === "in_progress" || normalized === "waiting_review";
   const showBeginPrompt = beginPrompt && normalized === "open";
+  const showSplitCta = showUpdate || showBeginPrompt;
 
   useEffect(() => {
     if (statusOpen) {
@@ -93,18 +93,13 @@ export function TaskDetailActionBar({
     const el = actionsRef.current;
     if (!el || typeof ResizeObserver === "undefined") return;
     const sync = () => {
-      // When Update sits beside Begin Task, icons eat the shared row — hide sooner.
-      const threshold =
-        showUpdate && showBeginPrompt
-          ? ACTION_ICONS_COMPACT_MAX_WIDTH + 40
-          : ACTION_ICONS_COMPACT_MAX_WIDTH;
-      setHideIcons(el.clientWidth < threshold);
+      setHideIcons(el.clientWidth < ACTION_ICONS_COMPACT_MAX_WIDTH);
     };
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [showUpdate, showBeginPrompt]);
+  }, [showSplitCta]);
 
   if (!canManage) return null;
 
@@ -117,7 +112,7 @@ export function TaskDetailActionBar({
         <div
           className={cn(
             "min-w-0",
-            showBeginPrompt ? "shrink" : "flex-1 overflow-hidden"
+            showSplitCta ? "shrink" : "flex-1 overflow-hidden"
           )}
         >
           <TaskStatusDropdown
@@ -128,24 +123,13 @@ export function TaskDetailActionBar({
             onOpenChange={setStatusOpen}
             onStatusChange={onStatusChange}
             beginPrompt={showBeginPrompt}
+            pendingUpdate={showUpdate}
+            onSaveUpdate={onSaveEdits}
+            updateDisabled={!hasEdits}
             hideIcons={hideIcons}
-            className={showBeginPrompt ? undefined : "w-full"}
+            className={showSplitCta ? undefined : "w-full"}
           />
         </div>
-
-        {showUpdate ? (
-          <Button
-            type="button"
-            data-task-action
-            size="sm"
-            className="h-9 min-w-0 shrink px-2.5 text-sm font-semibold shadow-primary-btn sm:px-3"
-            disabled={isUpdating || !hasEdits}
-            onClick={onSaveEdits}
-            title={hasEdits ? "Save changes" : "No changes to save"}
-          >
-            {isUpdating ? "…" : "Update"}
-          </Button>
-        ) : null}
       </div>
 
       <div

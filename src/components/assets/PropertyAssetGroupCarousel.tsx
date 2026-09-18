@@ -1165,7 +1165,7 @@ export function PropertyAssetGroupCarousel({
   const categoryView = (
     <div className="flex min-h-0 flex-col gap-4">
       {shelfCards}
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="mb-3 space-y-2.5">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0">
@@ -1231,7 +1231,7 @@ export function PropertyAssetGroupCarousel({
               ) : null}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-3 pb-4">
+            <div className="grid grid-cols-5 gap-2 pb-4">
               {visibleAssets.map((asset) => renderAssetMiniCard(asset, "space"))}
             </div>
           )}
@@ -1252,7 +1252,7 @@ export function PropertyAssetGroupCarousel({
   }, [visibleAssets]);
 
   const spacesView = (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
       {rooms.length === 0 ? (
         <p className="py-8 text-center text-sm text-muted-foreground">
           Add rooms on the Spaces screen to organise assets by place.
@@ -1289,7 +1289,7 @@ export function PropertyAssetGroupCarousel({
                 </div>
               </DroppableZone>
               {roomAssets.length > 0 ? (
-                <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+                <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
                   {roomAssets.map((asset) => renderAssetMiniCard(asset, "category"))}
                 </div>
               ) : (
@@ -1318,7 +1318,7 @@ export function PropertyAssetGroupCarousel({
           </div>
         </DroppableZone>
         {(assetsBySpaceId.get("__unassigned__") ?? []).length > 0 ? (
-          <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+          <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
             {(assetsBySpaceId.get("__unassigned__") ?? []).map((asset) =>
               renderAssetMiniCard(asset, "category")
             )}
@@ -1335,7 +1335,7 @@ export function PropertyAssetGroupCarousel({
   );
 
   const attentionView = (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AttentionListView
         sections={attentionSections}
         emptyState={

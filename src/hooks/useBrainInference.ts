@@ -4,7 +4,6 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 
 function bucketCondition(score: number): string {
   if (score < 30) return "0-30";
@@ -35,6 +34,24 @@ export interface ComplianceVector {
   document_type?: string;
 }
 
+type BrainInferenceResult = {
+  ok: boolean;
+  predictions: { assets: unknown[]; compliance: unknown[] };
+  unavailable?: boolean;
+};
+
+const EMPTY_BRAIN: BrainInferenceResult = {
+  ok: false,
+  predictions: { assets: [], compliance: [] },
+  unavailable: true,
+};
+
+/**
+ * Live edge function preflight currently fails (CORS / not deployed).
+ * Skip the invoke until the function is confirmed live — avoids console CORS noise.
+ */
+export const FILLA_BRAIN_INFER_AVAILABLE = false;
+
 export function useBrainInference(
   assets: AssetVector[],
   compliance: ComplianceVector[],
@@ -59,15 +76,27 @@ export function useBrainInference(
     .filter((c) => c.document_type)
     .map((c) => ({ document_type: (c.document_type || "").toLowerCase().replace(/\s+/g, "_") }));
 
+  const canFetch =
+    enabled && (assetVectors.length > 0 || complianceVectors.length > 0);
+
   return useQuery({
-    queryKey: ["brain-inference", JSON.stringify(assetVectors), JSON.stringify(complianceVectors)],
-    queryFn: async () => {
+    queryKey: [
+      "brain-inference",
+      FILLA_BRAIN_INFER_AVAILABLE,
+      JSON.stringify(assetVectors),
+      JSON.stringify(complianceVectors),
+    ],
+    queryFn: async (): Promise<BrainInferenceResult> => {
+      if (!FILLA_BRAIN_INFER_AVAILABLE) return EMPTY_BRAIN;
+      const { supabase } = await import("@/integrations/supabase/client");
       const { data, error } = await supabase.functions.invoke("filla-brain-infer", {
         body: { assets: assetVectors, compliance_documents: complianceVectors },
       });
       if (error) throw error;
-      return data as { ok: boolean; predictions: { assets: any[]; compliance: any[] } };
+      return (data ?? EMPTY_BRAIN) as BrainInferenceResult;
     },
-    enabled: enabled && (assetVectors.length > 0 || complianceVectors.length > 0),
+    enabled: canFetch,
+    retry: false,
+    staleTime: 5 * 60_000,
   });
 }

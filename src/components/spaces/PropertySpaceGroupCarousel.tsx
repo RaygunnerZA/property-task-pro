@@ -263,10 +263,10 @@ export function PropertySpaceGroupCarousel({
     return set;
   }, [subSpacesByParentId]);
 
-  /** Every top-level space on the property (nested rooms + unassigned, minus sub-spaces). */
+  /** Every top-level space on the property (rooms + unassigned are one set — unassigned is already a subset of rooms). */
   const benchSpaces = useMemo(
-    () => [...rooms, ...unassigned].filter((s) => !subSpaceIds.has(s.id)),
-    [rooms, unassigned, subSpaceIds]
+    () => rooms.filter((s) => !subSpaceIds.has(s.id)),
+    [rooms, subSpaceIds]
   );
 
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
@@ -1470,7 +1470,7 @@ export function PropertySpaceGroupCarousel({
   const categoryView = (
     <div className="flex min-h-0 flex-col gap-4">
       {shelfCards}
-      <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+      <section className="flex min-h-0 min-w-0 flex-1 flex-col">
         <header className="mb-3 space-y-2.5">
           <div className="flex flex-wrap items-end justify-between gap-2">
             <div className="min-w-0">
@@ -1537,7 +1537,7 @@ export function PropertySpaceGroupCarousel({
               ) : null}
             </div>
           ) : (
-            <div className="flex flex-wrap gap-3 pb-4">
+            <div className="grid grid-cols-5 gap-2 pb-4">
               {visibleSpaces.map((space) => renderSpaceMiniCard(space, "area"))}
             </div>
           )}
@@ -1547,7 +1547,7 @@ export function PropertySpaceGroupCarousel({
   );
 
   const areasView = (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
       {areas.map((area) => {
         const areaRooms = sortSpaces(
           (roomsByAreaId[area.id] ?? []).filter(
@@ -1592,7 +1592,7 @@ export function PropertySpaceGroupCarousel({
               </div>
             </DroppableZone>
             {areaRooms.length > 0 ? (
-              <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+              <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
                 {areaRooms.map((space) => renderSpaceMiniCard(space, "category"))}
               </div>
             ) : (
@@ -1624,7 +1624,7 @@ export function PropertySpaceGroupCarousel({
             unassigned.filter((s) => !subSpaceIds.has(s.id) && passesControls(s))
           );
           return rows.length > 0 ? (
-            <div className="flex flex-wrap gap-3 px-1.5 pt-2">
+            <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
               {rows.map((space) => renderSpaceMiniCard(space, "category"))}
             </div>
           ) : (
@@ -1668,7 +1668,7 @@ export function PropertySpaceGroupCarousel({
   );
 
   const attentionView = (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <AttentionListView
         sections={attentionSections}
         emptyState={

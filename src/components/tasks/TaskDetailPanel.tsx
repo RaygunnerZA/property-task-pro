@@ -101,6 +101,7 @@ import { TaskProgressUpdateSheet } from "@/components/tasks/detail/TaskProgressU
 import { findNextOpenTaskId } from "@/lib/findNextOpenTask";
 import { findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
 import { useMobileTaskSwipeNav } from "@/hooks/useMobileTaskSwipeNav";
+import { syncTaskJunctionIds } from "@/lib/syncTaskJunctionIds";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
@@ -239,6 +240,7 @@ export function TaskDetailPanel({
   const [progressUpdateOpen, setProgressUpdateOpen] = useState(false);
   const [nextTaskOfferId, setNextTaskOfferId] = useState<string | null>(null);
   const [checklistSessionDirty, setChecklistSessionDirty] = useState(false);
+  const [contextSessionDirty, setContextSessionDirty] = useState(false);
   const [messageDraftPending, setMessageDraftPending] = useState(false);
   const [sessionEngaged, setSessionEngaged] = useState(false);
   const baselineCommentCountRef = useRef<number | null>(null);
@@ -277,6 +279,7 @@ export function TaskDetailPanel({
     setActivityExpanded(false);
     setOpenChipSlot(null);
     setChecklistSessionDirty(false);
+    setContextSessionDirty(false);
     setMessageDraftPending(false);
     setSessionEngaged(false);
     baselineCommentCountRef.current = null;
@@ -288,6 +291,11 @@ export function TaskDetailPanel({
 
   const markChecklistSessionDirty = useCallback(() => {
     setChecklistSessionDirty(true);
+    setSessionEngaged(true);
+  }, []);
+
+  const markContextSessionDirty = useCallback(() => {
+    setContextSessionDirty(true);
     setSessionEngaged(true);
   }, []);
 
@@ -584,7 +592,7 @@ export function TaskDetailPanel({
     if (isUpdating) return;
     setIsUpdating(true);
     const orgId = (task as any)?.org_id;
-    const propId = (task as any)?.property_id ?? null;
+    const propId = localPropertyId || (task as any)?.property_id || null;
     updateTaskMutation.mutate(
       {
         taskId,
@@ -601,11 +609,47 @@ export function TaskDetailPanel({
       },
       {
         onSuccess: async () => {
-          await refreshTask();
-          setChecklistSessionDirty(false);
-          setTaskEditOpen(false);
-          setOpenChipSlot(null);
-          toast({ title: "Task updated", description: "Changes saved successfully" });
+          try {
+            const { error: propError } = await supabase
+              .from("tasks")
+              .update({ property_id: propId })
+              .eq("id", taskId);
+            if (propError) throw propError;
+
+            await syncTaskJunctionIds({
+              table: "task_spaces",
+              taskId,
+              idColumn: "space_id",
+              desiredIds: selectedSpaceIds,
+            });
+            await syncTaskJunctionIds({
+              table: "task_assets",
+              taskId,
+              idColumn: "asset_id",
+              desiredIds: selectedAssetIds,
+            });
+            await syncTaskJunctionIds({
+              table: "task_themes",
+              taskId,
+              idColumn: "theme_id",
+              desiredIds: selectedThemeIds,
+            });
+
+            await refreshTask();
+            setChecklistSessionDirty(false);
+            setContextSessionDirty(false);
+            setTaskEditOpen(false);
+            setOpenChipSlot(null);
+            queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
+            queryClient.invalidateQueries({ queryKey: ["tasks"] });
+            toast({ title: "Task updated", description: "Changes saved successfully" });
+          } catch (err) {
+            toast({
+              title: "Couldn't update task",
+              description: (err as Error).message || "Something didn't work. Try again.",
+              variant: "destructive",
+            });
+          }
         },
         onError: (err) => {
           toast({
@@ -626,10 +670,25 @@ export function TaskDetailPanel({
     setSelectedPropertyIds(propertyIds);
     setSelectedSpaceIds([]);
     setSelectedAssetIds([]);
+    markContextSessionDirty();
     try {
-      await supabase.from("tasks").update({ property_id: newPropId || null }).eq("id", taskId);
-      await supabase.from("task_spaces").delete().eq("task_id", taskId);
-      await supabase.from("task_assets").delete().eq("task_id", taskId);
+      const { error: propError } = await supabase
+        .from("tasks")
+        .update({ property_id: newPropId || null })
+        .eq("id", taskId);
+      if (propError) throw propError;
+      await syncTaskJunctionIds({
+        table: "task_spaces",
+        taskId,
+        idColumn: "space_id",
+        desiredIds: [],
+      });
+      await syncTaskJunctionIds({
+        table: "task_assets",
+        taskId,
+        idColumn: "asset_id",
+        desiredIds: [],
+      });
       queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       queryClient.invalidateQueries({
@@ -643,11 +702,14 @@ export function TaskDetailPanel({
 
   const handleSpacesChange = async (spaceIds: string[]) => {
     setSelectedSpaceIds(spaceIds);
+    markContextSessionDirty();
     try {
-      await supabase.from("task_spaces").delete().eq("task_id", taskId);
-      if (spaceIds.length > 0) {
-        await supabase.from("task_spaces").insert(spaceIds.map(id => ({ task_id: taskId, space_id: id })));
-      }
+      await syncTaskJunctionIds({
+        table: "task_spaces",
+        taskId,
+        idColumn: "space_id",
+        desiredIds: spaceIds,
+      });
       queryClient.invalidateQueries({ queryKey: ["spaces"] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
@@ -658,6 +720,7 @@ export function TaskDetailPanel({
 
   const handleDueDateChange = useCallback(async (date: string) => {
     setDueDate(date);
+    markContextSessionDirty();
     try {
       const { error } = await supabase
         .from("tasks")
@@ -669,10 +732,11 @@ export function TaskDetailPanel({
     } catch (err: any) {
       toast({ title: "Couldn't update due date", description: err.message, variant: "destructive" });
     }
-  }, [taskId, refreshTask, queryClient, toast]);
+  }, [taskId, refreshTask, queryClient, toast, markContextSessionDirty]);
 
   const handleMilestonesChange = useCallback(async (next: MilestoneItem[]) => {
     setMilestones(next);
+    markContextSessionDirty();
     try {
       const { error } = await supabase
         .from("tasks")
@@ -684,10 +748,11 @@ export function TaskDetailPanel({
     } catch (err: any) {
       toast({ title: "Couldn't update milestones", description: err.message, variant: "destructive" });
     }
-  }, [taskId, refreshTask, queryClient, toast]);
+  }, [taskId, refreshTask, queryClient, toast, markContextSessionDirty]);
 
   const handleRepeatRuleChange = useCallback(async (rule: RepeatRule | undefined) => {
     setRepeatRule(rule);
+    markContextSessionDirty();
     const orgId = (task as any)?.org_id as string | undefined;
     try {
       if (!rule) {
@@ -726,11 +791,12 @@ export function TaskDetailPanel({
         variant: "destructive",
       });
     }
-  }, [task, taskId, dueDate, queryClient, toast]);
+  }, [task, taskId, dueDate, queryClient, toast, markContextSessionDirty]);
 
   const handlePriorityChange = async (next: string) => {
     const dbPriority = toTaskPriorityDb(next);
     setPriority(dbPriority);
+    markContextSessionDirty();
     try {
       const { error } = await supabase
         .from("tasks")
@@ -833,12 +899,14 @@ export function TaskDetailPanel({
 
   const handleAssetsChange = async (assetIds: string[]) => {
     setSelectedAssetIds(assetIds);
+    markContextSessionDirty();
     try {
-      await supabase.from("task_assets").delete().eq("task_id", taskId);
-      const realIds = assetIds.filter(id => !id.startsWith("ghost-"));
-      if (realIds.length > 0) {
-        await supabase.from("task_assets").insert(realIds.map(id => ({ task_id: taskId, asset_id: id })));
-      }
+      await syncTaskJunctionIds({
+        table: "task_assets",
+        taskId,
+        idColumn: "asset_id",
+        desiredIds: assetIds,
+      });
       queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
       refreshTask();
     } catch (err: any) {
@@ -848,20 +916,14 @@ export function TaskDetailPanel({
 
   const handleThemesChange = async (themeIds: string[]) => {
     setSelectedThemeIds(themeIds);
+    markContextSessionDirty();
     try {
-      const { error: deleteError } = await supabase
-        .from("task_themes")
-        .delete()
-        .eq("task_id", taskId);
-      if (deleteError) throw deleteError;
-
-      const realIds = themeIds.filter((id) => !id.startsWith("ghost-"));
-      if (realIds.length > 0) {
-        const { error: insertError } = await supabase
-          .from("task_themes")
-          .insert(realIds.map((id) => ({ task_id: taskId, theme_id: id })));
-        if (insertError) throw insertError;
-      }
+      await syncTaskJunctionIds({
+        table: "task_themes",
+        taskId,
+        idColumn: "theme_id",
+        desiredIds: themeIds,
+      });
       queryClient.invalidateQueries({ queryKey: ["task-categories", taskId] });
       queryClient.invalidateQueries({ queryKey: ["tasks"] });
       refreshTask();
@@ -1616,10 +1678,10 @@ export function TaskDetailPanel({
   }, [task, title, descriptionDraft, status, priority, dueDate, milestones]);
 
   useEffect(() => {
-    if (hasEdits || checklistSessionDirty || messageDraftPending) {
+    if (hasEdits || checklistSessionDirty || contextSessionDirty || messageDraftPending) {
       setSessionEngaged(true);
     }
-  }, [hasEdits, checklistSessionDirty, messageDraftPending]);
+  }, [hasEdits, checklistSessionDirty, contextSessionDirty, messageDraftPending]);
 
   useEffect(() => {
     if (!commentCountFetched) return;
@@ -1994,8 +2056,8 @@ export function TaskDetailPanel({
           isUpdating={isUpdating}
           canManage={canManageTask}
           taskEditOpen={taskEditOpen}
-          hasEdits={hasEdits || checklistSessionDirty}
-          showUpdate={taskEditOpen || hasEdits || checklistSessionDirty}
+          hasEdits={hasEdits || checklistSessionDirty || contextSessionDirty}
+          showUpdate={taskEditOpen || hasEdits || checklistSessionDirty || contextSessionDirty}
           beginPrompt={beginPrompt}
           taskId={taskId}
           canManageTemplates={canManageTemplates}

@@ -33,6 +33,15 @@ type TaskStatusDropdownProps = {
    * surface the primary “Begin Task” CTA that activates the task.
    */
   beginPrompt?: boolean;
+  /**
+   * Pending edits on an existing task — keep status colour, label the CTA “Update.”
+   * Prefer over beginPrompt when both apply.
+   */
+  pendingUpdate?: boolean;
+  /** Fired when the Update CTA is pressed (detail action bar). */
+  onSaveUpdate?: () => void;
+  /** Disable the Update CTA when there is nothing to save. */
+  updateDisabled?: boolean;
   /** Hide leading icons when the action bar is too narrow (label-only). */
   hideIcons?: boolean;
 };
@@ -50,6 +59,9 @@ export function TaskStatusDropdown({
   open,
   onOpenChange,
   beginPrompt = false,
+  pendingUpdate = false,
+  onSaveUpdate,
+  updateDisabled = false,
   hideIcons = false,
 }: TaskStatusDropdownProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
@@ -59,8 +71,13 @@ export function TaskStatusDropdown({
   const normalized = String(status ?? "open").toLowerCase() as TaskStatus;
   const currentStatus = getTaskStatusVisual(normalized);
   const CurrentStatusIcon = currentStatus.Icon;
+  const showUpdateCta = pendingUpdate && variant === "button";
   const showBeginCta =
-    beginPrompt && variant === "button" && normalized === "open";
+    !showUpdateCta &&
+    beginPrompt &&
+    variant === "button" &&
+    normalized === "open";
+  const showSplitCta = showUpdateCta || showBeginCta;
   const statusTriggerTextClass = showBeginCta
     ? "text-primary-foreground"
     : normalized === "open"
@@ -69,6 +86,8 @@ export function TaskStatusDropdown({
   const triggerBlockClass = showBeginCta
     ? "bg-primary"
     : currentStatus.blockClassName;
+  const splitShadowClass = showBeginCta ? "shadow-primary-btn" : "shadow-primary-btn";
+  const updateActionDisabled = disabled || updateDisabled;
 
   const statusMenu = (
     <DropdownMenuContent
@@ -118,17 +137,18 @@ export function TaskStatusDropdown({
     <div
       className={cn(
         variant === "button"
-          ? showBeginCta
+          ? showSplitCta
             ? "inline-flex max-w-full min-w-0 overflow-hidden"
             : "w-full min-w-0 max-w-full overflow-hidden"
           : "inline-flex",
         disabled && "pointer-events-none opacity-50"
       )}
     >
-      {showBeginCta ? (
+      {showSplitCta ? (
         <div
           className={cn(
-            "inline-flex h-9 max-w-full min-w-0 overflow-hidden rounded-card border-0 shadow-primary-btn",
+            "inline-flex h-9 max-w-full min-w-0 overflow-hidden rounded-card border-0",
+            splitShadowClass,
             triggerBlockClass,
             className
           )}
@@ -136,24 +156,36 @@ export function TaskStatusDropdown({
           <button
             type="button"
             data-task-action
-            aria-disabled={disabled || undefined}
-            disabled={disabled}
+            aria-disabled={(showUpdateCta ? updateActionDisabled : disabled) || undefined}
+            disabled={showUpdateCta ? updateActionDisabled : disabled}
             className={cn(
               "inline-flex min-w-0 items-center justify-center gap-1.5 whitespace-nowrap px-2.5 text-sm font-semibold sm:px-3",
               statusTriggerTextClass,
-              "hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              "hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+              showUpdateCta && updateActionDisabled && "opacity-70"
             )}
-            aria-label="Begin task"
+            aria-label={showUpdateCta ? "Update task" : "Begin task"}
             onClick={(e) => {
               e.stopPropagation();
+              if (showUpdateCta) {
+                if (updateActionDisabled) return;
+                onSaveUpdate?.();
+                return;
+              }
               if (disabled) return;
               onStatusChange("in_progress");
             }}
           >
             {!hideIcons ? (
-              <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
+              showUpdateCta ? (
+                <CurrentStatusIcon className="h-4 w-4 shrink-0" aria-hidden />
+              ) : (
+                <Play className="h-4 w-4 shrink-0 fill-current" aria-hidden />
+              )
             ) : null}
-            <span className="truncate font-semibold">Begin Task</span>
+            <span className="truncate font-semibold">
+              {showUpdateCta ? "Update." : "Begin Task"}
+            </span>
           </button>
           <DropdownMenu
             modal={false}
@@ -170,9 +202,15 @@ export function TaskStatusDropdown({
                 aria-disabled={disabled || undefined}
                 disabled={disabled}
                 className={cn(
-                  "inline-flex h-full w-8 shrink-0 items-center justify-center border-l border-primary-foreground/15",
+                  "inline-flex h-full w-8 shrink-0 items-center justify-center border-l",
+                  showBeginCta
+                    ? "border-primary-foreground/15"
+                    : "border-white/20",
                   statusTriggerTextClass,
-                  "hover:bg-primary-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  showBeginCta
+                    ? "hover:bg-primary-foreground/10"
+                    : "hover:bg-black/10",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 )}
                 aria-label="Change status"
                 onClick={(e) => e.stopPropagation()}

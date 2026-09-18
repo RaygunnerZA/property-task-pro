@@ -139,7 +139,7 @@ export function AssetDetailPanel({
   siblingAssetIds = [],
 }: AssetDetailPanelProps) {
   const { asset, loading, error, refresh } = useAssetDetail(assetId ?? undefined);
-  const { inspections, loading: inspectionsLoading, refresh: refreshInspections } = useAssetInspections(assetId ?? undefined);
+  const { inspections, loading: inspectionsLoading, refresh: refreshInspections, available: inspectionsAvailable } = useAssetInspections(assetId ?? undefined);
   const { files, loading: filesLoading, refresh: refreshFiles } = useAssetFiles(assetId ?? undefined);
   const { tasks, loading: tasksLoading, refresh: refreshTasks } = useLinkedTasks(assetId ?? undefined);
   const { data: linkedCompliance = [], isLoading: complianceLoading, refetch: refreshCompliance } = useAssetComplianceQuery(assetId ?? undefined);
@@ -635,13 +635,15 @@ export function AssetDetailPanel({
                 {recommendedAction ? (
                   <p className="text-caption leading-snug text-muted-foreground">
                     {recommendedAction}{" "}
-                    <button
-                      type="button"
-                      onClick={() => setShowLogInspection(true)}
-                      className="font-medium text-foreground underline-offset-2 hover:underline"
-                    >
-                      Log inspection
-                    </button>
+                    {inspectionsAvailable ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowLogInspection(true)}
+                        className="font-medium text-foreground underline-offset-2 hover:underline"
+                      >
+                        Log inspection
+                      </button>
+                    ) : null}
                   </p>
                 ) : null}
 
@@ -1159,7 +1161,20 @@ function LogInspectionModal({
         })
         .select("*")
         .single();
-      if (insertError) throw insertError;
+      if (insertError) {
+        const missing =
+          (insertError as { code?: string }).code === "PGRST205" ||
+          (insertError.message ?? "").toLowerCase().includes("schema cache");
+        if (missing) {
+          toast({
+            title: "Inspections not available yet",
+            description: "Inspection history isn’t enabled on this environment.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw insertError;
+      }
 
       if (normalizedScore != null) {
         const { error: assetUpdateError } = await supabase

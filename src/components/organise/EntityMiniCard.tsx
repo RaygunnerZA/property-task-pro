@@ -55,6 +55,16 @@ type EntityMiniCardProps = {
   className?: string;
 };
 
+/** Display title — capitalise the first letter of each word. */
+function toMiniCardTitle(title: string): string {
+  const trimmed = title.trim();
+  if (!trimmed) return title;
+  return trimmed
+    .split(/\s+/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 function MiniCardDropZone({
   id,
   label,
@@ -69,11 +79,11 @@ function MiniCardDropZone({
     <div
       ref={setNodeRef}
       className={cn(
-        "absolute inset-x-0 z-20 flex items-center justify-center px-1 text-center transition-colors",
+        "absolute inset-x-0 z-20 flex items-center justify-center px-1.5 text-center transition-colors",
         position === "top" && "top-0 h-1/2 rounded-t-[10px]",
         position === "bottom" && "bottom-0 h-1/2 rounded-b-[10px]",
-        position === "full" && "inset-y-0 rounded-[10px]",
-        isOver ? "bg-primary/85" : "bg-foreground/60"
+        position === "full" && "inset-0 rounded-[10px]",
+        isOver ? "bg-primary/90" : "bg-foreground/70"
       )}
     >
       <span
@@ -92,7 +102,7 @@ function MiniCardDropZone({
  * Draggable mini card — the organise-views list unit for spaces, assets and
  * records. Whole-card drag (8px activation keeps clicks working); dragging
  * drops the card to 40% opacity; while a peer drags, the card exposes the
- * two-zone Group / Add sub space overlay.
+ * two-zone Group / Add sub space overlay covering the full receiving card.
  */
 export function EntityMiniCard({
   entityId,
@@ -110,8 +120,8 @@ export function EntityMiniCard({
   subZone = true,
   groupZoneLabel = "Group",
   subZoneLabel = "Add sub space",
-  subItems = [],
-  onOpenSubItem,
+  subItems: _subItems = [],
+  onOpenSubItem: _onOpenSubItem,
   actions = [],
   className,
 }: EntityMiniCardProps) {
@@ -129,41 +139,60 @@ export function EntityMiniCard({
   };
 
   const showZones = dropCandidate && !isDragging;
-  const hasSubItems = subItems.length > 0;
+  const displayTitle = toMiniCardTitle(title);
 
   return (
-    <div className={cn("group/minicard relative", hasSubItems && "pb-3", className)}>
+    <div
+      className={cn(
+        "group/minicard relative z-0 flex w-full flex-col",
+        "hover:z-30 focus-within:z-30",
+        className
+      )}
+    >
       <div
         ref={setNodeRef}
         style={style}
         {...attributes}
         {...(dragDisabled ? {} : listeners)}
         className={cn(
-          "relative w-[132px] touch-none rounded-[10px] bg-card shadow-e1 transition-shadow",
-          !dragDisabled && "cursor-grab active:cursor-grabbing",
-          onOpen && "hover:shadow-md"
+          "relative w-full touch-none overflow-hidden rounded-[10px] bg-transparent pb-[10px]",
+          "shadow-[1px_1px_1px_rgba(255,255,255,0.8)]",
+          !dragDisabled && "cursor-grab active:cursor-grabbing"
         )}
       >
+        {/* Paper shows through — transparent at top → 50% white at bottom */}
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] rounded-[10px] bg-gradient-to-b from-transparent to-white/50"
+          aria-hidden
+        />
+
         <button
           type="button"
           onClick={onOpen}
           disabled={!onOpen}
-          className="flex w-full flex-col items-stretch rounded-[10px] text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+          className="relative z-[2] flex w-full flex-col items-center rounded-[10px] text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
         >
-          <span
-            className="relative flex h-[72px] w-full items-center justify-center overflow-hidden rounded-t-[10px] bg-muted/40"
-            style={accentColor ? { backgroundColor: `${accentColor}1f` } : undefined}
-          >
-            {thumbSrc ? (
-              <img src={thumbSrc} alt="" className="h-full w-full object-cover" loading="lazy" />
-            ) : (
-              <span className="text-muted-foreground/80">{icon}</span>
-            )}
-            {badge ? <span className="absolute right-1 top-1">{badge}</span> : null}
+          <span className="flex items-center justify-center px-1.5 pt-1.5">
+            <span
+              className="relative flex h-[65px] w-[65px] shrink-0 items-center justify-center overflow-hidden"
+              style={accentColor && !thumbSrc ? { backgroundColor: `${accentColor}1f` } : undefined}
+            >
+              {thumbSrc ? (
+                <img
+                  src={thumbSrc}
+                  alt=""
+                  className="h-[65px] w-[65px] object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <span className="text-muted-foreground/80">{icon}</span>
+              )}
+              {badge ? <span className="absolute right-0.5 top-0.5">{badge}</span> : null}
+            </span>
           </span>
-          <span className="min-w-0 px-2 pb-2 pt-1.5">
-            <span className="block truncate text-xs font-semibold leading-snug text-foreground">
-              {title}
+          <span className="min-w-0 w-full px-1.5 pb-1 pt-2">
+            <span className="block truncate text-sm font-semibold leading-snug text-foreground">
+              {displayTitle}
             </span>
             {meta ? (
               <span className="block truncate pt-0.5 font-mono text-2xs uppercase tracking-wide text-muted-foreground">
@@ -175,7 +204,7 @@ export function EntityMiniCard({
 
         {actions.length > 0 ? (
           <div
-            className="absolute left-1 top-1 z-10"
+            className="absolute right-1 top-1 z-10"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -183,16 +212,16 @@ export function EntityMiniCard({
               <DropdownMenuTrigger asChild>
                 <button
                   type="button"
-                  aria-label={`${title} actions`}
+                  aria-label={`${displayTitle} actions`}
                   className={cn(
-                    "flex h-5 w-5 items-center justify-center rounded-[6px] bg-card/90 text-muted-foreground shadow-e1",
+                    "flex h-5 w-5 items-center justify-center rounded-[6px] text-muted-foreground",
                     "opacity-0 transition-opacity focus-visible:opacity-100 group-hover/minicard:opacity-100"
                   )}
                 >
                   <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="min-w-[130px]">
+              <DropdownMenuContent align="end" className="min-w-[130px]">
                 {actions.map((action) => (
                   <DropdownMenuItem
                     key={action.label}
@@ -211,57 +240,30 @@ export function EntityMiniCard({
         ) : null}
 
         {showZones ? (
-          subZone ? (
-            <>
+          <div className="absolute inset-0 z-20 overflow-hidden rounded-[10px]">
+            {subZone ? (
+              <>
+                <MiniCardDropZone
+                  id={miniCardGroupDroppableId(entityId)}
+                  label={groupZoneLabel}
+                  position="top"
+                />
+                <MiniCardDropZone
+                  id={miniCardSubDroppableId(entityId)}
+                  label={subZoneLabel}
+                  position="bottom"
+                />
+              </>
+            ) : (
               <MiniCardDropZone
                 id={miniCardGroupDroppableId(entityId)}
                 label={groupZoneLabel}
-                position="top"
+                position="full"
               />
-              <MiniCardDropZone
-                id={miniCardSubDroppableId(entityId)}
-                label={subZoneLabel}
-                position="bottom"
-              />
-            </>
-          ) : (
-            <MiniCardDropZone
-              id={miniCardGroupDroppableId(entityId)}
-              label={groupZoneLabel}
-              position="full"
-            />
-          )
+            )}
+          </div>
         ) : null}
       </div>
-
-      {/* Offset semi-concealed sub-space chip — expands down on hover */}
-      {hasSubItems ? (
-        <div
-          className={cn(
-            "absolute left-3 right-1 top-full z-10 -mt-2 rounded-b-[8px] rounded-t-[4px] bg-card/95 px-2 shadow-e1 transition-all",
-            "max-h-3 overflow-hidden pt-2.5 opacity-90",
-            "group-hover/minicard:max-h-40 group-hover/minicard:pb-1.5 group-hover/minicard:opacity-100"
-          )}
-        >
-          <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
-            {subItems.length} sub space{subItems.length === 1 ? "" : "s"}
-          </p>
-          <ul className="pt-0.5">
-            {subItems.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  onClick={() => onOpenSubItem?.(item.id)}
-                  disabled={!onOpenSubItem}
-                  className="w-full truncate rounded px-0.5 py-0.5 text-left text-2xs text-foreground/90 hover:bg-primary/10"
-                >
-                  {item.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
     </div>
   );
 }
