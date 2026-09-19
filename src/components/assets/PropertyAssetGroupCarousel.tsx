@@ -44,6 +44,7 @@ import {
 } from "@/lib/propertyCustomAssetGroupsStorage";
 import {
   partitionPropertySpaces,
+  spaceAssignmentOptions,
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
 import { getAssetGroupCardIllustration } from "@/lib/assetGroupIllustrations";
@@ -325,6 +326,8 @@ export function PropertyAssetGroupCarousel({
     return map;
   }, [spaces]);
 
+  const spacePickerOptions = useMemo(() => spaceAssignmentOptions(spaces), [spaces]);
+
   const spaceColorById = useMemo(() => {
     const colors: Record<string, string> = {};
     for (const area of areas) {
@@ -398,12 +401,18 @@ export function PropertyAssetGroupCarousel({
     return map;
   }, [linkedTaskRows]);
 
-  const assetNeedsAttention = useCallback((asset: AssetViewRow): boolean => {
-    if ((asset.status || "active") !== "active") return false;
-    const score = asset.condition_score ?? 100;
-    const openTasks = asset.open_tasks_count ?? 0;
-    return score < 60 || openTasks > 0;
-  }, []);
+  const assetNeedsAttention = useCallback(
+    (asset: AssetViewRow): boolean => {
+      if ((asset.status || "active") !== "active") return false;
+      const score = asset.condition_score ?? 100;
+      const openFromView = asset.open_tasks_count ?? 0;
+      const openFromLinks = asset.id
+        ? (linkedTasksByAssetId.get(asset.id)?.length ?? 0)
+        : 0;
+      return score < 60 || openFromView > 0 || openFromLinks > 0;
+    },
+    [linkedTasksByAssetId]
+  );
 
   /* ------------------------ controls (filter/sort/search) ----------------- */
 
@@ -461,7 +470,8 @@ export function PropertyAssetGroupCarousel({
   const passesControls = useCallback(
     (asset: AssetViewRow): boolean => {
       if (selectedFilters.has(FILTER_OPEN_WORK) && (asset.open_tasks_count ?? 0) === 0) {
-        return false;
+        const linked = asset.id ? (linkedTasksByAssetId.get(asset.id)?.length ?? 0) : 0;
+        if (linked === 0) return false;
       }
       if (selectedFilters.has(FILTER_CONDITION) && (asset.condition_score ?? 100) >= 60) {
         return false;
@@ -476,7 +486,7 @@ export function PropertyAssetGroupCarousel({
       }
       return true;
     },
-    [selectedFilters, selectedSpaceFilterIds, effectiveSearch]
+    [selectedFilters, selectedSpaceFilterIds, effectiveSearch, linkedTasksByAssetId]
   );
 
   const sortAssets = useCallback(
@@ -944,6 +954,24 @@ export function PropertyAssetGroupCarousel({
           setCopyModal({ baseName: name, suggestedName: suggested, groupId: gid });
           setCopyInput(suggested);
         },
+      },
+      {
+        id: "add-to-space",
+        label: "Add to Space",
+        submenu: [
+          {
+            id: "space-none",
+            label: "None",
+            checked: !asset.space_id,
+            onClick: () => void moveAssetToSpace(assetId, null),
+          },
+          ...spacePickerOptions.map((space) => ({
+            id: space.id,
+            label: space.label,
+            checked: asset.space_id === space.id,
+            onClick: () => void moveAssetToSpace(assetId, space.id),
+          })),
+        ],
       },
       ...(asset.space_id
         ? [

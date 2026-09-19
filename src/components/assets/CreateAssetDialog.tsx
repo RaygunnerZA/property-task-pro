@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Camera, Upload, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useSpaces } from "@/hooks/useSpaces";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +31,7 @@ import { AIIconColorPicker } from "@/components/ui/AIIconColorPicker";
 import { invalidateAssetQueries } from "@/lib/invalidateAssetQueries";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
 import { toast } from "sonner";
+import { spaceAssignmentOptions } from "@/lib/spaces/partitionPropertySpaces";
 
 interface CreateAssetDialogProps {
   open: boolean;
@@ -85,6 +87,7 @@ export function CreateAssetDialog({
 }: CreateAssetDialogProps) {
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
+  const { spaces } = useSpaces(propertyId || undefined);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(defaultName || "");
@@ -99,6 +102,12 @@ export function CreateAssetDialog({
   const [loading, setLoading] = useState(false);
   const [isUploadingFile, setIsUploadingFile] = useState(false);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+  const [selectedSpaceId, setSelectedSpaceId] = useState(spaceId || "none");
+  const spaceOptions = spaceAssignmentOptions(spaces);
+
+  useEffect(() => {
+    if (open) setSelectedSpaceId(spaceId || "none");
+  }, [open, spaceId]);
 
   const resetForm = () => {
     setName("");
@@ -108,6 +117,7 @@ export function CreateAssetDialog({
     setSerialNumber("");
     setIconName("");
     setPendingFiles([]);
+    setSelectedSpaceId(spaceId || "none");
   };
 
   const resolvedAssetType = typeOther
@@ -229,7 +239,8 @@ export function CreateAssetDialog({
         .insert({
           org_id: orgId,
           property_id: propertyId,
-          space_id: spaceId || null,
+          space_id:
+            selectedSpaceId && selectedSpaceId !== "none" ? selectedSpaceId : spaceId || null,
           name: name.trim(),
           asset_type: resolvedAssetType,
           serial_number: serialNumber.trim() || null,
@@ -427,6 +438,28 @@ export function CreateAssetDialog({
                 aria-label="Custom asset type"
               />
             ) : null}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="create-asset-space">Add to Space</Label>
+            <Select
+              value={selectedSpaceId || "none"}
+              onValueChange={setSelectedSpaceId}
+              disabled={busy}
+            >
+              <SelectTrigger id="create-asset-space">
+                <SelectValue
+                  placeholder={spaceOptions.length > 0 ? "Select a space" : "No spaces yet"}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None</SelectItem>
+                {spaceOptions.map((space) => (
+                  <SelectItem key={space.id} value={space.id}>
+                    {space.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="grid gap-2">
             <Label htmlFor="serial">Serial Number (optional)</Label>

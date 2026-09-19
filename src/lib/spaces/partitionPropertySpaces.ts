@@ -77,6 +77,39 @@ export function partitionPropertySpaces<T extends SpaceLike>(spaces: T[]) {
   return { areas, rooms, roomsByAreaId, unassigned };
 }
 
+/** Flat picker rows for assigning an asset to a space (rooms, then unassigned). */
+export function spaceAssignmentOptions<T extends SpaceLike>(
+  spaces: T[]
+): { id: string; label: string }[] {
+  const { areas, roomsByAreaId, unassigned } = partitionPropertySpaces(spaces);
+  const options: { id: string; label: string }[] = [];
+  for (const area of areas) {
+    const areaName = (area.name ?? "").trim();
+    for (const room of roomsByAreaId[area.id] ?? []) {
+      const roomName = (room.name ?? "").trim() || "Space";
+      options.push({
+        id: room.id,
+        label: areaName ? `${roomName} · ${areaName}` : roomName,
+      });
+    }
+  }
+  for (const room of unassigned) {
+    options.push({
+      id: room.id,
+      label: (room.name ?? "").trim() || "Space",
+    });
+  }
+  if (options.length === 0) {
+    for (const area of areas) {
+      options.push({
+        id: area.id,
+        label: (area.name ?? "").trim() || "Area",
+      });
+    }
+  }
+  return options;
+}
+
 export function toOnboardingAreas(areas: SpaceLike[]): OnboardingArea[] {
   return areas.map((a) => ({
     id: a.id,

@@ -23,6 +23,7 @@ import {
   defaultIconsForAssetType,
 } from "@/lib/assetIconDefaults";
 import { cn } from "@/lib/utils";
+import { spaceAssignmentOptions } from "@/lib/spaces/partitionPropertySpaces";
 
 const ASSET_TYPES = ["Boiler", "Appliance", "Vehicle", "HVAC", "Plumbing", "Electrical", "Other"] as const;
 const ASSET_TYPE_PRESETS = ASSET_TYPES.filter((t) => t !== "Other");
@@ -41,7 +42,14 @@ type PendingFile = {
 };
 
 type PropertyOption = { id: string; address?: string | null };
-type SpaceOption = { id: string; name?: string | null };
+type SpaceOption = {
+  id: string;
+  name?: string | null;
+  parent_space_id?: string | null;
+  created_at?: string | null;
+  icon_name?: string | null;
+  floor_level?: string | null;
+};
 
 export type AddAssetFormVariant = "rail" | "dialog";
 
@@ -130,6 +138,7 @@ export function AddAssetWorkspaceForm({
   );
   const Icon = getAssetIcon(iconName || "package");
   const defaultIcons = defaultIconsForAssetType(typeOther ? "Other" : type);
+  const spaceOptions = spaceAssignmentOptions(formSpaces);
 
   useEffect(() => {
     if (lockProperty) return;
@@ -236,7 +245,7 @@ export function AddAssetWorkspaceForm({
 
   // Creation rule (@Docs/04_UI_System.md — organise views): Space + Category are
   // mandatory when the property has spaces / a type list to choose from.
-  const spaceRequired = Boolean(propertyId) && formSpaces.length > 0;
+  const spaceRequired = Boolean(propertyId) && spaceOptions.length > 0;
   const saveDisabled =
     isSaving ||
     !propertyId ||
@@ -408,7 +417,7 @@ export function AddAssetWorkspaceForm({
         {propertyId ? (
           <div className="space-y-2">
             <Label htmlFor={I("asset-space")}>
-              {spaceRequired ? "Space *" : "Space"}
+              {spaceRequired ? "Add to Space *" : "Add to Space"}
             </Label>
             <Select value={spaceId || "none"} onValueChange={onSpaceChange}>
               <SelectTrigger id={I("asset-space")} className="input-neomorphic">
@@ -418,9 +427,9 @@ export function AddAssetWorkspaceForm({
               </SelectTrigger>
               <SelectContent>
                 {!spaceRequired ? <SelectItem value="none">None</SelectItem> : null}
-                {formSpaces.map((space) => (
+                {spaceOptions.map((space) => (
                   <SelectItem key={space.id} value={space.id}>
-                    {space.name}
+                    {space.label}
                   </SelectItem>
                 ))}
               </SelectContent>

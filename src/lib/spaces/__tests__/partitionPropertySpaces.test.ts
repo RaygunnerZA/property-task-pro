@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isAreaSpace,
   partitionPropertySpaces,
+  spaceAssignmentOptions,
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
 
@@ -27,6 +28,18 @@ describe("partitionPropertySpaces", () => {
     ]);
     expect(areas[0]).toMatchObject({ id: "a1", name: "Ground Floor" });
     expect(areas[0].color).toMatch(/^#/);
+  });
+
+  it("lists rooms with area labels for asset assignment", () => {
+    const spaces = [
+      { id: "a1", name: "Ground Floor", parent_space_id: null, created_at: "2026-01-01" },
+      { id: "r1", name: "Kitchen", parent_space_id: "a1", created_at: "2026-01-02" },
+      { id: "r2", name: "Hall", parent_space_id: null, created_at: "2026-01-03" },
+    ];
+    expect(spaceAssignmentOptions(spaces)).toEqual([
+      { id: "r1", label: "Kitchen · Ground Floor" },
+      { id: "r2", label: "Hall" },
+    ]);
   });
 
   it("treats layers+floor_level area inserts as areas before they have children", () => {

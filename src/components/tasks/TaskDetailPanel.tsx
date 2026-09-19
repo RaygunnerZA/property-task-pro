@@ -918,6 +918,10 @@ export function TaskDetailPanel({
         desiredIds: assetIds,
       });
       queryClient.invalidateQueries({ queryKey: ["task-assets", taskId] });
+      queryClient.invalidateQueries({ queryKey: ["linked-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-linked-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-detail"] });
       refreshTask();
     } catch (err: any) {
       toast({ title: "Couldn't update assets", description: err.message, variant: "destructive" });

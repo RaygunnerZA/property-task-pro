@@ -15,7 +15,8 @@ export type AssetLinkedTaskRow = {
 };
 
 /**
- * Open-ish tasks linked to the given assets (property rail list).
+ * Open-ish tasks linked to the given assets (Attention + property rail).
+ * Emits one row per task↔asset link so multi-asset tasks appear on each asset.
  */
 export function useAssetLinkedTasks(assetIds: string[]) {
   const { orgId, isLoading: orgLoading } = useActiveOrg();
@@ -50,10 +51,7 @@ export function useAssetLinkedTasks(assetIds: string[]) {
       if (assetsErr) throw assetsErr;
 
       const assetById = new Map((assets ?? []).map((a) => [a.id, a]));
-      const assetIdByTask = new Map<string, string>();
-      for (const link of links ?? []) {
-        if (!assetIdByTask.has(link.task_id)) assetIdByTask.set(link.task_id, link.asset_id);
-      }
+      const taskById = new Map((tasks ?? []).map((t) => [t.id, t]));
 
       const imageByAsset = new Map<string, string>();
       const { data: files } = await supabase
@@ -71,24 +69,31 @@ export function useAssetLinkedTasks(assetIds: string[]) {
         }
       }
 
-      return (tasks ?? [])
-        .filter((task) => task.status !== "completed" && task.status !== "archived")
-        .slice(0, 8)
-        .map((task) => {
-          const assetId = assetIdByTask.get(task.id) ?? "";
-          const asset = assetById.get(assetId);
-          return {
-            taskId: task.id,
-            taskTitle: task.title || "Untitled task",
-            dueDate: task.due_at,
-            createdAt: task.created_at,
-            assignedUserId: task.assigned_user_id,
-            assetId,
-            assetName: asset?.name || "Asset",
-            assetIconName: asset?.icon_name ?? null,
-            assetImageUrl: imageByAsset.get(assetId) ?? null,
-          };
+      const rows: AssetLinkedTaskRow[] = [];
+      for (const link of links ?? []) {
+        const task = taskById.get(link.task_id);
+        if (!task) continue;
+        if (task.status === "completed" || task.status === "archived") continue;
+        const asset = assetById.get(link.asset_id);
+        rows.push({
+          taskId: task.id,
+          taskTitle: task.title || "Untitled task",
+          dueDate: task.due_at,
+          createdAt: task.created_at,
+          assignedUserId: task.assigned_user_id,
+          assetId: link.asset_id,
+          assetName: asset?.name || "Asset",
+          assetIconName: asset?.icon_name ?? null,
+          assetImageUrl: imageByAsset.get(link.asset_id) ?? null,
         });
+      }
+
+      rows.sort((a, b) => {
+        const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return bTime - aTime;
+      });
+      return rows;
     },
     enabled: !!orgId && !orgLoading && assetIds.length > 0,
     staleTime: 30_000,

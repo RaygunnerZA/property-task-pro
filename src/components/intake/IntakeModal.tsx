@@ -289,6 +289,7 @@ export function IntakeModal({
   const [title, setTitle] = useState("");
   const titleRef = useRef("");
   titleRef.current = title; // Keep ref in sync without adding `title` to effect deps
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const [description, setDescription] = useState("");
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState<Set<string>>(new Set());
   const [images, setImages] = useState<TempImage[]>([]);
@@ -3846,6 +3847,8 @@ export function IntakeModal({
       resolveTaskTitle(titleRef.current, settledAiTitle, description) || scanTitle || null;
 
     if (!finalTitle) {
+      setShowTitleField(true);
+      window.setTimeout(() => titleInputRef.current?.focus(), 0);
       showIntakeError(
         "Add a title",
         description.trim()
@@ -3953,6 +3956,17 @@ export function IntakeModal({
           .insert(selectedAssetIds.map((assetId) => ({ task_id: newTask.id, asset_id: assetId })));
         if (taskAssetsError) {
           console.error("Error linking assets to task:", taskAssetsError);
+          toast({
+            title: "Task created, asset link failed",
+            description:
+              taskAssetsError.message || "Couldn't link the selected asset(s). Try editing the task.",
+            variant: "destructive",
+          });
+        } else {
+          queryClient.invalidateQueries({ queryKey: ["linked-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["asset-linked-tasks"] });
+          queryClient.invalidateQueries({ queryKey: ["assets"] });
+          queryClient.invalidateQueries({ queryKey: ["asset-detail"] });
         }
       }
 
@@ -4613,6 +4627,7 @@ export function IntakeModal({
             {shouldShowTitleField && (
               <div className="space-y-1">
                 <input
+                  ref={titleInputRef}
                   type="text"
                   value={title}
                   onChange={(e) => {

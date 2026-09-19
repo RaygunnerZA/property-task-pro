@@ -61,11 +61,14 @@ const TITLE_FILLER = new Set([
 
 const ACTION_VERBS =
   "fix|repair|replace|change|update|move|review|send|add|remove|check|clean|install|inspect|paint|upload|service|clear|unblock|reset|arrange|book|call|chase|file|renew|submit|drain|unclog|investigate|schedule|follow|chase";
+const ACTION_VERB_SET = new Set(ACTION_VERBS.split("|"));
 
 /** Idle / blur delay before committing a non-AI summary title. */
 export const TASK_TITLE_SETTLE_MS = 2000;
 
 const MAX_TITLE_WORDS = 6;
+/** Short notes can be the title — don't force a 6-word cut that ends mid-thought. */
+const SHORT_NOTE_MAX_TITLE_WORDS = 12;
 
 /** Cut reason / subordinate tails so titles don't end mid-clause. */
 function clipReasonClause(phrase: string): string {
@@ -143,9 +146,25 @@ export function compactTitlePhrase(phrase: string, maxWords = MAX_TITLE_WORDS): 
   return stripTrailingStopWords(withoutRecordsTail.slice(0, maxWords).join(" "));
 }
 
+/** Title cuts mid-word: "to the pr" vs "to the property records". */
+function isIncompletePrefix(titleNorm: string, descNorm: string): boolean {
+  if (!descNorm.startsWith(titleNorm)) return false;
+  const rest = descNorm.slice(titleNorm.length);
+  return rest.length > 0 && /^\S/.test(rest);
+}
+
+/** Title copies the opening of a longer note, leaving leftover work behind. */
+function isCopiedOpening(titleNorm: string, descNorm: string): boolean {
+  if (!descNorm.startsWith(titleNorm)) return false;
+  const rest = descNorm.slice(titleNorm.length).trim();
+  if (!rest) return false;
+  const restWords = rest.split(" ").filter(Boolean);
+  return restWords.length >= 3 || rest.length >= 16;
+}
+
 /**
- * True when `title` is essentially the start of `description` (echo / trim),
- * not a compact actionable summary of it.
+ * True when `title` is a truncated opening of `description`, not a complete
+ * name for the note. Short notes used as their own title are not echoes.
  */
 export function isTitleEchoOfDescription(title: string, description: string): boolean {
   const t = normalizeForCompare(title);
@@ -166,15 +185,16 @@ export function isTitleEchoOfDescription(title: string, description: string): bo
     .replace(/^(?:we\s+need\s+to|need\s+to|please|pls)\s+/, "")
     .replace(/^(?:just\s+a\s+quick\s+note\s*|quick\s+note\s*)/, "");
 
-  // Verbatim / lightly punctuated prefix of the note.
-  if (d.startsWith(t) || dCore.startsWith(t)) return true;
+  if (isIncompletePrefix(t, d) || isIncompletePrefix(t, dCore)) return true;
 
   const titleWords = t.split(" ").filter(Boolean);
   const descWords = d.split(" ").filter(Boolean);
-  if (titleWords.length < 3) return false;
 
-  // Contiguous opening-word match (ignoring filler) — long titles only.
-  // Short verb+object summaries often reuse opening content words without being echoes.
+  // Long copied opening only when the note continues past the title.
+  if (titleWords.length >= 5 && (isCopiedOpening(t, d) || isCopiedOpening(t, dCore))) {
+    return true;
+  }
+
   if (titleWords.length < 5) return false;
 
   const stripWeak = (w: string) =>
@@ -183,7 +203,8 @@ export function isTitleEchoOfDescription(title: string, description: string): bo
   const descContent = descWords.filter(stripWeak);
   if (
     titleContent.length >= 4 &&
-    descContent.slice(0, titleContent.length).join(" ") === titleContent.join(" ")
+    descContent.slice(0, titleContent.length).join(" ") === titleContent.join(" ") &&
+    descContent.length >= titleContent.length + 2
   ) {
     return true;
   }
@@ -232,18 +253,32 @@ function extractProblemFixes(normalized: string): string[] {
     if (obj) fixes.push(capitalizeTitle(`Fix ${obj}`));
   }
 
-  // "leaking kitchen tap" / "kitchen tap is leaking"
+  // "leaking kitchen tap" / "leaking radiator"
   const leakBefore = normalized.match(
-    /\b(?:a\s+|the\s+)?(leaking\s+[a-z][a-z0-9/-]*(?:\s+[a-z][a-z0-9/-]*){0,2})/i
+    /\b(?:a\s+|the\s+)?(leaking\s+[a-z][a-z0-9/-]*(?:\s+[a-z][a-z0-9/-]*)?)/i
   );
   if (leakBefore?.[1]) {
     fixes.push(capitalizeTitle(compactTitlePhrase(`Fix ${leakBefore[1]}`, 5)));
   }
+
+  // "kitchen tap is leaking" — require is/are so "fix the leaking…" does not rematch
   const leakAfter = normalized.match(
-    /\b(?:the\s+)?([a-z][a-z0-9/-]*(?:\s+[a-z][a-z0-9/-]*){0,2})\s+(?:is\s+)?leaking\b/i
+    /\b(?:the\s+|a\s+)?([a-z][a-z0-9/-]*(?:\s+[a-z][a-z0-9/-]*){0,2})\s+(?:is|are)\s+leaking\b/i
   );
-  if (leakAfter?.[1]) {
+  if (leakAfter?.[1] && !ACTION_VERB_SET.has(leakAfter[1].split(/\s+/)[0]?.toLowerCase() ?? "")) {
     fixes.push(capitalizeTitle(compactTitlePhrase(`Fix leaking ${leakAfter[1]}`, 5)));
+  }
+
+  // "kitchen tap leaking" (no "is") — last content word is leaking, first word is not a verb
+  if (!leakBefore && !leakAfter) {
+    const leakAtEnd = normalized.match(
+      /\b(?:the\s+|a\s+)?([a-z][a-z0-9/-]+(?:\s+[a-z][a-z0-9/-]+)?)\s+leaking\b/i
+    );
+    const obj = leakAtEnd?.[1]?.trim() ?? "";
+    const first = obj.split(/\s+/)[0]?.toLowerCase() ?? "";
+    if (obj && !ACTION_VERB_SET.has(first)) {
+      fixes.push(capitalizeTitle(compactTitlePhrase(`Fix leaking ${obj}`, 5)));
+    }
   }
 
   return fixes;
@@ -281,15 +316,26 @@ function extractFirstClauseSummary(normalized: string): string | null {
     .replace(/^(?:just\s+a\s+quick\s+note[:\s]*|quick\s+note[:\s]*)/i, "");
   // Prefer the segment after a topic dash if present.
   const afterDash = withoutLeadIn.replace(/^[^–—:\-|]{1,40}?\s*[-–—:|]\s+/, "");
-  const compact = compactTitlePhrase(afterDash || withoutLeadIn, MAX_TITLE_WORDS);
+  const source = afterDash || withoutLeadIn;
+  const sourceWords = source.split(" ").filter(Boolean);
+  if (sourceWords.length < 2) return null;
+
+  // A short note is already a title — keep it. Longer clauses stay compact.
+  const maxWords =
+    sourceWords.length <= SHORT_NOTE_MAX_TITLE_WORDS
+      ? SHORT_NOTE_MAX_TITLE_WORDS
+      : MAX_TITLE_WORDS;
+  const compact = compactTitlePhrase(source, maxWords);
   if (compact.split(" ").filter(Boolean).length < 2) return null;
   const titled = capitalizeTitle(compact);
-  if (isTitleEchoOfDescription(titled, normalized)) {
-    const tighter = capitalizeTitle(compactTitlePhrase(compact, 4));
-    if (tighter && !isTitleEchoOfDescription(tighter, normalized)) return tighter;
-    return null;
-  }
-  return titled;
+  if (!isTitleEchoOfDescription(titled, normalized)) return titled;
+
+  const tighter = capitalizeTitle(compactTitlePhrase(compact, 4));
+  if (tighter && !isTitleEchoOfDescription(tighter, normalized)) return tighter;
+
+  // Prefer an imperfect name for a short note over blocking create.
+  if (sourceWords.length <= SHORT_NOTE_MAX_TITLE_WORDS) return titled;
+  return null;
 }
 
 /**
@@ -372,7 +418,7 @@ export function isUsableGeneratedTitle(rawTitle: string, description?: string): 
 
   const words = trimmed.split(/\s+/).filter(Boolean);
   if (words.length < 2) return false;
-  if (words.length > 10) return false;
+  if (words.length > SHORT_NOTE_MAX_TITLE_WORDS) return false;
 
   const lastWord = words[words.length - 1] ?? "";
   if (lastWord.length < 2) return false;
@@ -400,8 +446,13 @@ export function isUsableGeneratedTitle(rawTitle: string, description?: string): 
 export function finalizeGeneratedTitle(raw: string): string {
   const trimmed = normalizeSpace(raw);
   if (!trimmed) return "";
+  const wordCount = trimmed.split(" ").filter(Boolean).length;
+  const maxWords =
+    wordCount <= SHORT_NOTE_MAX_TITLE_WORDS
+      ? Math.max(MAX_TITLE_WORDS, wordCount)
+      : MAX_TITLE_WORDS;
   const compact =
-    compactTitlePhrase(trimmed, MAX_TITLE_WORDS) || stripTrailingStopWords(trimmed);
+    compactTitlePhrase(trimmed, maxWords) || stripTrailingStopWords(trimmed);
   return capitalizeTitle(compact.replace(/[.!]+$/g, ""));
 }
 
@@ -421,8 +472,13 @@ export function resolveTaskTitle(
   }
   if (!finalTitle && description.trim()) {
     const fallback = buildFallbackTitleFromDescription(description);
-    if (fallback && isUsableGeneratedTitle(fallback, description)) {
-      finalTitle = finalizeGeneratedTitle(fallback);
+    if (fallback) {
+      const processed = finalizeGeneratedTitle(fallback);
+      if (isUsableGeneratedTitle(processed, description)) {
+        finalTitle = processed;
+      } else if (isUsableGeneratedTitle(fallback, description)) {
+        finalTitle = fallback;
+      }
     }
   }
   return finalTitle.trim() || null;

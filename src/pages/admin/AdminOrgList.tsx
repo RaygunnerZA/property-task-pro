@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, ArrowUpDown, Loader2 } from "lucide-react";
 import { useAdminOrgList, AdminOrg } from "@/hooks/admin/useAdminOrgList";
+import { AdminPropertyEnrichmentsTable } from "@/components/admin/AdminPropertyEnrichmentsTable";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -193,6 +194,8 @@ export default function AdminOrgList() {
           </Button>
         </div>
       )}
+
+      <AdminPropertyEnrichmentsTable />
     </div>
   );
 }

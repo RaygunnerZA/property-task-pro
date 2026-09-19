@@ -184,7 +184,7 @@ Primary destinations: Home, Tasks, Calendar / Records as capacity allows. Spaces
 
 **Gradient header (all primary screens)**
 
-At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Spaces / Assets / People screens.
+At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Spaces / Assets / People screens. Closing or completing Create Task stays on the current screen; it does not switch to Home.
 
 **Properties (scope)**
 
@@ -331,7 +331,7 @@ All design tokens are defined in:
 
 **4.3b — ACTIVITY-AREA CHROME & LEFT-COLUMN FORMULA (desktop workbench)**
 
-**Primary chrome (Home, Tasks · Calendar · Records, Spaces · Assets · People):** Filla logo top-left; Search on the gradient; **Create Task** / **Add Record** between Search and Profile at middle widths; account avatar top-right. Settings is **not** in the left nav rail.
+**Primary chrome (Home, Tasks · Calendar · Records, Spaces · Assets · People):** Filla logo top-left; Search on the gradient; **Create Task** / **Add Record** between Search and Profile at middle widths; account avatar top-right (menu: Profile, Account settings, **Add new Property** for Owners, Trash, Notifications; platform Knowledge admin). Settings is **not** in the left nav rail.
 
 **Left column — Home (Inflow):** property / portfolio context + suggested actions; **no** expandable mini-calendar.
 

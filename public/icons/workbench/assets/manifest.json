@@ -1,0 +1,202 @@
+[
+  {
+    "name": "acoustic-guitar",
+    "file": "acoustic-guitar.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "artist-easel",
+    "file": "artist-easel.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "chess-set",
+    "file": "chess-set.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "cork-noticeboard",
+    "file": "cork-noticeboard.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "craft-scissors-mat",
+    "file": "craft-scissors-mat.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "desk-lamp",
+    "file": "desk-lamp.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "digital-piano",
+    "file": "digital-piano.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "filing-cabinet",
+    "file": "filing-cabinet.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "flatbed-scanner",
+    "file": "flatbed-scanner.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "home-office-desk",
+    "file": "home-office-desk.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "jigsaw-puzzle",
+    "file": "jigsaw-puzzle.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "microscope",
+    "file": "microscope.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "model-train",
+    "file": "model-train.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "office-bookshelf",
+    "file": "office-bookshelf.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "office-chair",
+    "file": "office-chair.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "paint-palette",
+    "file": "paint-palette.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "paper-shredder",
+    "file": "paper-shredder.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "pottery-wheel",
+    "file": "pottery-wheel.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "printer",
+    "file": "printer.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "sewing-machine",
+    "file": "sewing-machine.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "stationery-organizer",
+    "file": "stationery-organizer.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "telescope",
+    "file": "telescope.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "toolbox",
+    "file": "toolbox.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "yarn-basket",
+    "file": "yarn-basket.png",
+    "size": [
+      160,
+      160
+    ]
+  },
+  {
+    "name": "yoga-mat-dumbbells",
+    "file": "yoga-mat-dumbbells.png",
+    "size": [
+      160,
+      160
+    ]
+  }
+]

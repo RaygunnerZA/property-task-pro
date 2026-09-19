@@ -1,11 +1,14 @@
 import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import type { CSSProperties, ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Check, MoreHorizontal } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -18,9 +21,13 @@ import {
 export type MiniCardSubItem = { id: string; label: string };
 
 export type MiniCardAction = {
+  id?: string;
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   destructive?: boolean;
+  disabled?: boolean;
+  checked?: boolean;
+  submenu?: MiniCardAction[];
 };
 
 type EntityMiniCardProps = {
@@ -221,19 +228,58 @@ export function EntityMiniCard({
                   <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-[130px]">
-                {actions.map((action) => (
-                  <DropdownMenuItem
-                    key={action.label}
-                    onClick={action.onClick}
-                    className={cn(
-                      "text-xs",
-                      action.destructive && "text-destructive focus:text-destructive"
-                    )}
-                  >
-                    {action.label}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuContent align="end" className="min-w-[150px]">
+                {actions.map((action) =>
+                  action.submenu ? (
+                    <DropdownMenuSub key={action.id ?? action.label}>
+                      <DropdownMenuSubTrigger
+                        className="text-xs"
+                        disabled={action.disabled}
+                      >
+                        {action.label}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="max-h-64 min-w-[160px] overflow-y-auto">
+                        {action.submenu.length === 0 ? (
+                          <DropdownMenuItem disabled className="text-xs">
+                            No spaces yet
+                          </DropdownMenuItem>
+                        ) : (
+                          action.submenu.map((item) => (
+                            <DropdownMenuItem
+                              key={item.id ?? item.label}
+                              disabled={item.disabled}
+                              onClick={item.onClick}
+                              className={cn(
+                                "text-xs",
+                                item.destructive &&
+                                  "text-destructive focus:text-destructive"
+                              )}
+                            >
+                              {item.checked ? (
+                                <Check className="mr-2 h-3 w-3 shrink-0" aria-hidden />
+                              ) : (
+                                <span className="mr-2 w-3 shrink-0" aria-hidden />
+                              )}
+                              {item.label}
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  ) : (
+                    <DropdownMenuItem
+                      key={action.id ?? action.label}
+                      disabled={action.disabled}
+                      onClick={action.onClick}
+                      className={cn(
+                        "text-xs",
+                        action.destructive && "text-destructive focus:text-destructive"
+                      )}
+                    >
+                      {action.label}
+                    </DropdownMenuItem>
+                  )
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>

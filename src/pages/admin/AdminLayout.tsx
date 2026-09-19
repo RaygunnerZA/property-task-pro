@@ -1,6 +1,6 @@
 import { ReactNode, useEffect } from "react";
-import { useNavigate, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Building2, Shield, BarChart3, BookOpen, Cpu } from "lucide-react";
+import { useNavigate, NavLink, Outlet, useLocation, Link } from "react-router-dom";
+import { Building2, Shield, BarChart3, BookOpen, Cpu, ArrowLeft } from "lucide-react";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -122,6 +122,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
               Knowledge
             </NavLink>
           </nav>
+          <Link
+            to="/"
+            className="ml-auto flex items-center gap-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            App
+          </Link>
         </div>
       </header>
 

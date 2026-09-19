@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { flushSync } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { ArrowRight, Square, Circle, Type, Pen, X, RotateCcw, Undo2, Redo2, MousePointer2, Download } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -1580,7 +1580,7 @@ export function ImageAnnotationEditor({
     if (tool !== "select") setSelectedAnnotationId(null);
   };
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -2004,6 +2004,7 @@ export function ImageAnnotationEditor({
           <RotateCcw className={cn(isMobile ? "h-5 w-5" : "h-4 w-4", JSON.stringify(annotations) === JSON.stringify(initialAnnotations) && "opacity-40")} />
         </button>
       </footer>
-    </div>
+    </div>,
+    document.body
   );
 }

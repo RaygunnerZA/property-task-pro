@@ -175,7 +175,6 @@ export default function Dashboard({
     string[] | null | undefined
   >(undefined);
   const [selectedPropertyIds, setSelectedPropertyIds] = useState<Set<string>>(new Set());
-  const tabBeforeCreateTaskRef = useRef<string>("issues");
   /** Keep Create Task / Add Record + Task Details top-aligned when a task opens. */
   const thirdColumnScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -683,7 +682,6 @@ export default function Dashboard({
   );
 
   const handleOpenIntake = useCallback((mode: IntakeMode = "report_issue") => {
-    tabBeforeCreateTaskRef.current = activeTab;
     if (isLargeScreen) {
       setWorkbenchIntakeMode(mode);
       setExpandedSection(null);
@@ -793,14 +791,11 @@ export default function Dashboard({
 
   const handleCreateTaskOpenChange = (open: boolean) => {
     setShowCreateTask(open);
-    if (!open) {
-      handleWorkbenchTabChange(tabBeforeCreateTaskRef.current);
-    }
   };
 
+  /** Stay on the current screen after create; only refresh the task list. */
   const handleTaskCreated = () => {
     queryClient.invalidateQueries({ queryKey: ["tasks"] });
-    handleWorkbenchTabChange(tabBeforeCreateTaskRef.current);
   };
 
   const handleMessageClick = (messageId: string) => {

@@ -8727,6 +8727,30 @@ export type Database = {
           task_count: number
         }[]
       }
+      admin_list_property_enrichments: {
+        Args: { p_limit?: number; p_org_id?: string }
+        Returns: {
+          built_form: string | null
+          construction_age_band: string | null
+          country_code: string | null
+          current_efficiency: string | null
+          current_rating: string | null
+          floor_area: string | null
+          lodgement_date: string | null
+          org_id: string
+          org_name: string
+          postal_code: string | null
+          potential_efficiency: string | null
+          potential_rating: string | null
+          property_id: string
+          property_label: string
+          property_type: string | null
+          provider: string
+          retrieved_at: string | null
+          source_id: string | null
+          status: string
+        }[]
+      }
       admin_list_seasonal_packages: { Args: never; Returns: Json }
       admin_reject_content_topic_brief: {
         Args: { p_reason?: string; p_topic_id: string }

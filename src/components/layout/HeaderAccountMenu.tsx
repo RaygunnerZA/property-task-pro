@@ -1,7 +1,10 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, LogOut, Settings, Trash2, UserCircle } from "lucide-react";
+import { Bell, BookOpen, LogOut, Plus, Settings, Trash2, UserCircle } from "lucide-react";
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
+import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
+import { AddPropertyDialog } from "@/components/properties/AddPropertyDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -29,6 +32,8 @@ export function HeaderAccountMenu({
   const navigate = useNavigate();
   const { user, organisation } = useDataContext();
   const { data: isPlatformAdmin } = useIsPlatformAdmin();
+  const { canManageProperties } = useEffectiveAccess();
+  const [showAddProperty, setShowAddProperty] = useState(false);
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -38,6 +43,7 @@ export function HeaderAccountMenu({
   const onGradient = variant === "onGradient";
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -93,6 +99,15 @@ export function HeaderAccountMenu({
             Account settings
           </Link>
         </DropdownMenuItem>
+        {canManageProperties ? (
+          <DropdownMenuItem
+            className="cursor-pointer rounded-[6px]"
+            onSelect={() => setShowAddProperty(true)}
+          >
+            <Plus className="h-4 w-4 text-muted-foreground" />
+            Add new Property
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem asChild className="cursor-pointer rounded-[6px]">
           <Link to="/settings/trash" className="flex items-center gap-2">
             <Trash2 className="h-4 w-4 text-muted-foreground" />
@@ -129,5 +144,9 @@ export function HeaderAccountMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    {canManageProperties ? (
+      <AddPropertyDialog open={showAddProperty} onOpenChange={setShowAddProperty} />
+    ) : null}
+    </>
   );
 }

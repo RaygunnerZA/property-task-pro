@@ -1,6 +1,7 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Users, Activity, Cpu } from "lucide-react";
 import { useAdminOrg, AdminAuditEntry } from "@/hooks/admin/useAdminOrg";
+import { AdminPropertyEnrichmentsTable } from "@/components/admin/AdminPropertyEnrichmentsTable";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -127,6 +128,8 @@ export default function AdminOrgDetail() {
           </Link>
         </div>
       ) : null}
+
+      {orgId ? <AdminPropertyEnrichmentsTable orgId={orgId} /> : null}
 
       {/* Members */}
       <section>

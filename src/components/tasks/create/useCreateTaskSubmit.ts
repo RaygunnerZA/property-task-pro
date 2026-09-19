@@ -461,8 +461,17 @@ export function useCreateTaskSubmit({
 
       const realAssetIds = selectedAssetIds.filter((id) => !id.startsWith("ghost-"));
       if (realAssetIds.length > 0) {
-        const { error } = await supabase.from("task_assets").insert(realAssetIds.map((asset_id) => ({ task_id: taskId, asset_id })));
-        if (error) console.error("[useCreateTaskSubmit] Error linking assets to task:", error);
+        const { error } = await supabase
+          .from("task_assets")
+          .insert(realAssetIds.map((asset_id) => ({ task_id: taskId, asset_id })));
+        if (error) {
+          console.error("[useCreateTaskSubmit] Error linking assets to task:", error);
+          toast({
+            title: "Task created, asset link failed",
+            description: error.message || "Couldn't link the selected asset(s). Try editing the task.",
+            variant: "destructive",
+          });
+        }
       }
 
       if (repeatRule) {
@@ -485,10 +494,15 @@ export function useCreateTaskSubmit({
 
       // ── Post-create query invalidation ────────────────────────────────────
 
+      queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+      queryClient.invalidateQueries({ queryKey: ["linked-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-linked-tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["assets"] });
+      queryClient.invalidateQueries({ queryKey: ["asset-detail"] });
+
       if (imagesToUpload.length > 0 || filesToUpload.length > 0) {
         setTimeout(() => {
-          queryClient.invalidateQueries({ queryKey: ["tasks"] });
-          queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
           queryClient.invalidateQueries({ queryKey: ["task-attachments", taskId] });
           queryClient.invalidateQueries({ queryKey: ["task-details", orgId, taskId] });
         }, 2000);

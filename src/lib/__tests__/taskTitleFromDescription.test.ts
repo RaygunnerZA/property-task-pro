@@ -13,6 +13,7 @@ describe("buildFallbackTitleFromDescription", () => {
     );
     expect(title.toLowerCase()).toContain("fix");
     expect(title.toLowerCase()).not.toMatch(/^this morning/);
+    expect(title.toLowerCase()).not.toMatch(/and fix leaking/);
   });
 
   it("shortens need-to upload notes instead of copying the whole clause", () => {
@@ -55,6 +56,36 @@ describe("buildFallbackTitleFromDescription", () => {
     expect(title.split(" ").length).toBeLessThanOrEqual(6);
   });
 
+  it("names short conversational notes instead of returning empty", () => {
+    const title = buildFallbackTitleFromDescription(
+      "want to see exactly where I go if I create a task"
+    );
+    expect(title.length).toBeGreaterThan(8);
+    expect(title.split(" ").length).toBeGreaterThanOrEqual(3);
+    expect(title.toLowerCase()).not.toMatch(/^want to see exactly where i$/);
+  });
+
+  it("uses a short problem note as the title", () => {
+    const title = buildFallbackTitleFromDescription("the heating is off again");
+    expect(title.toLowerCase()).toMatch(/heating/);
+    expect(title.split(" ").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps leak notes to a single clean work item", () => {
+    expect(buildFallbackTitleFromDescription("Fix the leaking kitchen tap").toLowerCase()).toBe(
+      "fix leaking kitchen tap"
+    );
+    expect(buildFallbackTitleFromDescription("the kitchen tap is leaking").toLowerCase()).toBe(
+      "fix leaking kitchen tap"
+    );
+    expect(buildFallbackTitleFromDescription("kitchen tap leaking").toLowerCase()).toMatch(
+      /kitchen tap/
+    );
+    const radiator = buildFallbackTitleFromDescription("a leaking radiator in the hall");
+    expect(radiator.toLowerCase()).toMatch(/radiator/);
+    expect(radiator.toLowerCase()).not.toMatch(/\band\b/);
+  });
+
   it("clips reason clauses instead of ending on 'as'", () => {
     const title = buildFallbackTitleFromDescription(
       "Oliver suggested we need to replace the boiler before spring as there are currently specials on at the moment."
@@ -85,6 +116,14 @@ describe("isTitleEchoOfDescription", () => {
       )
     ).toBe(true);
   });
+
+  it("does not treat a short note used as its own title as an echo", () => {
+    const note = "want to see exactly where I go if I create a task";
+    expect(isTitleEchoOfDescription(note, note)).toBe(false);
+    expect(isTitleEchoOfDescription("The heating is off again", "the heating is off again")).toBe(
+      false
+    );
+  });
 });
 
 describe("isUsableGeneratedTitle", () => {
@@ -105,6 +144,12 @@ describe("isUsableGeneratedTitle", () => {
 
   it("accepts short actionable titles", () => {
     expect(isUsableGeneratedTitle("Fix kitchen tap")).toBe(true);
+  });
+
+  it("accepts a compact title taken from a short note", () => {
+    const note = "want to see exactly where I go if I create a task";
+    const title = buildFallbackTitleFromDescription(note);
+    expect(isUsableGeneratedTitle(title, note)).toBe(true);
   });
 });
 
@@ -137,5 +182,12 @@ describe("resolveTaskTitle", () => {
   it("returns null when nothing usable exists", () => {
     expect(resolveTaskTitle("", "", "")).toBeNull();
     expect(resolveTaskTitle("", "", "Hi")).toBeNull();
+  });
+
+  it("creates a title from a short note when AI has not summarised yet", () => {
+    const note = "want to see exactly where I go if I create a task";
+    const resolved = resolveTaskTitle("", "", note);
+    expect(resolved).toBeTruthy();
+    expect(resolved!.length).toBeGreaterThan(8);
   });
 });

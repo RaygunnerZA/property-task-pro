@@ -76,9 +76,12 @@ describe("resolveTaskDisplayImageUrl", () => {
         resolveTaskDisplayImageUrl({ id: `unmatched-${i}-${title}`, title }, title)
     );
     expect(urls.every((url) => url !== "/spaces/mini-cards/office.png")).toBe(true);
-    expect(urls.every((url) => GENERIC_TASK_ILLUSTRATION_POOL.includes(url as typeof GENERIC_TASK_ILLUSTRATION_POOL[number]))).toBe(
-      true
-    );
+    expect(
+      urls.every((url) =>
+        GENERIC_TASK_ILLUSTRATION_POOL.includes(url as (typeof GENERIC_TASK_ILLUSTRATION_POOL)[number])
+      )
+    ).toBe(true);
+    expect(urls.every((url) => url.startsWith("/tasks/mini-cards/"))).toBe(true);
     expect(new Set(urls).size).toBeGreaterThan(1);
   });
 

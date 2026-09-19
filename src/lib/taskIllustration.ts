@@ -9,8 +9,16 @@ import type { SignalKind } from "@/types/workbenchSignals";
 /** Path prefix for default task thumbnails sourced from space mini-card art. */
 export const TASK_SPACE_ILLUSTRATION_PATH_PREFIX = "/spaces/mini-cards/";
 
+/** Path prefix for generic task thumbnails (no space match / no upload). */
+export const TASK_MINI_CARD_PATH_PREFIX = "/tasks/mini-cards/";
+
+/** True when the URL is paper-cut default art (not a real upload). */
 export function isTaskSpaceIllustrationUrl(url: string | null | undefined): boolean {
-  return typeof url === "string" && url.includes(TASK_SPACE_ILLUSTRATION_PATH_PREFIX);
+  if (typeof url !== "string") return false;
+  return (
+    url.includes(TASK_SPACE_ILLUSTRATION_PATH_PREFIX) ||
+    url.includes(TASK_MINI_CARD_PATH_PREFIX)
+  );
 }
 
 export type TaskSpaceRef = {
@@ -77,22 +85,26 @@ const TASK_TITLE_SPACE_HINTS: ReadonlyArray<{ pattern: RegExp; spaceType: string
 ];
 
 /**
- * Generic scenes for unmatched tasks — visually distinct, not office.png.
+ * Generic scenes for unmatched tasks — dedicated task mini-cards (not space art).
  * Stable per seed so the same task does not flicker between renders.
  */
 export const GENERIC_TASK_ILLUSTRATION_POOL = [
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}lobby.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}workshop.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}building-exterior.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}meeting-room.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}breakout-area.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}archive-room.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}entrance.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}creative-studio.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}reception.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}staircase.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}lounge.png`,
-  `${TASK_SPACE_ILLUSTRATION_PATH_PREFIX}loading-bay.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}task-clipboard.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}briefcase.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}folders.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}inbox.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}stickies.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}stationery.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}laptop.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}computerscreen.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}meeting.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}presentation.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}clock.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}lamp.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}coffee.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}potplant.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}nametag.png`,
+  `${TASK_MINI_CARD_PATH_PREFIX}juggling.png`,
 ] as const;
 
 function hashSeedIndex(seed: string, modulo: number): number {
