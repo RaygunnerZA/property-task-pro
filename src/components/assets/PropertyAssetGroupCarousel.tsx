@@ -48,6 +48,7 @@ import {
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
 import { getAssetGroupCardIllustration } from "@/lib/assetGroupIllustrations";
+import { resolveAssetMiniCardIllustration } from "@/lib/assetIllustrations";
 import { getAssetIcon } from "@/lib/icon-resolver";
 import { CollectionShelf } from "@/components/organise/CollectionShelf";
 import {
@@ -940,6 +941,7 @@ export function PropertyAssetGroupCarousel({
     const spaceName = asset.space_id ? spaceNameById[asset.space_id] : undefined;
     const openCount = asset.open_tasks_count ?? 0;
     const Icon = getAssetIcon(asset.icon_name);
+    const thumbSrc = resolveAssetMiniCardIllustration(name, asset.asset_type);
     const dragData: OnboardingDragData = asset.space_id
       ? { kind: "asset", assetId, assetName: name, spaceId: asset.space_id }
       : { kind: "unassigned-asset", assetId, assetName: name };
@@ -999,6 +1001,7 @@ export function PropertyAssetGroupCarousel({
             : spaceName ?? "Unassigned"
         }
         icon={<Icon className="h-7 w-7" aria-hidden />}
+        thumbSrc={thumbSrc}
         accentColor={
           metaMode === "space"
             ? group?.color
@@ -1042,11 +1045,12 @@ export function PropertyAssetGroupCarousel({
       const Icon = getAssetIcon(asset.icon_name);
       const score = asset.condition_score ?? 100;
       const openCount = asset.open_tasks_count ?? 0;
+      const thumbSrc = resolveAssetMiniCardIllustration(name, asset.asset_type);
       return {
         id: assetId,
         title: name,
         subtitle: spaceName ?? "Unassigned",
-        iconSrc: rows[0]?.assetImageUrl ?? null,
+        iconSrc: rows[0]?.assetImageUrl ?? thumbSrc,
         icon: <Icon className="h-5 w-5" aria-hidden />,
         accentColor: asset.space_id ? spaceColorById[asset.space_id] : undefined,
         onOpen: () => onViewAsset?.(assetId),

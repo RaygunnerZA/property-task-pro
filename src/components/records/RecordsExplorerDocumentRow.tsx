@@ -31,6 +31,8 @@ type RecordsExplorerDocumentRowProps = {
   selected?: boolean;
   onSelectedChange?: (selected: boolean) => void;
   filingEnabled?: boolean;
+  /** Types: show grip under the checkbox. Attention: omit (file via FolderInput). */
+  showDragHandle?: boolean;
   onOpen?: () => void;
   onFileTo?: () => void;
   onEdit?: () => void;
@@ -55,11 +57,19 @@ function expiryLabel(doc: PropertyDocument): string | null {
   return `Expires ${formatDueText(doc.expiry_date)}`;
 }
 
+const iconBtnClass = cn(
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
+  "bg-background/80 opacity-70 shadow-[2px_2px_4px_rgba(0,0,0,0.08)]",
+  "transition-all group-hover:opacity-100",
+  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+);
+
 export function RecordsExplorerDocumentRow({
   document,
   selected = false,
   onSelectedChange,
   filingEnabled = false,
+  showDragHandle = false,
   onOpen,
   onFileTo,
   onEdit,
@@ -77,6 +87,7 @@ export function RecordsExplorerDocumentRow({
   const spaceIds = linkedSpaces.map((s) => s.id);
   const expiry = expiryLabel(document);
   const expiryState = documentExpiryState(document);
+  const canDrag = filingEnabled && showDragHandle;
 
   const body = ({
     dragHandleProps,
@@ -92,29 +103,30 @@ export function RecordsExplorerDocumentRow({
         className
       )}
     >
-      {onSelectedChange ? (
-        <div className="pt-1">
-          <Checkbox
-            checked={selected}
-            onCheckedChange={(v) => onSelectedChange(v === true)}
-            aria-label={`Select ${title}`}
-          />
+      {(onSelectedChange || canDrag) ? (
+        <div className="flex w-5 shrink-0 flex-col items-center gap-1 pt-1">
+          {onSelectedChange ? (
+            <Checkbox
+              checked={selected}
+              onCheckedChange={(v) => onSelectedChange(v === true)}
+              aria-label={`Select ${title}`}
+            />
+          ) : null}
+          {canDrag ? (
+            <button
+              type="button"
+              aria-label={`Drag ${title} to a location`}
+              className={cn(
+                "flex h-6 w-5 items-center justify-center rounded text-muted-foreground/45",
+                "opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
+                "hover:text-muted-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              )}
+              {...dragHandleProps}
+            >
+              <GripVertical className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          ) : null}
         </div>
-      ) : null}
-
-      {filingEnabled ? (
-        <button
-          type="button"
-          aria-label={`Drag ${title}`}
-          className={cn(
-            "mt-1 flex h-6 w-5 shrink-0 items-center justify-center rounded text-muted-foreground/40",
-            "opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100",
-            "hover:text-muted-foreground focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          )}
-          {...dragHandleProps}
-        >
-          <GripVertical className="h-3.5 w-3.5" aria-hidden />
-        </button>
       ) : null}
 
       <button
@@ -136,64 +148,14 @@ export function RecordsExplorerDocumentRow({
       </button>
 
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex items-start gap-2">
-          <button
-            type="button"
-            onClick={onOpen}
-            className="min-w-0 flex-1 text-left text-sm font-medium leading-snug text-foreground hover:text-primary focus-visible:outline-none focus-visible:text-primary"
-            title={title}
-          >
-            <span className="line-clamp-2">{title}</span>
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={`More actions for ${title}`}
-                className={cn(
-                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-[8px]",
-                  "bg-background/80 opacity-70 shadow-[2px_2px_4px_rgba(0,0,0,0.08)]",
-                  "transition-all group-hover:opacity-100",
-                  "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-                )}
-              >
-                <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onSelect={() => onOpen?.()}>
-                <ExternalLink className="mr-2 h-3.5 w-3.5" />
-                Open
-              </DropdownMenuItem>
-              {filingEnabled ? (
-                <DropdownMenuItem onSelect={() => onFileTo?.()}>
-                  <FolderInput className="mr-2 h-3.5 w-3.5" />
-                  File to…
-                </DropdownMenuItem>
-              ) : null}
-              <DropdownMenuItem onSelect={() => onEdit?.()}>
-                <Pencil className="mr-2 h-3.5 w-3.5" />
-                Edit details
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => onDownload?.()}>
-                <Download className="mr-2 h-3.5 w-3.5" />
-                Download
-              </DropdownMenuItem>
-              {onDelete ? (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive"
-                    onSelect={() => onDelete()}
-                  >
-                    <Trash2 className="mr-2 h-3.5 w-3.5" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <button
+          type="button"
+          onClick={onOpen}
+          className="min-w-0 w-full text-left text-sm font-medium leading-snug text-foreground hover:text-primary focus-visible:outline-none focus-visible:text-primary"
+          title={title}
+        >
+          <span className="line-clamp-2">{title}</span>
+        </button>
 
         <p className="font-mono text-2xs uppercase tracking-wide text-muted-foreground">
           <span>{category}</span>
@@ -237,10 +199,69 @@ export function RecordsExplorerDocumentRow({
           </p>
         )}
       </div>
+
+      <div className="flex shrink-0 flex-col items-center gap-1 pt-0.5">
+        {filingEnabled ? (
+          <button
+            type="button"
+            aria-label={`File ${title} to a location`}
+            className={iconBtnClass}
+            onClick={(e) => {
+              e.stopPropagation();
+              onFileTo?.();
+            }}
+          >
+            <FolderInput className="h-3.5 w-3.5" aria-hidden />
+          </button>
+        ) : null}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={`More actions for ${title}`}
+              className={iconBtnClass}
+            >
+              <MoreHorizontal className="h-3.5 w-3.5" aria-hidden />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onSelect={() => onOpen?.()}>
+              <ExternalLink className="mr-2 h-3.5 w-3.5" />
+              Open
+            </DropdownMenuItem>
+            {filingEnabled ? (
+              <DropdownMenuItem onSelect={() => onFileTo?.()}>
+                <FolderInput className="mr-2 h-3.5 w-3.5" />
+                File to…
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem onSelect={() => onEdit?.()}>
+              <Pencil className="mr-2 h-3.5 w-3.5" />
+              Edit details
+            </DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => onDownload?.()}>
+              <Download className="mr-2 h-3.5 w-3.5" />
+              Download
+            </DropdownMenuItem>
+            {onDelete ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={() => onDelete()}
+                >
+                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              </>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 
-  if (!filingEnabled) {
+  if (!canDrag) {
     return body({ dragHandleProps: {}, isDragging: false });
   }
 

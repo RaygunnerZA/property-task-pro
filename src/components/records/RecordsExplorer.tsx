@@ -61,9 +61,10 @@ import { RecordsExplorerBulkBar } from "@/components/records/RecordsExplorerBulk
 import { RecordsObligationAttentionRow } from "@/components/records/RecordsObligationAttentionRow";
 import { FileToSpacesDialog } from "@/components/records/FileToSpacesDialog";
 import { ChangeCategoryDialog } from "@/components/records/ChangeCategoryDialog";
+import { RecordsCompliancePanel } from "@/components/records/RecordsCompliancePanel";
 import type { ComplianceRecord } from "@/components/records/complianceRecordModel";
 
-export type RecordsOrganiseView = "attention" | "types";
+export type RecordsOrganiseView = "attention" | "types" | "compliance";
 
 const VIEW_TABS: readonly OrganiseViewTab<RecordsOrganiseView>[] = [
   {
@@ -76,6 +77,11 @@ const VIEW_TABS: readonly OrganiseViewTab<RecordsOrganiseView>[] = [
     id: "types",
     label: "Types",
     subtitle: "Records by category. Drag a row onto a location to file it — filing links, it never moves.",
+  },
+  {
+    id: "compliance",
+    label: "Compliance",
+    subtitle: "Recurring rules and automation for this property.",
   },
 ] as const;
 
@@ -120,6 +126,10 @@ type RecordsExplorerProps = {
   /** Compliance obligations needing action — shown in Attention only (non-draggable). */
   attentionObligations?: ComplianceRecord[];
   onOpenObligation?: (id: string) => void;
+  /** Property for Compliance tab rules (required when view can be compliance). */
+  propertyId?: string | null;
+  /** Bump to open the create-rule modal on the Compliance tab. */
+  complianceCreateNonce?: number;
   searchQuery?: string;
   onSearchQueryChange?: (value: string) => void;
   view?: RecordsOrganiseView;
@@ -145,6 +155,8 @@ export function RecordsExplorer({
   onDeleteDocument,
   attentionObligations = [],
   onOpenObligation,
+  propertyId = null,
+  complianceCreateNonce = 0,
   searchQuery: searchProp,
   onSearchQueryChange,
   view: viewProp,
@@ -437,12 +449,13 @@ export function RecordsExplorer({
     locationLabel: activeLocationLabel,
   });
 
-  const renderDocRow = (doc: PropertyDocument) => (
+  const renderDocRow = (doc: PropertyDocument, opts?: { showDragHandle?: boolean }) => (
     <RecordsExplorerDocumentRow
       document={doc}
       selected={selectedIds.has(doc.id)}
       onSelectedChange={(next) => toggleSelected(doc.id, next)}
       filingEnabled={filingEnabled}
+      showDragHandle={opts?.showDragHandle ?? false}
       onOpen={() => onOpenDocument(doc.id)}
       onEdit={() => onOpenDocument(doc.id)}
       onFileTo={() => {
@@ -507,7 +520,7 @@ export function RecordsExplorer({
           </li>
         ))}
         {docs.map((doc) => (
-          <li key={doc.id}>{renderDocRow(doc)}</li>
+          <li key={doc.id}>{renderDocRow(doc, { showDragHandle: false })}</li>
         ))}
       </ul>
     );
@@ -599,20 +612,22 @@ export function RecordsExplorer({
           ariaLabel="Records views"
         />
 
-        <OrganiseControlsBar
-          primaryOptions={filterPrimaryOptions}
-          secondaryGroups={filterSecondaryGroups}
-          selectedFilters={selectedControlFilters}
-          onFilterChange={handleControlFilterChange}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          search={search}
-          onSearchChange={setSearch}
-          searchPlaceholder="Search documents"
-        />
+        {view !== "compliance" ? (
+          <OrganiseControlsBar
+            primaryOptions={filterPrimaryOptions}
+            secondaryGroups={filterSecondaryGroups}
+            selectedFilters={selectedControlFilters}
+            onFilterChange={handleControlFilterChange}
+            sortBy={sortBy}
+            onSortChange={setSortBy}
+            search={search}
+            onSearchChange={setSearch}
+            searchPlaceholder="Search documents"
+          />
+        ) : null}
 
         {view === "attention" ? (
-          <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col">
             <AttentionListView
               sections={attentionSections}
               emptyState={
@@ -623,6 +638,19 @@ export function RecordsExplorer({
                 </span>
               }
             />
+          </section>
+        ) : view === "compliance" ? (
+          <section className="flex min-h-0 min-w-0 flex-1 flex-col">
+            {propertyId ? (
+              <RecordsCompliancePanel
+                propertyId={propertyId}
+                openCreateNonce={complianceCreateNonce}
+              />
+            ) : (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Select a property to manage compliance rules.
+              </p>
+            )}
           </section>
         ) : (
           <>
@@ -641,7 +669,7 @@ export function RecordsExplorer({
         </CollectionShelf>
 
         {/* Full-width document workspace */}
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col rounded-[12px] bg-card/55 p-3 shadow-e1 sm:p-4">
+        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <header className="mb-3 space-y-2.5">
             <div className="flex flex-wrap items-end justify-between gap-2">
               <div className="min-w-0">
@@ -757,7 +785,7 @@ export function RecordsExplorer({
             ) : (
               <ul className="space-y-2 pb-2">
                 {visibleDocs.map((doc) => (
-                  <li key={doc.id}>{renderDocRow(doc)}</li>
+                  <li key={doc.id}>{renderDocRow(doc, { showDragHandle: true })}</li>
                 ))}
               </ul>
             )}

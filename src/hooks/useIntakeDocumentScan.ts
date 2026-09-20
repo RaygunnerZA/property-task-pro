@@ -18,6 +18,7 @@ import {
 import {
   mapIntakeDocumentType,
   normalizeIntakeExpiryDate,
+  inferExpiryFromOcrText,
   sanitizeScanTitle,
 } from "@/lib/mapIntakeDocumentType";
 import { withIntakeScanTimeout } from "@/lib/intakeScanDeferral";
@@ -198,7 +199,12 @@ export function useIntakeDocumentScan({
           normalizeIntakeExpiryDate(payload.expiry_date)
         );
         const fromOcr = extractImportantDatesFromOcr(ocrText);
-        const dates = mergeImportantDates(fromModel, fromOcr);
+        let dates = mergeImportantDates(fromModel, fromOcr);
+        // Stub / thin model responses often leave expiry null — recover from OCR labels.
+        const inferredExpiry = inferExpiryFromOcrText(ocrText);
+        if (inferredExpiry && !primaryExpiryFromDates(dates)) {
+          dates = mergeImportantDates(dates, normalizeImportantDates([], inferredExpiry));
+        }
         const findings = normalizeFindings(payload.findings);
         const actions = normalizeRequiredActions(
           payload.compliance_recommendations,
@@ -222,7 +228,9 @@ export function useIntakeDocumentScan({
               .slice(0, 8)
           : [];
         const expiry =
-          normalizeIntakeExpiryDate(payload.expiry_date) || primaryExpiryFromDates(dates);
+          normalizeIntakeExpiryDate(payload.expiry_date) ||
+          primaryExpiryFromDates(dates) ||
+          inferredExpiry;
 
         // Weak stub with no usable content → surface as soft error so the user
         // knows to add details manually (common for hard-to-read PDFs).

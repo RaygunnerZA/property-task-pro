@@ -20,6 +20,13 @@ import {
   type SchedulePrefs,
   type ScheduleState,
 } from "@/lib/content/knowledgeSchedule";
+import {
+  deriveDiscoverySignals,
+  packageMatchesSourceFilter,
+  topReasonChips,
+  type DiscoverySignal,
+  type DiscoverySourceFilter,
+} from "@/lib/content/knowledgeWatch";
 import type {
   ContentOutputRow,
   ContentTopicRow,
@@ -115,6 +122,13 @@ export type SubjectPackage = {
   autoPlanEligible: boolean;
   rank: number;
   primaryKnowledgeId: string | null;
+  /**
+   * Why this subject entered the Watch queue (discovery attribution).
+   * Not operational Issues `signals`. Not verified Knowledge.
+   */
+  discoverySignals: DiscoverySignal[];
+  /** Strongest one or two reason chip labels for the compact row. */
+  reasonChips: string[];
 };
 
 export const CONTROL_FILTER_LABELS: Record<ControlFilter, string> = {
@@ -793,6 +807,48 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
                     ? "Seasonal window passed"
                     : "Monitoring";
 
+    const coverageIncomplete =
+      coverage.some((c) => c.status === "Being researched" || c.status === "Incomplete") ||
+      machineState === "awaiting_coverage";
+
+    const discoverySignals = deriveDiscoverySignals({
+      subjectKey: key,
+      title: subjectDisplayTitle(key, rows[0]?.title ?? key),
+      sourceKinds: rows.map((r) => r.source_kind).filter(Boolean),
+      knowledgeStatuses: rows.map((r) => r.status),
+      whyNow: why,
+      windowLabel,
+      heatingSeason: heating,
+      coverageIncomplete,
+      provenanceHints: rows.flatMap((r) => {
+        const prov =
+          r.provenance && typeof r.provenance === "object" && !Array.isArray(r.provenance)
+            ? (r.provenance as Record<string, unknown>)
+            : {};
+        const hints: Array<{
+          url?: string | null;
+          label?: string | null;
+          detectedAt?: string | null;
+          changeKind?: string | null;
+        }> = [];
+        const watch = prov.watch;
+        if (Array.isArray(watch)) {
+          for (const item of watch) {
+            if (!item || typeof item !== "object") continue;
+            const w = item as Record<string, unknown>;
+            hints.push({
+              url: typeof w.url === "string" ? w.url : null,
+              label: typeof w.label === "string" ? w.label : null,
+              detectedAt: typeof w.detected_at === "string" ? w.detected_at : null,
+              changeKind: typeof w.change_kind === "string" ? w.change_kind : null,
+            });
+          }
+        }
+        return hints;
+      }),
+      now,
+    });
+
     packages.push({
       id: topic?.id ?? `subject:${key}`,
       subjectKey: key,
@@ -822,6 +878,8 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
         rows.find((r) => r.status === "verified" || r.status === "published")?.id ??
         rows[0]?.id ??
         null,
+      discoverySignals,
+      reasonChips: topReasonChips(discoverySignals, 2),
     });
   }
 
@@ -831,6 +889,17 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
     if (byKey.has(key)) continue;
     const strategy = normalizeParentStrategy(topic.strategy ?? {});
     const prefs = parseSchedulePrefs(topic.publishing);
+    const orphanSignals = deriveDiscoverySignals({
+      subjectKey: key,
+      title: subjectDisplayTitle(key, topic.title),
+      sourceKinds: [],
+      knowledgeStatuses: [],
+      whyNow: "Monitoring",
+      windowLabel: prefs.window_label,
+      heatingSeason: isHeatingSeasonMonth((input.now ?? new Date()).getMonth()),
+      coverageIncomplete: true,
+      now: input.now,
+    });
     packages.push({
       id: topic.id,
       subjectKey: key,
@@ -856,6 +925,8 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       autoPlanEligible: false,
       rank: 1,
       primaryKnowledgeId: topic.knowledge_id,
+      discoverySignals: orphanSignals,
+      reasonChips: topReasonChips(orphanSignals, 2),
     });
   }
 
@@ -871,21 +942,25 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
 /** Packages visible under the Scheduled filter (Proposed + Confirmed calendar). */
 export function packagesForFilter(
   packages: SubjectPackage[],
-  filter: ControlFilter
+  filter: ControlFilter,
+  sourceFilter: DiscoverySourceFilter = "all"
 ): SubjectPackage[] {
-  if (filter === "scheduled") {
-    return packages
-      .filter(
-        (p) =>
-          (p.scheduleState === "proposed" || p.scheduleState === "confirmed") &&
-          p.filter !== "complete"
-      )
-      .sort((a, b) => {
-        if (a.windowStart && b.windowStart) return a.windowStart.localeCompare(b.windowStart);
-        return b.rank - a.rank;
-      });
-  }
-  return packages.filter((p) => p.filter === filter);
+  const workflow =
+    filter === "scheduled"
+      ? packages
+          .filter(
+            (p) =>
+              (p.scheduleState === "proposed" || p.scheduleState === "confirmed") &&
+              p.filter !== "complete"
+          )
+          .sort((a, b) => {
+            if (a.windowStart && b.windowStart) return a.windowStart.localeCompare(b.windowStart);
+            return b.rank - a.rank;
+          })
+      : packages.filter((p) => p.filter === filter);
+
+  if (sourceFilter === "all") return workflow;
+  return workflow.filter((p) => packageMatchesSourceFilter(p.discoverySignals, sourceFilter));
 }
 
 export function filterCounts(packages: SubjectPackage[]): Record<ControlFilter, number> {

@@ -26,6 +26,19 @@ describe("intakeDocumentDates", () => {
     expect(dates.some((d) => d.remindByDefault)).toBe(true);
   });
 
+  it("reads gas safety next-check wording with filler between label and date", () => {
+    const dates = extractImportantDatesFromOcr(
+      "Landlord Gas Safety Record. The next inspection is due before 14 March 2027."
+    );
+    expect(dates.some((d) => d.kind === "next_due" && d.date === "2027-03-14")).toBe(true);
+    expect(primaryExpiryFromDates(dates)).toBe("2027-03-14");
+  });
+
+  it("reads next safety check due labels", () => {
+    const dates = extractImportantDatesFromOcr("Next safety check due 01/04/2027");
+    expect(dates.some((d) => d.kind === "next_due" && d.date === "2027-04-01")).toBe(true);
+  });
+
   it("extracts corrective deadlines as action_deadline, not next_due", () => {
     const dates = extractImportantDatesFromOcr(
       "Repair required before 31/07/2026. Next inspection 16/07/2027."

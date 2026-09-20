@@ -172,6 +172,24 @@ export function mapIntakeDocumentType(raw?: string | null): {
   return { type: trimmed.slice(0, 80), isOther: true };
 }
 
+/** Suggested Records explorer category for a mapped document type. */
+export function categoryForIntakeDocumentType(raw?: string | null): string | null {
+  const mapped = mapIntakeDocumentType(raw);
+  const type = (mapped?.type ?? raw ?? "").toLowerCase();
+  if (!type) return null;
+  if (/fire|sprinkler|smoke|riser|extinguisher|emergency lighting|aov/.test(type)) return "Fire Safety";
+  if (/eicr|electrical|pat|lightning/.test(type)) return "Electrical";
+  if (/gas|boiler|hvac|f-gas|air conditioning|pressure|kitchen extract|loler|ups/.test(type)) {
+    return "Mechanical";
+  }
+  if (/legionella|water|tank/.test(type)) return "Water";
+  if (/asbestos/.test(type)) return "Misc";
+  if (/epc|energy|accessibility|listed/.test(type)) return "Misc";
+  if (/insurance/.test(type)) return "Insurance";
+  if (/lease|legal|consent/.test(type)) return "Legal";
+  return "Misc";
+}
+
 const MONTHS: Record<string, number> = {
   jan: 1,
   january: 1,
@@ -258,7 +276,7 @@ export function normalizeIntakeExpiryDate(raw?: string | null): string | null {
 }
 
 const EXPIRY_LABEL =
-  /(?:next\s+service\s+due|next\s+(?:due|test|service|inspection|visit)|valid\s+until|expiry|expires|expiration|renew(?:al|ed)?(?:\s+by)?|due\s+date|\bdue\b|reinspect)/i;
+  /(?:next\s+service\s+due|next\s+safety\s+check|next\s+(?:check|due|test|service|inspection|visit)|(?:date\s+of\s+)?next\s+(?:check|inspection|service)|certificate\s+(?:is\s+)?valid\s+until|valid\s+until|expiry|expires|expiration|renew(?:al|ed)?(?:\s+by)?|due\s+date|\bdue\b|reinspect)/i;
 
 const DATE_CAPTURE =
   /(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/;

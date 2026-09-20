@@ -98,7 +98,6 @@ import {
 } from "@/components/tasks/detail/TaskDetailChecklistTab";
 import { TaskDetailActionBar } from "@/components/tasks/detail/TaskDetailActionBar";
 import { TaskProgressUpdateSheet } from "@/components/tasks/detail/TaskProgressUpdateSheet";
-import { findNextOpenTaskId } from "@/lib/findNextOpenTask";
 import { findAdjacentTaskIds } from "@/lib/findAdjacentTaskIds";
 import { useMobileTaskSwipeNav } from "@/hooks/useMobileTaskSwipeNav";
 import { syncTaskJunctionIds } from "@/lib/syncTaskJunctionIds";
@@ -124,7 +123,7 @@ interface TaskDetailPanelProps {
   taskId: string;
   onClose: () => void;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column
-  /** Open another task after Mark complete → Next task. */
+  /** Open another task (prev/next chevrons, swipe). */
   onOpenTask?: (taskId: string) => void;
   /** When true (Messages tab selection), start with checklist collapsed. */
   initialChecklistCollapsed?: boolean;
@@ -238,7 +237,6 @@ export function TaskDetailPanel({
   const [taskEditOpen, setTaskEditOpen] = useState(false);
   const [activityExpanded, setActivityExpanded] = useState(false);
   const [progressUpdateOpen, setProgressUpdateOpen] = useState(false);
-  const [nextTaskOfferId, setNextTaskOfferId] = useState<string | null>(null);
   const [checklistSessionDirty, setChecklistSessionDirty] = useState(false);
   const [contextSessionDirty, setContextSessionDirty] = useState(false);
   const [messageDraftPending, setMessageDraftPending] = useState(false);
@@ -893,9 +891,8 @@ export function TaskDetailPanel({
               : "Status updated",
         description: getTaskStatusVisual(next).label,
       });
-      if (next === "completed") {
-        const nextId = findNextOpenTaskId(queryClient, taskId, propId);
-        setNextTaskOfferId(nextId);
+      if (next === "completed" || next === "archived") {
+        onClose();
       }
     } catch (err: any) {
       setStatus(prev);
@@ -2305,49 +2302,6 @@ export function TaskDetailPanel({
       }}
     />
 
-    <AlertDialog
-      open={nextTaskOfferId !== null}
-      onOpenChange={(open) => {
-        if (!open) setNextTaskOfferId(null);
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Task completed</AlertDialogTitle>
-          <AlertDialogDescription>
-            {nextTaskOfferId
-              ? "Ready for the next open task?"
-              : "Nice work — no other open tasks in scope right now."}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel
-            onClick={() => {
-              setNextTaskOfferId(null);
-              onClose();
-            }}
-          >
-            Close
-          </AlertDialogCancel>
-          {nextTaskOfferId ? (
-            <AlertDialogAction
-              onClick={() => {
-                const id = nextTaskOfferId;
-                setNextTaskOfferId(null);
-                if (id && onOpenTask) {
-                  onOpenTask(id);
-                } else if (id) {
-                  onClose();
-                }
-              }}
-            >
-              Next task
-            </AlertDialogAction>
-          ) : null}
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-    
     <InviteUserModal
       open={inviteModalOpen}
       onOpenChange={(open) => {

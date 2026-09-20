@@ -112,6 +112,14 @@ export function WhenSection({
   // Captures editing state at close time so any in-flight 150ms scroll debounce can still commit
   const editingAtCloseRef = useRef<{ kind: "due" } | { kind: "milestone"; id: string } | null>(null);
 
+  // Task detail opens this section from the date chip (embedded, already has a due date).
+  // Show the calendar immediately instead of waiting for a second + DATE tap.
+  useEffect(() => {
+    if (!isActive || !embedded) return;
+    if (!dueDate) return;
+    setEditing((prev) => prev ?? { kind: "due" });
+  }, [isActive, embedded, dueDate]);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -512,7 +520,7 @@ export function WhenSection({
 
       {/* Date/time selector (only when editing due date / milestone) */}
       {editing && (
-        <div ref={panelRef} className="pl-[22px] pt-2 pb-2 space-y-2">
+        <div ref={panelRef} className="pt-4 pb-3 space-y-2">
           {editing.kind === "milestone" && (
             <div className="flex items-center gap-2">
               <label className="text-2xs font-mono uppercase text-muted-foreground shrink-0">Name</label>

@@ -458,6 +458,9 @@ verify_jwt = true
 [functions.knowledge-gap-research]
 verify_jwt = true
 
+[functions.knowledge-watch-run]
+verify_jwt = true
+
 [functions.ai-batch-submit]
 verify_jwt = true
 

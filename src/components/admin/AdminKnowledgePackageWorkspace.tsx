@@ -30,6 +30,7 @@ import {
   type PackagePrimaryKind,
   type SubjectPackage,
 } from "@/lib/content/knowledgeSubjectPackage";
+import { confidenceLabel } from "@/lib/content/knowledgeWatch";
 import { toast } from "sonner";
 
 function rpcError(e: unknown, fallback: string): string {
@@ -274,6 +275,54 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
           <p className="text-xs text-muted-foreground mt-0.5">{pkg.whyNow}</p>
         </div>
       </div>
+
+      {pkg.discoverySignals.length > 0 ? (
+        <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold">Why Watch proposed this</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Discovery signals for investigation — not verified Knowledge and not Issues Signals.
+            </p>
+          </div>
+          <ul className="space-y-3">
+            {pkg.discoverySignals.map((signal) => (
+              <li key={`${signal.type}-${signal.label}`} className="space-y-1">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <p className="text-sm font-medium text-foreground">{signal.label}</p>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                    {confidenceLabel(signal.confidence)}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground leading-snug">{signal.observation}</p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  Detected{" "}
+                  {signal.detectedAt
+                    ? new Date(signal.detectedAt).toLocaleString()
+                    : "date unknown"}
+                </p>
+                {signal.sourceUrls.length > 0 ? (
+                  <ul className="text-xs space-y-0.5">
+                    {signal.sourceUrls.map((url) => (
+                      <li key={url}>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary hover:underline break-all"
+                        >
+                          {url}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground/70">No source links attached yet.</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {/* What we know */}
       <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">

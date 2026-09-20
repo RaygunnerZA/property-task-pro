@@ -1,7 +1,5 @@
 import { useMemo, useState, useCallback, useEffect, useRef } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { AlertTriangle, ChevronRight } from "lucide-react";
-import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
+import { useSearchParams } from "react-router-dom";
 import {
   usePropertyDocuments,
   type PropertyDocument,
@@ -16,14 +14,14 @@ import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDraw
 import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
 import { useAttachmentSpaceLinks } from "@/hooks/property/useAttachmentSpaceLinks";
 import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
-import { Button } from "@/components/ui/button";
-import { propertyComplianceSetupPath, type RecordsView } from "@/lib/propertyRoutes";
+import type { RecordsView } from "@/lib/propertyRoutes";
 import type { IntakeMode } from "@/types/intake";
 import {
   buildComplianceRecordsFromPortfolio,
   type ComplianceRecord,
 } from "./complianceRecordModel";
 import { RecordsExplorer } from "./RecordsExplorer";
+import type { RecordsOrganiseView } from "./RecordsExplorer";
 import { RecordsObligationAttentionRow } from "./RecordsObligationAttentionRow";
 import {
   partitionPropertySpaces,
@@ -35,7 +33,7 @@ import {
   removedLinkToastMessage,
   spaceIdsToAdd,
 } from "@/lib/records/attachmentSpaces";
-import { cn } from "@/lib/utils";
+import { useCompliancePortfolioQuery } from "@/hooks/useCompliancePortfolioQuery";
 
 const RECORDS_FILE_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
 
@@ -67,7 +65,6 @@ export function PropertyRecordsTab({
   recordsSearch: recordsSearchProp,
   onRecordsSearchChange,
 }: PropertyRecordsTabProps) {
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { orgId } = useActiveOrg();
@@ -79,7 +76,8 @@ export function PropertyRecordsTab({
 
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
   const [selectedComplianceId, setSelectedComplianceId] = useState<string | null>(null);
-  const [explorerView, setExplorerView] = useState<"attention" | "types">("attention");
+  const [explorerView, setExplorerView] = useState<RecordsOrganiseView>("attention");
+  const [complianceCreateNonce, setComplianceCreateNonce] = useState(0);
 
   // Deep link: `?documentId=` opens the document detail (detail chrome rule,
   // @Docs/04_UI_System.md — selection is deep-linkable on all three surfaces).
@@ -168,6 +166,8 @@ export function PropertyRecordsTab({
   useEffect(() => {
     if (recordsView === "expiring" || recordsView === "overdue" || recordsView === "missing") {
       setExplorerView("attention");
+    } else if (recordsView === "compliance") {
+      setExplorerView("compliance");
     }
   }, [recordsView]);
 
@@ -197,8 +197,9 @@ export function PropertyRecordsTab({
     const next = new URLSearchParams(searchParams);
     next.delete("addRule");
     setSearchParams(next, { replace: true });
-    navigate(propertyComplianceSetupPath(scopedPropertyId, { addRule: true }));
-  }, [searchParams, scopedPropertyId, setSearchParams, navigate]);
+    setExplorerView("compliance");
+    setComplianceCreateNonce((n) => n + 1);
+  }, [searchParams, scopedPropertyId, setSearchParams]);
 
   const openRecordsFilePicker = useCallback(() => {
     if (!scopedPropertyId) {
@@ -421,50 +422,18 @@ export function PropertyRecordsTab({
   }, [selectedComplianceRecord]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col px-[10px] pb-[11px] pt-0 max-sm:px-0 max-pane:px-2">
+    <div className="flex h-full min-h-0 flex-col pt-0 max-sm:px-0">
       {recordsUploading ? (
         <p className="mb-2 text-xs text-muted-foreground" aria-live="polite">
           Uploading…
         </p>
       ) : null}
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        {attentionObligations.length > 0 ? (
-          <button
-            type="button"
-            onClick={() => setExplorerView("attention")}
-            className={cn(
-              "inline-flex items-center gap-1.5 rounded-[8px] px-2.5 py-1.5 font-mono text-2xs uppercase tracking-wide",
-              "bg-card shadow-e1 transition-colors hover:bg-primary/10",
-              explorerView === "attention" && "ring-1 ring-destructive/40"
-            )}
-            aria-label={`${attentionObligations.length} obligations need attention`}
-          >
-            <AlertTriangle className="h-3.5 w-3.5 text-destructive" aria-hidden />
-            Obligations
-            <span className="tabular-nums text-muted-foreground">
-              {attentionObligations.length}
-            </span>
-          </button>
-        ) : null}
-        {scopedPropertyId && attentionObligations.length > 0 ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs text-primary"
-            onClick={() => navigate(propertyComplianceSetupPath(scopedPropertyId))}
-          >
-            Manage
-            <ChevronRight className="h-3.5 w-3.5" />
-          </Button>
-        ) : null}
-        {!scopedPropertyId ? (
-          <p className="text-xs text-muted-foreground">
-            Select one property to organise records by space.
-          </p>
-        ) : null}
-      </div>
+      {!scopedPropertyId ? (
+        <p className="mb-3 text-xs text-muted-foreground">
+          Select one property to organise records by space.
+        </p>
+      ) : null}
 
       <div className="min-h-0 flex-1">
         {scopedPropertyId ? (
@@ -482,6 +451,8 @@ export function PropertyRecordsTab({
             onViewChange={setExplorerView}
             attentionObligations={attentionObligations}
             onOpenObligation={setSelectedComplianceId}
+            propertyId={scopedPropertyId}
+            complianceCreateNonce={complianceCreateNonce}
             onOpenDocument={openDocument}
             onAddRecord={openRecordsFilePicker}
             onFileToSpace={handleFileToSpace}

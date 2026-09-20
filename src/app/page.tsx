@@ -26,7 +26,6 @@ import {
   ISSUES_OPEN_TASK_FILTER_IDS,
   propertyActivitySpacesPath,
   propertyActivityAssetsPath,
-  propertyComplianceSetupPath,
   propertyHubAssetsPath,
   propertyHubIssuesPath,
   propertyHubPeoplePath,
@@ -696,7 +695,13 @@ export default function Dashboard({
   }, [activeTab, isLargeScreen, pinThirdColumnTop]);
 
   useEffect(() => {
-    if (activeTab !== "records") setRecordsIntakeOpen(false);
+    if (activeTab !== "records") {
+      setRecordsIntakeOpen(false);
+      return;
+    }
+    // Records centre: right rail defaults to Add Record (not Create Task).
+    setWorkbenchIntakeMode("add_record");
+    setRecordsIntakeOpen(true);
   }, [activeTab]);
 
   const handleCreateForDate = useCallback(
@@ -1074,9 +1079,12 @@ export default function Dashboard({
           <RecordsActionRail
             propertyId={intakeScopedPropertyId}
             onOpenIntake={handleOpenIntake}
-            onAddComplianceRule={() =>
-              navigate(propertyComplianceSetupPath(intakeScopedPropertyId, { addRule: true }))
-            }
+            onAddComplianceRule={() => {
+              const params = workbenchSearchParamsFromBrowser(searchParams);
+              params.set(WORKBENCH_RECORDS_VIEW_QUERY, "compliance");
+              params.set("addRule", "1");
+              setSearchParams(params, { replace: false });
+            }}
             onUploadClick={() =>
               window.dispatchEvent(new CustomEvent("filla:records-open-upload"))
             }

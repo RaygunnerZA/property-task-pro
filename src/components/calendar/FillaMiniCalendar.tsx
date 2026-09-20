@@ -207,13 +207,16 @@ function stripDayPickerGeometryClasses(className?: string) {
     .join(" ");
 }
 
-function miniCalMonthClassNames(variant: MiniCalVariant) {
+function miniCalMonthClassNames(variant: MiniCalVariant, bare = false) {
   const geo = MINI_CAL_DAY[variant];
   const isEmbedded = variant === "embedded";
   return {
     months: "flex flex-col w-full",
     month: "space-y-3 w-full",
-    caption: "flex justify-between items-center px-0.5 mb-1",
+    caption: cn(
+      "flex justify-between items-center mb-1",
+      bare ? "px-0" : "px-0.5"
+    ),
     caption_label: cn(
       "font-semibold text-foreground",
       isEmbedded ? "text-base" : "text-sm"
@@ -232,7 +235,8 @@ function miniCalMonthClassNames(variant: MiniCalVariant) {
     ),
     row: "flex w-full justify-between mt-0.5",
     tbody: cn(
-      "block overflow-hidden transition-[max-height] duration-300 ease-in-out",
+      "block overflow-hidden",
+      !bare && "transition-[max-height] duration-300 ease-in-out",
       isEmbedded ? "max-h-[180px]" : undefined
     ),
     cell: cn(
@@ -289,19 +293,22 @@ function WeekStripRow({
   selectedDate,
   onDateSelect,
   isEmbedded,
+  bare = false,
 }: {
   weekStart: Date;
   tasksByDate: Map<string, TaskDateData>;
   selectedDate?: Date;
   onDateSelect?: (date: Date | undefined) => void;
   isEmbedded: boolean;
+  bare?: boolean;
 }) {
   const weekDays = useMemo(() => buildWeekDays(weekStart), [weekStart]);
   const geo = MINI_CAL_DAY[isEmbedded ? "embedded" : "sidebar"];
+  const edgePad = bare ? "px-0" : "px-0.5";
 
   return (
     <div className="w-full shrink-0">
-      <div className="mini-cal-weekdays mb-1.5 flex w-full justify-between px-0.5">
+      <div className={cn("mini-cal-weekdays mb-1.5 flex w-full justify-between", edgePad)}>
         {weekDays.map((date, col) => {
           const isWeekend = date.getDay() === 0 || date.getDay() === 6;
           return (
@@ -319,7 +326,7 @@ function WeekStripRow({
           );
         })}
       </div>
-      <div className="mini-cal-days flex w-full justify-between px-0.5">
+      <div className={cn("mini-cal-days flex w-full justify-between", edgePad)}>
         {weekDays.map((date) => {
           const dateKey = format(date, "yyyy-MM-dd");
           const variant: MiniCalVariant = isEmbedded ? "embedded" : "sidebar";
@@ -350,9 +357,10 @@ const MiniCalendarWeekStrip = forwardRef<
     onDateSelect?: (date: Date | undefined) => void;
     onWeekChange: (nextWeekStart: Date) => void;
     isEmbedded: boolean;
+    bare?: boolean;
   }
 >(function MiniCalendarWeekStrip(
-  { weekStart, tasksByDate, selectedDate, onDateSelect, onWeekChange, isEmbedded },
+  { weekStart, tasksByDate, selectedDate, onDateSelect, onWeekChange, isEmbedded, bare = false },
   ref
 ) {
   const [displayWeekStart, setDisplayWeekStart] = useState(weekStart);
@@ -869,6 +877,7 @@ const MiniCalendarWeekStrip = forwardRef<
               selectedDate={selectedDate}
               onDateSelect={onDateSelect}
               isEmbedded={isEmbedded}
+              bare={bare}
             />
           </div>
           {isDualTrack ? (
@@ -879,6 +888,7 @@ const MiniCalendarWeekStrip = forwardRef<
                 selectedDate={selectedDate}
                 onDateSelect={onDateSelect}
                 isEmbedded={isEmbedded}
+                bare={bare}
               />
             </div>
           ) : null}
@@ -906,6 +916,8 @@ export interface FillaMiniCalendarProps {
   defaultExpanded?: boolean;
   /** When true, selecting a date collapses to the week strip (schedule mobile). */
   collapseOnDateSelect?: boolean;
+  /** Drop border / card chrome (e.g. When panel inside task create). */
+  bare?: boolean;
 }
 
 /**
@@ -924,6 +936,7 @@ export function FillaMiniCalendar({
   variant = "sidebar",
   defaultExpanded = true,
   collapseOnDateSelect = false,
+  bare = false,
 }: FillaMiniCalendarProps) {
   const tasksByDate = useMemo(() => {
     if (providedTasksByDate) return providedTasksByDate;
@@ -1016,7 +1029,11 @@ export function FillaMiniCalendar({
   };
 
   const showWeekStrip = isCollapsible && !isExpanded;
-  const monthClassNames = miniCalMonthClassNames(variant);
+  const monthClassNames = miniCalMonthClassNames(variant, bare);
+  const expandTransition = bare
+    ? "grid"
+    : "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out";
+  const edgePad = bare ? "px-0" : "px-0.5";
 
   const renderDayButton = (props: {
     date: Date;
@@ -1046,7 +1063,10 @@ export function FillaMiniCalendar({
     <CalendarMonthYearLabel
       date={captionMonth}
       onClick={onMonthTitleClick}
-      monthClassName={isEmbedded ? CALENDAR_MONTH_TITLE_EMBEDDED_CLASS : CALENDAR_MONTH_TITLE_CLASS}
+      monthClassName={cn(
+        isEmbedded ? CALENDAR_MONTH_TITLE_EMBEDDED_CLASS : CALENDAR_MONTH_TITLE_CLASS,
+        bare && "pl-0"
+      )}
     />
   );
 
@@ -1056,7 +1076,9 @@ export function FillaMiniCalendar({
       className={cn(
         "filla-mini-calendar w-full",
         variant === "sidebar" &&
+          !bare &&
           "w-full max-w-full sm:max-w-[311px] rounded-xl border border-border/40 bg-card/60 px-3 pt-3 pb-0",
+        variant === "sidebar" && bare && "w-full max-w-full sm:max-w-[311px] pt-0 pb-0",
         className
       )}
       data-collapsed={showWeekStrip ? "true" : "false"}
@@ -1066,7 +1088,7 @@ export function FillaMiniCalendar({
         <>
           <div
             className={cn(
-              "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+              expandTransition,
               isExpanded
                 ? "grid-rows-[1fr] opacity-100"
                 : "grid-rows-[0fr] opacity-0 pointer-events-none"
@@ -1102,7 +1124,7 @@ export function FillaMiniCalendar({
           </div>
           <div
             className={cn(
-              "grid transition-[grid-template-rows,opacity] duration-300 ease-in-out",
+              expandTransition,
               showWeekStrip
                 ? "grid-rows-[1fr] opacity-100"
                 : "grid-rows-[0fr] opacity-0 pointer-events-none"
@@ -1110,7 +1132,7 @@ export function FillaMiniCalendar({
           >
             <div className="min-h-0 overflow-hidden">
               <div ref={collapsedWeekRef} className="w-full" key={`week-${introNonce}`}>
-                <div className="mb-2 flex items-center justify-between px-0.5">
+                <div className={cn("mb-2 flex items-center justify-between", edgePad)}>
                   {monthTitleLabel(displayMonth)}
                   <CalendarNavChevrons
                     onPrev={() => navigateWeek(-1)}
@@ -1127,6 +1149,7 @@ export function FillaMiniCalendar({
                   onDateSelect={handleDateSelect}
                   onWeekChange={handleWeekChange}
                   isEmbedded={isEmbedded}
+                  bare={bare}
                 />
               </div>
             </div>
@@ -1164,7 +1187,8 @@ export function FillaMiniCalendar({
         >
           <ChevronUp
             className={cn(
-              "h-4 w-4 transition-transform duration-300 ease-in-out",
+              "h-4 w-4",
+              !bare && "transition-transform duration-300 ease-in-out",
               !isExpanded && "rotate-180"
             )}
             strokeWidth={2.2}

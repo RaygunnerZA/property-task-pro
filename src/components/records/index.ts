@@ -12,4 +12,5 @@ export { FileToSpacesDialog } from "./FileToSpacesDialog";
 export { RecordDocumentRow } from "./RecordDocumentRow";
 export { RecordsExplorer } from "./RecordsExplorer";
 export { RecordsExplorerCategoryCard } from "./RecordsExplorerCategoryCard";
+export { RecordsCompliancePanel } from "./RecordsCompliancePanel";
 export type { ComplianceRecord } from "./complianceRecordModel";

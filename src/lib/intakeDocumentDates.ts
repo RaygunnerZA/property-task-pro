@@ -68,6 +68,12 @@ const DATE_KIND_LABELS: Record<IntakeDateKind, string> = {
   other: "Date",
 };
 
+const DATE_TOKEN =
+  "(\\d{4}-\\d{2}-\\d{2}|\\d{1,2}[/.\\-]\\d{1,2}[/.\\-]\\d{2,4}|\\d{1,2}\\s+[A-Za-z]{3,9}\\s+\\d{2,4}|[A-Za-z]{3,9}\\s+\\d{1,2},?\\s+\\d{2,4})";
+
+/** Allow short filler ("is due before", table gaps) between label and date. */
+const LABEL_TO_DATE = `[\\s\\S]{0,60}?${DATE_TOKEN}`;
+
 const LABELLED_DATE_PATTERNS: Array<{
   kind: IntakeDateKind;
   label: string;
@@ -77,43 +83,64 @@ const LABELLED_DATE_PATTERNS: Array<{
   {
     kind: "action_deadline",
     label: "Action deadline",
-    re: /(?:repair(?:s|ed)?\s+(?:must\s+be\s+)?(?:required\s+)?(?:completed\s+)?(?:by|before)|action\s+required\s+(?:by|before)|remed(?:y|ial\s+works?)\s+(?:by|before)|rectif(?:y|ied|ication)\s+(?:by|before)|corrective\s+actions?\s+(?:by|before)|required\s+before|à\s+corriger\s+avant(?:\s+le)?|avant\s+le)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:repair(?:s|ed)?\\s+(?:must\\s+be\\s+)?(?:required\\s+)?(?:completed\\s+)?(?:by|before)|action\\s+required\\s+(?:by|before)|remed(?:y|ial\\s+works?)\\s+(?:by|before)|rectif(?:y|ied|ication)\\s+(?:by|before)|corrective\\s+actions?\\s+(?:by|before)|required\\s+before|à\\s+corriger\\s+avant(?:\\s+le)?|avant\\s+le)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: true,
   },
   {
     kind: "next_due",
     label: "Next due",
-    re: /(?:next\s+(?:due|test|service|inspection|visit)|re-?sample(?:\s+by)?|follow[-\s]?up)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:next\\s+(?:safety\\s+)?(?:check|test|service|inspection|visit|due)|(?:date\\s+of\\s+)?next\\s+(?:check|inspection|service)|re-?sample(?:\\s+by)?|follow[\\s-]?up|due\\s+(?:date\\s+)?for\\s+next)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: true,
   },
   {
     kind: "expiry",
     label: "Expiry",
-    re: /(?:valid\s+until|expiry|expires|expiration|renew(?:al)?(?:\s+by)?)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:valid\\s+until|certificate\\s+(?:is\\s+)?valid\\s+until|expiry|expires|expiration|renew(?:al)?(?:\\s+by)?)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: true,
   },
   {
     kind: "issued",
     label: "Report issued",
-    re: /(?:report\s+issued|issued|date\s+of\s+issue)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:report\\s+issued|issued|date\\s+of\\s+issue)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: false,
   },
   {
     kind: "collected",
     label: "Collected",
-    re: /(?:collected|sample\s+date|sampling\s+date)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:collected|sample\\s+date|sampling\\s+date)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: false,
   },
   {
     kind: "received",
     label: "Received",
-    re: /(?:received|lab\s+received)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:received|lab\\s+received)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: false,
   },
   {
     kind: "service",
     label: "Service date",
-    re: /(?:service(?:d)?(?:\s+on)?|inspected(?:\s+on)?)[\s:.-]{0,20}(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/gi,
+    re: new RegExp(
+      `(?:service(?:d)?(?:\\s+on)?|inspected(?:\\s+on)?|date\\s+of\\s+check|check\\s+date)${LABEL_TO_DATE}`,
+      "gi"
+    ),
     remindByDefault: false,
   },
 ];

@@ -5,6 +5,7 @@ import {
   mapIntakeDocumentType,
   normalizeIntakeExpiryDate,
   sanitizeScanTitle,
+  categoryForIntakeDocumentType,
 } from "@/lib/mapIntakeDocumentType";
 
 describe("mapIntakeDocumentType", () => {
@@ -17,6 +18,13 @@ describe("mapIntakeDocumentType", () => {
     expect(mapIntakeDocumentType("legionella")?.type).toBe("Legionella Risk Assessment");
     expect(mapIntakeDocumentType("FRA")?.type).toBe("Fire Risk Assessment");
     expect(isIntakeCompliancePreset("Emergency Lighting Test")).toBe(true);
+  });
+
+  it("suggests explorer categories for common compliance types", () => {
+    expect(categoryForIntakeDocumentType("Gas Safety Certificate")).toBe("Mechanical");
+    expect(categoryForIntakeDocumentType("EICR")).toBe("Electrical");
+    expect(categoryForIntakeDocumentType("Fire Risk Assessment")).toBe("Fire Safety");
+    expect(categoryForIntakeDocumentType("Legionella Risk Assessment")).toBe("Water");
   });
 
   it("keeps unknown meaningful types as custom Other text", () => {
@@ -60,6 +68,12 @@ describe("inferExpiryFromOcrText", () => {
 
   it("does not treat an unlabeled date as expiry", () => {
     expect(inferExpiryFromOcrText("Printed 01/03/26")).toBeNull();
+  });
+
+  it("reads gas safety next inspection phrasing", () => {
+    expect(
+      inferExpiryFromOcrText("The next inspection is due before 14/03/2027")
+    ).toBe("2027-03-14");
   });
 });
 

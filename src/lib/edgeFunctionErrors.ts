@@ -124,9 +124,9 @@ export async function parseEdgeFunctionError(
   return { message: "Request failed" };
 }
 
-export function formatEdgeFunctionToast(info: EdgeFunctionErrorInfo): string {
-  const base = info.message.trim() || "Request failed";
-  if (info.requestId) {
+export function formatEdgeFunctionToast(info: EdgeFunctionErrorInfo | null | undefined): string {
+  const base = (info?.message ?? "").trim() || "Request failed";
+  if (info?.requestId) {
     return `${base} Request: ${info.requestId}.`;
   }
   return base;

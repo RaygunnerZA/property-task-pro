@@ -1,5 +1,71 @@
 /** Filename / light-text fallback when full document AI is skipped or unavailable. */
 
+const DATE_CAPTURE =
+  /(\d{4}-\d{2}-\d{2}|\d{1,2}[/.\-]\d{1,2}[/.\-]\d{2,4}|\d{1,2}\s+[A-Za-z]{3,9}\s+\d{2,4}|[A-Za-z]{3,9}\s+\d{1,2},?\s+\d{2,4})/;
+
+const EXPIRY_LABEL =
+  /(?:next\s+service\s+due|next\s+safety\s+check|next\s+(?:check|due|test|service|inspection|visit)|(?:date\s+of\s+)?next\s+(?:check|inspection|service)|certificate\s+(?:is\s+)?valid\s+until|valid\s+until|expiry|expires|expiration|renew(?:al|ed)?(?:\s+by)?)/i;
+
+const MONTHS: Record<string, number> = {
+  jan: 1, january: 1, feb: 2, february: 2, mar: 3, march: 3, apr: 4, april: 4,
+  may: 5, jun: 6, june: 6, jul: 7, july: 7, aug: 8, august: 8,
+  sep: 9, sept: 9, september: 9, oct: 10, october: 10, nov: 11, november: 11,
+  dec: 12, december: 12,
+};
+
+function expandYear(raw: string): number {
+  const n = Number(raw);
+  if (raw.length <= 2) return n >= 70 ? 1900 + n : 2000 + n;
+  return n;
+}
+
+function isoIfRealCalendar(year: number, month: number, day: number): string | null {
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  if (year < 1990 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (dt.getUTCFullYear() !== year || dt.getUTCMonth() !== month - 1 || dt.getUTCDate() !== day) {
+    return null;
+  }
+  return `${year.toString().padStart(4, "0")}-${month.toString().padStart(2, "0")}-${day
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+function normalizeStubDate(raw?: string | null): string | null {
+  if (!raw) return null;
+  const value = raw.trim().replace(/,/g, " ").replace(/\s+/g, " ");
+  if (!value) return null;
+  const iso = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (iso) return isoIfRealCalendar(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  const numeric = value.match(/^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$/);
+  if (numeric) {
+    const first = Number(numeric[1]);
+    const second = Number(numeric[2]);
+    const year = expandYear(numeric[3]);
+    return isoIfRealCalendar(year, second, first) || isoIfRealCalendar(year, first, second);
+  }
+  const dayMonthYear = value.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{2,4})$/);
+  if (dayMonthYear) {
+    const month = MONTHS[dayMonthYear[2].toLowerCase()];
+    if (month) return isoIfRealCalendar(expandYear(dayMonthYear[3]), month, Number(dayMonthYear[1]));
+  }
+  const monthDayYear = value.match(/^([A-Za-z]{3,9})\s+(\d{1,2})\s+(\d{2,4})$/);
+  if (monthDayYear) {
+    const month = MONTHS[monthDayYear[1].toLowerCase()];
+    if (month) return isoIfRealCalendar(expandYear(monthDayYear[3]), month, Number(monthDayYear[2]));
+  }
+  return null;
+}
+
+/** Best-effort renewal date from OCR when AI is stubbed — never invent. */
+function inferExpiryFromOcr(text?: string | null): string | null {
+  if (!text?.trim()) return null;
+  const labeled = new RegExp(`${EXPIRY_LABEL.source}[\\s\\S]{0,80}?${DATE_CAPTURE.source}`, "i");
+  const match = text.replace(/\u0000/g, " ").match(labeled);
+  if (!match?.[1]) return null;
+  return normalizeStubDate(match[1]);
+}
+
 export function humanizeIntakeFileStem(fileName: string): string {
   const stem = fileName.replace(/\.[^.]+$/, "");
   const withoutIndex = stem.replace(/^\d+[_\-\s.]+/, "");
@@ -54,6 +120,7 @@ export function buildIntakeDocStub(
       .trim() || humanizeIntakeFileStem(fileName);
   const document_type = inferDocTypeFromFilename(fileName);
   const outcome = inferOutcomeFromFilename(`${fileName} ${ocrText || ""}`);
+  const expiry_date = inferExpiryFromOcr(ocrText);
   const summary = [
     document_type ? `This is a ${document_type}.` : "This looks like a property document.",
     outcome === "unsatisfactory"
@@ -67,13 +134,16 @@ export function buildIntakeDocStub(
     title,
     document_type,
     category: inferCategoryFromFilename(fileName),
-    expiry_date: null,
+    expiry_date,
     renewal_frequency: null,
     confidence: ocrText ? 0.55 : 0.35,
     ocr_text: ocrText?.slice(0, 2000) || null,
     summary,
     outcome,
     findings: [],
+    important_dates: expiry_date
+      ? [{ label: "Expiry / renewal", date: expiry_date, kind: "expiry" }]
+      : [],
     detected_spaces: [],
     detected_assets: [],
     compliance_recommendations: [],

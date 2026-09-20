@@ -26,25 +26,26 @@ export function useDocumentDetail(documentId: string | null) {
         .eq("org_id", orgId)
         .single();
 
-      if (attError || !att) return null;
+      if (attError || !att) {
+        return null;
+      }
 
       const attachment = att as unknown as PropertyDocument & Record<string, unknown>;
       const meta = (attachment.metadata as Record<string, unknown> | null) ?? {};
 
-      // attachment_* junction tables are pending-migration (not in generated schema)
+      // Only attachment_spaces exists in shipped schema; other junctions 404 (PGRST205) on remote.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const sb = supabase as any;
-      const [spacesRes, assetsRes, contractorsRes, complianceRes] = await Promise.all([
-        sb.from("attachment_spaces").select("space_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        sb.from("attachment_assets").select("asset_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        sb.from("attachment_contractors").select("contractor_org_id").eq("attachment_id", documentId).eq("org_id", orgId),
-        sb.from("attachment_compliance").select("compliance_document_id").eq("attachment_id", documentId).eq("org_id", orgId),
-      ]);
+      const spacesRes = await sb
+        .from("attachment_spaces")
+        .select("space_id")
+        .eq("attachment_id", documentId)
+        .eq("org_id", orgId);
 
       const spaceIds = (spacesRes.data || []).map((r: { space_id: string }) => r.space_id).filter(Boolean);
-      const assetIds = (assetsRes.data || []).map((r: { asset_id: string }) => r.asset_id).filter(Boolean);
-      const contractorIds = (contractorsRes.data || []).map((r: { contractor_org_id: string }) => r.contractor_org_id).filter(Boolean);
-      const complianceIds = (complianceRes.data || []).map((r: { compliance_document_id: string }) => r.compliance_document_id).filter(Boolean);
+      const assetIds: string[] = [];
+      const contractorIds: string[] = [];
+      const complianceIds: string[] = [];
 
       const [spacesData, assetsData, contractorsData, complianceData] = await Promise.all([
         spaceIds.length ? supabase.from("spaces").select("id, name").in("id", spaceIds) : { data: [] },
@@ -120,7 +121,7 @@ export function useDocumentDetail(documentId: string | null) {
       if (error) throw error;
     },
     onSuccess: () => {
-      refetch();
+      // Invalidate list + detail once (avoid refetch()+invalidate double-fetch).
       queryClient.invalidateQueries({ queryKey: ["property-documents"] });
       queryClient.invalidateQueries({ queryKey: ["document-detail", documentId] });
     },

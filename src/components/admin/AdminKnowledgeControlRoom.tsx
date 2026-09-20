@@ -2,7 +2,7 @@
  * One Knowledge control room — decision queue, not a backlog of every Knowledge row.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Filter, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
+import { BookOpen, Loader2, MoreHorizontal, Plus, Search } from "lucide-react";
 import {
   useAdminContentTopics,
   useAdminCreateContentTopic,
@@ -17,6 +17,7 @@ import { AdminKnowledgePackageWorkspace } from "@/components/admin/AdminKnowledg
 import { AdminKnowledgeReviewWorkbench } from "@/components/admin/AdminKnowledgeReviewWorkbench";
 import { AdminOutputsPanel } from "@/components/admin/AdminOutputsPanel";
 import { AdminKnowledgeDetailSheet } from "@/components/admin/AdminKnowledgeDetailSheet";
+import { KnowledgeWatchSettingsControl } from "@/components/admin/KnowledgeWatchSettingsControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -43,6 +44,7 @@ import {
   type ControlFilter,
   type SubjectPackage,
 } from "@/lib/content/knowledgeSubjectPackage";
+import { DISCOVERY_SOURCE_FILTERS, type DiscoverySourceFilter } from "@/lib/content/knowledgeWatch";
 import { proposePilotCalendarWindows } from "@/lib/content/knowledgeEditorialCalendar";
 import { mergeSchedulePrefsIntoPublishing } from "@/lib/content/knowledgeSchedule";
 import { isPublicationReady, queueCardPreview } from "@/lib/knowledge/knowledgePresentation";
@@ -64,6 +66,8 @@ function CompactRow({
       : pkg.scheduleState === "confirmed"
         ? "Confirmed"
         : null;
+  const reasonLine =
+    pkg.reasonChips.length > 0 ? pkg.reasonChips.join(" · ") : pkg.whyNow;
 
   return (
     <div
@@ -99,8 +103,20 @@ function CompactRow({
         <p className="text-xs text-muted-foreground leading-snug">
           {pkg.deliverablesSummary}
           <span className="text-border/80"> · </span>
-          {pkg.whyNow}
+          {reasonLine}
         </p>
+        {pkg.reasonChips.length > 0 ? (
+          <div className="flex flex-wrap gap-1 pt-0.5">
+            {pkg.reasonChips.map((chip) => (
+              <span
+                key={chip}
+                className="inline-flex max-w-full truncate rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
+              >
+                {chip}
+              </span>
+            ))}
+          </div>
+        ) : null}
       </div>
       {pkg.actionLabel ? (
         <Button
@@ -157,6 +173,7 @@ export function AdminKnowledgeControlRoom() {
   const upsertStage = useAdminUpsertContentTopicStage();
 
   const [filter, setFilter] = useState<ControlFilter>("attention");
+  const [sourceFilter, setSourceFilter] = useState<DiscoverySourceFilter>("all");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<SubjectPackage | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -235,16 +252,18 @@ export function AdminKnowledgeControlRoom() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    const list = packagesForFilter(packages, filter);
+    const list = packagesForFilter(packages, filter, sourceFilter);
     if (!q) return list;
     return list.filter(
       (p) =>
         p.title.toLowerCase().includes(q) ||
         p.coverageSummary.toLowerCase().includes(q) ||
         p.whyNow.toLowerCase().includes(q) ||
-        p.outcome.toLowerCase().includes(q)
+        p.outcome.toLowerCase().includes(q) ||
+        p.reasonChips.some((c) => c.toLowerCase().includes(q)) ||
+        p.discoverySignals.some((s) => s.observation.toLowerCase().includes(q))
     );
-  }, [packages, filter, search]);
+  }, [packages, filter, sourceFilter, search]);
 
   const attentionGrouped = useMemo(
     () => groupAttentionPackages(filtered),
@@ -377,6 +396,7 @@ export function AdminKnowledgeControlRoom() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <KnowledgeWatchSettingsControl />
           <Button
             size="sm"
             className="shadow-primary-btn border-0"
@@ -436,6 +456,28 @@ export function AdminKnowledgeControlRoom() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Discovery source filter">
+        {DISCOVERY_SOURCE_FILTERS.map((opt) => (
+          <Button
+            key={opt.id}
+            size="sm"
+            variant={sourceFilter === opt.id ? "default" : "outline"}
+            className={cn(
+              "border-0 h-7 text-[11px]",
+              sourceFilter === opt.id ? "shadow-primary-btn" : "btn-neomorphic"
+            )}
+            aria-pressed={sourceFilter === opt.id}
+            onClick={() => setSourceFilter(opt.id)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+      <p className="text-[11px] text-muted-foreground -mt-2">
+        Workflow tabs describe state. Source filters describe why a subject entered the queue
+        (discovery signals — not property Issues Signals).
+      </p>
+
       <div className="flex flex-wrap gap-2 items-center">
         <div className="relative flex-1 min-w-[12rem] max-w-md">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
@@ -446,9 +488,6 @@ export function AdminKnowledgeControlRoom() {
             className="pl-8 h-9 bg-muted/30 border-0"
           />
         </div>
-        <Button size="sm" variant="outline" className="border-0 btn-neomorphic text-xs" disabled>
-          <Filter className="h-3.5 w-3.5 mr-1" /> Filter
-        </Button>
       </div>
 
       {loading && (

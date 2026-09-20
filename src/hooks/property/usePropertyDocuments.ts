@@ -98,12 +98,10 @@ export function usePropertyDocuments(
     queryFn: async (): Promise<PropertyDocument[]> => {
       if (!orgId || !propertyId) return [];
 
-      // Select only columns that exist on attachments (per src/types/supabase.ts). Extended document
-      // fields (title, category, document_type, expiry_date, etc.) are not in the schema and cause 400.
       let query = supabase
         .from("attachments")
         .select(
-          "id, file_url, file_name, file_type, file_size, thumbnail_url, ocr_text, metadata, ai_confidence, created_at, updated_at"
+          "id, file_url, file_name, file_type, file_size, thumbnail_url, title, category, document_type, expiry_date, renewal_frequency, status, notes, ocr_text, metadata, ai_confidence, created_at, updated_at, parent_type, parent_id"
         )
         .eq("org_id", orgId)
         .eq("parent_type", "property")
@@ -124,18 +122,66 @@ export function usePropertyDocuments(
       const { data: rawData, error } = await query;
       if (error) throw error;
 
-      // Map DB rows to PropertyDocument; extended fields come from metadata or null (columns not in DB).
-      const data = (rawData || []).map((row: Record<string, unknown>) => {
+      // Also include Add Record filings that were parented to compliance_documents
+      // for this property (legacy path before property-level filing).
+      let complianceAttachmentRows: Record<string, unknown>[] = [];
+      const { data: complianceDocs } = await supabase
+        .from("compliance_documents")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("property_id", propertyId);
+      const complianceIds = (complianceDocs || []).map((row) => row.id).filter(Boolean);
+      if (complianceIds.length > 0) {
+        let complianceQuery = supabase
+          .from("attachments")
+          .select(
+            "id, file_url, file_name, file_type, file_size, thumbnail_url, title, category, document_type, expiry_date, renewal_frequency, status, notes, ocr_text, metadata, ai_confidence, created_at, updated_at, parent_type, parent_id"
+          )
+          .eq("org_id", orgId)
+          .eq("parent_type", "compliance")
+          .in("parent_id", complianceIds)
+          .order("updated_at", { ascending: false })
+          .limit(limit);
+        if (filters?.recentlyAdded) {
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          complianceQuery = complianceQuery.gte("created_at", sevenDaysAgo.toISOString());
+        }
+        const { data: complianceRaw, error: complianceErr } = await complianceQuery;
+        if (complianceErr) throw complianceErr;
+        complianceAttachmentRows = (complianceRaw || []) as Record<string, unknown>[];
+      }
+
+      const seenIds = new Set<string>();
+      const mergedRows: Record<string, unknown>[] = [];
+      for (const row of [...(rawData || []), ...complianceAttachmentRows]) {
+        const id = String((row as { id?: string }).id || "");
+        if (!id || seenIds.has(id)) continue;
+        seenIds.add(id);
+        mergedRows.push(row as Record<string, unknown>);
+      }
+      mergedRows.sort((a, b) => {
+        const au = String(a.updated_at || "");
+        const bu = String(b.updated_at || "");
+        return bu.localeCompare(au);
+      });
+
+      // Map DB rows to PropertyDocument; prefer columns, fall back to metadata.
+      const data = mergedRows.slice(0, limit).map((row: Record<string, unknown>) => {
         const meta = row.metadata as DocMetadata | undefined;
         return {
           ...row,
-          title: (meta?.title as string) ?? row.title ?? null,
-          category: (meta?.category as string) ?? row.category ?? null,
-          document_type: (meta?.document_type as string) ?? row.document_type ?? null,
-          expiry_date: (meta?.expiry_date as string) ?? row.expiry_date ?? null,
-          renewal_frequency: (meta?.renewal_frequency as string) ?? row.renewal_frequency ?? null,
-          status: (meta?.status as string) ?? row.status ?? null,
-          notes: (meta?.notes as string) ?? row.notes ?? null,
+          title: (row.title as string) ?? (meta?.title as string) ?? null,
+          category: (row.category as string) ?? (meta?.category as string) ?? null,
+          document_type:
+            (row.document_type as string) ?? (meta?.document_type as string) ?? null,
+          expiry_date: (row.expiry_date as string) ?? (meta?.expiry_date as string) ?? null,
+          renewal_frequency:
+            (row.renewal_frequency as string) ??
+            (meta?.renewal_frequency as string) ??
+            null,
+          status: (row.status as string) ?? (meta?.status as string) ?? null,
+          notes: (row.notes as string) ?? (meta?.notes as string) ?? null,
         };
       }) as PropertyDocument[];
 

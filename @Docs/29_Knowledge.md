@@ -73,7 +73,9 @@ Not a CMS of topics, strategies, and briefs for the admin to shepherd.
 | Element | Role |
 |---------|------|
 | **Header** | Knowledge · Search · Filter · **Add source** · Overflow (Pilot / advanced machinery / reporting) |
-| **Filters** | Needs attention · Scheduled · Monitoring · Complete |
+| **Filters** | Needs attention · Scheduled · Monitoring · Complete (workflow state) |
+| **Source filters** | Why the subject entered the queue: Regulatory updates · Official guidance · Seasonal · Knowledge gaps · User demand · Property work patterns · All sources. A subject matches when **any** of its discovery signals match. |
+| **Watch settings** | Compact control (not a dashboard): Automated research Paused/On · Research allowance Light/Standard/Thorough · monthly usage · Run Watch now. Limits enforced **server-side**. |
 | **Scheduled** | Editorial calendar of **Proposed** (machine) and **Confirmed** (human accepted for production) packages — neither means published or distributed |
 | **Row unit** | **Subject package** (aggregated Knowledge + optional content_topic) — not atomic jurisdiction rows, not individual articles |
 | **Primary actions** | Context-sensitive when a decision exists: **Accept plan** · **Review drafts** · **Resolve gap** · **Approve distribution** · **View**. No button when the machine is still working. |

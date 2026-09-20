@@ -71,10 +71,15 @@ type PerSourceScan = {
 };
 
 function scanFromFile(file: PendingIntakeFile): PerSourceScan {
+  let dates = file.scanImportantDates ?? [];
+  // scanExpiryDate may be set when important_dates omitted it (thin AI / stub recovery).
+  if (file.scanExpiryDate && !dates.some((d) => d.date === file.scanExpiryDate)) {
+    dates = mergeImportantDates(dates, normalizeImportantDates([], file.scanExpiryDate));
+  }
   return {
     title: file.scanTitle || file.display_name,
     outcome: file.scanOutcome ?? null,
-    dates: file.scanImportantDates ?? [],
+    dates,
     findings: file.scanFindings ?? [],
     actions: file.scanActions ?? [],
     alertLabels: [],

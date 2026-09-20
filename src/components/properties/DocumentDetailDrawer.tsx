@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useDocumentDetail, type DocumentWithLinks } from "@/hooks/property/useDocumentDetail";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -55,40 +55,107 @@ export function DocumentDetailDrawer({
   const [expiryDate, setExpiryDate] = useState("");
   const [renewalFrequency, setRenewalFrequency] = useState("");
   const [notes, setNotes] = useState("");
-  const initialLoadDone = useRef(false);
+  /** Only autosave after the open document has been hydrated once. */
+  const allowAutosaveRef = useRef(false);
+  const hydratedDocIdRef = useRef<string | null>(null);
+  const baselineRef = useRef({
+    title: "",
+    category: "",
+    documentType: "",
+    expiryDate: "",
+    renewalFrequency: "",
+    notes: "",
+  });
+  const cancelPendingSaveRef = useRef<() => void>(() => {});
 
+  // Reset gate when switching / closing documents.
   useEffect(() => {
-    if (document) {
-      setTitle(document.title || "");
-      setCategory(document.category || "");
-      setDocumentType(document.document_type || "");
-      setExpiryDate(document.expiry_date || "");
-      setRenewalFrequency(document.renewal_frequency || "");
-      setNotes(document.notes || "");
-      initialLoadDone.current = true;
-    } else {
-      initialLoadDone.current = false;
+    allowAutosaveRef.current = false;
+    hydratedDocIdRef.current = null;
+    cancelPendingSaveRef.current();
+  }, [documentId]);
+
+  // Hydrate local fields once per open document — never again on refetch (breaks save→refetch loops).
+  useEffect(() => {
+    if (!document || !documentId) return;
+    if (hydratedDocIdRef.current === documentId) return;
+
+    const next = {
+      title: document.title || "",
+      category: document.category || "",
+      documentType: document.document_type || "",
+      expiryDate: document.expiry_date || "",
+      renewalFrequency: document.renewal_frequency || "",
+      notes: document.notes || "",
+    };
+    setTitle(next.title);
+    setCategory(next.category);
+    setDocumentType(next.documentType);
+    setExpiryDate(next.expiryDate);
+    setRenewalFrequency(next.renewalFrequency);
+    setNotes(next.notes);
+    baselineRef.current = next;
+    hydratedDocIdRef.current = documentId;
+    allowAutosaveRef.current = false;
+  }, [document, documentId]);
+
+  // Enable autosave only after React has committed hydrated local state (avoids empty wipe).
+  useEffect(() => {
+    if (!documentId || hydratedDocIdRef.current !== documentId) return;
+    const b = baselineRef.current;
+    if (
+      title === b.title &&
+      category === b.category &&
+      documentType === b.documentType &&
+      expiryDate === b.expiryDate &&
+      renewalFrequency === b.renewalFrequency &&
+      notes === b.notes
+    ) {
+      allowAutosaveRef.current = true;
     }
-  }, [document]);
+  }, [title, category, documentType, expiryDate, renewalFrequency, notes, documentId]);
 
-  const debouncedUpdate = useCallback(
+  const updateRef = useRef(update);
+  updateRef.current = update;
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
+
+  const debouncedUpdate = useRef(
     debounce((updates: Parameters<typeof update>[0]) => {
-      update(updates);
-      toast({ title: "Saved", description: "Document updated" });
-    }, 300),
-    [update, toast]
-  );
+      if (!allowAutosaveRef.current) {
+        return;
+      }
+      void updateRef.current(updates).then(() => {
+        baselineRef.current = {
+          title: (updates.title as string | null) || "",
+          category: (updates.category as string | null) || "",
+          documentType: (updates.document_type as string | null) || "",
+          expiryDate: (updates.expiry_date as string | null) || "",
+          renewalFrequency: (updates.renewal_frequency as string | null) || "",
+          notes: (updates.notes as string | null) || "",
+        };
+      });
+      toastRef.current({ title: "Saved", description: "Document updated" });
+    }, 300)
+  ).current;
+  cancelPendingSaveRef.current = () => debouncedUpdate.cancel();
 
   useEffect(() => {
-    if (!documentId || !document || !initialLoadDone.current) return;
+    if (!documentId || !allowAutosaveRef.current || hydratedDocIdRef.current !== documentId) {
+      return;
+    }
+    const baseline = baselineRef.current;
     const changed =
-      title !== (document.title || "") ||
-      category !== (document.category || "") ||
-      documentType !== (document.document_type || "") ||
-      expiryDate !== (document.expiry_date || "") ||
-      renewalFrequency !== (document.renewal_frequency || "") ||
-      notes !== (document.notes || "");
-    if (!changed) return;
+      title !== baseline.title ||
+      category !== baseline.category ||
+      documentType !== baseline.documentType ||
+      expiryDate !== baseline.expiryDate ||
+      renewalFrequency !== baseline.renewalFrequency ||
+      notes !== baseline.notes;
+    if (!changed) {
+      debouncedUpdate.cancel();
+      return;
+    }
     debouncedUpdate({
       title: title || null,
       category: category || null,
@@ -97,7 +164,7 @@ export function DocumentDetailDrawer({
       renewal_frequency: renewalFrequency || null,
       notes: notes || null,
     });
-  }, [title, category, documentType, expiryDate, renewalFrequency, notes, document]);
+  }, [title, category, documentType, expiryDate, renewalFrequency, notes, documentId, debouncedUpdate]);
 
   const handleDownload = () => {
     if (document?.file_url) {

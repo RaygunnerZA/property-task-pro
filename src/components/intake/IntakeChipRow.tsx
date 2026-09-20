@@ -340,13 +340,13 @@ export function IntakeChipRow({
   const panelBlock = (
     <div
       className={cn(
-        "grid transition-[grid-template-rows] duration-200 ease-out",
+        "grid",
         panel ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
       )}
     >
       <div className="overflow-hidden">
         {panel && (
-          <div className="!mt-0 rounded-xl bg-background/70 px-0.5 py-[3px]">
+          <div className="!mt-0 rounded-xl bg-background/70 px-0 py-[3px]">
             <div className="min-w-0 border-b border-border/15 pb-px">
               {panelRow2}
             </div>

@@ -64,6 +64,7 @@ import {
 import {
   isIntakeCompliancePreset,
   INTAKE_COMPLIANCE_PRESETS,
+  categoryForIntakeDocumentType,
 } from "@/lib/mapIntakeDocumentType";
 import { useIntakeAnalysis, type WorkflowHint } from "@/hooks/useIntakeAnalysis";
 import type { IntakeMode } from "@/types/intake";
@@ -109,7 +110,7 @@ import {
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
 import { IntakeStaggeredSections } from "@/components/intake/IntakeStaggeredSections";
-import { DueTimeScroller } from "@/components/tasks/create/DueTimeScroller";
+import { DueTimePressedPicker } from "@/components/tasks/create/DueTimePressedPicker";
 import { AISuggestionChips } from "@/components/tasks/create/AISuggestionChips";
 import { SubtasksSection } from "@/components/tasks/create/SubtasksSection";
 import { presetItemsToSubtasks, type PresetTemplate } from "@/data/presetTemplates";
@@ -687,11 +688,14 @@ export function IntakeModal({
   useEffect(() => {
     // Prefill only with a genuine renewal date (expiry / next inspection) —
     // never a corrective deadline or an informational date.
-    const renewal = primaryExpiryFromDates(scanReview.dates);
+    const fromFiles = taskFiles
+      .map((file) => file.scanExpiryDate?.trim())
+      .find((value) => Boolean(value));
+    const renewal = primaryExpiryFromDates(scanReview.dates) || fromFiles || null;
     if (renewal && !intakeComplianceExpiry.trim()) {
       setIntakeComplianceExpiry(renewal);
     }
-  }, [scanReview, intakeComplianceExpiry]);
+  }, [scanReview, taskFiles, intakeComplianceExpiry]);
 
   useEffect(() => {
     const fresh = intakeAssetMatch.matches.filter(
@@ -2898,10 +2902,11 @@ export function IntakeModal({
 
             {intakeWhenCustom && whenTab !== "repeat" && (
               <div className="flex w-full min-w-0 flex-col gap-2">
-                <div className="flex w-full min-w-0 items-start gap-3">
+                <div className="flex w-full min-w-0 flex-wrap items-start gap-3">
                   <FillaMiniCalendar
-                    variant="embedded"
-                    className="w-fit rounded-lg bg-background/80 p-2 shadow-none border-0"
+                    variant="sidebar"
+                    defaultExpanded={false}
+                    className="min-w-0 flex-1 shadow-e1"
                     selectedDate={calendarSelected}
                     onDateSelect={(date) => {
                       if (!date) return;
@@ -2918,7 +2923,7 @@ export function IntakeModal({
                     }}
                   />
                   {!milestoneEntryOpen ? (
-                    <DueTimeScroller
+                    <DueTimePressedPicker
                       dueDate={dueDate || `${format(today, "yyyy-MM-dd")}T09:00:00`}
                       onDueDateChange={(next) => {
                         userClearedDueDateRef.current = false;
@@ -3496,6 +3501,20 @@ export function IntakeModal({
 
           if (attachError || !attachment?.id) throw attachError ?? new Error("Attachment insert failed");
 
+          if (complianceDocumentId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: linkError } = await (supabase as any)
+              .from("attachment_compliance")
+              .insert({
+                attachment_id: attachment.id,
+                compliance_document_id: complianceDocumentId,
+                org_id: orgId,
+              });
+            if (linkError) {
+              console.warn("[IntakeModal] attachment_compliance link failed:", linkError);
+            }
+          }
+
           uploaded.push({
             id: attachment.id,
             fileUrl: attachment.file_url,
@@ -3553,6 +3572,18 @@ export function IntakeModal({
 
           const { data: fileUrl } = supabase.storage.from("task-images").getPublicUrl(filePath);
           const alreadyScanned = pendingFile.scanStatus === "done";
+          const displayTitle =
+            pendingFile.scanTitle || pendingFile.display_name.replace(/\.[^/.]+$/, "") || "Untitled";
+          const displayType = pendingFile.scanDocumentType || null;
+          const displayExpiry = pendingFile.scanExpiryDate || null;
+          const displayCategory = categoryForIntakeDocumentType(displayType);
+          const fileMetadata = {
+            ...(scanMetadata ?? {}),
+            title: displayTitle,
+            document_type: displayType,
+            expiry_date: displayExpiry,
+            category: displayCategory,
+          };
           const { data: attachment, error: attachmentError } = await supabase
             .from("attachments")
             .insert({
@@ -3564,21 +3595,30 @@ export function IntakeModal({
               file_type: pendingFile.file_type,
               file_size: pendingFile.file_size,
               upload_status: "complete",
-              ...(alreadyScanned
-                ? {
-                    title: pendingFile.scanTitle || pendingFile.display_name,
-                    document_type: pendingFile.scanDocumentType || null,
-                    expiry_date: pendingFile.scanExpiryDate || null,
-                    ocr_text: pendingFile.scanOcrText || null,
-                    ...(scanMetadata ? { metadata: scanMetadata } : {}),
-                  }
-                : scanMetadata
-                  ? { metadata: scanMetadata }
-                  : {}),
+              title: displayTitle,
+              document_type: displayType,
+              expiry_date: displayExpiry,
+              category: displayCategory,
+              ocr_text: alreadyScanned ? pendingFile.scanOcrText || null : null,
+              metadata: fileMetadata,
             })
             .select("id,file_url,file_name")
             .single();
           if (attachmentError || !attachment?.id) throw attachmentError ?? new Error("Attachment insert failed");
+
+          if (complianceDocumentId) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const { error: linkError } = await (supabase as any)
+              .from("attachment_compliance")
+              .insert({
+                attachment_id: attachment.id,
+                compliance_document_id: complianceDocumentId,
+                org_id: orgId,
+              });
+            if (linkError) {
+              console.warn("[IntakeModal] attachment_compliance link failed:", linkError);
+            }
+          }
 
           uploaded.push({
             id: attachment.id,
@@ -3677,11 +3717,18 @@ export function IntakeModal({
         });
 
         const uploaded = await uploadIntakeAttachments({
-          parentType: "compliance",
-          parentId: data.id,
+          // Records explorer lists property-parented attachments — file there when we know the property.
+          parentType: propertyId ? "property" : "compliance",
+          parentId: propertyId || data.id,
           mode: "compliance",
           complianceDocumentId: data.id,
-          scanMetadata: intakeScanProvenanceMetadata(provenance),
+          scanMetadata: {
+            ...intakeScanProvenanceMetadata(provenance),
+            title: complianceTitle,
+            document_type: resolvedType || null,
+            expiry_date: resolvedExpiry || null,
+            category: categoryForIntakeDocumentType(resolvedType),
+          },
         });
 
         if (uploaded[0]?.fileUrl) {
@@ -3739,7 +3786,9 @@ export function IntakeModal({
         }
 
         queryClient.invalidateQueries({ queryKey: ["compliance"] });
+        queryClient.invalidateQueries({ queryKey: ["compliance_portfolio"] });
         queryClient.invalidateQueries({ queryKey: ["compliance_recommendations"] });
+        queryClient.invalidateQueries({ queryKey: ["property-documents"] });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         const celebrated = markQuickWinComplete("upload", propertyId);
         if (!celebrated) {
@@ -3784,6 +3833,7 @@ export function IntakeModal({
           parentId: propertyId,
           mode: "document",
         });
+        queryClient.invalidateQueries({ queryKey: ["property-documents"] });
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         const celebrated = markQuickWinComplete("upload", propertyId);
         if (!celebrated) toast({ title: "Document saved" });
