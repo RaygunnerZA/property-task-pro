@@ -56,10 +56,11 @@ describe("edgeFunctionErrors", () => {
     );
     expect(info.code).toBe("edge_function_unreachable");
     expect(formatEdgeFunctionToast(info)).toContain("knowledge-gap-research");
+    expect(formatEdgeFunctionToast(info)).toMatch(/network or CORS/i);
     expect(formatEdgeFunctionToast(info)).not.toContain("content-generate");
   });
 
-  it("maps FunctionsFetchError without a function name to generic deploy guidance", async () => {
+  it("maps FunctionsFetchError without a function name to generic reachability guidance", async () => {
     const info = await parseEdgeFunctionError(
       {
         name: "FunctionsFetchError",
@@ -68,7 +69,8 @@ describe("edgeFunctionErrors", () => {
       null
     );
     expect(info.code).toBe("edge_function_unreachable");
-    expect(formatEdgeFunctionToast(info)).toContain("edge function");
+    expect(formatEdgeFunctionToast(info)).toMatch(/edge function/i);
+    expect(formatEdgeFunctionToast(info)).not.toContain("supabase functions deploy");
     expect(formatEdgeFunctionToast(info)).not.toContain("content-generate");
   });
 });

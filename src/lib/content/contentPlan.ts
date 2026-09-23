@@ -189,6 +189,8 @@ export function formKindLabel(form: ContentFormKind | string): string {
       return "Regulatory guide";
     case "newsletter":
       return "Newsletter";
+    case "core_article":
+      return "Article";
     default:
       return form;
   }

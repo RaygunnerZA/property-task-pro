@@ -17,6 +17,7 @@ export const AI_CAPABILITY_IDS = [
   "knowledge_evidence_pack",
   "knowledge_gap_research",
   "plan_label_extraction",
+  "inbound_email_triage",
   "content_seo_draft",
   "content_brief_draft",
   "content_output_draft",
@@ -89,6 +90,11 @@ export const AI_CAPABILITY_META: Record<
     label: "Knowledge gap source research",
     compiledPrimary: "model:gemini-2.0-flash",
     functionName: "knowledge-gap-research",
+  },
+  inbound_email_triage: {
+    label: "Inbound email triage",
+    compiledPrimary: "model:gemini-2.0-flash",
+    functionName: "inbound-email",
   },
   plan_label_extraction: {
     label: "Plan label extraction",

@@ -12,6 +12,8 @@ import {
   type ResendReceivedEmail,
   type ResendWebhookEvent,
 } from "../_shared/resendInbound.ts";
+import { envelopeRecipientAddresses } from "../_shared/inboundEmailTriage.ts";
+import { handleMemberInboundEmail } from "../_shared/memberInboundEmail.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,10 +90,39 @@ async function handleEmailReceived(
     usedWebhookFallback = true;
   }
 
-  const toAddresses = email.to ?? event.data?.to ?? [];
+  const envelope = envelopeRecipientAddresses({
+    to: event.data?.to,
+    cc: event.data?.cc,
+    bcc: event.data?.bcc,
+  });
+
+  for (const addr of envelope) {
+    const token = parseIntakeTokenFromAddress(addr);
+    if (!token) continue;
+    const { data: member } = await admin.rpc("resolve_member_by_intake_token", {
+      p_token: token,
+    });
+    const row = (Array.isArray(member) ? member[0] : member) as
+      | { org_id?: string; user_id?: string; token_hash?: string; login_email?: string }
+      | null;
+    if (row?.org_id && row.user_id && row.token_hash) {
+      return handleMemberInboundEmail(admin, {
+        orgId: row.org_id,
+        userId: row.user_id,
+        tokenHash: row.token_hash,
+        loginEmail: row.login_email ?? "",
+        email,
+        emailId,
+        envelopeRecipients: envelope,
+        receivedAt: event.created_at ?? event.data?.created_at ?? email.created_at ?? null,
+        resendApiKey,
+      });
+    }
+  }
+
   let orgId: string | null = null;
 
-  for (const addr of toAddresses) {
+  for (const addr of envelope) {
     const token = parseIntakeTokenFromAddress(addr);
     if (!token) continue;
     const { data: resolved } = await admin.rpc("resolve_org_by_intake_email_token", {
@@ -104,11 +135,11 @@ async function handleEmailReceived(
   }
 
   if (!orgId) {
-    console.warn("[inbound-email] no org for addresses:", toAddresses);
+    console.warn("[inbound-email] no organisation for envelope recipients");
     return { ok: true, skipped: true, reason: "unknown_org" };
   }
 
-  const fromEmail = parseSenderEmail(email.from ?? event.data?.from ?? "");
+  const fromEmail = parseSenderEmail(event.data?.from || email.from || "");
   const { data: memberUserId } = await admin.rpc("match_org_member_by_email", {
     p_org_id: orgId,
     p_email: fromEmail,
@@ -272,12 +303,14 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     let event: ResendWebhookEvent;
 
-    if (webhookSecret) {
-      event = await verifyResendWebhook(rawBody, req.headers, webhookSecret);
-    } else {
-      console.warn("[inbound-email] RESEND_WEBHOOK_SECRET not set — skipping verification");
-      event = JSON.parse(rawBody) as ResendWebhookEvent;
+    if (!webhookSecret) {
+      return new Response(JSON.stringify({ error: "Webhook secret is not configured" }), {
+        status: 503,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    event = await verifyResendWebhook(rawBody, req.headers, webhookSecret);
 
     if (event.type !== "email.received") {
       return new Response(JSON.stringify({ ok: true, ignored: true, type: event.type }), {

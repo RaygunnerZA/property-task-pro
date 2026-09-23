@@ -34,6 +34,12 @@ import {
   formatEdgeFunctionToast,
   parseEdgeFunctionError,
 } from "@/lib/edgeFunctionErrors";
+import { augmentDiscoveryWithCuratedSources } from "../../../supabase/functions/_shared/knowledgeGapResearch.ts";
+import {
+  hasReviewableKnowledgeBody,
+  isOpaqueKnowledgeTitle,
+  titleFromResearchContext,
+} from "../../../supabase/functions/_shared/knowledgeTitleQuality.ts";
 
 export type AdminKnowledgeMetricsRow = {
   org_id: string;
@@ -313,6 +319,13 @@ export function useAdminAddKnowledgeSource() {
   });
 }
 
+function invalidateKnowledgeSources(qc: ReturnType<typeof useQueryClient>, knowledgeId: string) {
+  void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", knowledgeId] });
+  void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
+  void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
+  void qc.invalidateQueries({ queryKey: ["admin-content-topic"] });
+}
+
 export function useAdminUpdateKnowledgeSource() {
   const qc = useQueryClient();
   return useMutation({
@@ -338,12 +351,64 @@ export function useAdminUpdateKnowledgeSource() {
       if (error) throw error;
       return data as KnowledgeSourceRow;
     },
-    onSuccess: (_row, vars) => {
-      void qc.invalidateQueries({ queryKey: ["admin-knowledge-detail", vars.knowledgeId] });
-      void qc.invalidateQueries({ queryKey: ["admin-knowledge-queue"] });
-      void qc.invalidateQueries({ queryKey: ["admin-knowledge-sources"] });
-      void qc.invalidateQueries({ queryKey: ["admin-content-topic"] });
+    onSuccess: (_row, vars) => invalidateKnowledgeSources(qc, vars.knowledgeId),
+  });
+}
+
+export function useAdminReplaceKnowledgeSourceUrl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      knowledgeId: string;
+      url: string;
+      previousUrl: string;
+      label?: string | null;
+      sourceId?: string | null;
+    }) => {
+      const url = input.url.trim();
+      if (!/^https?:\/\//i.test(url)) {
+        throw new Error("Enter a valid http(s) URL");
+      }
+      const previousUrl = input.previousUrl.trim();
+      if (!previousUrl) {
+        throw new Error("Missing URL to replace");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_replace_knowledge_source_url", {
+        p_knowledge_id: input.knowledgeId,
+        p_url: url,
+        p_previous_url: previousUrl,
+        p_label: input.label?.trim() || null,
+        p_source_id: input.sourceId ?? null,
+      });
+      if (error) throw error;
+      return data as KnowledgeSourceRow;
     },
+    onSuccess: (_row, vars) => invalidateKnowledgeSources(qc, vars.knowledgeId),
+  });
+}
+
+export function useAdminRemoveKnowledgeSourceUrl() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      knowledgeId: string;
+      sourceId?: string | null;
+      url?: string | null;
+    }) => {
+      if (!input.sourceId && !input.url?.trim()) {
+        throw new Error("Nothing to remove");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any).rpc("admin_remove_knowledge_source_url", {
+        p_knowledge_id: input.knowledgeId,
+        p_source_id: input.sourceId ?? null,
+        p_url: input.url?.trim() || null,
+      });
+      if (error) throw error;
+      return Boolean(data);
+    },
+    onSuccess: (_ok, vars) => invalidateKnowledgeSources(qc, vars.knowledgeId),
   });
 }
 
@@ -822,16 +887,75 @@ export async function ingestResearchSources(input: {
 
     try {
       const intake = await analyseKnowledgeUrl(sourceHit.url);
-      const proposals = applyGapApplicabilityToProposals(
+      let proposals = applyGapApplicabilityToProposals(
         proposalsFromDocAnalysis(intake.analysis, {
           ...intake.source,
           intake_mode: "url",
         }),
         jurisdictions,
         topicLabel
-      ).filter((p) => p.selected);
+      )
+        .filter((p) => p.selected)
+        .map((p) => {
+          const title =
+            titleFromResearchContext({
+              proposalTitle: p.title,
+              sourceTitle: sourceHit.title,
+              sourceUrl: sourceHit.url,
+              topic: topicLabel ?? covered[0]?.topic,
+              jurisdiction: jurisdictions[0],
+            }) ?? p.title;
+          return { ...p, title };
+        })
+        .filter(
+          (p) =>
+            !isOpaqueKnowledgeTitle(p.title) &&
+            hasReviewableKnowledgeBody({ summary: p.summary, body: p.body })
+        );
+
+      // Curated / discovery title + extracted page text when the model returns empty shells.
       if (!proposals.length) {
-        failedSources.push({ url: sourceHit.url, error: "no_candidates" });
+        const title = titleFromResearchContext({
+          sourceTitle: sourceHit.title,
+          sourceUrl: sourceHit.url,
+          topic: topicLabel ?? covered[0]?.topic,
+          jurisdiction: jurisdictions[0],
+        });
+        const pageText = (intake.analysis?.ocr_text ?? "").trim();
+        if (
+          title &&
+          hasReviewableKnowledgeBody({
+            summary: intake.analysis?.summary,
+            body: pageText,
+          })
+        ) {
+          proposals = applyGapApplicabilityToProposals(
+            proposalsFromDocAnalysis(
+              {
+                title,
+                summary: intake.analysis?.summary || pageText.slice(0, 400),
+                ocr_text: pageText,
+                knowledge_proposals: [
+                  {
+                    title,
+                    summary: intake.analysis?.summary || pageText.slice(0, 400),
+                    body: pageText,
+                  },
+                ],
+              },
+              { ...intake.source, intake_mode: "url" }
+            ),
+            jurisdictions,
+            topicLabel
+          ).filter((p) => p.selected);
+        }
+      }
+
+      if (!proposals.length) {
+        failedSources.push({
+          url: sourceHit.url,
+          error: "no_reviewable_candidates",
+        });
         continue;
       }
       input.onProgress?.({ phase: "importing", candidateCount: proposals.length });
@@ -857,7 +981,11 @@ export async function ingestResearchSources(input: {
   }
 
   if (createdCount === 0) {
-    const detail = failedSources[0]?.error ?? "intake_failed";
+    const detail =
+      failedSources
+        .slice(0, 2)
+        .map((f) => `${f.error} · ${f.url}`)
+        .join(" · ") || "intake_failed";
     throw new Error(`Research did not add any Review candidates (${detail})`);
   }
 
@@ -905,10 +1033,28 @@ export function useAdminResearchKnowledgeGaps() {
         throw new Error(payload?.error ?? "Source discovery failed");
       }
 
+      // Prefer curated official URLs (England/Scotland chimney, …) ahead of model-invented links.
+      const augmented = augmentDiscoveryWithCuratedSources(
+        gaps.map((g) => ({
+          id: g.id,
+          topic_key: g.topic_key,
+          topic: g.topic,
+          jurisdiction: g.jurisdiction,
+          status: g.status,
+        })),
+        (payload.sources ?? []).map((s) => ({
+          url: s.url,
+          title: s.title ?? s.url,
+          publisher: s.publisher ?? "Unknown",
+          authority: "government_guidance" as const,
+          covers: s.covers ?? [],
+        }))
+      );
+
       return ingestResearchSources({
         gaps,
-        sources: payload.sources ?? [],
-        uncovered: payload.uncovered,
+        sources: augmented.sources,
+        uncovered: augmented.uncovered,
         onProgress: input.onProgress,
       });
     },

@@ -26,6 +26,10 @@ import {
   type TrustCheckId,
   type TrustCheckStatus,
 } from "@/lib/knowledge/knowledgePresentation";
+import {
+  inferKnowledgeFieldsFromClaims,
+  type ClaimLike,
+} from "@/lib/knowledge/knowledgeFieldInference";
 
 export type ReviewQueueId = "all" | "needs_work" | "awaiting_critic" | "ready_to_verify";
 
@@ -221,17 +225,25 @@ export function displayJurisdiction(row: KnowledgeRow): string {
   return labels.join(" · ");
 }
 
-export function hasClassificationSet(row: KnowledgeRow): boolean {
+export function hasClassificationSet(
+  row: KnowledgeRow,
+  claims?: ClaimLike[]
+): boolean {
   const legal =
     attrString(row.attributes, "legal_status") ||
     attrString(row.attributes, "classification") ||
     "";
-  if (!legal.trim()) return false;
-  if (/not set|unknown|n\/?a/i.test(legal)) return false;
-  return true;
+  if (legal.trim() && !/not set|unknown|n\/?a/i.test(legal)) return true;
+  if (claims && claims.length > 0) {
+    return !inferKnowledgeFieldsFromClaims({
+      claims,
+      attributes: row.attributes as Record<string, unknown>,
+    }).classificationMissing;
+  }
+  return false;
 }
 
-export function hasTriggerSet(row: KnowledgeRow): boolean {
+export function hasTriggerSet(row: KnowledgeRow, claims?: ClaimLike[]): boolean {
   const explicit =
     attrString(row.attributes, "trigger_type") ||
     attrString(row.attributes, "event_trigger") ||
@@ -242,7 +254,14 @@ export function hasTriggerSet(row: KnowledgeRow): boolean {
     attrString(row.attributes, "timing") ||
     attrString(row.attributes, "frequency") ||
     "";
-  return Boolean(when.trim());
+  if (when.trim()) return true;
+  if (claims && claims.length > 0) {
+    return !inferKnowledgeFieldsFromClaims({
+      claims,
+      attributes: row.attributes as Record<string, unknown>,
+    }).triggerMissing;
+  }
+  return false;
 }
 
 export function deriveTriggerType(
@@ -285,6 +304,9 @@ export function deriveClassificationLabel(
     attrString(row.attributes, "classification") ||
     "";
   if (!legal.trim()) return null;
+  if (/mandatory_with_recommendations|with some recommended/i.test(legal)) {
+    return "Mandatory requirement, with some recommended practices";
+  }
   if (/mandatory|required|statutory|obligation/i.test(legal)) {
     return "Mandatory requirement";
   }
@@ -307,6 +329,7 @@ export function buildReviewTrustChecks(
       payload: Record<string, unknown>;
       created_at: string;
     }>;
+    claims?: ClaimLike[];
   }
 ): TrustCheck[] {
   return buildTrustChecks(row, opts);

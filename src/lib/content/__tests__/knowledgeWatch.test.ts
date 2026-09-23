@@ -50,6 +50,25 @@ const emptyUsage = (overrides: Partial<WatchUsage> = {}): WatchUsage => ({
 });
 
 describe("discovery signal attribution", () => {
+  it("attributes Watch provenance seasonal and knowledge_gap change kinds", () => {
+    const signals = deriveDiscoverySignals({
+      subjectKey: "party-walls",
+      title: "Party walls",
+      sourceKinds: ["filla_curated"],
+      knowledgeStatuses: ["candidate"],
+      heatingSeason: false,
+      coverageIncomplete: false,
+      provenanceHints: [
+        {
+          changeKind: "knowledge_gap",
+          label: "Knowledge gap",
+          detectedAt: "2026-09-17T00:00:00Z",
+        },
+      ],
+    });
+    expect(signals.some((s) => s.type === "knowledge_gap")).toBe(true);
+  });
+
   it("attributes seasonal + gap without inventing confirmed regulatory updates", () => {
     const signals = deriveDiscoverySignals({
       subjectKey: "before-heating-season",
@@ -90,6 +109,28 @@ describe("discovery signal attribution", () => {
     const reg = signals.find((s) => s.type === "regulatory_update");
     expect(reg?.confidence).toBe("high");
     expect(reg?.sourceUrls).toEqual(["https://example.gov/party-walls"]);
+  });
+
+  it("labels news and consultations as Potential change, not regulatory_update", () => {
+    const signals = deriveDiscoverySignals({
+      subjectKey: "smoke-carbon-monoxide-alarms",
+      title: "Smoke and carbon monoxide alarms",
+      sourceKinds: ["filla_curated"],
+      knowledgeStatuses: ["published"],
+      heatingSeason: false,
+      coverageIncomplete: false,
+      provenanceHints: [
+        {
+          url: "https://www.gov.uk/government/news/private-renting",
+          label: "MHCLG announced proposed changes",
+          changeKind: "potential_change",
+          detectedAt: "2026-09-22T00:00:00Z",
+        },
+      ],
+    });
+    expect(signals.some((s) => s.type === "potential_change")).toBe(true);
+    expect(signals.some((s) => s.type === "regulatory_update")).toBe(false);
+    expect(signals.find((s) => s.type === "potential_change")?.label).toBe("Potential change");
   });
 
   it("shows strongest one or two reason chips", () => {
@@ -234,5 +275,24 @@ describe("cheap research gate", () => {
         ],
       }).research
     ).toBe(false);
+  });
+
+  it("does not treat Potential change as a reason to rewrite Knowledge", () => {
+    const result = shouldDeepResearch({
+      hasKnownKnowledgeMatch: true,
+      signals: [
+        {
+          type: "potential_change",
+          label: "Potential change",
+          observation: "Consultation announced",
+          confidence: "medium",
+          detectedAt: "2026-09-22T00:00:00Z",
+          sourceUrls: ["https://www.gov.uk/government/news/x"],
+          strength: 50,
+        },
+      ],
+    });
+    expect(result.research).toBe(false);
+    expect(result.skipReason?.toLowerCase()).toContain("potential change");
   });
 });

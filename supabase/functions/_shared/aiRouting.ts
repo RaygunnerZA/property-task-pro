@@ -95,6 +95,7 @@ export type Capability =
   | "knowledge_evidence_pack"
   | "knowledge_gap_research"
   | "plan_label_extraction"
+  | "inbound_email_triage"
   | "content_seo_draft"
   | "content_brief_draft"
   | "content_output_draft"
@@ -191,7 +192,7 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
   },
   knowledge_gap_research: {
     functionName: "knowledge-gap-research",
-    promptVersion: "knowledge-gap-research-v1",
+    promptVersion: "knowledge-gap-research-v2",
     requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
@@ -199,6 +200,12 @@ export const CAPABILITIES: Record<Capability, CapabilityDef> = {
     functionName: "building-plan-process",
     promptVersion: "plan-spaces-v1",
     requires: { vision: true, structuredJson: true },
+    order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
+  },
+  inbound_email_triage: {
+    functionName: "inbound-email",
+    promptVersion: "inbound-email-triage-v1",
+    requires: { structuredJson: true },
     order: ["model:gemini-2.0-flash", "model:gpt-4o-mini"],
   },
   content_seo_draft: {

@@ -74,13 +74,28 @@ Not a CMS of topics, strategies, and briefs for the admin to shepherd.
 |---------|------|
 | **Header** | Knowledge · Search · Filter · **Add source** · Overflow (Pilot / advanced machinery / reporting) |
 | **Filters** | Needs attention · Scheduled · Monitoring · Complete (workflow state) |
-| **Source filters** | Why the subject entered the queue: Regulatory updates · Official guidance · Seasonal · Knowledge gaps · User demand · Property work patterns · All sources. A subject matches when **any** of its discovery signals match. |
-| **Watch settings** | Compact control (not a dashboard): Automated research Paused/On · Research allowance Light/Standard/Thorough · monthly usage · Run Watch now. Limits enforced **server-side**. |
+| **Source filters** | Why the subject entered the queue: Regulatory updates · Official guidance · **Potential change** · Seasonal · Knowledge gaps · User demand · Property work patterns · All sources. A subject matches when **any** of its discovery signals match. News and consultations are **Potential change**, never `regulatory_update`. |
+| **Watch settings** | Compact control (not a dashboard): Automated research Paused/On · Research allowance Light/Standard/Thorough · monthly usage · Run Watch now · **Official Source Catalogue** (approve the shape of bounded official sections once). Limits enforced **server-side**. |
 | **Scheduled** | Editorial calendar of **Proposed** (machine) and **Confirmed** (human accepted for production) packages — neither means published or distributed |
 | **Row unit** | **Subject package** (aggregated Knowledge + optional content_topic) — not atomic jurisdiction rows, not individual articles |
 | **Primary actions** | Context-sensitive when a decision exists: **Accept plan** · **Review drafts** · **Resolve gap** · **Approve distribution** · **View**. No button when the machine is still working. |
 
-**Needs attention** may only contain genuine human decisions (complete proposed plan awaiting accept, valid drafts awaiting review, source/applicability exceptions, distribution approval). Do **not** put “Planning queued” there — that is Monitoring. Premature drafts do not unlock Review drafts until the plan is accepted.
+**Needs attention** may only contain genuine human decisions (complete proposed plan awaiting accept, valid drafts awaiting review, source/applicability exceptions, distribution approval, an important new subject, a material official-source change that may alter accepted claims, conflicting official sources). Do **not** put “Planning queued” or “a new GOV.UK page was found” there — that is Monitoring. Premature drafts do not unlock Review drafts until the plan is accepted.
+
+**Official Source Catalogue.** Catalogue review finds the bounded official sections Filla should care about. Coverage Watch detects new, changed or withdrawn official guidance inside accepted sections. News Watch detects developments that might eventually affect guidance. Knowledge is created only after an authoritative source supports actionable claims. A large GOV.UK service-result page (for example Housing, local and community) is orientation only — not a source and not the queue. The human activity is approving the shape of a small official catalogue once, then reviewing only consequential changes.
+
+Queue lanes for Watch detections:
+
+| Detection | Queue |
+|-----------|--------|
+| New page being assessed, news lead, unchanged tracked source | **Monitoring** |
+| Important new subject, material source change, conflicting official sources, applicability decision | **Needs attention** |
+| Accepted Knowledge work with a production plan | **Scheduled** |
+| Verified Knowledge and expressions, still monitored for source changes | **Complete** |
+
+A useful news detection reads as **Potential change**: announcement or consultation noted; no enacted legislation or updated operational guidance; current guidance remains valid; Filla monitors the linked pages. Most news is discarded as irrelevant. The remainder usually sits in Monitoring without a human decision. Do not rewrite Knowledge from news.
+
+Watch stores per accepted page: canonical path and GOV.UK content ID, public update timestamp, relevant-section hashes, extracted claims and passage references, affected Knowledge IDs. A scheduled check compares metadata first and analyses the body only when a meaningful change is detected. Initial England watchlist is six families: landlord duties and renting; building regulations and Approved Documents; planning and permitted development; EPC and energy standards; HSE property-safety guidance; Building Safety Regulator guidance. Add sections only when genuine Knowledge gaps remain.
 
 **Scheduled** answers: what Filla proposes, in what order, why then, which regions support it, and whether the entry is Proposed or Confirmed. Planning resumes into Proposed calendar only — never auto-accept, never draft unaccepted plans, never distribute.
 
@@ -169,6 +184,12 @@ These are **machine and override paths** that feed Schedule preparation / Accept
 
 **Claims:** Title/summary stay concise. Extractors write atomic claims; missing detail is `unknown` — never invented. Human Accept promotes `extracted` → `verified`; unknowns remain gaps. Expressions consume **verified claims only**. Grounding critic on drafts flags unsupported additions. Editing authoritative sources invalidates critic until re-run.
 
+**Structured fields from claims:** Classification, trigger, applicability, timing, action, evidence and responsible party are inferred from verified claims and repaired automatically. A candidate must not be blocked by a field those claims already establish. Mixed `must` / `should` is a classification (`mandatory_with_recommendations`), not a missing field. Humans resolve only remaining material ambiguity.
+
+**Knowledge set:** One source may yield several coherent requirements and recommendations. Present them as a set with child groups — do not compress every claim into one blended guidance sentence. Legal strength stays distinct: `must` (obligation), `should` (official recommendation), exception, explanatory. The critic reviews each claim (supported / partially supported / unsupported / overstated) against an exact passage, including modal strength.
+
+**Durable vs seasonal:** Landlord gas-appliance maintenance is durable compliance Knowledge. A seasonal package may reuse it later; it must not inherit seasonal applicability from the package topic.
+
 **Org uploads (future):** same extraction; default `organisation` scope via `create_knowledge_candidate`.
 
 **Standard attribute keys (conventions, not columns):** `category`, `legal_status`, `applies_when`, `action`, `frequency`, `timing`, `evidence`, `responsible_party`, `professional_required`, `insurance_relevance`, `risk_or_consequence`, `priority`, `lead_time_days`, `app_logic`, plus custom slug keys.
@@ -178,6 +199,8 @@ These are **machine and override paths** that feed Schedule preparation / Accept
 Region by region (watch profiles for CH / UK / FR / …):
 
 **Watch → detect → compare → investigate → cross-check → score → prepare Schedule**
+
+For international pilot subjects (chimney, heating, smoke/CO, gutters), Watch must **expand jurisdiction coverage** even when one region is already published — missing England / Scotland / France / Switzerland cells are researched under the allowance. Bad discovery URLs are labelled **source needs repair** (not Review stubs). France-only Knowledge may Accept a regional guide plan; international article/social stay blocked until ≥2 regions are sourced.
 
 By morning the admin should not see hundreds of discoveries. They see an ordered **Knowledge Schedule** (Now / Next / Later / Monitoring). Everything else discarded, merged, scheduled, incorporated, or deemed irrelevant — without writing LLM jobs where scoring says “do nothing.”
 
@@ -245,6 +268,8 @@ SEO opportunity fields (query clusters, market, confidence, search-evidence vs f
 ### Review package (one workspace)
 
 Opening a scheduled topic shows **one** coherent review — not several stage screens.
+
+The reviewer surface is **decisions only**. Lead with the title, a coverage line of what is actually reviewable (covered / candidate found), and one **Review {region}** button per candidate. Do not list researching nations on that line — they are machine work, not a place to click. If Watch is still looking for other regions, that copy lives behind **Evidence and activity** (or as Ready to research when no candidate exists). A Knowledge candidate waiting for accept puts the package in **Needs attention** — never “No decision required.” Landlord gas-appliance Knowledge found during the heating window is reviewed on **Before the heating season**; the Knowledge title and applicability stay durable. In-app tips are not planned from international or regional-comparison scope; they need an exact applicable jurisdiction or property. Do not create output placeholders until coverage and the accepted plan make those formats eligible. Research state must be truthful: if Watch automated research is On and there is no candidate, show Researching with last and next attempt and no manual research button; if it is paused, show Ready to research and the button.
 
 | Section | Contents |
 |---------|----------|
@@ -328,7 +353,7 @@ Community candidates extend Filla Brain only. No community statistic may be publ
 | Automation created | Discovery/`operational_discovery` candidates |
 | Time saved | Sum of `estimated_minutes` on `time_saved` events |
 
-Admin: Overview / metrics snapshot. Org: `/knowledge` chips. PostHog: `knowledge_*` telemetry.
+Admin: Overview / metrics snapshot under **Reporting** (outcomes + Watch automation state, recent Watch runs with trigger/result, overnight & gap-research jobs). Org: `/knowledge` chips. PostHog: `knowledge_*` telemetry.
 
 Prefer control-room metrics: discoveries discarded automatically, Schedule Now count, time-to-Review-package, time-to-Approve-distribution, expressions skipped by score (“do nothing”).
 

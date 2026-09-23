@@ -38,6 +38,7 @@ import {
   uploadAvatarVariants,
 } from "@/lib/avatarImage";
 import { toast } from "sonner";
+import { MemberIntakeEmailCard } from "@/components/settings/MemberIntakeEmailCard";
 
 const AVATAR_COLORS = [
   "#8EC9CE", "#EB6834", "#6B8E9B", "#D4A373",
@@ -626,6 +627,8 @@ export default function SettingsProfile() {
           </Button>
         </CardContent>
       </Card>
+
+      <MemberIntakeEmailCard />
 
       {isExternal && (
         <Card className="shadow-e1">

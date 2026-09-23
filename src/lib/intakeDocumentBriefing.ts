@@ -1,5 +1,10 @@
 import { mapIntakeDocumentType, normalizeIntakeExpiryDate, inferExpiryFromOcrText, naturalLanguageRecordTitle } from "@/lib/mapIntakeDocumentType";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
+import {
+  inboundEmailOutcomeLabel,
+  inboundEmailSenderLabel,
+  readInboundEmailProposal,
+} from "@/lib/intake/inboundEmailProposal";
 
 export type IntakeDocOutcome =
   | "unsatisfactory"
@@ -236,6 +241,7 @@ export function intakeInboxCardCopy(item: {
   source_type?: IntakeSourceArtifact["sourceType"];
   ai_classification: string | null;
   ai_extracted: Record<string, unknown> | null;
+  email_provenance?: unknown;
   error_message?: string | null;
   status?: string;
 }, extractedText?: string | null): { title: string; insight: string } {
@@ -247,6 +253,15 @@ export function intakeInboxCardCopy(item: {
   }
   if (item.status === "failed") {
     return { title, insight: item.error_message?.trim() || "Couldn’t read this file" };
+  }
+
+  const proposal = readInboundEmailProposal(item.ai_extracted);
+  if (proposal) {
+    const sender = inboundEmailSenderLabel(item.email_provenance);
+    return {
+      title: proposal.suggested_title || title,
+      insight: [inboundEmailOutcomeLabel(proposal), sender].filter(Boolean).join(" · "),
+    };
   }
 
   if (briefing.outcome !== "unknown") {

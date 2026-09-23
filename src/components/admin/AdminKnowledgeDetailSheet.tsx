@@ -10,6 +10,7 @@ import {
 } from "@/hooks/admin/useAdminKnowledge";
 import { KnowledgeClaimsList } from "@/components/admin/KnowledgeClaimsList";
 import { KnowledgeSourceUrlEditor } from "@/components/admin/KnowledgeSourceUrlEditor";
+import { buildReviewCard } from "@/lib/knowledge/knowledgeReviewCard";
 import { needsGuidanceGeneration } from "@/lib/knowledge/knowledgeDraftGuidance";
 import {
   isEligibleForGuidanceImprovement,
@@ -189,6 +190,8 @@ export function AdminKnowledgeDetailSheet({
     verification_status?: string;
     source_id?: string | null;
     source_location?: string | null;
+    applicability?: Record<string, unknown> | null;
+    critic_result?: Record<string, unknown> | null;
   }>;
 
   const checks = useMemo(
@@ -197,9 +200,10 @@ export function AdminKnowledgeDetailSheet({
         ? buildTrustChecks(row, {
             sources,
             verificationEvents: events,
+            claims,
           })
         : [],
-    [row, sources, events]
+    [row, sources, events, claims]
   );
 
   const critic = row ? parseCriticSummary(row, events, { sources }) : null;
@@ -220,6 +224,14 @@ export function AdminKnowledgeDetailSheet({
   const reviewPrimary = row
     ? primaryActionForRow(row, checks, sources)
     : null;
+
+  const reviewCard = useMemo(
+    () =>
+      row && (row.status === "candidate" || row.status === "verified" || row.status === "stale")
+        ? buildReviewCard({ row, claims, sources, checks })
+        : null,
+    [row, claims, sources, checks]
+  );
 
   const primary =
     row && row.status === "candidate" && canVerify(row, checks)
@@ -297,7 +309,14 @@ export function AdminKnowledgeDetailSheet({
       >
         <SheetHeader className="shrink-0 px-5 pt-5 pb-3 pr-12 text-left space-y-2 border-b border-border/20">
           <SheetTitle className="text-lg font-semibold leading-snug">
-            {row ? displayKnowledgeTitle(row) : "Knowledge"}
+            {reviewCard?.displayTitle ||
+              (row
+                ? displayKnowledgeTitle(row, {
+                    claims,
+                    sourceUrl: sources.find((s) => s.url)?.url ?? null,
+                    sourceTitle: sources.find((s) => s.label)?.label ?? null,
+                  })
+                : "Knowledge")}
           </SheetTitle>
           {row && (
             <div className="flex flex-wrap gap-1.5">
@@ -317,9 +336,11 @@ export function AdminKnowledgeDetailSheet({
               <span className="inline-flex px-2 py-0.5 rounded-[6px] text-caption bg-muted text-muted-foreground">
                 {presentationTypeLabel(row)}
               </span>
-              <span className="inline-flex px-2 py-0.5 rounded-[6px] text-caption bg-muted text-muted-foreground">
-                {legalClassificationLabel(row)}
-              </span>
+              {legalClassificationLabel(row, claims) !== "Classification not set" && (
+                <span className="inline-flex px-2 py-0.5 rounded-[6px] text-caption bg-muted text-muted-foreground">
+                  {legalClassificationLabel(row, claims)}
+                </span>
+              )}
             </div>
           )}
         </SheetHeader>
@@ -337,6 +358,120 @@ export function AdminKnowledgeDetailSheet({
           )}
           {row && (
             <>
+              {reviewCard && (
+                <section className="rounded-xl bg-card/90 shadow-e2 p-4 space-y-3">
+                  <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">
+                    {reviewCard.answer}
+                  </p>
+                  {reviewCard.answerIsDraft && (
+                    <p className="text-xs text-amber-700 dark:text-amber-400">
+                      Unverified draft wording — Approve requires the checks below to pass.
+                    </p>
+                  )}
+                  {reviewCard.facts.length > 0 && (
+                    <dl className="grid gap-x-4 gap-y-1.5 sm:grid-cols-2 text-xs">
+                      {reviewCard.facts.map((fact) => (
+                        <div key={fact.label} className="min-w-0">
+                          <dt className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                            {fact.label}
+                          </dt>
+                          <dd className="text-foreground/90 leading-snug">{fact.value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {reviewCard.foundLine}
+                  </p>
+                  {reviewCard.groups.length > 0 && (
+                    <details className="rounded-lg bg-muted/40 px-3 py-2">
+                      <summary className="cursor-pointer text-xs font-medium text-foreground">
+                        {reviewCard.groups.length} related requirement
+                        {reviewCard.groups.length === 1 ? "" : "s"} and recommendations
+                      </summary>
+                      <ul className="mt-2 space-y-2">
+                        {reviewCard.groups.map((group) => (
+                          <li key={group.id} className="text-xs leading-snug">
+                            <p className="font-medium text-foreground">{group.title}</p>
+                            <p className="text-muted-foreground mt-0.5">{group.summary}</p>
+                            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mt-0.5">
+                              {group.strength === "must"
+                                ? "Obligation"
+                                : group.strength === "should"
+                                  ? "Official recommendation"
+                                  : group.strength === "exception"
+                                    ? "Exception"
+                                    : "Explanatory"}
+                              {group.conditional ? " · Conditional" : ""}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                  {reviewCard.interrupts.length > 0 && (
+                    <ul className="rounded-lg bg-amber-500/10 px-3 py-2 space-y-1 text-xs text-foreground/90">
+                      {reviewCard.interrupts.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {reviewCard.decisions.map((decision) => {
+                      if (decision.kind === "approve") {
+                        return (
+                          <Button
+                            key="approve"
+                            size="sm"
+                            className="shadow-primary-btn border-0"
+                            disabled={!decision.enabled || setStatus.isPending}
+                            title={decision.disabledReason}
+                            onClick={() => {
+                              if (decision.targetStatus) runStatus(decision.targetStatus);
+                            }}
+                          >
+                            {decision.label}
+                          </Button>
+                        );
+                      }
+                      if (decision.kind === "correct") {
+                        return (
+                          <Button
+                            key="correct"
+                            size="sm"
+                            variant="outline"
+                            className="border-0 btn-neomorphic"
+                            onClick={() => focusField("guidance")}
+                          >
+                            Correct
+                          </Button>
+                        );
+                      }
+                      return (
+                        <Button
+                          key="hold"
+                          size="sm"
+                          variant="outline"
+                          className="border-0 btn-neomorphic"
+                          disabled={!decision.enabled}
+                          title={decision.disabledReason}
+                          onClick={() => {
+                            toast.message("Held — stays in the queue, nothing changed.");
+                            onOpenChange(false);
+                          }}
+                        >
+                          Hold
+                        </Button>
+                      );
+                    })}
+                    {reviewCard.decisions[0].disabledReason ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        {reviewCard.decisions[0].disabledReason}
+                      </span>
+                    ) : null}
+                  </div>
+                </section>
+              )}
               <Section id="ko-guidance" title="Guidance">
                 {row.status === "candidate" ? (
                   <Textarea
@@ -487,7 +622,7 @@ export function AdminKnowledgeDetailSheet({
                   <p className="text-muted-foreground text-xs pt-1">{appliesWhen}</p>
                 )}
                 <p className="text-xs text-muted-foreground pt-1">
-                  Trigger · {triggerLabel(row)}
+                  Trigger · {triggerLabel(row, claims)}
                 </p>
               </Section>
 
@@ -574,6 +709,8 @@ export function AdminKnowledgeDetailSheet({
                       verification_status: c.verification_status,
                       source_id: c.source_id,
                       source_location: c.source_location,
+                      applicability: c.applicability,
+                      critic_result: c.critic_result,
                     }))}
                   sources={sources.map((s) => ({
                     id: s.id,

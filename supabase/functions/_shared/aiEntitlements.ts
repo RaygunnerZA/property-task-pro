@@ -26,6 +26,7 @@ const COST_UNITS: Record<string, number> = {
   "knowledge-extract-claims": 2,
   "knowledge-evidence-pack": 2,
   "knowledge-gap-research": 1,
+  "inbound-email": 2,
   "ai-batch-poll": 1,
   "building-plan-process": 5,
   // Escalation is a user-initiated second pass on a frontier model. It is metered

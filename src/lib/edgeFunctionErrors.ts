@@ -112,8 +112,8 @@ export async function parseEdgeFunctionError(
         return {
           message:
             slug === "edge function"
-              ? "Could not reach the edge function. Deploy it with: supabase functions deploy <name>"
-              : `Could not reach the ${slug} edge function. Deploy it with: supabase functions deploy ${slug}`,
+              ? "Could not reach the edge function (network or CORS). If it is already deployed, sign in again and retry."
+              : `Could not reach ${slug} (network or CORS). If the function is already deployed, sign in again and retry.`,
           code: "edge_function_unreachable",
         };
       }

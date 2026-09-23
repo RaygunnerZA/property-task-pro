@@ -5,19 +5,25 @@
  */
 
 import { SchemaError } from "./aiRouting.ts";
+import { validateOfficialSourceUrl } from "./officialSourceAllowlist.ts";
 
 export const MAX_RESEARCH_GAPS = 20;
 export const MAX_RESEARCH_SOURCES = 8;
 
-export const GAP_RESEARCH_PROMPT_VERSION = "knowledge-gap-research-v1";
+export const GAP_RESEARCH_PROMPT_VERSION = "knowledge-gap-research-v3";
 
 export const GAP_RESEARCH_SYSTEM =
   "You find official primary sources for property-compliance Knowledge gaps. " +
   "Prefer legislation, named regulators, and government guidance over blogs, aggregators, or AI summaries. " +
+  "Only use https URLs on official hosts such as: legislation.gov.uk, gov.uk, gov.scot, gov.wales, " +
+  "legifrance.gouv.fr (not legislation.gouv.fr), service-public.fr, admin.ch, fedlex.admin.ch. " +
+  "Prefer deep links to the specific Act/guidance page — not a bare homepage, language stub (/fr), or unrelated droit ID. " +
+  "The page must be about the named property topic (chimney/flue, heating, smoke/CO, gutters, etc.) — " +
+  "never health insurance, employment law, or browser requirements. " +
   "One URL should cover as many listed gaps as it genuinely does. " +
   "Return JSON only: {\"sources\":[{\"url\":\"https://...\",\"title\":\"...\",\"publisher\":\"...\",\"authority\":\"legislation|regulator|government_guidance|standards_body|other\",\"covers\":[\"gap-id\"]}]} " +
   "covers ids must be copied exactly from the prompt. " +
-  "Do not invent claims, quotes, or document text. If you cannot name a precise https URL, omit that gap. At most 8 sources.";
+  "Do not invent claims, quotes, or document text. If you cannot name a precise https URL on an official host, omit that gap. At most 8 sources.";
 
 export type ResearchGapStatus = "missing" | "partial";
 
@@ -70,6 +76,15 @@ export function sanitiseResearchSourceUrl(raw: unknown): string | null {
   const host = parsed.hostname.toLowerCase();
   if (!host.includes(".") || host === "localhost" || host.endsWith(".local")) return null;
   return parsed.toString();
+}
+
+/**
+ * Sanitise + official-host allowlist (+ known typo repair).
+ * Prefer this over sanitiseResearchSourceUrl when accepting discovery hits.
+ */
+export function sanitiseOfficialResearchSourceUrl(raw: unknown): string | null {
+  const validated = validateOfficialSourceUrl(raw);
+  return validated.ok ? validated.url : null;
 }
 
 export function parseResearchGapsBody(body: unknown): ResearchGapInput[] {
@@ -136,7 +151,11 @@ export function buildGapResearchUserPrompt(gaps: ResearchGapInput[]): string {
 export function validateDiscoverySources(
   raw: unknown,
   allowedIds: Set<string>
-): { sources: ResearchSourceHit[]; uncovered: string[] } {
+): {
+  sources: ResearchSourceHit[];
+  uncovered: string[];
+  rejected: Array<{ url: string; reason: string }>;
+} {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
     throw new SchemaError("discovery_payload_not_object");
   }
@@ -144,6 +163,7 @@ export function validateDiscoverySources(
   if (!Array.isArray(sourcesRaw)) throw new SchemaError("sources_missing");
 
   const sources: ResearchSourceHit[] = [];
+  const rejected: Array<{ url: string; reason: string }> = [];
   const covered = new Set<string>();
   const seenUrls = new Set<string>();
 
@@ -151,8 +171,18 @@ export function validateDiscoverySources(
     if (sources.length >= MAX_RESEARCH_SOURCES) break;
     if (!item || typeof item !== "object" || Array.isArray(item)) continue;
     const rec = item as Record<string, unknown>;
-    const url = sanitiseResearchSourceUrl(rec.url);
-    if (!url) continue;
+    const rawUrl = typeof rec.url === "string" ? rec.url : "";
+    const url = sanitiseOfficialResearchSourceUrl(rec.url);
+    if (!url) {
+      if (rawUrl) {
+        const v = validateOfficialSourceUrl(rawUrl);
+        rejected.push({
+          url: rawUrl.slice(0, 500),
+          reason: v.ok ? "invalid_url" : v.detail,
+        });
+      }
+      continue;
+    }
     const urlKey = url.toLowerCase();
     if (seenUrls.has(urlKey)) continue;
     seenUrls.add(urlKey);
@@ -184,5 +214,133 @@ export function validateDiscoverySources(
   }
 
   const uncovered = [...allowedIds].filter((id) => !covered.has(id));
-  return { sources, uncovered };
+  return { sources, uncovered, rejected };
+}
+
+/**
+ * Verified official URLs for pilot gaps where models often invent dead links (404).
+ * Only allowlisted hosts. Prefer these ahead of model-proposed URLs for the same gap.
+ */
+export const CURATED_GAP_SOURCES: ReadonlyArray<{
+  topic_key: string;
+  /** Lowercase jurisdiction label, e.g. "england". */
+  jurisdiction: string;
+  url: string;
+  title: string;
+  publisher: string;
+  authority: ResearchSourceHit["authority"];
+}> = [
+  {
+    topic_key: "chimney-flue-sweeping",
+    jurisdiction: "england",
+    url: "https://www.gov.uk/government/publications/combustion-appliances-and-fuel-storage-systems-approved-document-j",
+    title: "Approved Document J: combustion appliances and fuel storage systems",
+    publisher: "UK government",
+    authority: "government_guidance",
+  },
+  {
+    topic_key: "chimney-flue-sweeping",
+    jurisdiction: "scotland",
+    url: "https://www.gov.scot/publications/building-standards-technical-handbook-2022-domestic/3-environment/3-18-combustion-appliances-protection-combustion-products/",
+    title:
+      "Building standards technical handbook 2022: domestic — combustion appliances (sweeping)",
+    publisher: "Scottish Government",
+    authority: "government_guidance",
+  },
+  {
+    topic_key: "before-heating-season",
+    jurisdiction: "england",
+    url: "https://www.hse.gov.uk/GAS/landlords/gasappliances.htm",
+    title: "HSE: Maintenance — gas appliances and flues (landlords)",
+    publisher: "Health and Safety Executive",
+    authority: "regulator",
+  },
+  {
+    topic_key: "before-heating-season",
+    jurisdiction: "scotland",
+    url: "https://www.gov.scot/publications/repairing-standard-statutory-guidance-private-landlords/pages/15/",
+    title: "Repairing Standard: installations for the supply of gas",
+    publisher: "Scottish Government",
+    authority: "government_guidance",
+  },
+  {
+    topic_key: "before-heating-season",
+    jurisdiction: "france",
+    url: "https://www.service-public.gouv.fr/particuliers/vosdroits/F20760",
+    title: "Entretien annuel de la chaudière : quelles règles pour le locataire ?",
+    publisher: "Service-Public.fr",
+    authority: "government_guidance",
+  },
+];
+
+function jurisdictionKey(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+/**
+ * Ensure curated official URLs cover matching gaps; curated sources are listed first
+ * so intake hits known-good pages before model-invented URLs that often 404.
+ * When a curated seed covers a gap, drop other discovered URLs for that gap only.
+ */
+export function augmentDiscoveryWithCuratedSources(
+  gaps: ResearchGapInput[],
+  discovered: ResearchSourceHit[]
+): { sources: ResearchSourceHit[]; uncovered: string[]; curatedAdded: number } {
+  const sources: ResearchSourceHit[] = discovered.map((s) => ({
+    ...s,
+    covers: [...s.covers],
+  }));
+  const byUrl = new Map(sources.map((s) => [s.url.toLowerCase(), s]));
+  let curatedAdded = 0;
+  const curatedGapIds = new Set<string>();
+  const curatedUrlKeys = new Set<string>();
+
+  for (const gap of gaps) {
+    const seed = CURATED_GAP_SOURCES.find(
+      (c) =>
+        c.topic_key === gap.topic_key &&
+        jurisdictionKey(c.jurisdiction) === jurisdictionKey(gap.jurisdiction)
+    );
+    if (!seed) continue;
+    const validated = sanitiseOfficialResearchSourceUrl(seed.url);
+    if (!validated) continue;
+
+    curatedGapIds.add(gap.id);
+    curatedUrlKeys.add(validated.toLowerCase());
+
+    const existing = byUrl.get(validated.toLowerCase());
+    if (existing) {
+      if (!existing.covers.includes(gap.id)) {
+        existing.covers.push(gap.id);
+        curatedAdded += 1;
+      }
+      continue;
+    }
+
+    const hit: ResearchSourceHit = {
+      url: validated,
+      title: seed.title,
+      publisher: seed.publisher,
+      authority: seed.authority,
+      covers: [gap.id],
+    };
+    sources.unshift(hit);
+    byUrl.set(validated.toLowerCase(), hit);
+    curatedAdded += 1;
+  }
+
+  // Prefer curated over inventable model links for the same gap (avoids 404 dead ends).
+  const pruned = sources
+    .map((s) => {
+      if (curatedUrlKeys.has(s.url.toLowerCase())) return s;
+      return {
+        ...s,
+        covers: s.covers.filter((id) => !curatedGapIds.has(id)),
+      };
+    })
+    .filter((s) => s.covers.length > 0);
+
+  const covered = new Set(pruned.flatMap((s) => s.covers));
+  const uncovered = gaps.map((g) => g.id).filter((id) => !covered.has(id));
+  return { sources: pruned, uncovered, curatedAdded };
 }

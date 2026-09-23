@@ -26,11 +26,28 @@ function json(data: unknown, status = 200) {
 function extForContentType(ct: string, fileName: string): string {
   if (fileName.includes(".")) return fileName.split(".").pop()!.toLowerCase();
   if (ct.includes("pdf")) return "pdf";
-  if (ct.includes("html")) return "html";
+  if (ct.includes("html") || ct.includes("xml")) return "html";
   if (ct.includes("plain")) return "txt";
   if (ct.includes("jpeg")) return "jpg";
   if (ct.includes("png")) return "png";
   return "bin";
+}
+
+/** Strip scripts/styles/tags so HTML gov pages store as text/plain (bucket-safe). */
+function htmlToPlainText(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 500_000);
 }
 
 Deno.serve(async (req) => {
@@ -84,14 +101,34 @@ Deno.serve(async (req) => {
   }
 
   const retrievedAt = new Date().toISOString();
-  const ext = extForContentType(fetched.contentType, fetched.fileName);
-  const safeName = `${fetched.fileName.replace(/\.[^.]+$/, "")}.${ext}`.slice(0, 120);
+  let uploadBytes = fetched.bytes;
+  let uploadContentType = fetched.contentType;
+  let ext = extForContentType(fetched.contentType, fetched.fileName);
+
+  // Official guidance is often HTML; bucket historically disallowed text/html.
+  // Normalise to plain text so intake works even before MIME migration lands.
+  if (
+    uploadContentType.includes("html") ||
+    uploadContentType.includes("xml") ||
+    ext === "html"
+  ) {
+    const plain = htmlToPlainText(new TextDecoder("utf-8", { fatal: false }).decode(fetched.bytes));
+    if (plain.length < 40) {
+      return json({ ok: false, error: "html_page_had_no_extractable_text" }, 400);
+    }
+    uploadBytes = new TextEncoder().encode(plain);
+    uploadContentType = "text/plain";
+    ext = "txt";
+  }
+
+  const baseName = fetched.fileName.replace(/\.[^.]+$/, "") || "document";
+  const safeName = `${baseName}.${ext}`.slice(0, 120);
   const storagePath = `platform/${user.id}/url-${crypto.randomUUID()}-${safeName}`;
 
   const { error: uploadErr } = await admin.storage
     .from("knowledge-intake")
-    .upload(storagePath, fetched.bytes, {
-      contentType: fetched.contentType,
+    .upload(storagePath, uploadBytes, {
+      contentType: uploadContentType,
       upsert: false,
     });
   if (uploadErr) return json({ ok: false, error: uploadErr.message }, 500);
@@ -122,6 +159,22 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: analysis?.error ?? "analysis_failed" }, 502);
   }
 
+  // Always expose extracted page text for proposal backfill (models often omit bodies).
+  const plainForClient =
+    uploadContentType === "text/plain"
+      ? new TextDecoder("utf-8", { fatal: false }).decode(uploadBytes).slice(0, 12_000)
+      : "";
+  const analysisWithText =
+    analysis && typeof analysis === "object"
+      ? {
+          ...analysis,
+          ocr_text:
+            (typeof analysis.ocr_text === "string" && analysis.ocr_text.trim()) ||
+            plainForClient ||
+            null,
+        }
+      : analysis;
+
   return json({
     ok: true,
     storage: {
@@ -136,6 +189,6 @@ Deno.serve(async (req) => {
       retrieved_date: retrievedAt,
       source_document: safeName,
     },
-    analysis,
+    analysis: analysisWithText,
   });
 });

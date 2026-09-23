@@ -125,22 +125,33 @@ export function proposalsFromDocAnalysis(
   analysis: DocAnalysePayload,
   source: KnowledgeSourceProvenance
 ): ProposedKnowledgeCandidate[] {
+  const pageText =
+    clip(analysis.ocr_text, 12000) ||
+    (analysis.findings?.length ? analysis.findings.join("\n\n") : "");
+
   const fromModel = (analysis.knowledge_proposals ?? [])
-    .map((p) =>
-      p.title?.trim()
-        ? proposalRow(
-            {
-              title: p.title,
-              summary: p.summary ?? undefined,
-              body: p.body ?? undefined,
-              attributes: p.attributes,
-              claims: p.claims,
-            },
-            source,
-            analysis
-          )
-        : null
-    )
+    .map((p) => {
+      if (!p.title?.trim()) return null;
+      const summary = clip(p.summary, 800) || clip(analysis.summary, 800);
+      let body = clip(p.body, 12000);
+      // Models often return titles with empty bodies on HTML guidance pages —
+      // backfill from extracted page text so curated URLs still become Review candidates.
+      if (body.length < 80 && pageText.length >= 80) {
+        body = pageText;
+      }
+      if (!summary && !body) return null;
+      return proposalRow(
+        {
+          title: p.title,
+          summary: summary || body.slice(0, 400),
+          body: body || summary,
+          attributes: p.attributes,
+          claims: p.claims,
+        },
+        source,
+        analysis
+      );
+    })
     .filter(Boolean) as ProposedKnowledgeCandidate[];
 
   if (fromModel.length > 0) {
@@ -158,14 +169,16 @@ export function proposalsFromDocAnalysis(
     clip(analysis.summary, 800) ||
     [analysis.document_type, analysis.outcome].filter(Boolean).join(" · ");
 
-  const mainBody =
-    clip(analysis.ocr_text, 12000) ||
-    (analysis.findings?.length ? analysis.findings.join("\n\n") : "");
+  const mainBody = pageText;
 
   if (mainTitle && (mainSummary || mainBody)) {
     out.push(
       proposalRow(
-        { title: mainTitle, summary: mainSummary, body: mainBody },
+        {
+          title: mainTitle,
+          summary: mainSummary || mainBody.slice(0, 400),
+          body: mainBody || mainSummary,
+        },
         source,
         analysis
       )
@@ -210,10 +223,14 @@ export function proposalsFromDocAnalysis(
     if (out.length >= 8) break;
   }
 
-  if (out.length === 0 && mainTitle) {
+  if (out.length === 0 && mainTitle && (mainSummary || mainBody)) {
     out.push(
       proposalRow(
-        { title: mainTitle, summary: mainSummary, body: mainBody || mainSummary },
+        {
+          title: mainTitle,
+          summary: mainSummary || mainBody.slice(0, 400),
+          body: mainBody || mainSummary,
+        },
         source,
         analysis
       )

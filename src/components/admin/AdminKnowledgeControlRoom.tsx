@@ -17,6 +17,8 @@ import { AdminKnowledgePackageWorkspace } from "@/components/admin/AdminKnowledg
 import { AdminKnowledgeReviewWorkbench } from "@/components/admin/AdminKnowledgeReviewWorkbench";
 import { AdminOutputsPanel } from "@/components/admin/AdminOutputsPanel";
 import { AdminKnowledgeDetailSheet } from "@/components/admin/AdminKnowledgeDetailSheet";
+import { AdminKnowledgeReportingPanel } from "@/components/admin/AdminKnowledgeReportingPanel";
+import { CatalogueMonitoringStrip } from "@/components/admin/AdminKnowledgeCataloguePanel";
 import { KnowledgeWatchSettingsControl } from "@/components/admin/KnowledgeWatchSettingsControl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -59,7 +61,7 @@ function CompactRow({
   pkg: SubjectPackage;
   onOpen: () => void;
 }) {
-  const clickable = Boolean(pkg.actionLabel) || pkg.filter === "attention" || Boolean(pkg.scheduleState);
+  // Always openable — Monitoring/QUEUED rows still need review (e.g. filename-titled candidates).
   const scheduleBadge =
     pkg.scheduleState === "proposed"
       ? "Proposed"
@@ -73,21 +75,17 @@ function CompactRow({
     <div
       className={cn(
         "flex items-start gap-3 border-b border-border/30 py-2.5 last:border-0",
-        clickable && "cursor-pointer hover:bg-muted/20 -mx-2 px-2 rounded-lg"
+        "cursor-pointer hover:bg-muted/20 -mx-2 px-2 rounded-lg"
       )}
-      onClick={clickable ? onOpen : undefined}
-      onKeyDown={
-        clickable
-          ? (e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onOpen();
-              }
-            }
-          : undefined
-      }
-      role={clickable ? "button" : undefined}
-      tabIndex={clickable ? 0 : undefined}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
     >
       <div className="min-w-0 flex-1 space-y-0.5">
         <div className="flex flex-wrap items-baseline gap-2">
@@ -100,22 +98,14 @@ function CompactRow({
           )}
         </div>
         <p className="text-xs text-muted-foreground leading-snug">{pkg.coverageSummary}</p>
-        <p className="text-xs text-muted-foreground leading-snug">
-          {pkg.deliverablesSummary}
-          <span className="text-border/80"> · </span>
-          {reasonLine}
-        </p>
-        {pkg.reasonChips.length > 0 ? (
-          <div className="flex flex-wrap gap-1 pt-0.5">
-            {pkg.reasonChips.map((chip) => (
-              <span
-                key={chip}
-                className="inline-flex max-w-full truncate rounded-md bg-muted/50 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-              >
-                {chip}
-              </span>
-            ))}
-          </div>
+        {pkg.filter === "attention" && pkg.nextDecisionReason ? (
+          <p className="text-xs text-muted-foreground leading-snug">{pkg.nextDecisionReason}</p>
+        ) : pkg.deliverablesSummary &&
+          pkg.deliverablesSummary !== pkg.coverageSummary &&
+          pkg.deliverablesSummary !== "Assessing opportunity" ? (
+          <p className="text-xs text-muted-foreground leading-snug">{pkg.deliverablesSummary}</p>
+        ) : reasonLine && reasonLine !== pkg.coverageSummary ? (
+          <p className="text-xs text-muted-foreground leading-snug">{reasonLine}</p>
         ) : null}
       </div>
       {pkg.actionLabel ? (
@@ -144,17 +134,6 @@ function CompactRow({
                 : ""}
         </span>
       )}
-    </div>
-  );
-}
-
-function MetricChip({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-xl bg-card/80 shadow-e1 px-3 py-2 min-w-[8rem]">
-      <p className="text-caption font-mono uppercase tracking-wider text-muted-foreground">
-        {label}
-      </p>
-      <p className="text-lg font-semibold tabular-nums text-foreground mt-0.5">{value}</p>
     </div>
   );
 }
@@ -190,6 +169,16 @@ export function AdminKnowledgeControlRoom() {
       }),
     [knowledgeQuery.data, topicsQuery.data]
   );
+
+  // Keep the open package in sync after Accept / research / draft mutations.
+  useEffect(() => {
+    if (!selected) return;
+    const fresh =
+      packages.find((p) => p.id === selected.id) ??
+      packages.find((p) => p.subjectKey === selected.subjectKey) ??
+      null;
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [packages, selected]);
 
   const counts = useMemo(() => filterCounts(packages), [packages]);
 
@@ -364,11 +353,7 @@ export function AdminKnowledgeControlRoom() {
         >
           Back to Knowledge
         </Button>
-        <div className="flex flex-wrap gap-2">
-          <MetricChip label="Verified of created" value={`${totals.verified} of ${totals.created}`} />
-          <MetricChip label="Reused" value={totals.reused} />
-          <MetricChip label="Answered" value={totals.answered} />
-        </div>
+        <AdminKnowledgeReportingPanel totals={totals} />
       </div>
     );
   }
@@ -510,12 +495,16 @@ export function AdminKnowledgeControlRoom() {
         </p>
       )}
 
+      {!loading && filter === "monitoring" && <CatalogueMonitoringStrip />}
+
       {!loading &&
         filter !== "attention" &&
         filter !== "scheduled" &&
         filtered.length === 0 && (
           <p className="text-sm text-muted-foreground rounded-xl bg-card/80 shadow-e1 px-4 py-6">
-            {filter === "monitoring" ? "Nothing in monitoring." : "No completed packages yet."}
+            {filter === "monitoring"
+              ? "Nothing in monitoring. News leads and new official pages stay here until a consequential change appears."
+              : "No completed packages yet."}
           </p>
         )}
 

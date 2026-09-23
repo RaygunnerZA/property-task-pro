@@ -5,14 +5,15 @@ Filla acts as a gravity well. Ingest content via Share Sheet, Email, Drag & Drop
 
 **15.2 — CHANNELS**
 *   **Manual upload:** Add to Filla sheet or global drop zone → `intake_items`.
-*   **Email (Resend Inbound):** `{org_slug}+{token}@inbox.filla.app`. Accepts forwards (quotes, invoices).
+*   **Email (Resend Inbound):** personal `{name}+{token}@inbox.filla.app` from `get_member_intake_email`. The shared organisation address remains for older forwards.
 *   **Calendar (Phase 3):** Connected Google/Microsoft account → `intake_items` with `source_type = calendar_event`.
 *   **Cloud picker (Phase 4):** Drive/OneDrive selection → `intake_items` with `source_type = cloud_file`.
 
 **15.3 — PIPELINE SPLIT**
 
 User-initiated intake (`intake_items`):
-Receive → Secure attach (inbox bucket) → Org resolution → AI classification (`intake-process`) → **IntakeReviewSheet** → **IntakeModal** → task or compliance record → `confirmed`.
+Uploads follow Receive → Secure attach (inbox bucket) → AI classification (`intake-process`) → **IntakeReviewSheet** → **IntakeModal** → task or compliance record → `confirmed`.
+Personal inbound mail follows the membership token on the webhook envelope, then one proposal (`inbound_email_triage`) on the same review sheet. Task and record continue in **IntakeModal**. Knowledge confirm creates an organisation candidate and does not publish.
 
 System-detected intake (`signals`):
 Unknown external sender email → `emit_signal` (`kind=email`, `disposition=needs_review`, `review_state=needs_classification`) → Issues / Needs review. Managers triage; does **not** appear in the member's Add to Filla pending list.
@@ -22,16 +23,19 @@ Manager promote (Issues Action Layer):
 *   **Dismiss** resolves the signal without creating intake rows.
 
 Member email routing:
-*   `From` matches org member → `create_intake_item_from_email` (`source_type=forwarded_email`) → same review pipeline as uploads.
-*   Unknown `From` → signal only (`subtype=ingestion.external_email`); attachments stored under org inbox path for triage payload.
+*   Personal address: the token hash resolves an active membership. Envelope recipients on the webhook (`to`, `cc`, `bcc`) are the routing source. To and Cc on the fetched message are stored for display. A From address that matches the member login is `authorship = member`. Any other From still lands in that member's Needs review, labelled **External sender—not verified as you**, with `authorship = external`.
+*   One `intake_items` row per message. Body and accepted attachments are classified together into one proposal: `task` (a reminder is a task with a due date), `record`, `knowledge` (organisation scope, only with cited reusable evidence), or `unclear`. The person confirms, changes type, or dismisses on Home → Needs review. Knowledge confirm creates an organisation candidate and does not publish.
+*   Shared organisation address: `From` matches an org member → `create_intake_item_from_email`. Unknown `From` → signal only (`subtype=ingestion.external_email`).
 
 **15.4 — RESEND INBOUND (Phase 1)**
 
 Provider: [Resend Inbound](https://resend.com/docs/dashboard/receiving/introduction).
 
-Address format: `{slug}+{intake_email_token}@inbox.filla.app` (from `get_org_intake_email` RPC).
+Personal address: `{name}+{token}@inbox.filla.app` (`get_member_intake_email`). The token is stored as a hash, can be rotated, and is revoked when membership ends. Shared organisation address: `{slug}+{intake_email_token}@inbox.filla.app` (`get_org_intake_email`).
 
-Webhook: `POST /functions/v1/inbound-email` — Svix signature via `RESEND_WEBHOOK_SECRET`. Event `email.received` triggers fetch of full email + attachments from Resend Receiving API.
+Webhook: `POST /functions/v1/inbound-email` — Svix signature via `RESEND_WEBHOOK_SECRET` (required). Event `email.received` fetches the message from the Resend Receiving API. Duplicate message ids and per-token / per-sender hourly limits are applied before AI. Attachments are size-capped, type-checked, and rejected when the bytes do not match the declared type.
+
+Where people see the address: **Settings → Profile**, and a short copy row in **Add to Filla**.
 
 Dedupe: `dedupe_key = email_inbound:{org_id}:{message_id}` on external signals.
 

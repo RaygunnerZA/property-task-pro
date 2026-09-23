@@ -18,6 +18,7 @@ import {
   GAP_RESEARCH_SYSTEM,
   parseResearchGapsBody,
   validateDiscoverySources,
+  augmentDiscoveryWithCuratedSources,
   type ResearchSourceHit,
 } from "../_shared/knowledgeGapResearch.ts";
 
@@ -150,9 +151,11 @@ Deno.serve(async (req) => {
   const geminiKey = knowledgeGeminiApiKey();
   const openaiKey = Deno.env.get("OPENAI_API_KEY");
 
-  const run = await runCapability<{ sources: ResearchSourceHit[]; uncovered: string[] }>(
-    admin,
-    {
+  const run = await runCapability<{
+    sources: ResearchSourceHit[];
+    uncovered: string[];
+    rejected: Array<{ url: string; reason: string }>;
+  }>(admin, {
       capability: "knowledge_gap_research",
       orgId: PLATFORM_ORG,
       userId: user.id,
@@ -185,10 +188,14 @@ Deno.serve(async (req) => {
     return json({ ok: false, error: run.error ?? "discovery_failed" }, 502);
   }
 
+  const augmented = augmentDiscoveryWithCuratedSources(gaps, run.value.sources);
+
   return json({
     ok: true,
-    sources: run.value.sources,
-    uncovered: run.value.uncovered,
+    sources: augmented.sources,
+    uncovered: augmented.uncovered,
+    rejected: run.value.rejected ?? [],
+    curated_added: augmented.curatedAdded,
     gap_count: gaps.length,
     provenance: {
       prompt_version: PROMPT_VERSION,

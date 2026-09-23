@@ -299,6 +299,15 @@ describe("knowledgePresentation gates", () => {
     expect(isPublicationReady(row, checks)).toBe(true);
   });
 
+  it("does not keep a provenance URL after it is replaced by a linked source", () => {
+    const newUrl = "https://www.hse.gov.uk/gas/landlords/gasappliances.htm";
+    const afterReplace = computeSourceHealth(
+      [{ id: "s-new", url: newUrl, source_type: "url", created_at: new Date().toISOString() }],
+      baseRow({ provenance: { source_url: newUrl } })
+    );
+    expect(afterReplace.authoritative.map((s) => s.url)).toEqual([newUrl]);
+  });
+
   it("source counts agree across list and detail health", () => {
     const row = baseRow({ title: "Consent or notice before work to protected trees" });
     const health = computeSourceHealth([govSource], row);

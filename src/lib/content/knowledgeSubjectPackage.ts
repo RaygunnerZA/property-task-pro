@@ -21,6 +21,19 @@ import {
   type ScheduleState,
 } from "@/lib/content/knowledgeSchedule";
 import {
+  buildRegionalCoverage,
+  coverageDecisionLabels,
+  dedupeImportantGaps,
+  draftDriftedFromSubject,
+  eligibleTextApprovedForImages,
+  imageStateFromGates,
+  internationalSupportedFromCoverage,
+  isPlaceholderOutput,
+  nextAutomaticCopy,
+  nextDecisionCopy,
+  pickPrimaryKnowledgeId,
+} from "@/lib/content/knowledgePackagePilot";
+import {
   deriveDiscoverySignals,
   packageMatchesSourceFilter,
   topReasonChips,
@@ -50,12 +63,15 @@ export type SubjectCoverage = {
   label: string;
   status: CoverageStatus;
   knowledgeId?: string;
+  /** Parent label when this is a UK constituent (England under United Kingdom). */
+  parentLabel?: string;
 };
 
 export type DeliverableState =
   | "Planned"
   | "Generating"
   | "Ready to review"
+  | "Ready to upload"
   | "Approved"
   | "Held"
   | "Blocked"
@@ -65,15 +81,14 @@ export type SubjectDeliverable = {
   id: string;
   label: string;
   state: DeliverableState;
+  outputId?: string;
+  /** Why Blocked / Waiting / Held — same copy everywhere. */
+  blockedReason?: string;
+  /** Off-subject draft held for regeneration. */
+  stale?: boolean;
 };
 
-export type PackageActionLabel =
-  | "Accept plan"
-  | "Review drafts"
-  | "Resolve gap"
-  | "Approve distribution"
-  | "View"
-  | null;
+export type PackageActionLabel = string | null;
 
 export type PackagePrimaryKind =
   | "accept_plan"
@@ -129,6 +144,12 @@ export type SubjectPackage = {
   discoverySignals: DiscoverySignal[];
   /** Strongest one or two reason chip labels for the compact row. */
   reasonChips: string[];
+  /** Concise reason under the primary action. */
+  nextDecisionReason: string;
+  /** Jurisdictions Resolve gap will research (explicit, not generic). */
+  resolveGapJurisdictions: string[];
+  /** Knowledge candidates that need Accept / Hold for this package. */
+  decisionKnowledgeIds: string[];
 };
 
 export const CONTROL_FILTER_LABELS: Record<ControlFilter, string> = {
@@ -148,10 +169,36 @@ export function stripJurisdictionFromTitle(title: string): string {
   return title.replace(JURISDICTION_SUFFIX, "").replace(JURISDICTION_PAREN, "").trim();
 }
 
+/**
+ * Landlord gas is durable Knowledge. In the heating window it is reviewed on
+ * Before the heating season — not a second queue the reviewer has to find.
+ */
+export function foldLandlordGasIntoHeatingSeason(
+  byKey: Map<string, KnowledgeRow[]>,
+  heatingSeason: boolean
+): void {
+  const gas = byKey.get("landlord-gas-maintenance");
+  if (!gas?.length) return;
+  const heating = byKey.get("before-heating-season") ?? [];
+  if (!heatingSeason && heating.length === 0) return;
+  byKey.set("before-heating-season", [...heating, ...gas]);
+  byKey.delete("landlord-gas-maintenance");
+}
+
 export function subjectKeyFromTitle(title: string): string {
   const base = stripJurisdictionFromTitle(title).toLowerCase();
 
-  if (/chimney|flue|ramonage|sweep/.test(base)) return "chimney-flue-sweeping";
+  if (
+    /landlord.{0,48}gas|gas.?appliances?|\bgas safety\b|gas safe|installation pipework|landlords?.{0,24}dut/.test(
+      base
+    ) &&
+    !/\bf-?gas\b/.test(base)
+  ) {
+    return "landlord-gas-maintenance";
+  }
+  if (/chimney|flue|ramonage|sweep/.test(base) && !/gas.?appliance|gas safe|landlord.{0,20}gas/.test(base)) {
+    return "chimney-flue-sweeping";
+  }
   if (/drown|piscine|pool\s*fence|anti-?drown|pool\s*safety/.test(base)) {
     return "anti-drowning-safety";
   }
@@ -164,9 +211,10 @@ export function subjectKeyFromTitle(title: string): string {
   if (/sewage|septic|fosse|private\s*drain/.test(base)) return "private-sewage-systems";
   if (/party\s*wall|mitoyen/.test(base)) return "party-walls";
   if (
-    /heating|boiler|chaudière|chaudiere|heat\s*pump|pipework|exposed\s*pipe|certificate|certificat|service\s*heat|winteris|frost|radiator/.test(
+    /heating|boiler|chaudière|chaudiere|heat\s*pump|exposed\s*pipe|service\s*heat|winteris|frost|radiator/.test(
       base
-    )
+    ) ||
+    /heating.{0,24}certificate|service records?.{0,24}heat/.test(base)
   ) {
     return "before-heating-season";
   }
@@ -187,6 +235,8 @@ export function subjectDisplayTitle(key: string, fallbackTitle: string): string 
       return "Smoke and carbon monoxide alarms";
     case "before-heating-season":
       return "Before the heating season";
+    case "landlord-gas-maintenance":
+      return "Landlord gas-appliance and flue maintenance";
     case "gutters-autumn-leaf-risk":
       return "Gutters and autumn leaf risk";
     case "anti-drowning-safety":
@@ -198,6 +248,34 @@ export function subjectDisplayTitle(key: string, fallbackTitle: string): string 
     default:
       return stripJurisdictionFromTitle(fallbackTitle) || fallbackTitle;
   }
+}
+
+/** Priority jurisdictions for international pilot packages (Watch + Resolve gap). */
+export const INTL_COVERAGE_PRIORITY_JURISDICTIONS = [
+  "England",
+  "Scotland",
+  "France",
+  "Switzerland",
+] as const;
+
+const INTL_PILOT_SUBJECT_KEYS = new Set([
+  "chimney-flue-sweeping",
+  "smoke-carbon-monoxide-alarms",
+  "before-heating-season",
+  "gutters-autumn-leaf-risk",
+]);
+
+export function missingPriorityJurisdictions(coverage: SubjectCoverage[]): string[] {
+  const present = new Set(
+    coverage
+      .filter(
+        (c) =>
+          c.id !== "international" &&
+          (c.status === "Sourced" || c.status === "Ready" || c.status === "Needs a decision")
+      )
+      .map((c) => c.label.toLowerCase())
+  );
+  return INTL_COVERAGE_PRIORITY_JURISDICTIONS.filter((j) => !present.has(j.toLowerCase()));
 }
 
 function jurisdictionFromRow(row: KnowledgeRow): string | null {
@@ -240,10 +318,7 @@ function planReadyForAccept(strategy: ContentParentStrategy, topic: ContentTopic
 
 /** Representative international framing needs more than one regional source. */
 function internationalSupported(coverage: SubjectCoverage[]): boolean {
-  const regions = coverage.filter(
-    (c) => c.id !== "international" && (c.status === "Sourced" || c.status === "Ready")
-  );
-  return regions.length >= 2;
+  return internationalSupportedFromCoverage(coverage);
 }
 
 export function recommendFormsForSubject(
@@ -253,8 +328,14 @@ export function recommendFormsForSubject(
 ): { summary: string; forms: ContentFormKind[]; assessing: boolean } {
   if (hasPlanRecommendation(strategy)) {
     const forms: ContentFormKind[] = [];
-    if (strategy.primary_form) forms.push(strategy.primary_form);
+    const skipInApp =
+      strategy.content_scope === "international_overview" ||
+      strategy.content_scope === "regional_comparison";
+    if (strategy.primary_form && !(skipInApp && strategy.primary_form === "in_app_tip")) {
+      forms.push(strategy.primary_form);
+    }
     for (const d of strategy.derivative_forms) {
+      if (skipInApp && d === "in_app_tip") continue;
       if (!forms.includes(d)) forms.push(d);
     }
     const labels: string[] = [];
@@ -270,6 +351,15 @@ export function recommendFormsForSubject(
           if (intlOk) labels.push("Social");
         } else if (f === "compliance_checklist") labels.push("Checklist");
         else if (f === "faq") labels.push("FAQ");
+        else if (f === "in_app_tip") {
+          if (
+            strategy.content_scope === "international_overview" ||
+            strategy.content_scope === "regional_comparison"
+          ) {
+            continue;
+          }
+          labels.push("In-app tip");
+        }
         else labels.push(formKindLabel(f));
       }
       if (strategy.supporting_content.some((s) => /france/i.test(s.label))) {
@@ -277,24 +367,24 @@ export function recommendFormsForSubject(
       }
     }
     if (!labels.includes("Image") && labels.length > 0) labels.push("Image");
-    return { summary: labels.join(" · ") || "Assessing opportunity", forms, assessing: false };
+    return { summary: labels.join(" · ") || formatCoverageLine(coverage), forms, assessing: false };
   }
 
   if (key === "before-heating-season") {
     return {
-      summary: "Assessing opportunity",
+      summary: formatCoverageLine(coverage),
       forms: ["compliance_checklist", "social_carousel", "social_post"],
       assessing: true,
     };
   }
   if (key === "chimney-flue-sweeping") {
     return {
-      summary: "Assessing opportunity",
+      summary: formatCoverageLine(coverage),
       forms: ["informational_article", "social_carousel", "social_post"],
       assessing: true,
     };
   }
-  return { summary: "Assessing opportunity", forms: [], assessing: true };
+  return { summary: formatCoverageLine(coverage), forms: [], assessing: true };
 }
 
 function buildCoverage(
@@ -303,22 +393,8 @@ function buildCoverage(
   strategy: ContentParentStrategy
 ): SubjectCoverage[] {
   const coverage: SubjectCoverage[] = [];
-  const regional: SubjectCoverage[] = [];
-  const seen = new Set<string>();
-
-  for (const row of rows) {
-    const label = jurisdictionFromRow(row);
-    if (!label) continue;
-    const lk = label.toLowerCase();
-    if (seen.has(lk)) continue;
-    seen.add(lk);
-    regional.push({
-      id: row.id,
-      label,
-      status: coverageStatusForKnowledge(row.status),
-      knowledgeId: row.id,
-    });
-  }
+  const regional = buildRegionalCoverage(rows, { subjectKey: key });
+  const seen = new Set(regional.map((c) => c.label.toLowerCase()));
 
   const wantsIntl =
     rows.some(isUnscoped) ||
@@ -334,35 +410,93 @@ function buildCoverage(
     coverage.push({
       id: "international",
       label: "International",
-      status: intlOk ? "Ready" : rows.some(isUnscoped) ? "Incomplete" : "Incomplete",
+      status: intlOk ? "Ready" : "Incomplete",
     });
   }
 
-  coverage.push(...regional);
+  // Mark England/Scotland/Wales as UK constituents when any UK child is present.
+  const hasUkChild = regional.some((c) =>
+    /^(england|scotland|wales)$/i.test(c.label)
+  );
+  for (const c of regional) {
+    coverage.push(
+      hasUkChild && /^(england|scotland|wales)$/i.test(c.label)
+        ? { ...c, parentLabel: "United Kingdom" }
+        : c
+    );
+  }
 
-  if (key === "chimney-flue-sweeping" && !seen.has("france")) {
-    coverage.push({ id: "fr-gap", label: "France", status: "Being researched" });
+  if (INTL_PILOT_SUBJECT_KEYS.has(key)) {
+    for (const j of INTL_COVERAGE_PRIORITY_JURISDICTIONS) {
+      if (seen.has(j.toLowerCase())) continue;
+      coverage.push({
+        id: `gap-${j.toLowerCase()}`,
+        label: j,
+        status: "Being researched",
+        parentLabel: /^(england|scotland|wales)$/i.test(j) ? "United Kingdom" : undefined,
+      });
+    }
   }
 
   return coverage;
 }
 
 export function formatCoverageLine(coverage: SubjectCoverage[]): string {
-  const parts: string[] = [];
+  const covered: string[] = [];
+  const candidates: string[] = [];
   for (const c of coverage) {
-    if (c.id === "international") {
-      if (c.status === "Ready") parts.push("International ready");
-      else if (c.status === "Incomplete") parts.push("International incomplete");
-      else if (c.status === "Sourced") parts.push("International sourced");
-      else if (c.status === "Being researched") parts.push("International being researched");
-      continue;
-    }
-    if (c.status === "Not relevant") continue;
-    if (c.status === "Sourced" || c.status === "Ready") parts.push(`${c.label} sourced`);
-    else if (c.status === "Needs a decision") parts.push(`${c.label} needs a decision`);
-    else if (c.status === "Being researched") parts.push(`${c.label} researching`);
+    if (c.id === "international" || c.status === "Not relevant") continue;
+    if (c.status === "Sourced" || c.status === "Ready") covered.push(c.label);
+    else if (c.status === "Needs a decision") candidates.push(c.label);
   }
-  return parts.length ? parts.join(" · ") : "Coverage not assessed yet";
+  const parts = [
+    ...covered.map((label) => `${label} covered`),
+    ...candidates.map((label) => `${label} candidate found`),
+  ];
+  return parts.length ? parts.join(" · ") : "No candidate yet";
+}
+
+/** Human progress copy for coverage cells — no false ETAs. */
+export function coverageProgressHint(status: CoverageStatus): string {
+  switch (status) {
+    case "Being researched":
+      return "Open work: Watch or Research regions looks for an official source. No clock — finishes when a fetchable allowlisted URL yields a Knowledge candidate you Accept.";
+    case "Incomplete":
+      return "Needs at least two sourced regions before an international expression can unlock.";
+    case "Needs a decision":
+      return "Candidate or stale Knowledge is waiting for Accept / review — not automatic.";
+    case "Sourced":
+    case "Ready":
+      return "Verified or published Knowledge covers this layer.";
+    case "Not relevant":
+      return "Out of scope for this package.";
+    default:
+      return "";
+  }
+}
+
+/** Human progress copy for deliverable rows. */
+export function deliverableProgressHint(state: DeliverableState): string {
+  switch (state) {
+    case "Waiting":
+      return "Blocked on an earlier step (usually drafts or plan). Nothing is running in the background.";
+    case "Ready to upload":
+      return "Your turn — upload a square (and optional formats) below. Not generated until you add files or run a visual concept.";
+    case "Blocked":
+      return "Cannot start until coverage or plan unlocks this layer (e.g. international needs ≥2 regions).";
+    case "Planned":
+      return "Queued after Accept plan / coverage — machine has not generated it yet.";
+    case "Generating":
+      return "Machine is writing now — usually minutes; refresh if it stalls.";
+    case "Ready to review":
+      return "Draft is ready for your Approve / Hold.";
+    case "Approved":
+      return "Ready to include in Approve distribution.";
+    case "Held":
+      return "Excluded from distribution until you change it.";
+    default:
+      return "";
+  }
 }
 
 /**
@@ -407,7 +541,8 @@ export function deriveNextAction(input: {
 function chimneyDeliverables(
   coverage: SubjectCoverage[],
   outputs: ContentOutputRow[],
-  planAccepted: boolean
+  planAccepted: boolean,
+  topic: ContentTopicRow | null = null
 ): SubjectDeliverable[] {
   const france = coverage.find((c) => /france/i.test(c.label));
   const franceSourced = france && (france.status === "Sourced" || france.status === "Ready");
@@ -430,6 +565,29 @@ function chimneyDeliverables(
     }
     return "Planned";
   };
+
+  const creative = (topic?.creative ?? {}) as Record<string, unknown>;
+  const finalAssets =
+    creative.final_assets && typeof creative.final_assets === "object"
+      ? (creative.final_assets as Record<string, unknown>)
+      : {};
+  const hasImage = Boolean(
+    finalAssets.square_path ||
+      finalAssets.thumbnail_path ||
+      creative.square_path ||
+      creative.thumbnail_path
+  );
+  const franceDraftsApproved =
+    Boolean(frGuide && frGuide.status === "approved") ||
+    (outputs.length > 0 &&
+      outputs.every((o) => o.status === "approved" || o.status === "rejected") &&
+      outputs.some((o) => o.status === "approved"));
+
+  const image = imageStateFromGates({
+    hasImage,
+    planAccepted,
+    eligibleTextApproved: franceDraftsApproved,
+  });
 
   return [
     {
@@ -460,7 +618,163 @@ function chimneyDeliverables(
     {
       id: "images",
       label: "Images",
-      state: "Waiting",
+      state: image.state,
+      blockedReason: image.hint,
+    },
+  ];
+}
+
+function heatingSeasonDeliverables(
+  coverage: SubjectCoverage[],
+  outputs: ContentOutputRow[],
+  planAccepted: boolean,
+  topic: ContentTopicRow | null = null
+): SubjectDeliverable[] {
+  const intlOk = internationalSupported(coverage);
+  const creative = (topic?.creative ?? {}) as Record<string, unknown>;
+  const finalAssets =
+    creative.final_assets && typeof creative.final_assets === "object"
+      ? (creative.final_assets as Record<string, unknown>)
+      : {};
+  const hasImage = Boolean(
+    finalAssets.square_path ||
+      finalAssets.thumbnail_path ||
+      creative.square_path ||
+      creative.thumbnail_path
+  );
+
+  const core = outputs.find((o) => o.output_kind === "core_article");
+  const social = outputs.filter(
+    (o) => o.output_kind === "social_post" || o.output_kind === "social_carousel"
+  );
+
+  const articleState = (): SubjectDeliverable => {
+    const drifted = core ? draftDriftedFromSubject("before-heating-season", core) : false;
+    if (!intlOk) {
+      return {
+        id: "international-article",
+        label: "International article",
+        state: "Blocked",
+        outputId: core?.id,
+        stale: drifted || undefined,
+        blockedReason:
+          "Needs at least two Sourced regions before an international overview can be reviewed as production-ready. Off-subject certificate drafts are Held.",
+      };
+    }
+    if (!core) {
+      return {
+        id: "international-article",
+        label: "International article",
+        state: planAccepted ? "Planned" : "Planned",
+        blockedReason: planAccepted
+          ? "Queued after Accept plan — generate drafts next."
+          : "Waiting on Accept plan.",
+      };
+    }
+    if (drifted || core.status === "rejected") {
+      return {
+        id: "international-article",
+        label: "International article",
+        state: "Held",
+        outputId: core.id,
+        stale: true,
+        blockedReason:
+          "Draft drifted from “Before the heating season” (certificate filing). Regenerate against the accepted seasonal angle — draft kept, not deleted.",
+      };
+    }
+    if (core.status === "approved") {
+      return {
+        id: "international-article",
+        label: "International article",
+        state: "Approved",
+        outputId: core.id,
+      };
+    }
+    if (core.status === "draft" || core.status === "needs_review") {
+      return {
+        id: "international-article",
+        label: "International article",
+        state: planAccepted ? "Ready to review" : "Held",
+        outputId: core.id,
+        blockedReason: planAccepted
+          ? undefined
+          : "Plan not accepted — premature drafts stay Held.",
+      };
+    }
+    return {
+      id: "international-article",
+      label: "International article",
+      state: "Planned",
+      outputId: core.id,
+    };
+  };
+
+  const socialState = (): SubjectDeliverable => {
+    const match = social[0];
+    const drifted = match ? draftDriftedFromSubject("before-heating-season", match) : false;
+    if (!intlOk) {
+      return {
+        id: "social",
+        label: "International social",
+        state: "Blocked",
+        outputId: match?.id,
+        stale: drifted || undefined,
+        blockedReason: "Blocked until international coverage has ≥2 Sourced regions.",
+      };
+    }
+    if (!match) {
+      return {
+        id: "social",
+        label: "International social",
+        state: "Planned",
+        blockedReason: "Queued with the international article after coverage unlocks.",
+      };
+    }
+    if (drifted || match.status === "rejected") {
+      return {
+        id: "social",
+        label: "International social",
+        state: "Held",
+        outputId: match.id,
+        stale: true,
+        blockedReason: "Held — off-subject or rejected. Regenerate when eligible.",
+      };
+    }
+    if (match.status === "approved") {
+      return { id: "social", label: "International social", state: "Approved", outputId: match.id };
+    }
+    if (match.status === "draft" || match.status === "needs_review") {
+      return {
+        id: "social",
+        label: "International social",
+        state: planAccepted && intlOk ? "Ready to review" : "Held",
+        outputId: match.id,
+      };
+    }
+    return { id: "social", label: "International social", state: "Planned", outputId: match.id };
+  };
+
+  const article = articleState();
+  const socialDel = socialState();
+  const image = imageStateFromGates({
+    hasImage,
+    planAccepted,
+    eligibleTextApproved: eligibleTextApprovedForImages({
+      planAccepted,
+      intlOk,
+      outputs,
+      subjectKey: "before-heating-season",
+    }),
+  });
+
+  return [
+    article,
+    socialDel,
+    {
+      id: "images",
+      label: "Images",
+      state: image.state,
+      blockedReason: image.hint,
     },
   ];
 }
@@ -475,16 +789,24 @@ function deliverablesFromStrategy(
   formRec: ReturnType<typeof recommendFormsForSubject>
 ): SubjectDeliverable[] {
   if (key === "chimney-flue-sweeping") {
-    return chimneyDeliverables(coverage, outputs, planAccepted);
+    return chimneyDeliverables(coverage, outputs, planAccepted, topic);
+  }
+  if (key === "before-heating-season") {
+    return heatingSeasonDeliverables(coverage, outputs, planAccepted, topic);
   }
   if (formRec.assessing && !hasPlanRecommendation(strategy)) return [];
+  if (!planAccepted && !hasPlanRecommendation(strategy)) return [];
 
   const generating =
     topic?.workflow_status === "generating_content" ||
     topic?.workflow_status === "generating_outputs";
+  const intlOk = internationalSupported(coverage);
+  const wantsIntl =
+    strategy.content_scope === "international_overview" ||
+    strategy.content_scope === "regional_comparison";
 
   const forms: Array<{ id: string; label: string; kind: string }> = [];
-  if (strategy.primary_form) {
+  if (strategy.primary_form && strategy.primary_form !== "in_app_tip") {
     forms.push({
       id: strategy.primary_form,
       label:
@@ -495,8 +817,15 @@ function deliverablesFromStrategy(
             : formKindLabel(strategy.primary_form),
       kind: strategy.primary_form,
     });
+  } else if (strategy.primary_form === "in_app_tip" && !wantsIntl) {
+    forms.push({
+      id: "in_app_tip",
+      label: "In-app tip",
+      kind: "in_app_tip",
+    });
   }
   for (const d of strategy.derivative_forms) {
+    if (d === "in_app_tip" && wantsIntl) continue;
     if (forms.some((f) => f.id === d)) continue;
     forms.push({
       id: d,
@@ -509,10 +838,38 @@ function deliverablesFromStrategy(
       kind: d,
     });
   }
-  if (forms.length) forms.push({ id: "images", label: "Images", kind: "images" });
+  const creative = (topic?.creative ?? {}) as Record<string, unknown>;
+  const finalAssets =
+    creative.final_assets && typeof creative.final_assets === "object"
+      ? (creative.final_assets as Record<string, unknown>)
+      : {};
+  const hasImage = Boolean(
+    finalAssets.square_path ||
+      finalAssets.thumbnail_path ||
+      creative.square_path ||
+      creative.thumbnail_path
+  );
+  if (forms.length && (planAccepted || hasImage)) {
+    forms.push({ id: "images", label: "Images", kind: "images" });
+  }
 
   return forms.map((f) => {
-    if (f.kind === "images") return { id: f.id, label: f.label, state: "Waiting" as const };
+    if (f.kind === "images") {
+      const approvedText = outputs.some(
+        (o) => o.status === "approved" && !draftDriftedFromSubject(key, o)
+      );
+      const image = imageStateFromGates({
+        hasImage,
+        planAccepted,
+        eligibleTextApproved: approvedText,
+      });
+      return {
+        id: f.id,
+        label: f.label,
+        state: image.state,
+        blockedReason: image.hint,
+      };
+    }
     const outputKind =
       f.kind === "informational_article"
         ? "core_article"
@@ -525,24 +882,59 @@ function deliverablesFromStrategy(
               : f.kind === "faq"
                 ? "faq"
                 : null;
-    const match = outputKind ? outputs.find((o) => o.output_kind === outputKind) : undefined;
-    if (match?.status === "approved") return { id: f.id, label: f.label, state: "Approved" as const };
-    if (match?.status === "rejected") return { id: f.id, label: f.label, state: "Held" as const };
+    const match = outputKind
+      ? outputs.find(
+          (o) =>
+            o.output_kind === outputKind &&
+            !isPlaceholderOutput(o, strategy.content_scope || topic?.content_scope)
+        )
+      : undefined;
+    if (f.kind === "in_app_tip" && wantsIntl) {
+      return {
+        id: f.id,
+        label: "In-app tip",
+        state: "Blocked" as const,
+        blockedReason:
+          "In-app tips need an exact applicable jurisdiction or property — not an international overview.",
+      };
+    }
+    const isIntlForm =
+      f.kind === "informational_article" ||
+      f.kind === "social_carousel" ||
+      f.kind === "social_post";
+    if (wantsIntl && isIntlForm && !intlOk) {
+      return {
+        id: f.id,
+        label: f.label,
+        state: "Blocked" as const,
+        outputId: match?.id,
+        blockedReason:
+          "International expression blocked until ≥2 regions are Sourced.",
+      };
+    }
+    if (match?.status === "approved") {
+      return { id: f.id, label: f.label, state: "Approved" as const, outputId: match.id };
+    }
+    if (match?.status === "rejected") {
+      return { id: f.id, label: f.label, state: "Held" as const, outputId: match.id };
+    }
     if (match && (match.status === "draft" || match.status === "needs_review")) {
       return {
         id: f.id,
         label: f.label,
         state: (planAccepted ? "Ready to review" : "Held") as DeliverableState,
+        outputId: match.id,
       };
     }
     if (generating) return { id: f.id, label: f.label, state: "Generating" as const };
+    if (!planAccepted) return null;
     return { id: f.id, label: f.label, state: "Planned" as const };
-  });
+  }).filter((row): row is NonNullable<typeof row> => Boolean(row));
 }
 
 /** Strip untranslated / contradictory gap noise from the human surface. */
 export function sanitizeImportantGaps(gaps: string[]): string[] {
-  return gaps.filter((text) => {
+  const filtered = gaps.filter((text) => {
     const t = text.trim();
     if (!t) return false;
     if (/untranslated|contradictory french|raw french/i.test(t)) return false;
@@ -557,6 +949,7 @@ export function sanitizeImportantGaps(gaps: string[]): string[] {
     }
     return true;
   });
+  return dedupeImportantGaps(filtered);
 }
 
 export function draftBodyToReadableProse(body: string): string {
@@ -594,6 +987,7 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
     list.push(row);
     byKey.set(key, list);
   }
+  foldLandlordGasIntoHeatingSeason(byKey, heating);
 
   const calendar = proposePilotCalendarWindows({
     now,
@@ -636,17 +1030,32 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
     );
     const planAccepted = strategy.approval_status === "approved";
     const planReady = planReadyForAccept(strategy, topic);
-    const distributionReady =
-      Boolean(prefs.distribution_ready_at) || (allApproved && outputs.length > 0 && planAccepted);
+    const distributionReady = Boolean(prefs.distribution_ready_at);
 
     const intlOk = internationalSupported(coverage);
-    // Valid drafts: only after plan accepted; chimney France guide OK without full international
+    const missingJurisdictions = INTL_PILOT_SUBJECT_KEYS.has(key)
+      ? missingPriorityJurisdictions(coverage)
+      : [];
+    // Valid drafts: only after plan accepted; never count off-subject / ineligible international drafts.
+    const eligiblePending = pendingOutputs.filter((o) => {
+      if (draftDriftedFromSubject(key, o)) return false;
+      if (
+        key === "before-heating-season" &&
+        !intlOk &&
+        (o.output_kind === "core_article" ||
+          o.output_kind === "social_post" ||
+          o.output_kind === "social_carousel")
+      ) {
+        return false;
+      }
+      return true;
+    });
     const validPendingDrafts =
       planAccepted &&
-      pendingOutputs.length > 0 &&
+      eligiblePending.length > 0 &&
       (key !== "chimney-flue-sweeping" ||
         intlOk ||
-        pendingOutputs.some(
+        eligiblePending.some(
           (o) => o.output_kind === "core_article" || /france/i.test(o.title ?? "")
         ));
 
@@ -675,9 +1084,8 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
     const next = deriveNextAction({
       planAccepted,
       planReady: planReady || (hasPlanRecommendation(strategy) && !planAccepted),
-      hasBlockingGap:
-        needsKnowledgeDecision &&
-        (planAccepted || planReady || key === "chimney-flue-sweeping"),
+      // Knowledge candidates/stale only — do not block France Review/Approve on international gaps.
+      hasBlockingGap: needsKnowledgeDecision,
       validPendingDrafts,
       allOutputsApproved: allApproved && planAccepted && outputs.length > 0,
       distributionReady,
@@ -695,7 +1103,10 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       filter = "monitoring";
       machineState = "deferred";
       scheduleState = null;
-    } else if (distributionReady) {
+    } else if (
+      distributionReady &&
+      !(INTL_PILOT_SUBJECT_KEYS.has(key) && missingJurisdictions.length > 0)
+    ) {
       filter = "complete";
       machineState = "complete";
       scheduleState = "confirmed";
@@ -750,6 +1161,56 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       machineState = "assessing_opportunity";
     }
 
+    // France (regional) path finished — next human decision is researching missing regions.
+    const francePathSettled =
+      planAccepted &&
+      !validPendingDrafts &&
+      pendingOutputs.length === 0 &&
+      (allApproved || distributionReady);
+    if (
+      missingJurisdictions.length > 0 &&
+      francePathSettled &&
+      primaryKind !== "approve_distribution" &&
+      primaryKind !== "review_drafts" &&
+      primaryKind !== "accept_plan"
+    ) {
+      filter = "attention";
+      machineState = "ready_for_decision";
+      attentionGroup = "next";
+      actionLabel = "Resolve gap";
+      primaryKind = "resolve_gap";
+    }
+
+    // A Knowledge candidate is always a human decision — never Monitoring / View.
+    const decisionKnowledgeIds = [
+      ...new Set([
+        ...coverage
+          .filter((c) => c.status === "Needs a decision" && c.knowledgeId)
+          .map((c) => c.knowledgeId as string),
+        ...rows.filter((r) => r.status === "candidate" || r.status === "stale").map((r) => r.id),
+      ]),
+    ];
+    const decisionRegions = coverageDecisionLabels(coverage);
+    const staleDraftCount = outputs.filter((o) => draftDriftedFromSubject(key, o)).length;
+
+    if (needsKnowledgeDecision) {
+      filter = "attention";
+      machineState = "ready_for_decision";
+      attentionGroup = "now";
+      primaryKind = "resolve_gap";
+    }
+
+    const decisionCopy = nextDecisionCopy({
+      primaryKind,
+      missingRegions: missingJurisdictions,
+      decisionKnowledgeIds,
+      decisionRegions,
+      staleDraftCount,
+    });
+    if (primaryKind === "resolve_gap") {
+      actionLabel = decisionCopy.title;
+    }
+
     // Calendar rank boost for pilot order
     let rank = cal?.priority ?? 0;
     if (filter === "attention") rank += 500;
@@ -761,11 +1222,15 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
     const why =
       prefs.reason_override ||
       cal?.why ||
-      (actionLabel === "Review drafts"
-        ? "Drafts waiting for judgement"
+      (primaryKind === "resolve_gap"
+        ? decisionCopy.reason
+        : actionLabel === "Review drafts"
+        ? missingJurisdictions.length > 0
+          ? `Review France drafts now · International waits on ${missingJurisdictions.join(", ")}`
+          : "Drafts waiting for judgement"
         : actionLabel === "Accept plan"
           ? key === "chimney-flue-sweeping"
-            ? "Heating-season opportunity"
+            ? "Heating-season opportunity · France ready · International needs more regions"
             : key === "smoke-carbon-monoxide-alarms"
               ? "Proposed as one international safety package"
               : "Plan ready for acceptance"
@@ -779,17 +1244,25 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
                   ? `Proposed for ${windowLabel}`
                   : "Monitoring");
 
+    const nextAuto = nextAutomaticCopy({
+      missingRegions: missingJurisdictions,
+      comparisonReady: intlOk,
+      planAccepted,
+    });
+
     let deliverablesSummary: string;
-    if (scheduleState && !formRec.assessing) {
-      deliverablesSummary = formRec.summary;
+    if (primaryKind === "resolve_gap") {
+      deliverablesSummary = nextAuto ?? decisionCopy.reason;
     } else if (formRec.assessing) {
-      deliverablesSummary = "Assessing opportunity";
+      deliverablesSummary = formatCoverageLine(coverage);
     } else {
       deliverablesSummary = formRec.summary;
     }
 
     const outcome =
-      scheduleState === "proposed"
+      primaryKind === "resolve_gap"
+        ? decisionCopy.title
+        : scheduleState === "proposed"
         ? `Proposed · ${windowLabel ?? "calendar"}`
         : scheduleState === "confirmed"
           ? `Confirmed · ${windowLabel ?? "in production"}`
@@ -848,6 +1321,9 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       }),
       now,
     });
+    const reviewerSignals = discoverySignals.filter(
+      (s) => s.sourceUrls.length > 0 || s.type !== "knowledge_gap"
+    );
 
     packages.push({
       id: topic?.id ?? `subject:${key}`,
@@ -873,13 +1349,12 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       machineState,
       autoPlanEligible,
       rank,
-      primaryKnowledgeId:
-        topic?.knowledge_id ??
-        rows.find((r) => r.status === "verified" || r.status === "published")?.id ??
-        rows[0]?.id ??
-        null,
-      discoverySignals,
-      reasonChips: topReasonChips(discoverySignals, 2),
+      primaryKnowledgeId: pickPrimaryKnowledgeId(key, rows, topic?.knowledge_id),
+      discoverySignals: reviewerSignals,
+      reasonChips: topReasonChips(reviewerSignals, 2),
+      nextDecisionReason: decisionCopy.reason,
+      resolveGapJurisdictions: missingJurisdictions,
+      decisionKnowledgeIds,
     });
   }
 
@@ -927,6 +1402,11 @@ export function buildSubjectPackages(input: BuildSubjectPackagesInput): SubjectP
       primaryKnowledgeId: topic.knowledge_id,
       discoverySignals: orphanSignals,
       reasonChips: topReasonChips(orphanSignals, 2),
+      nextDecisionReason: prefs.distribution_ready_at
+        ? "Package already marked channel-ready."
+        : "No Knowledge linked to this topic yet.",
+      resolveGapJurisdictions: [],
+      decisionKnowledgeIds: [],
     });
   }
 

@@ -37,6 +37,8 @@ supabase functions deploy calendar-import
 ```
 
 ## Verify
-1. Member forwards PDF to org intake address → appears in Add to Filla **Pending review** within ~60s.
-2. Unknown sender → appears in **Issues / Needs review**, not in member intake list.
-3. Duplicate webhook delivery does not duplicate signals (check `dedupe_key`).
+1. Member sends or CCs their personal address from Settings → Profile → one row on Home → Needs review, with one suggested outcome.
+2. The same message id delivered twice does not create a second row.
+3. A From address that is not the member login is labelled External sender—not verified as you.
+4. Unknown sender to the shared organisation address → Issues / Needs review, not the member intake list.
+5. Replacing the address in Profile makes the previous address stop resolving.

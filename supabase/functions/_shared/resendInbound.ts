@@ -10,6 +10,9 @@ export interface ResendWebhookEvent {
     email_id?: string;
     from?: string;
     to?: string[];
+    cc?: string[];
+    bcc?: string[];
+    created_at?: string;
     subject?: string;
     message_id?: string;
     attachments?: Array<{
@@ -25,6 +28,9 @@ export interface ResendReceivedEmail {
   id: string;
   from: string;
   to: string[];
+  cc?: string[];
+  bcc?: string[];
+  created_at?: string;
   subject?: string;
   text?: string | null;
   html?: string | null;

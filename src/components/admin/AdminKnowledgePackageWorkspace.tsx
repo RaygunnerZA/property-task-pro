@@ -1,20 +1,21 @@
 /**
- * Subject package workspace — What we know · What we are making · Review.
- * One context-sensitive primary action only.
+ * Subject package workspace — decisions only.
+ * Title, coverage, the next human decision, then what Filla will do.
+ * Evidence and activity is a disclosure.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ArrowLeft, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
 import {
   useAdminApproveContentPlan,
   useAdminContentTopic,
   useAdminCreateContentTopic,
   useAdminGenerateContent,
+  useAdminResearchKnowledgeGaps,
   useAdminSetContentOutputStatus,
   useAdminUpsertContentStrategy,
   useAdminUpsertContentTopicStage,
 } from "@/hooks/admin/useAdminKnowledge";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import {
   formKindLabel,
   normalizeParentStrategy,
@@ -24,35 +25,77 @@ import {
 } from "@/lib/content/contentPlan";
 import { normalizeSeoProposal, normalizeStageEnvelope } from "@/lib/content/contentTopicWorkflow";
 import {
+  coverageProgressHint,
   draftBodyToReadableProse,
   mergeSchedulePrefsIntoPublishing,
-  sanitizeImportantGaps,
   type PackagePrimaryKind,
   type SubjectPackage,
 } from "@/lib/content/knowledgeSubjectPackage";
+import {
+  coverageDecisionLabels,
+  coverageNavTarget,
+  draftDriftedFromSubject,
+  isPlaceholderOutput,
+  joinList,
+  knowledgeIdForReviewDecision,
+  nextAutomaticCopy,
+  nextDecisionCopy,
+} from "@/lib/content/knowledgePackagePilot";
 import { confidenceLabel } from "@/lib/content/knowledgeWatch";
+import { useKnowledgeWatchSettings } from "@/hooks/admin/useKnowledgeWatch";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AdminKnowledgeDetailSheet } from "@/components/admin/AdminKnowledgeDetailSheet";
 
 function rpcError(e: unknown, fallback: string): string {
   if (!(e instanceof Error)) return fallback;
   return e.message || fallback;
 }
 
-function primaryLabel(kind: PackagePrimaryKind): string {
-  switch (kind) {
-    case "accept_plan":
-      return "Accept plan";
-    case "review_drafts":
-      return "Review drafts";
-    case "resolve_gap":
-      return "Resolve gap";
-    case "approve_distribution":
-      return "Approve distribution";
-    case "view":
-      return "Done";
-    default:
-      return "Done";
-  }
+async function uploadContentTopicImage(input: {
+  topicSlug: string;
+  kind: "thumbnail" | "square" | "vertical" | "horizontal";
+  file: File;
+}): Promise<string> {
+  const ext = input.file.name.split(".").pop()?.toLowerCase() || "webp";
+  const safeExt = ["jpg", "jpeg", "png", "webp"].includes(ext) ? ext : "webp";
+  const slug = input.topicSlug.replace(/[^a-z0-9-_]/gi, "-").toLowerCase().slice(0, 80) || "topic";
+  const path = `content/${slug}/${input.kind}-${Date.now()}.${safeExt}`;
+  const { error } = await supabase.storage.from("knowledge-content-images").upload(path, input.file, {
+    upsert: true,
+    contentType: input.file.type || `image/${safeExt}`,
+  });
+  if (error) throw error;
+  return path;
+}
+
+function publicContentImageUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const { data } = supabase.storage.from("knowledge-content-images").getPublicUrl(path);
+  return data.publicUrl || null;
+}
+
+function formatAttempt(iso: string | null | undefined): string {
+  if (!iso) return "None yet";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "None yet";
+  return d.toLocaleString();
+}
+
+function outputReviewerLabel(
+  kind: string | null | undefined,
+  title: string | null | undefined
+): string {
+  if (title?.trim()) return title.trim();
+  return formKindLabel(kind ?? "") || "Draft";
+}
+
+function coverageStatusLabel(status: string): string {
+  if (status === "Sourced" || status === "Ready") return "Covered";
+  if (status === "Needs a decision") return "Candidate found";
+  if (status === "Being researched") return "Researching";
+  if (status === "Incomplete") return "Not ready";
+  return status;
 }
 
 type Props = {
@@ -70,6 +113,10 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
   const approvePlan = useAdminApproveContentPlan();
   const setOutputStatus = useAdminSetContentOutputStatus();
   const upsertStage = useAdminUpsertContentTopicStage();
+  const researchGaps = useAdminResearchKnowledgeGaps();
+
+  const [focusKnowledgeId, setFocusKnowledgeId] = useState<string | null>(null);
+  const [focusOutputId, setFocusOutputId] = useState<string | null>(null);
 
   const topic = detailQuery.data?.topic ?? pkg.topic;
   const knowledge = detailQuery.data?.knowledge;
@@ -102,15 +149,43 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
     };
   }, [topic, knowledge, pkg]);
 
-  const [draft, setDraft] = useState<ContentParentStrategy>(strategy);
-  useEffect(() => {
-    setDraft(strategy);
-  }, [strategy]);
+  const draft = strategy;
 
-  const [detailsOpen, setDetailsOpen] = useState(false);
-  const [pilotOpen, setPilotOpen] = useState(false);
+  const [evidenceOpen, setEvidenceOpen] = useState(false);
   const [editRaw, setEditRaw] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [uploadingKind, setUploadingKind] = useState<string | null>(null);
+
+  const creative = (topic?.creative ?? {}) as Record<string, unknown>;
+  const finalAssets =
+    creative.final_assets && typeof creative.final_assets === "object"
+      ? (creative.final_assets as Record<string, unknown>)
+      : {};
+  const imagePaths = {
+    square:
+      (typeof finalAssets.square_path === "string" && finalAssets.square_path) ||
+      (typeof creative.square_path === "string" && creative.square_path) ||
+      null,
+    thumbnail:
+      (typeof finalAssets.thumbnail_path === "string" && finalAssets.thumbnail_path) ||
+      (typeof creative.thumbnail_path === "string" && creative.thumbnail_path) ||
+      null,
+    vertical:
+      (typeof finalAssets.vertical_path === "string" && finalAssets.vertical_path) || null,
+    horizontal:
+      (typeof finalAssets.horizontal_path === "string" && finalAssets.horizontal_path) ||
+      null,
+  };
+  const hasUploadedImage = Boolean(imagePaths.square || imagePaths.thumbnail);
+  const imagesDeliverable = pkg.deliverables.find((d) => d.id === "images");
+  const imagesUploadUnlocked =
+    hasUploadedImage || imagesDeliverable?.state === "Ready to upload";
+  const topicSlug =
+    pkg.subjectKey.replace(/[^a-z0-9-_]/gi, "-").toLowerCase().slice(0, 80) || "topic";
+
+  const decisionRows = pkg.knowledgeRows.filter((r) =>
+    pkg.decisionKnowledgeIds.includes(r.id)
+  );
 
   const generating =
     generate.isPending ||
@@ -123,14 +198,36 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
     (o) => o.status === "draft" || o.status === "needs_review"
   );
   const planAccepted = draft.approval_status === "approved";
+  const intlCoverageBlocked = pkg.deliverables.some(
+    (d) =>
+      (d.id === "international-article" || d.id === "social") && d.state === "Blocked"
+  );
+  const eligiblePendingOutputs = pendingOutputs.filter((o) => {
+    if (draftDriftedFromSubject(pkg.subjectKey, o)) return false;
+    if (
+      intlCoverageBlocked &&
+      (o.output_kind === "core_article" ||
+        o.output_kind === "social_post" ||
+        o.output_kind === "social_carousel")
+    ) {
+      return false;
+    }
+    return true;
+  });
+  const staleDraftCount = outputs.filter((o) =>
+    draftDriftedFromSubject(pkg.subjectKey, o)
+  ).length;
 
-  // Furthest valid state — do not let premature drafts override Accept plan
   let primaryKind: PackagePrimaryKind = pkg.primaryKind;
-  if (generating) primaryKind = "none";
-  else if (pkg.primaryKind === "resolve_gap") primaryKind = "resolve_gap";
-  else if (!planAccepted && (pkg.primaryKind === "accept_plan" || draft.primary_form)) {
+  if (decisionRows.length > 0) {
+    primaryKind = "resolve_gap";
+  } else if (generating) {
+    primaryKind = "none";
+  } else if (pkg.primaryKind === "resolve_gap") {
+    primaryKind = "resolve_gap";
+  } else if (!planAccepted && pkg.primaryKind === "accept_plan") {
     primaryKind = "accept_plan";
-  } else if (planAccepted && pendingOutputs.length > 0) {
+  } else if (planAccepted && eligiblePendingOutputs.length > 0) {
     primaryKind = "review_drafts";
   } else if (
     planAccepted &&
@@ -145,10 +242,74 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
     primaryKind = pkg.primaryKind;
   }
 
-  const gapTexts = sanitizeImportantGaps([
-    ...draft.source_gaps.map((g) => g.text),
-    ...seoProposal.evidence_gaps,
-  ]);
+  const missingRegions = pkg.resolveGapJurisdictions;
+
+  const watchSettings = useKnowledgeWatchSettings();
+  const automatedResearchOn = watchSettings.data?.automated_research === "on";
+  const lastWatchRun = watchSettings.data?.last_run ?? null;
+
+  const decisionRegions = coverageDecisionLabels(pkg.coverage);
+  const decisionCopy = nextDecisionCopy({
+    primaryKind,
+    missingRegions,
+    decisionKnowledgeIds: pkg.decisionKnowledgeIds,
+    decisionRegions,
+    staleDraftCount,
+  });
+
+  const intlOk =
+    pkg.coverage.filter(
+      (c) => c.id !== "international" && (c.status === "Sourced" || c.status === "Ready")
+    ).length >= 2;
+  const automaticCopy = nextAutomaticCopy({
+    missingRegions,
+    comparisonReady: intlOk,
+    planAccepted,
+  });
+  const watchRunInProgress = lastWatchRun?.status === "running" || researchGaps.isPending;
+  const researchAutomatic = automatedResearchOn || watchRunInProgress;
+  const visibleOutputs = outputs.filter(
+    (o) => !isPlaceholderOutput(o, draft.content_scope || topic?.content_scope)
+  );
+  const evidenceSignals = pkg.discoverySignals.filter(
+    (s) => s.sourceUrls.length > 0 || s.type !== "knowledge_gap"
+  );
+  const needsDecision = primaryKind !== "view" && primaryKind !== "none";
+  const reviewerCoverage = pkg.coverage.filter(
+    (c) =>
+      c.id !== "international" &&
+      (c.status === "Needs a decision" || c.status === "Sourced" || c.status === "Ready")
+  );
+  const researchingRegions = pkg.coverage
+    .filter((c) => c.id !== "international" && c.status === "Being researched")
+    .map((c) => c.label);
+
+  const researchMissingRegions = async () => {
+    if (missingRegions.length === 0) {
+      toast.message("No missing priority regions for this subject");
+      return;
+    }
+    setBusy(true);
+    try {
+      const topic_key = pkg.subjectKey.slice(0, 48).toLowerCase();
+      const gaps = missingRegions.map((jurisdiction) => ({
+        id: `${topic_key}::${jurisdiction.toLowerCase().replace(/\s+/g, "-")}`.slice(0, 160),
+        topic_key,
+        topic: pkg.title.slice(0, 80),
+        jurisdiction,
+        status: "partial" as const,
+      }));
+      const result = await researchGaps.mutateAsync({ gaps });
+      toast.success(
+        `Researched ${joinList(missingRegions)} — ${result.createdCount} candidate(s) added.`
+      );
+      onPackageUpdated?.();
+    } catch (e) {
+      toast.error(rpcError(e, "Could not research missing regions"));
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const ensureTopic = async (): Promise<string> => {
     if (topicId) return topicId;
@@ -169,11 +330,33 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
     return row.id;
   };
 
+  const openKnowledgeDecision = (region?: string | null): boolean => {
+    const knowledgeId = knowledgeIdForReviewDecision({
+      coverage: pkg.coverage,
+      decisionRegion: region ?? null,
+      decisionKnowledgeIds: pkg.decisionKnowledgeIds,
+      rows: pkg.knowledgeRows,
+      subjectKey: pkg.subjectKey,
+    });
+    if (!knowledgeId) return false;
+    setFocusKnowledgeId(knowledgeId);
+    return true;
+  };
+
   const runPrimary = async () => {
     setBusy(true);
     try {
       if (primaryKind === "view") {
         onBack();
+        return;
+      }
+      if (primaryKind === "resolve_gap") {
+        if (openKnowledgeDecision(decisionRegions[0] ?? null)) return;
+        if (missingRegions.length > 0 && !automatedResearchOn) {
+          await researchMissingRegions();
+        } else {
+          toast.message("No open candidate for this package.");
+        }
         return;
       }
       const id = await ensureTopic();
@@ -197,20 +380,21 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
             window_start: pkg.windowStart ?? undefined,
           }),
         });
-        // Content generation only after human acceptance
         await generate.mutateAsync({ topicId: id, stage: "content" });
         toast.success("Plan confirmed — generating drafts. Not published.");
         onPackageUpdated?.();
         return;
       }
 
-      if (primaryKind === "resolve_gap") {
-        toast.message("Open Details to resolve Knowledge gaps, then return here");
-        return;
-      }
-
       if (primaryKind === "review_drafts") {
-        toast.message("Review the drafts below, then approve distribution when ready");
+        const pending = eligiblePendingOutputs;
+        if (pending.length === 0) {
+          setEvidenceOpen(true);
+          toast.message("No eligible drafts to approve — open Evidence and activity.");
+          return;
+        }
+        setEvidenceOpen(true);
+        setFocusOutputId(pending[0].id);
         return;
       }
 
@@ -231,13 +415,10 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
           workflowStatus: "ready_for_publishing",
         });
         toast.success(
-          "Approved for distribution — ready for a channel. Nothing was published yet."
+          "Approved for distribution — package is channel-ready. Nothing was published yet."
         );
         onPackageUpdated?.();
-        return;
       }
-
-      // review_drafts already handled
     } catch (e) {
       toast.error(rpcError(e, "Action failed"));
     } finally {
@@ -259,6 +440,51 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
     }
   };
 
+  const uploadPackageImage = async (
+    kind: "thumbnail" | "square" | "vertical" | "horizontal",
+    file: File | null
+  ) => {
+    if (!file) return;
+    setUploadingKind(kind);
+    setBusy(true);
+    try {
+      const id = await ensureTopic();
+      const path = await uploadContentTopicImage({ topicSlug, kind, file });
+      const pathKey =
+        kind === "square"
+          ? "square_path"
+          : kind === "thumbnail"
+            ? "thumbnail_path"
+            : kind === "vertical"
+              ? "vertical_path"
+              : "horizontal_path";
+      const nextFinal = {
+        ...finalAssets,
+        [pathKey]: path,
+        status: "draft",
+      };
+      await upsertStage.mutateAsync({
+        topicId: id,
+        creative: {
+          ...creative,
+          final_assets: nextFinal,
+          [pathKey]: path,
+        },
+      });
+      toast.success(`${kind} uploaded`);
+      onPackageUpdated?.();
+      await detailQuery.refetch();
+    } catch (e) {
+      toast.error(rpcError(e, "Could not upload image"));
+    } finally {
+      setUploadingKind(null);
+      setBusy(false);
+    }
+  };
+
+  const researchLabel =
+    missingRegions.length > 0 ? `Research ${joinList(missingRegions)}` : "Research missing regions";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start gap-3">
@@ -272,308 +498,434 @@ export function AdminKnowledgePackageWorkspace({ pkg, onBack, onPackageUpdated }
         </Button>
         <div className="min-w-0 flex-1">
           <h2 className="text-lg font-semibold tracking-tight leading-snug">{pkg.title}</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">{pkg.whyNow}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+            {pkg.coverageSummary}
+          </p>
         </div>
       </div>
 
-      {pkg.discoverySignals.length > 0 ? (
-        <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+      {needsDecision ? (
+        <section className="rounded-xl bg-card/90 shadow-e2 p-4 space-y-3">
           <div>
-            <h3 className="text-sm font-semibold">Why Watch proposed this</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Discovery signals for investigation — not verified Knowledge and not Issues Signals.
+            <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+              Decision needed
+            </p>
+            <p className="text-sm font-semibold mt-1">{decisionCopy.title}</p>
+            <p className="text-xs text-muted-foreground leading-snug mt-0.5">
+              {decisionCopy.reason}
             </p>
           </div>
-          <ul className="space-y-3">
-            {pkg.discoverySignals.map((signal) => (
-              <li key={`${signal.type}-${signal.label}`} className="space-y-1">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-foreground">{signal.label}</p>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-                    {confidenceLabel(signal.confidence)}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground leading-snug">{signal.observation}</p>
-                <p className="text-[11px] text-muted-foreground/80">
-                  Detected{" "}
-                  {signal.detectedAt
-                    ? new Date(signal.detectedAt).toLocaleString()
-                    : "date unknown"}
-                </p>
-                {signal.sourceUrls.length > 0 ? (
-                  <ul className="text-xs space-y-0.5">
-                    {signal.sourceUrls.map((url) => (
-                      <li key={url}>
-                        <a
-                          href={url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary hover:underline break-all"
-                        >
-                          {url}
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground/70">No source links attached yet.</p>
-                )}
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {/* What we know */}
-      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-        <h3 className="text-sm font-semibold">What we know</h3>
-        <ul className="space-y-2">
-          {pkg.coverage.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium">{c.label}</span>
-              <span className="text-muted-foreground">{c.status}</span>
-            </li>
-          ))}
-        </ul>
-        {pkg.knowledgeRows.length > 0 && (
-          <p className="text-xs text-muted-foreground">
-            {pkg.knowledgeRows.length} Knowledge record
-            {pkg.knowledgeRows.length === 1 ? "" : "s"} in this subject
-            {sources.length > 0 ? ` · ${sources.length} source${sources.length === 1 ? "" : "s"}` : ""}
-          </p>
-        )}
-        {gapTexts.length > 0 && (
-          <div className="rounded-lg bg-amber-500/10 p-3 space-y-1">
-            <p className="text-xs font-medium">Important gaps</p>
-            <ul className="text-xs space-y-1">
-              {gapTexts.map((text) => (
-                <li key={text}>{text}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </section>
-
-      {/* What we are making */}
-      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-        <h3 className="text-sm font-semibold">What we are making</h3>
-        <ul className="space-y-2">
-          {pkg.deliverables.length === 0 ? (
-            <li className="text-sm text-muted-foreground">Assessing opportunity</li>
-          ) : (
-            pkg.deliverables.map((d) => {
-            const live = (() => {
-              if (d.id === "images") return d.state;
-              const output = outputs.find((o) => {
-                if (d.id === "informational_article" || d.id === "regulatory_guide") {
-                  return o.output_kind === "core_article";
-                }
-                return o.output_kind === d.id;
-              });
-              if (!output) return generating && d.state === "Generating" ? "Generating" : d.state;
-              if (output.status === "approved") return "Approved";
-              if (output.status === "rejected") return "Held";
-              if (output.status === "draft" || output.status === "needs_review") {
-                return "Ready to review";
-              }
-              return d.state;
-            })();
-            return (
-              <li
-                key={d.id}
-                className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
-              >
-                <span>{d.label}</span>
-                <span className="text-muted-foreground">{live}</span>
-              </li>
-            );
-          })
-          )}
-        </ul>
-      </section>
-
-      {/* Review */}
-      <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
-        <h3 className="text-sm font-semibold">Review</h3>
-        <div className="space-y-1">
-          <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-            Plan objective
-          </p>
-          <Textarea
-            rows={2}
-            value={draft.objective}
-            onChange={(e) => setDraft((d) => ({ ...d, objective: e.target.value }))}
-          />
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {draft.primary_form
-            ? `Primary: ${formKindLabel(draft.primary_form)}`
-            : "Primary form will be set when the plan is accepted"}
-          {draft.derivative_forms.length
-            ? ` · Also: ${draft.derivative_forms.map(formKindLabel).join(", ")}`
-            : ""}
-        </p>
-
-        {outputs.length === 0 && generating && (
-          <p className="text-sm text-muted-foreground flex items-center gap-2">
-            <Loader2 className="h-4 w-4 animate-spin" /> Generating drafts…
-          </p>
-        )}
-
-        {outputs.map((o) => (
-          <article key={o.id} className="rounded-xl bg-muted/20 p-3 space-y-2">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm font-medium">{o.title || o.output_kind}</p>
-              <span className="text-[10px] font-mono uppercase text-muted-foreground">
-                {!planAccepted && (o.status === "draft" || o.status === "needs_review")
-                  ? "Held until plan accepted"
-                  : o.status === "approved"
-                    ? "Approved"
-                    : o.status === "needs_review" || o.status === "draft"
-                      ? "Ready to review"
-                      : o.status === "rejected"
-                        ? "Held"
-                        : o.status}
-              </span>
-            </div>
-            {editRaw ? (
-              <pre className="whitespace-pre-wrap text-xs text-muted-foreground max-h-40 overflow-auto font-mono">
-                {(o.body ?? "").slice(0, 4000)}
-                {(o.body ?? "").length > 4000 ? "…" : ""}
-              </pre>
+          <div className="flex flex-wrap gap-2">
+            {primaryKind === "resolve_gap" && decisionRegions.length > 0 ? (
+              decisionRegions.map((region) => (
+                <Button
+                  key={region}
+                  size="sm"
+                  className="shadow-primary-btn border-0"
+                  disabled={busy || generating}
+                  onClick={() => {
+                    if (!openKnowledgeDecision(region)) {
+                      toast.message("No open candidate for this package.");
+                    }
+                  }}
+                >
+                  Review {region}
+                </Button>
+              ))
             ) : (
-              <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
-                {draftBodyToReadableProse((o.body ?? "").slice(0, 4000))}
-                {(o.body ?? "").length > 4000 ? "…" : ""}
-              </div>
+              <Button
+                size="sm"
+                className="shadow-primary-btn border-0"
+                disabled={busy || generating}
+                onClick={() => void runPrimary()}
+              >
+                {(busy || generating) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                {decisionCopy.title}
+              </Button>
             )}
-          </article>
-        ))}
-
-        {outputs.length > 0 && (
-          <button
-            type="button"
-            className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
-            onClick={() => setEditRaw((v) => !v)}
-          >
-            {editRaw ? "Show readable prose" : "Show raw markdown"}
-          </button>
-        )}
-
-        {outputs.length === 0 && !generating && (
-          <p className="text-sm text-muted-foreground">
-            {pkg.deliverables.length === 0
-              ? "Assessing opportunity — forms appear when the plan is ready."
-              : "No drafts yet. Accept the plan and the machine will generate drafts."}
-          </p>
-        )}
-
-        <div className="rounded-lg bg-muted/20 p-3 text-sm text-muted-foreground">
-          Images — not started. Concept grid and formats stay inside this package (Pilot controls).
-        </div>
-      </section>
-
-      <div className="sticky bottom-2 z-10 flex flex-wrap gap-2 rounded-xl bg-card/95 shadow-e2 p-3">
-        {primaryKind !== "view" && primaryKind !== "none" ? (
-          <Button
-            size="sm"
-            className="shadow-primary-btn border-0"
-            disabled={busy || generating}
-            onClick={() => void runPrimary()}
-          >
-            {(busy || generating) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            {primaryLabel(primaryKind)}
-          </Button>
-        ) : generating ? (
-          <p className="text-xs text-muted-foreground self-center flex items-center gap-2">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Machine working — no decision needed yet
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground self-center">
-            {pkg.prefs.distribution_ready_at
-              ? "Approved for distribution — channel execution is separate"
-              : "No decision required — machine will continue"}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <button
-          type="button"
-          className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
-          onClick={() => setDetailsOpen((v) => !v)}
-        >
-          {detailsOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          Details
-        </button>
-        {detailsOpen && (
-          <div className="mt-2 rounded-xl bg-muted/20 p-3 space-y-2 text-xs">
-            <p>
-              <span className="font-medium">Knowledge rows:</span>{" "}
-              {pkg.knowledgeRows.map((r) => r.title).join(" · ") || "—"}
-            </p>
-            <p>
-              <span className="font-medium">Workflow:</span> {topic?.workflow_status ?? "not started"}
-            </p>
-            <p>
-              <span className="font-medium">Claims:</span>{" "}
-              {claims.filter((c) => String(c.verification_status) === "verified").length} verified
-            </p>
-            <p>
-              <span className="font-medium">SEO:</span>{" "}
-              {seoProposal.opportunity_kind === "search_backed"
-                ? "Search-backed"
-                : "Editorial hypothesis"}{" "}
-              · {seoProposal.primary_keyword || "—"}
-            </p>
-            <ul className="space-y-1">
-              {sources.slice(0, 8).map((s) => (
-                <li key={s.id}>{s.label || s.url || s.id}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <div>
-        <button
-          type="button"
-          className="flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
-          onClick={() => setPilotOpen((v) => !v)}
-        >
-          {pilotOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-          Pilot controls
-        </button>
-        {pilotOpen && (
-          <div className="mt-2 flex flex-wrap gap-2 rounded-xl bg-muted/20 p-3">
             <Button
               size="sm"
               variant="outline"
-              className="border-0 btn-neomorphic text-xs"
-              disabled={busy || generating}
-              onClick={() => void ensurePlanGenerated()}
+              className="border-0 btn-neomorphic"
+              disabled={busy}
+              onClick={onBack}
             >
-              Refresh understanding
+              Hold
             </Button>
-            {planAccepted && (
+          </div>
+        </section>
+      ) : generating || watchRunInProgress ? (
+        <p className="text-sm text-muted-foreground flex items-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Machine working — no decision needed yet
+        </p>
+      ) : pkg.prefs.distribution_ready_at ? (
+        <p className="text-sm text-muted-foreground">
+          Approved for distribution — channel execution is separate
+        </p>
+      ) : null}
+
+      {!needsDecision && (automaticCopy || missingRegions.length > 0) ? (
+        <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-2">
+          {researchAutomatic ? (
+            <>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                Next automatically
+              </p>
+              <p className="text-sm font-medium">Researching</p>
+              {automaticCopy ? (
+                <p className="text-xs text-muted-foreground leading-snug">{automaticCopy}</p>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                Last attempt {formatAttempt(lastWatchRun?.started_at)} · Next attempt{" "}
+                {watchRunInProgress ? "in progress" : "when Watch next runs"}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                Ready to research
+              </p>
+              {automaticCopy ? (
+                <p className="text-xs text-muted-foreground leading-snug">{automaticCopy}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Official sources are still needed for {joinList(missingRegions)}.
+                </p>
+              )}
               <Button
                 size="sm"
-                variant="outline"
-                className="border-0 btn-neomorphic text-xs"
-                disabled={busy || generating || !topicId}
-                onClick={() =>
-                  void generate
-                    .mutateAsync({ topicId: topicId!, stage: "content", regenerate: true })
-                    .then(() => toast.success("Regenerating drafts"))
-                    .catch((e) => toast.error(rpcError(e, "Failed")))
-                }
+                className="shadow-primary-btn border-0"
+                disabled={busy || generating || researchGaps.isPending}
+                onClick={() => void researchMissingRegions()}
               >
-                Regenerate drafts
+                {(busy || researchGaps.isPending) && (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                )}
+                {researchLabel}
               </Button>
-            )}
+            </>
+          )}
+        </section>
+      ) : null}
+
+      <div>
+        <button
+          type="button"
+          className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+          onClick={() => setEvidenceOpen((v) => !v)}
+        >
+          {evidenceOpen ? (
+            <ChevronDown className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronRight className="h-3.5 w-3.5" />
+          )}
+          Evidence and activity
+        </button>
+        {evidenceOpen ? (
+          <div className="mt-3 space-y-4">
+            <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-2">
+              <h3 className="text-sm font-semibold">Coverage</h3>
+              <ul className="space-y-2">
+                {reviewerCoverage.map((c) => {
+                  const nav = coverageNavTarget(c);
+                  const clickable = nav.kind === "knowledge";
+                  return (
+                    <li key={c.id} className="text-sm space-y-0.5">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        {clickable ? (
+                          <button
+                            type="button"
+                            className="font-medium text-left text-primary hover:underline"
+                            onClick={() => {
+                              if (nav.kind === "knowledge") setFocusKnowledgeId(nav.knowledgeId);
+                            }}
+                          >
+                            {c.label}
+                          </button>
+                        ) : (
+                          <span className="font-medium">{c.label}</span>
+                        )}
+                        <span className="text-muted-foreground">{coverageStatusLabel(c.status)}</span>
+                      </div>
+                      {coverageProgressHint(c.status) ? (
+                        <p className="text-[11px] text-muted-foreground leading-snug">
+                          {coverageProgressHint(c.status)}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              {researchingRegions.length > 0 ? (
+                <p className="text-xs text-muted-foreground leading-snug">
+                  Filla is looking for {joinList(researchingRegions)}.
+                </p>
+              ) : null}
+            </section>
+
+            {evidenceSignals.length > 0 ? (
+              <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Watch evidence</h3>
+                <ul className="space-y-3">
+                  {evidenceSignals.map((signal) => (
+                    <li key={`${signal.type}-${signal.label}`} className="space-y-1">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <p className="text-sm font-medium">{signal.label}</p>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                          {confidenceLabel(signal.confidence)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-snug">
+                        {signal.observation}
+                      </p>
+                      {signal.sourceUrls.length > 0 ? (
+                        <ul className="text-xs space-y-0.5">
+                          {signal.sourceUrls.map((url) => (
+                            <li key={url}>
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-primary hover:underline break-all"
+                              >
+                                {url}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
+
+            {visibleOutputs.length > 0 ? (
+              <section className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Drafts</h3>
+                {visibleOutputs.map((o) => {
+                  const drifted = draftDriftedFromSubject(pkg.subjectKey, o);
+                  const eligibleReview =
+                    planAccepted &&
+                    !drifted &&
+                    !intlCoverageBlocked &&
+                    (o.status === "draft" || o.status === "needs_review");
+                  return (
+                    <article
+                      key={o.id}
+                      id={`draft-${o.id}`}
+                      className={`rounded-xl bg-muted/20 p-3 space-y-2 ${
+                        focusOutputId === o.id ? "ring-2 ring-primary/40" : ""
+                      }`}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium">
+                          {outputReviewerLabel(o.output_kind, o.title)}
+                        </p>
+                        <span className="text-[10px] font-mono uppercase text-muted-foreground">
+                          {drifted || o.status === "rejected"
+                            ? "Held"
+                            : o.status === "approved"
+                              ? "Approved"
+                              : o.status === "needs_review" || o.status === "draft"
+                                ? "Ready to review"
+                                : formKindLabel(o.status)}
+                        </span>
+                      </div>
+                      {editRaw ? (
+                        <pre className="whitespace-pre-wrap text-xs text-muted-foreground max-h-40 overflow-auto font-mono">
+                          {(o.body ?? "").slice(0, 4000)}
+                        </pre>
+                      ) : (
+                        <div className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap max-h-48 overflow-auto">
+                          {draftBodyToReadableProse((o.body ?? "").slice(0, 4000))}
+                        </div>
+                      )}
+                      {eligibleReview ? (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            className="shadow-primary-btn border-0 h-8"
+                            disabled={busy || setOutputStatus.isPending}
+                            onClick={() =>
+                              void (async () => {
+                                setBusy(true);
+                                try {
+                                  const id = await ensureTopic();
+                                  await setOutputStatus.mutateAsync({
+                                    topicId: id,
+                                    outputId: o.id,
+                                    status: "approved",
+                                  });
+                                  toast.success("Draft approved");
+                                  onPackageUpdated?.();
+                                  await detailQuery.refetch();
+                                } catch (e) {
+                                  toast.error(rpcError(e, "Could not approve draft"));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            Approve draft
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-0 btn-neomorphic h-8"
+                            disabled={busy}
+                            onClick={() =>
+                              void (async () => {
+                                setBusy(true);
+                                try {
+                                  const id = await ensureTopic();
+                                  await setOutputStatus.mutateAsync({
+                                    topicId: id,
+                                    outputId: o.id,
+                                    status: "rejected",
+                                  });
+                                  toast.message("Draft held");
+                                  onPackageUpdated?.();
+                                } catch (e) {
+                                  toast.error(rpcError(e, "Could not hold draft"));
+                                } finally {
+                                  setBusy(false);
+                                }
+                              })()
+                            }
+                          >
+                            Hold
+                          </Button>
+                        </div>
+                      ) : null}
+                    </article>
+                  );
+                })}
+                <button
+                  type="button"
+                  className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground"
+                  onClick={() => setEditRaw((v) => !v)}
+                >
+                  {editRaw ? "Show readable prose" : "Show raw markdown"}
+                </button>
+              </section>
+            ) : null}
+
+            {imagesUploadUnlocked ? (
+              <section id="package-images" className="rounded-xl bg-card/80 shadow-e1 p-4 space-y-3">
+                <h3 className="text-sm font-semibold">Images</h3>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {(
+                    [
+                      ["square", "Square", imagePaths.square],
+                      ["thumbnail", "Thumbnail", imagePaths.thumbnail],
+                      ["vertical", "Vertical", imagePaths.vertical],
+                      ["horizontal", "Horizontal", imagePaths.horizontal],
+                    ] as const
+                  ).map(([kind, label, path]) => {
+                    const url = publicContentImageUrl(path);
+                    return (
+                      <div key={kind} className="rounded-lg bg-card/60 p-2.5 space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-xs font-medium">{label}</p>
+                          <label
+                            className={`text-[11px] cursor-pointer hover:underline ${
+                              busy ? "pointer-events-none opacity-50" : "text-primary"
+                            }`}
+                          >
+                            {uploadingKind === kind ? "Uploading…" : path ? "Replace" : "Upload"}
+                            <input
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              className="hidden"
+                              disabled={busy}
+                              onChange={(e) =>
+                                void uploadPackageImage(kind, e.target.files?.[0] ?? null)
+                              }
+                            />
+                          </label>
+                        </div>
+                        {url ? (
+                          <img
+                            src={url}
+                            alt=""
+                            className="h-16 w-16 rounded-md object-cover shadow-sm"
+                          />
+                        ) : (
+                          <p className="text-[10px] text-muted-foreground">No file</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="rounded-xl bg-muted/20 p-3 space-y-2 text-xs">
+              <p>
+                <span className="font-medium">Verified claims:</span>{" "}
+                {claims.filter((c) => String(c.verification_status) === "verified").length}
+              </p>
+              {seoProposal.primary_keyword ? (
+                <p>
+                  <span className="font-medium">Search phrase:</span> {seoProposal.primary_keyword}
+                </p>
+              ) : null}
+              {draft.objective.trim() && (planAccepted || primaryKind === "accept_plan") ? (
+                <p>
+                  <span className="font-medium">Plan objective:</span> {draft.objective}
+                </p>
+              ) : null}
+              {sources.length > 0 ? (
+                <ul className="space-y-1">
+                  {sources.slice(0, 8).map((s) => (
+                    <li key={s.id}>{s.label || s.url || s.id}</li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-0 btn-neomorphic text-xs"
+                  disabled={busy || generating}
+                  onClick={() => void ensurePlanGenerated()}
+                >
+                  Refresh understanding
+                </Button>
+                {planAccepted ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-0 btn-neomorphic text-xs"
+                    disabled={busy || generating || !topicId}
+                    onClick={() =>
+                      void generate
+                        .mutateAsync({ topicId: topicId!, stage: "content", regenerate: true })
+                        .then(() => toast.success("Regenerating drafts"))
+                        .catch((e) => toast.error(rpcError(e, "Failed")))
+                    }
+                  >
+                    Regenerate drafts
+                  </Button>
+                ) : null}
+              </div>
+            </section>
           </div>
-        )}
+        ) : null}
       </div>
+
+      <AdminKnowledgeDetailSheet
+        knowledgeId={focusKnowledgeId}
+        open={Boolean(focusKnowledgeId)}
+        onOpenChange={(open) => {
+          if (!open) {
+            setFocusKnowledgeId(null);
+            onPackageUpdated?.();
+          }
+        }}
+      />
     </div>
   );
 }

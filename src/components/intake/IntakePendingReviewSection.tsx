@@ -3,6 +3,7 @@ import { IntakeInboxPanel, type IntakeReviewPayload } from "@/components/intake/
 import { IntakeReviewSheet } from "@/components/intake/IntakeReviewSheet";
 import { IntakeModal } from "@/components/intake/IntakeModal";
 import type { IntakeMode } from "@/types/intake";
+import { readInboundEmailProposal } from "@/lib/intake/inboundEmailProposal";
 import { cn } from "@/lib/utils";
 
 type IntakePendingReviewSectionProps = {
@@ -53,6 +54,8 @@ export function IntakePendingReviewSection({
     }
   };
 
+  const proposal = readInboundEmailProposal(reviewPayload?.sourceArtifact.aiExtracted);
+
   return (
     <>
       <section
@@ -76,7 +79,11 @@ export function IntakePendingReviewSection({
         onTaskCreated={onTaskCreated}
         defaultPropertyId={defaultPropertyId}
         initialIntakeMode={composeMode}
-        initialDescription={reviewPayload?.description}
+        initialDescription={proposal?.summary || reviewPayload?.description}
+        defaultDueDate={
+          proposal?.outcome === "task" ? proposal.task_fields?.due_date ?? undefined : undefined
+        }
+        dueDatePrefillNonce={composeOpen ? 1 : 0}
         initialSourceArtifact={reviewPayload?.sourceArtifact}
         fromIntakeReview
       />

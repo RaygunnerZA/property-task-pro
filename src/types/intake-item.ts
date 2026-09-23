@@ -24,6 +24,7 @@ export interface IntakeItem {
   ai_confidence: number | null;
   error_message: string | null;
   raw_text: string | null;
+  email_provenance?: Record<string, unknown> | null;
   created_at: string;
   processed_at: string | null;
 }
@@ -38,4 +39,5 @@ export interface IntakeSourceArtifact {
   sourceType?: IntakeSourceType;
   aiClassification?: string | null;
   aiExtracted?: Record<string, unknown> | null;
+  emailProvenance?: Record<string, unknown> | null;
 }

@@ -12,6 +12,12 @@ import {
   assessGuidanceQuality,
   formatCriticField,
 } from "@/lib/knowledge/knowledgeGuidanceQuality";
+import {
+  inferKnowledgeFieldsFromClaims,
+  looksLikeLandlordGasKnowledge,
+  looksLikeSeasonalPackageTitle,
+  type ClaimLike,
+} from "@/lib/knowledge/knowledgeFieldInference";
 
 export type TrustCheckStatus =
   | "passed"
@@ -163,8 +169,34 @@ export function attrString(
 }
 
 export function displayKnowledgeTitle(
-  row: Pick<KnowledgeRow, "title" | "summary" | "attributes">
+  row: Pick<KnowledgeRow, "title" | "summary" | "attributes" | "applicability">,
+  opts?: { claims?: ClaimLike[]; sourceUrl?: string | null; sourceTitle?: string | null }
 ): string {
+  const inferred = opts
+    ? inferKnowledgeFieldsFromClaims({
+        claims: opts.claims ?? [],
+        attributes: row.attributes as Record<string, unknown>,
+        title: row.title,
+        summary: row.summary,
+        jurisdiction: parseApplicability(row.applicability).jurisdictions[0] ?? null,
+        sourceUrl: opts.sourceUrl,
+        sourceTitle: opts.sourceTitle,
+      })
+    : null;
+  if (
+    inferred?.composedTitle &&
+    (looksLikeSeasonalPackageTitle(row.title) ||
+      looksLikeLandlordGasKnowledge({
+        title: row.title,
+        summary: row.summary,
+        sourceUrl: opts?.sourceUrl,
+        sourceTitle: opts?.sourceTitle,
+        claims: opts?.claims,
+      }))
+  ) {
+    return inferred.composedTitle;
+  }
+
   const title = row.title?.trim() || "Untitled";
   if (!looksLikeKnowledgeCode(title)) return title;
 
@@ -241,25 +273,48 @@ export function presentationTypeLabel(
 }
 
 export function legalClassificationLabel(
-  row: Pick<KnowledgeRow, "attributes">
+  row: Pick<KnowledgeRow, "attributes">,
+  claims?: ClaimLike[]
 ): string {
   const legal =
     attrString(row.attributes, "legal_status") ||
     attrString(row.attributes, "classification");
-  if (!legal) return "Classification not set";
-  if (/mandatory|required|statutory|obligation/i.test(legal)) {
+  if (/mandatory_with_recommendations|with some recommended/i.test(legal ?? "")) {
+    return "Mandatory requirement, with some recommended practices";
+  }
+  if (legal && /mandatory|required|statutory|obligation/i.test(legal)) {
     return "Mandatory requirement";
   }
-  if (/contract|insurance/i.test(legal)) {
+  if (legal && /contract|insurance/i.test(legal)) {
     return "Contractual or insurance requirement";
   }
-  if (/recommend|good practice|advisory|prevent/i.test(legal)) {
+  if (legal && /recommend|good practice|advisory|prevent/i.test(legal)) {
     return "Preventative good practice";
   }
-  return legal;
+  if (legal) return legal;
+  if (claims && claims.length > 0) {
+    const inferred = inferKnowledgeFieldsFromClaims({
+      claims,
+      attributes: row.attributes as Record<string, unknown>,
+    });
+    if (inferred.classificationLabel) return inferred.classificationLabel;
+  }
+  return "Classification not set";
 }
 
-export function triggerLabel(row: Pick<KnowledgeRow, "attributes">): string {
+export function triggerLabel(
+  row: Pick<KnowledgeRow, "attributes">,
+  claims?: ClaimLike[]
+): string {
+  const inferred =
+    claims && claims.length > 0
+      ? inferKnowledgeFieldsFromClaims({
+          claims,
+          attributes: row.attributes as Record<string, unknown>,
+        })
+      : null;
+  if (inferred?.triggerLabel) return inferred.triggerLabel;
+
   const when =
     attrString(row.attributes, "applies_when") ||
     attrString(row.attributes, "timing") ||
@@ -703,6 +758,7 @@ export function buildTrustChecks(
       payload: Record<string, unknown>;
       created_at: string;
     }>;
+    claims?: ClaimLike[];
   }
 ): TrustCheck[] {
   const app = parseApplicability(row.applicability);
@@ -711,7 +767,21 @@ export function buildTrustChecks(
   const health = computeSourceHealth(sources, row);
   const critic = parseCriticSummary(row, opts?.verificationEvents, { sources });
 
-  const quality = assessGuidanceQuality(row);
+  const inferred =
+    opts?.claims && opts.claims.length > 0
+      ? inferKnowledgeFieldsFromClaims({
+          claims: opts.claims,
+          attributes: attrs,
+          title: row.title,
+          summary: row.summary,
+        })
+      : null;
+
+  const quality = assessGuidanceQuality(
+    inferred?.composedAnswer
+      ? { ...row, summary: inferred.composedAnswer, body: null }
+      : row
+  );
   const guidanceOk =
     quality.state === "meaningful_draft" || quality.state === "verified";
 
@@ -768,13 +838,17 @@ export function buildTrustChecks(
   const legalStatus =
     attrString(attrs, "legal_status") ||
     attrString(attrs, "classification") ||
+    inferred?.legal_status ||
+    inferred?.classificationLabel ||
     "";
   const classificationOk =
     Boolean(legalStatus.trim()) && !/not set|unknown|n\/?a/i.test(legalStatus);
-  const triggerBlob = `${attrString(attrs, "applies_when") || ""} ${attrString(attrs, "timing") || ""} ${attrString(attrs, "frequency") || ""}`;
+  const triggerBlob = `${attrString(attrs, "applies_when") || ""} ${attrString(attrs, "timing") || ""} ${attrString(attrs, "frequency") || ""} ${inferred?.timing || ""} ${inferred?.applies_when || ""}`;
   const triggerOk = Boolean(
     attrString(attrs, "trigger_type") ||
       attrString(attrs, "event_trigger") ||
+      inferred?.trigger_type ||
+      inferred?.timing ||
       (/before|prior|annual|year|month|quarter|every|schedule|threshold|ongoing|continuous|always|maintain|when |after |present|planned/i.test(
         triggerBlob
       ) ||
@@ -831,7 +905,7 @@ export function buildTrustChecks(
       status: classificationOk ? "passed" : "incomplete",
       detail: classificationOk
         ? legalStatus
-        : "legal_status / classification required from imported fields.",
+        : "Classification could not be inferred from the claims. Resolve remaining ambiguity.",
       fieldHint: "applicability",
     },
     {
@@ -841,9 +915,11 @@ export function buildTrustChecks(
       detail: triggerOk
         ? attrString(attrs, "trigger_type") ||
           attrString(attrs, "frequency") ||
+          attrString(attrs, "timing") ||
+          inferred?.triggerLabel ||
           attrString(attrs, "applies_when") ||
           undefined
-        : "frequency / timing / applies_when required to set trigger.",
+        : "Trigger could not be inferred from the claims. Resolve remaining ambiguity.",
       fieldHint: "applicability",
     },
     {

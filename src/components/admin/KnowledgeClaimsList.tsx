@@ -12,6 +12,8 @@ export type KnowledgeClaimListItem = {
   verification_status?: string;
   source_id?: string | null;
   source_location?: string | null;
+  applicability?: Record<string, unknown> | null;
+  critic_result?: Record<string, unknown> | null;
 };
 
 export type KnowledgeClaimSourceRef = {
@@ -28,6 +30,35 @@ type Props = {
   showHeading?: boolean;
   emptyHint?: string;
 };
+
+function criticSupportLabel(claim: KnowledgeClaimListItem): string | null {
+  const status =
+    (typeof claim.critic_result?.support_status === "string"
+      ? claim.critic_result.support_status
+      : null) ||
+    (typeof claim.critic_result?.status === "string" ? claim.critic_result.status : null);
+  if (!status) return null;
+  if (status === "supported") return "Supported";
+  if (status === "partially_supported") return "Partially supported";
+  if (status === "unsupported") return "Unsupported";
+  if (status === "overstated") return "Overstated";
+  return null;
+}
+
+function strengthLabel(claim: KnowledgeClaimListItem): string | null {
+  const stored =
+    (typeof claim.applicability?.legal_strength === "string"
+      ? claim.applicability.legal_strength
+      : null) ||
+    (typeof claim.critic_result?.legal_strength === "string"
+      ? claim.critic_result.legal_strength
+      : null);
+  if (stored === "must") return "must";
+  if (stored === "should") return "should";
+  if (stored === "exception") return "exception";
+  if (stored === "explanatory") return "explanatory";
+  return null;
+}
 
 function StatusMark({ status }: { status: string }) {
   if (status === "verified") {
@@ -110,13 +141,20 @@ export function KnowledgeClaimsList({
                 <p className="text-foreground">{claim.claim_text}</p>
                 <p className="text-[10px] text-muted-foreground">
                   {[
+                    strengthLabel(claim),
                     claim.category && claim.category !== "other" ? claim.category : null,
-                    claimStatusLabel(status),
+                    criticSupportLabel(claim) || claimStatusLabel(status),
                     claim.source_location || null,
                   ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
+                {typeof claim.critic_result?.supporting_passage === "string" &&
+                  claim.critic_result.supporting_passage.trim() && (
+                    <p className="text-[10px] text-muted-foreground/80 italic">
+                      “{String(claim.critic_result.supporting_passage).slice(0, 240)}”
+                    </p>
+                  )}
                 {href && (
                   <a
                     href={href}

@@ -116,6 +116,7 @@ const DEFAULT_COST_UNITS: Record<string, number> = {
   "knowledge-generate-guidance": 1,
   "knowledge-evidence-pack": 2,
   "knowledge-gap-research": 1,
+  "inbound-email": 2,
   "ai-batch-poll": 1,
 };
 

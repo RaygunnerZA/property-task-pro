@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { IntakeItem } from "@/types/intake-item";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
 import { intakeInboxCardCopy } from "@/lib/intakeDocumentBriefing";
+import { readInboundEmailProposal } from "@/lib/intake/inboundEmailProposal";
 import { useInboxFilePreview } from "@/hooks/useInboxFilePreview";
 import { IntakeFileThumb } from "@/components/intake/IntakeFileThumb";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,8 @@ interface IntakeInboxPanelProps {
 }
 
 function descriptionFromItem(item: IntakeItem): string {
+  const proposal = readInboundEmailProposal(item.ai_extracted);
+  if (proposal?.summary) return proposal.summary.slice(0, 2000);
   if (item.raw_text?.trim()) return item.raw_text.trim().slice(0, 2000);
   const extracted = item.ai_extracted;
   if (!extracted) return "";
@@ -71,6 +74,7 @@ function IntakeInboxRow({
         sourceType: item.source_type,
         aiClassification: item.ai_classification,
         aiExtracted: item.ai_extracted,
+        emailProvenance: item.email_provenance,
       },
       aiConfidence: item.ai_confidence,
       fileSize: item.file_size,

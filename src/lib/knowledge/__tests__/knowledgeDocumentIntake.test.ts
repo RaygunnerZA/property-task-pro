@@ -96,4 +96,19 @@ describe("knowledgeDocumentIntake", () => {
     expect(isKnowledgeDocumentFile(new File(["a"], "photo.jpg"))).toBe(true);
     expect(isKnowledgeDocumentFile(new File(["a"], "data.csv"))).toBe(false);
   });
+
+  it("backfills empty model proposal bodies from ocr_text", () => {
+    const proposals = proposalsFromDocAnalysis(
+      {
+        title: "F20760",
+        knowledge_proposals: [{ title: "Entretien chaudière", summary: "", body: "" }],
+        ocr_text:
+          "En tant que locataire, vous devez faire réaliser un entretien annuel de la chaudière. Les chaudières concernées sont celles au fioul, gaz, bois, charbon ou multicombustible.",
+      },
+      source
+    );
+    expect(proposals).toHaveLength(1);
+    expect(proposals[0].title).toBe("Entretien chaudière");
+    expect(proposals[0].body.length).toBeGreaterThan(80);
+  });
 });

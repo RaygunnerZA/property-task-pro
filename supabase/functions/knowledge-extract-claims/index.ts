@@ -13,6 +13,10 @@ import {
 } from "../_shared/geminiKeys.ts";
 import { SchemaError, parseJsonLoose } from "../_shared/aiRouting.ts";
 import { safeFetchUrl } from "../_shared/safeUrlFetch.ts";
+import {
+  buildKnowledgeRepairPatch,
+  inferLegalStrength,
+} from "../_shared/knowledgeFieldInference.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,15 +25,17 @@ const corsHeaders = {
 };
 
 const PLATFORM_ORG = "00000000-0000-0000-0000-000000000000";
-const PROMPT_VERSION = "knowledge-extract-claims-v1";
+const PROMPT_VERSION = "knowledge-extract-claims-v2";
 
 const SYSTEM =
   "You extract atomic factual claims for property-compliance Knowledge from linked sources. " +
+  "Split distinct duties, recommendations, exceptions and explanations into separate claims — never compress a source into one blended sentence. " +
+  "Preserve modal strength exactly as the source states it (must/shall vs should/recommend vs exception vs explanatory). " +
   "Preserve every materially useful fact the source establishes (scope, duties, frequency, responsibility, " +
   "standards, testing, replacement, evidence, exceptions, consequences, thresholds, deadlines). " +
   "Do NOT invent facts from general knowledge. If an important detail is absent, add a claim with established:false. " +
   "Do not aim for a fixed claim count — include all distinct useful facts; skip duplicates and filler. " +
-  "Return JSON only: {\"claims\":[{\"text\":\"...\",\"category\":\"obligation|applicability|responsibility|standard|testing|replacement|evidence|exception|consequence|other\",\"source_location\":\"section or null\",\"established\":true}]}";
+  "Return JSON only: {\"claims\":[{\"text\":\"...\",\"category\":\"obligation|applicability|responsibility|standard|testing|replacement|evidence|exception|consequence|other\",\"legal_strength\":\"must|should|exception|explanatory\",\"source_location\":\"section or null\",\"established\":true}]}";
 
 type RequestBody = {
   knowledge_id: string;
@@ -89,6 +95,18 @@ function validateClaims(raw: unknown): { claims: Array<Record<string, unknown>> 
           ? rec.claim_text.trim()
           : "";
     if (text.length < 4) continue;
+    const strengthRaw =
+      typeof rec.legal_strength === "string" ? rec.legal_strength.trim().toLowerCase() : "";
+    const legal_strength =
+      strengthRaw === "must" ||
+      strengthRaw === "should" ||
+      strengthRaw === "exception" ||
+      strengthRaw === "explanatory"
+        ? strengthRaw
+        : inferLegalStrength({
+            claim_text: text,
+            category: typeof rec.category === "string" ? rec.category : "other",
+          });
     out.push({
       claim_text: text.slice(0, 500),
       category: typeof rec.category === "string" ? rec.category : "other",
@@ -96,6 +114,7 @@ function validateClaims(raw: unknown): { claims: Array<Record<string, unknown>> 
         typeof rec.source_location === "string" ? rec.source_location.slice(0, 240) : null,
       established: rec.established !== false,
       verification_status: rec.established === false ? "unknown" : "extracted",
+      applicability: { legal_strength },
     });
     if (out.length >= 80) break;
   }
@@ -303,6 +322,36 @@ Deno.serve(async (req) => {
   if (replaceErr) {
     console.error("[knowledge-extract-claims] replace failed", replaceErr);
     return json({ ok: false, error: replaceErr.message }, 500);
+  }
+
+  const repair = buildKnowledgeRepairPatch({
+    title: row.title,
+    summary: row.summary,
+    attributes: (row.attributes as Record<string, unknown>) ?? {},
+    applicability: row.applicability,
+    sourceUrl: sourceMaterial[0]?.url ?? null,
+    sourceTitle: sourceMaterial[0]?.label ?? null,
+    claims: claimsForRpc.map((c) => ({
+      claim_text: String(c.claim_text ?? ""),
+      category: typeof c.category === "string" ? c.category : null,
+      verification_status: typeof c.verification_status === "string" ? c.verification_status : "extracted",
+      applicability:
+        c.applicability && typeof c.applicability === "object"
+          ? (c.applicability as Record<string, unknown>)
+          : {},
+    })),
+  });
+  if (repair.changed) {
+    const patch: Record<string, unknown> = { attributes: repair.attributes };
+    if (repair.title && repair.title !== row.title) patch.title = repair.title;
+    if (repair.summary && repair.summary !== row.summary) patch.summary = repair.summary;
+    const { error: repairErr } = await admin
+      .from("knowledge")
+      .update(patch)
+      .eq("id", knowledgeId);
+    if (repairErr) {
+      console.warn("[knowledge-extract-claims] field repair failed", repairErr);
+    }
   }
 
   return json({

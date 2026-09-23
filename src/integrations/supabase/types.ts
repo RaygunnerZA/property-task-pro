@@ -3567,6 +3567,7 @@ export type Database = {
           ai_extracted: Json | null
           created_at: string
           created_by: string
+          email_provenance: Json | null
           error_message: string | null
           file_name: string | null
           file_size: number | null
@@ -3586,6 +3587,7 @@ export type Database = {
           ai_extracted?: Json | null
           created_at?: string
           created_by?: string
+          email_provenance?: Json | null
           error_message?: string | null
           file_name?: string | null
           file_size?: number | null
@@ -3605,6 +3607,7 @@ export type Database = {
           ai_extracted?: Json | null
           created_at?: string
           created_by?: string
+          email_provenance?: Json | null
           error_message?: string | null
           file_name?: string | null
           file_size?: number | null
@@ -8227,6 +8230,10 @@ export type Database = {
           strategy: string
         }[]
       }
+      admin_accept_knowledge_catalogue: {
+        Args: { p_ids?: string[]; p_reason?: string }
+        Returns: Json
+      }
       admin_add_knowledge_source: {
         Args: {
           p_attachment_id?: string
@@ -8684,6 +8691,7 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      admin_list_knowledge_source_catalogue: { Args: never; Returns: Json }
       admin_list_knowledge_sources: {
         Args: { p_knowledge_ids: string[] }
         Returns: {
@@ -8812,6 +8820,40 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      admin_remove_knowledge_source_url: {
+        Args: {
+          p_knowledge_id: string
+          p_source_id?: string
+          p_url?: string
+        }
+        Returns: boolean
+      }
+      admin_replace_knowledge_source_url: {
+        Args: {
+          p_knowledge_id: string
+          p_label?: string
+          p_previous_url?: string
+          p_source_id?: string
+          p_url: string
+        }
+        Returns: {
+          attachment_id: string | null
+          created_at: string
+          external_ref: string | null
+          id: string
+          knowledge_id: string
+          label: string | null
+          metadata: Json
+          source_type: string
+          url: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "knowledge_sources"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       admin_set_content_output_status: {
         Args: { p_output_id: string; p_status: string }
         Returns: {
@@ -8908,6 +8950,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      admin_set_knowledge_catalogue_status: {
+        Args: { p_id: string; p_reason: string; p_status: string }
+        Returns: Json
       }
       admin_set_knowledge_status: {
         Args: { p_knowledge_id: string; p_status: string }
@@ -9692,6 +9738,7 @@ export type Database = {
       get_invitation_by_token: { Args: { p_token: string }; Returns: Json }
       get_org_billing_status: { Args: { p_org_id: string }; Returns: Json }
       get_org_entitlements: { Args: { p_org_id: string }; Returns: Json }
+      get_member_intake_email: { Args: { p_org_id: string }; Returns: string }
       get_org_intake_email: { Args: { p_org_id: string }; Returns: string }
       get_users_info: {
         Args: { user_ids: string[] }
@@ -10033,6 +10080,8 @@ export type Database = {
         Args: { p_token: string }
         Returns: string
       }
+      rotate_member_intake_email: { Args: { p_org_id: string }; Returns: string }
+      confirm_intake_as_knowledge: { Args: { p_intake_item_id: string }; Returns: string }
       restore_task: {
         Args: { p_org: string; p_task_id: string }
         Returns: undefined

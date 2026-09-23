@@ -11,7 +11,7 @@ Input → Interpretation (Vision/OCR) → Structuring → Critic → Intelligenc
 
 Callers never name models. An edge function asks for a **capability** and the boundary decides how it gets done.
 
-*   **Capability** — a job with a contract: `task_extraction`, `document_analysis`, `photo_asset_identification`, `compliance_clause_rewrite`, `knowledge_critique`, `plan_label_extraction`. Each declares requirements (`vision`, `pdf`, `structuredJson`) and pins a `promptVersion`.
+*   **Capability** — a job with a contract: `task_extraction`, `document_analysis`, `photo_asset_identification`, `compliance_clause_rewrite`, `knowledge_critique`, `plan_label_extraction`, `inbound_email_triage`. Each declares requirements (`vision`, `pdf`, `structuredJson`) and pins a `promptVersion`.
 *   **Strategy** — how the job is done. A strategy is either `model:*` or `deterministic:*`. **Deterministic strategies are first class, not a consolation prize:** rule-based task extraction and vector-PDF text extraction are strategies inside the boundary, not fallbacks bolted outside it. The cheapest correct answer is the one that needed no model.
 *   **Resolution** — the boundary filters approved strategies by the capability's requirements, the call's input traits (a PDF input excludes models that cannot accept one), configured credentials, and any provider-distinctness constraint; then orders them by preference. Empty means the job cannot run — which is the correct answer, not an error to route around.
 

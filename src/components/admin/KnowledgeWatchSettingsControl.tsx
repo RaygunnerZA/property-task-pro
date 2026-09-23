@@ -20,6 +20,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { AdminKnowledgeCataloguePanel } from "@/components/admin/AdminKnowledgeCataloguePanel";
 import {
   useKnowledgeWatchRuns,
   useKnowledgeWatchSettings,
@@ -81,8 +82,9 @@ export function KnowledgeWatchSettingsControl() {
         <SheetHeader>
           <SheetTitle>Watch settings</SheetTitle>
           <SheetDescription>
-            Discovery proposes subjects for investigation — not verified Knowledge and not
-            permission to publish. Research limits are enforced server-side.
+            Approve the official catalogue once, then Watch reports only consequential
+            changes. Discovery is not verified Knowledge and not permission to publish.
+            Research limits are enforced server-side.
           </SheetDescription>
         </SheetHeader>
 
@@ -152,6 +154,8 @@ export function KnowledgeWatchSettingsControl() {
                   </p>
                 ) : null}
               </div>
+
+              <AdminKnowledgeCataloguePanel />
 
               <Button
                 type="button"

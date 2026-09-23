@@ -60,7 +60,11 @@ export async function safeFetchUrl(
     const res = await fetch(parsed.toString(), {
       redirect: "follow",
       signal: controller.signal,
-      headers: { "User-Agent": "Filla-Knowledge-Intake/1.0" },
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (compatible; FillaKnowledgeBot/1.0; +https://filla.app; research)",
+        Accept: "text/html,application/xhtml+xml,application/pdf,text/plain;q=0.9,*/*;q=0.8",
+      },
     });
 
     if (!res.ok) throw new Error(`url_fetch_failed:${res.status}`);

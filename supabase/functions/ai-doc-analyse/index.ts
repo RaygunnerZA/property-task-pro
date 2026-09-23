@@ -940,7 +940,7 @@ Deno.serve(async (req) => {
         if (!run.ok) console.error("ai-doc-analyse extraction failed:", run.error);
         result = run.value ?? stubResponse(file_name, officeText || null);
         if (officeText && !result.ocr_text) {
-          result = { ...result, ocr_text: officeText.slice(0, 2000) };
+          result = { ...result, ocr_text: officeText.slice(0, knowledge_intake ? 12000 : 2000) };
         }
       }
     } catch (err) {

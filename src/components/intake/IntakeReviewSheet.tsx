@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  BookOpen,
   ExternalLink,
   Loader2,
   Plus,
@@ -23,6 +24,11 @@ import type { IntakeMode } from "@/types/intake";
 import type { IntakeReviewPayload } from "@/components/intake/IntakeInboxPanel";
 import type { IntakeItemStatus, IntakeSourceArtifact } from "@/types/intake-item";
 import { formatIntakeFileSize, suggestIntakeMode } from "@/lib/intakeReviewSummary";
+import {
+  inboundEmailOutcomeLabel,
+  inboundEmailSenderLabel,
+  readInboundEmailProposal,
+} from "@/lib/intake/inboundEmailProposal";
 import {
   buildIntakeDocumentBriefing,
   intakeOutcomeLabel,
@@ -64,6 +70,7 @@ export function IntakeReviewSheet({
   const { toast } = useToast();
   const invalidate = useIntakeItemsInvalidator();
   const [dismissing, setDismissing] = useState(false);
+  const [filingKnowledge, setFilingKnowledge] = useState(false);
   const [artifact, setArtifact] = useState<IntakeSourceArtifact | null>(payload?.sourceArtifact ?? null);
   const [itemStatus, setItemStatus] = useState<IntakeItemStatus | null>(null);
 
@@ -96,6 +103,7 @@ export function IntakeReviewSheet({
         sourceType: data.source_type,
         aiClassification: data.ai_classification,
         aiExtracted: (data.ai_extracted as Record<string, unknown> | null) ?? null,
+        emailProvenance: (data.email_provenance as Record<string, unknown> | null) ?? null,
       });
 
       if (data.status === "pending" || data.status === "processing") {
@@ -120,7 +128,19 @@ export function IntakeReviewSheet({
     fileSize: payload?.fileSize,
     enabled: open && Boolean(artifact?.storagePath),
   });
-  const suggestedMode = artifact ? suggestIntakeMode(artifact) : "add_record";
+  const proposal = artifact ? readInboundEmailProposal(artifact.aiExtracted) : null;
+  const senderLabel = inboundEmailSenderLabel(artifact?.emailProvenance);
+  const isMemberEmail =
+    (artifact?.emailProvenance as { channel?: string } | null | undefined)?.channel ===
+    "member_intake_email";
+  const suggestedMode =
+    proposal?.outcome === "task"
+      ? "report_issue"
+      : proposal?.outcome === "record"
+        ? "add_record"
+        : artifact
+          ? suggestIntakeMode(artifact)
+          : "add_record";
   const briefing = artifact ? buildIntakeDocumentBriefing(artifact, preview.extractedText) : null;
   const scanStillRunning = itemStatus === "pending" || itemStatus === "processing";
   const fileSizeLabel = formatIntakeFileSize(payload?.fileSize ?? null);
@@ -143,6 +163,31 @@ export function IntakeReviewSheet({
       });
     } finally {
       setDismissing(false);
+    }
+  };
+
+  const handleKnowledge = async () => {
+    if (!artifact) return;
+    setFilingKnowledge(true);
+    try {
+      const { error } = await supabase.rpc("confirm_intake_as_knowledge", {
+        p_intake_item_id: artifact.intakeItemId,
+      });
+      if (error) throw error;
+      void invalidate();
+      toast({
+        title: "Sent to Knowledge review",
+        description: "It stays a candidate for this organisation. It is not published.",
+      });
+      onOpenChange(false);
+    } catch (error) {
+      toast({
+        title: "Could not file Knowledge",
+        description: error instanceof Error ? error.message : "Try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFilingKnowledge(false);
     }
   };
 
@@ -188,6 +233,17 @@ export function IntakeReviewSheet({
         </SheetHeader>
 
         <div className="mt-4 space-y-5">
+          {senderLabel ? (
+            <p className="rounded-[10px] bg-muted/50 px-3 py-2 text-sm font-medium text-foreground shadow-e1">
+              {senderLabel}
+            </p>
+          ) : null}
+          {proposal ? (
+            <p className="text-sm text-muted-foreground">
+              {inboundEmailOutcomeLabel(proposal)}
+              {proposal.task_fields?.due_date ? ` · due ${proposal.task_fields.due_date}` : ""}
+            </p>
+          ) : null}
           <div className="flex items-start gap-3">
             <IntakeFileThumb
               kind={preview.kind}
@@ -197,7 +253,9 @@ export function IntakeReviewSheet({
               isEmail={isEmailOnly}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-base font-semibold text-foreground leading-snug">{briefing.title}</p>
+              <p className="text-base font-semibold text-foreground leading-snug">
+                {proposal?.suggested_title || briefing.title}
+              </p>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">{displayName}</p>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 <span>{briefing.fileKindLabel}</span>
@@ -332,15 +390,44 @@ export function IntakeReviewSheet({
               <div className="flex items-start gap-3">
                 <Plus className="h-5 w-5 shrink-0 mt-0.5" />
                 <div className="text-left">
-                  <p className="font-semibold">Report an issue</p>
+                  <p className="font-semibold">
+                    {proposal?.task_fields?.reminder ? "Create a reminder" : "Report an issue"}
+                  </p>
                   <p className="text-xs opacity-90 font-normal mt-0.5">
-                    {briefing.needsFollowUp
-                      ? "Unsatisfactory or expired — raise remedial or renewal work"
-                      : "Something needs fixing, inspection, or follow-up work"}
+                    {proposal?.task_fields?.reminder
+                      ? "A task with the proposed due date. You can change the date before saving."
+                      : briefing.needsFollowUp
+                        ? "Unsatisfactory or expired — raise remedial or renewal work"
+                        : "Something needs fixing, inspection, or follow-up work"}
                   </p>
                 </div>
               </div>
             </button>
+            {isMemberEmail ? (
+              <button
+                type="button"
+                disabled={filingKnowledge}
+                onClick={() => void handleKnowledge()}
+                className={cn(
+                  "w-full rounded-lg border-0 bg-card p-4 text-left text-foreground shadow-e1 transition-all hover:bg-card/80",
+                  proposal?.outcome === "knowledge" && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  {filingKnowledge ? (
+                    <Loader2 className="h-5 w-5 shrink-0 mt-0.5 animate-spin text-primary" />
+                  ) : (
+                    <BookOpen className="h-5 w-5 shrink-0 mt-0.5 text-primary" />
+                  )}
+                  <div className="text-left">
+                    <p className="font-semibold">Keep as Knowledge</p>
+                    <p className="text-xs font-normal mt-0.5 text-muted-foreground">
+                      Reusable guidance for this organisation. It stays a candidate until it is reviewed.
+                    </p>
+                  </div>
+                </div>
+              </button>
+            ) : null}
           </div>
 
           <Button

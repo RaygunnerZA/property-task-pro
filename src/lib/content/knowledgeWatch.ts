@@ -10,6 +10,7 @@
 export type DiscoverySourceType =
   | "regulatory_update"
   | "official_guidance"
+  | "potential_change"
   | "seasonal"
   | "knowledge_gap"
   | "user_demand"
@@ -42,6 +43,7 @@ export const DISCOVERY_SOURCE_FILTERS: {
   { id: "all", label: "All sources" },
   { id: "regulatory_update", label: "Regulatory updates" },
   { id: "official_guidance", label: "Changes to official guidance" },
+  { id: "potential_change", label: "Potential change" },
   { id: "seasonal", label: "Seasonal relevance" },
   { id: "knowledge_gap", label: "Knowledge gaps" },
   { id: "user_demand", label: "User questions and search demand" },
@@ -51,6 +53,7 @@ export const DISCOVERY_SOURCE_FILTERS: {
 export const DISCOVERY_SOURCE_LABELS: Record<DiscoverySourceType, string> = {
   regulatory_update: "Regulatory update",
   official_guidance: "Official guidance changed",
+  potential_change: "Potential change",
   seasonal: "Seasonal relevance",
   knowledge_gap: "Knowledge gap",
   user_demand: "User demand",
@@ -244,8 +247,15 @@ export function shouldDeepResearch(input: {
     return { research: false, skipReason: "Existing Knowledge covers this subject; no new signals." };
   }
   const material = input.signals.filter(
-    (s) => s.confidence === "high" || s.confidence === "medium"
+    (s) =>
+      (s.confidence === "high" || s.confidence === "medium") && s.type !== "potential_change"
   );
+  if (input.signals.length > 0 && input.signals.every((s) => s.type === "potential_change")) {
+    return {
+      research: false,
+      skipReason: "Potential change only — monitor linked sources; do not rewrite Knowledge.",
+    };
+  }
   if (material.length === 0 && input.signals.every((s) => s.confidence === "inferred")) {
     return {
       research: false,
@@ -364,7 +374,24 @@ export function deriveDiscoverySignals(input: DeriveDiscoverySignalsInput): Disc
   for (const hint of input.provenanceHints ?? []) {
     const change = (hint.changeKind ?? "").toLowerCase();
     const urls = hint.url ? [hint.url] : [];
-    if (change.includes("regulat") || change.includes("statute") || change.includes("law")) {
+    if (
+      change.includes("potential_change") ||
+      change.includes("news") ||
+      change.includes("consultation") ||
+      change.includes("announcement")
+    ) {
+      signals.push({
+        type: "potential_change",
+        label: "Potential change",
+        observation:
+          hint.label ||
+          "A government announcement or consultation may eventually affect this subject. Current guidance remains valid until legislation or operational guidance is updated.",
+        confidence: "medium",
+        detectedAt: hint.detectedAt ?? detectedAt,
+        sourceUrls: urls,
+        strength: 50,
+      });
+    } else if (change.includes("regulat") || change.includes("statute") || change.includes("law")) {
       signals.push({
         type: "regulatory_update",
         label: "Regulatory update",
@@ -383,6 +410,28 @@ export function deriveDiscoverySignals(input: DeriveDiscoverySignalsInput): Disc
         detectedAt: hint.detectedAt ?? detectedAt,
         sourceUrls: urls,
         strength: 85,
+      });
+    } else if (change.includes("seasonal")) {
+      signals.push({
+        type: "seasonal",
+        label: hint.label || "Seasonal relevance",
+        observation: hint.label
+          ? `Watch detection: ${hint.label}.`
+          : "Watch proposed this subject for seasonal relevance.",
+        confidence: "medium",
+        detectedAt: hint.detectedAt ?? detectedAt,
+        sourceUrls: urls,
+        strength: 65,
+      });
+    } else if (change.includes("knowledge_gap") || change.includes("gap")) {
+      signals.push({
+        type: "knowledge_gap",
+        label: hint.label || "Knowledge gap",
+        observation: "Watch proposed this subject because coverage was missing.",
+        confidence: "high",
+        detectedAt: hint.detectedAt ?? detectedAt,
+        sourceUrls: urls,
+        strength: 70,
       });
     }
   }
