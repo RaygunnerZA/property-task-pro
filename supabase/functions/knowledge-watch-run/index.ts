@@ -498,6 +498,7 @@ async function scanAcceptedCatalogue(input: {
     } else if (seed.locator.adapter === "govuk_search" && !searchGate.ok) {
       scanError = searchGate.message;
     }
+    // collection_page / path_prefix: seed_paths alone — no wholesale handbook crawl.
 
     const planned = planCataloguePageUpserts({
       section: seed,

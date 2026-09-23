@@ -7,6 +7,7 @@ import {
   canonicalCataloguePath,
   cataloguePageUrl,
   classifyCatalogueHit,
+  classifyScottishBuildingStandardsHit,
   detectionFromHitClass,
   queueLaneForCatalogueDetection,
   shouldCreateKnowledgeFromDetection,
@@ -75,7 +76,13 @@ export function planCataloguePageUpserts(input: {
   }
 
   for (const hit of input.hits) {
-    const klass = classifyCatalogueHit(hit);
+    const klass =
+      input.section.publisher === "gov.scot"
+        ? classifyScottishBuildingStandardsHit({
+            title: hit.title,
+            link: hit.link,
+          })
+        : classifyCatalogueHit(hit);
     if (klass === "excluded") continue;
     const path = canonicalCataloguePath(hit.link);
     if (!path || seen.has(path)) continue;
@@ -85,11 +92,15 @@ export function planCataloguePageUpserts(input: {
     const detection = detectionFromHitClass(klass, alreadyTracked);
     const knowledgeIds = input.knowledgeIdsByPath?.[path] ?? prev?.knowledge_ids ?? [];
     const status: CataloguePageStatus =
-      detection === "potential_change"
-        ? "assessing"
-        : detection === "new_guidance"
+      klass === "index_only"
+        ? "ignored"
+        : detection === "potential_change"
           ? "assessing"
-          : prev?.status ?? "tracked";
+          : detection === "new_guidance"
+            ? "assessing"
+            : prev?.status ?? "tracked";
+    const effectiveDetection =
+      alreadyTracked && detection === "new_guidance" ? "none" : detection;
     upserts.push({
       canonical_path: path,
       source_url: cataloguePageUrl(input.section, hit.link),
@@ -98,17 +109,20 @@ export function planCataloguePageUpserts(input: {
       document_type: hit.document_type ?? null,
       title: hit.title,
       status,
-      detection: alreadyTracked && detection === "new_guidance" ? "none" : detection,
+      detection: effectiveDetection,
       knowledge_ids: knowledgeIds,
-      fetch_body: shouldFetchCataloguePageBody({
-        previous: prev ?? null,
-        next: {
-          content_id: hit.content_id ?? null,
-          public_updated_at: hit.public_timestamp ?? null,
-        },
-      }),
+      fetch_body:
+        klass === "index_only"
+          ? false
+          : shouldFetchCataloguePageBody({
+              previous: prev ?? null,
+              next: {
+                content_id: hit.content_id ?? null,
+                public_updated_at: hit.public_timestamp ?? null,
+              },
+            }),
       queue_lane: queueLaneForCatalogueDetection({
-        kind: alreadyTracked && detection === "new_guidance" ? "none" : detection,
+        kind: effectiveDetection,
         affectedKnowledgeIds: knowledgeIds,
       }),
     });

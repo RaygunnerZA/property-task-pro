@@ -10,7 +10,7 @@
  * and never the queue.
  */
 
-export type CataloguePublisher = "gov.uk" | "hse" | "legislation.gov.uk";
+export type CataloguePublisher = "gov.uk" | "hse" | "legislation.gov.uk" | "gov.scot";
 export type CatalogueStatus = "proposed" | "accepted" | "paused";
 export type CataloguePageStatus = "tracked" | "assessing" | "withdrawn" | "ignored";
 export type CatalogueDetection =
@@ -19,12 +19,17 @@ export type CatalogueDetection =
   | "guidance_changed"
   | "potential_change"
   | "withdrawn";
-export type CatalogueAdapter = "govuk_search" | "govuk_content" | "path_prefix";
+export type CatalogueAdapter =
+  | "govuk_search"
+  | "govuk_content"
+  | "path_prefix"
+  | "collection_page";
 export type CatalogueHitClass =
   | "compliance_guidance"
   | "property_relevant"
   | "news_lead"
-  | "excluded";
+  | "excluded"
+  | "index_only";
 export type CatalogueQueueLane = "monitoring" | "attention";
 
 export type CatalogueLocator = {
@@ -38,6 +43,16 @@ export type CatalogueLocator = {
   news_query?: string;
   /** Orientation-only seed (e.g. housing services). Never imported wholesale. */
   orientation_seed?: boolean;
+  /** Canonical collection URL (e.g. Scottish Building Standards). */
+  collection_url?: string;
+  /** Human-facing active watch areas for Accept/Adjust. */
+  watch_areas?: string[];
+  /** Indexed for historical applicability — not routinely analysed. */
+  index_only?: string[];
+  /** Bounded change notice to prioritise sections (not a queue flood). */
+  priority_change_notice?: string;
+  /** Official warrant-date applicability rule (Scotland). */
+  applicability_rule?: string;
 };
 
 export type OfficialCatalogueSection = {
@@ -289,8 +304,163 @@ export const ENGLAND_HOUSING_ORIENTATION_REVIEW: CatalogueReviewReport = {
     "Service-result pages are orientation only — not a source and not the queue. Accepting the catalogue watches bounded official sections, it does not import the 447 results.",
 };
 
+/**
+ * One bounded Scotland catalogue — the gov.scot Building Standards collection.
+ * Accept watches current handbooks, supporting guidance, procedures, legislation
+ * and consultations. Previous editions are indexed only; no wholesale PDF import.
+ * https://www.gov.scot/collections/building-standards/
+ */
+export const SCOTLAND_BUILDING_STANDARDS_CATALOGUE: OfficialCatalogueSection = {
+  id: "scotland-building-standards",
+  jurisdiction: "Scotland",
+  publisher: "gov.scot",
+  title: "Scottish Building Standards",
+  family: "Scottish Building Standards",
+  locator: {
+    adapter: "collection_page",
+    collection_url: "https://www.gov.scot/collections/building-standards/",
+    path_prefixes: [
+      "/collections/building-standards",
+      "/publications/",
+      "/binaries/content/documents/govscot/publications",
+    ],
+    seed_paths: ["https://www.gov.scot/collections/building-standards/"],
+    news_query: "building standards scotland consultation",
+    watch_areas: [
+      "Current domestic handbook",
+      "Current non-domestic handbook",
+      "Summary and notices of changes",
+      "Supporting guidance for Sections 0–7",
+      "Procedural and enforcement guidance",
+      "Building-standards legislation",
+    ],
+    index_only: [
+      "superseded handbooks",
+      "archived supporting publications",
+      "research reports",
+      "specialist non-domestic material",
+      "external tools and calculators",
+    ],
+    priority_change_notice:
+      "April 2026 — General, Fire, Environment and Safety (traditional-building conversions, automatic fire suppression, flooding/groundwater, letterplate positioning)",
+    applicability_rule:
+      "Applicable regulations and guidance depend on the date of the building-warrant application; where no warrant is required, the date work commenced.",
+  },
+  include_types: [...COVERAGE_INCLUDE_TYPES, "consultation"],
+  exclude_types: [...COVERAGE_EXCLUDE_TYPES, "calculator", "tool"],
+  poll_interval_hours: 24,
+  subject_keys: [
+    "building-regulations",
+    "building-standards",
+    "scotland-building-standards",
+  ],
+};
+
+export const SCOTLAND_RECOMMENDED_CATALOGUE_IDS = [
+  SCOTLAND_BUILDING_STANDARDS_CATALOGUE.id,
+] as const;
+
+export type CatalogueProposalSource = "orientation" | "govuk_search" | "collection";
+
+export type CatalogueProposal = {
+  id: string;
+  jurisdiction: string;
+  title: string;
+  summary: string;
+  recommended_section_ids: string[];
+  recommended_watch_areas: string[];
+  index_note: string;
+  potential_change_note: string;
+  applicability_rule?: string;
+  priority_change_notice?: string;
+  collection_url?: string;
+  source: CatalogueProposalSource;
+};
+
+export const SCOTLAND_BUILDING_STANDARDS_PROPOSAL: CatalogueProposal = {
+  id: "scotland-building-standards",
+  jurisdiction: "Scotland",
+  title: "Scottish Building Standards",
+  summary:
+    "Official collection containing current and historical technical handbooks, supporting guidance, procedures and legislation.",
+  recommended_section_ids: [...SCOTLAND_RECOMMENDED_CATALOGUE_IDS],
+  recommended_watch_areas: [
+    ...(SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.watch_areas ?? []),
+  ],
+  index_note:
+    "Previous editions will be indexed for historical applicability but not routinely processed.",
+  potential_change_note:
+    "Consultations will be monitored as Potential changes.",
+  applicability_rule:
+    SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.applicability_rule,
+  priority_change_notice:
+    SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.priority_change_notice,
+  collection_url: SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.collection_url,
+  source: "collection",
+};
+
+export const ALL_OFFICIAL_CATALOGUE: OfficialCatalogueSection[] = [
+  ...ENGLAND_OFFICIAL_CATALOGUE,
+  SCOTLAND_BUILDING_STANDARDS_CATALOGUE,
+];
+
 export function catalogueSectionById(id: string): OfficialCatalogueSection | undefined {
-  return ENGLAND_OFFICIAL_CATALOGUE.find((s) => s.id === id);
+  return ALL_OFFICIAL_CATALOGUE.find((s) => s.id === id);
+}
+
+/** April 2026 domestic handbook warrant trigger — first-class Scottish Knowledge shape. */
+export function scotlandHandbookAppliesWhen(editionEffectiveDate: string): {
+  jurisdiction: "Scotland";
+  building_scope: "domestic";
+  edition: string;
+  applies_when: {
+    warrant_submitted_on_or_after: string;
+    or_unwarranted_work_commenced_on_or_after: string;
+  };
+} {
+  return {
+    jurisdiction: "Scotland",
+    building_scope: "domestic",
+    edition: editionEffectiveDate.startsWith("2026-04")
+      ? "April 2026"
+      : editionEffectiveDate,
+    applies_when: {
+      warrant_submitted_on_or_after: editionEffectiveDate,
+      or_unwarranted_work_commenced_on_or_after: editionEffectiveDate,
+    },
+  };
+}
+
+/**
+ * Classify a link title from the Scottish Building Standards collection.
+ * Index-only items are tracked for historical lookup — never queue noise.
+ */
+export function classifyScottishBuildingStandardsHit(input: {
+  title: string;
+  link?: string;
+}): CatalogueHitClass {
+  const text = `${input.title} ${input.link ?? ""}`.toLowerCase();
+  if (
+    /\b(consultation|consultations|analysis of responses|blog|announcement)\b/.test(text)
+  ) {
+    return "news_lead";
+  }
+  if (
+    /\b(previous edition|superseded|archived|research report|calculator|tool|excel)\b/.test(
+      text
+    )
+  ) {
+    return "index_only";
+  }
+  if (
+    /\b(technical handbook|domestic|non-domestic|supporting guidance|building warrant|completion certificate|enforcement|verification|building \(scotland\) act|building regulations|procedure regulations)\b/.test(
+      text
+    )
+  ) {
+    return "compliance_guidance";
+  }
+  if (/\bbuilding standards?\b/.test(text)) return "property_relevant";
+  return "excluded";
 }
 
 export function classifyCatalogueHit(hit: CatalogueSearchHit): CatalogueHitClass {
@@ -500,6 +670,7 @@ export function cataloguePageUrl(section: OfficialCatalogueSection, pathOrUrl: s
   const path = canonicalCataloguePath(pathOrUrl);
   if (section.publisher === "hse") return `https://www.hse.gov.uk${path}`;
   if (section.publisher === "legislation.gov.uk") return `https://www.legislation.gov.uk${path}`;
+  if (section.publisher === "gov.scot") return `https://www.gov.scot${path}`;
   return `https://www.gov.uk${path}`;
 }
 
@@ -537,7 +708,7 @@ export function detectionFromHitClass(
   alreadyTracked: boolean
 ): CatalogueDetection {
   if (klass === "news_lead") return "potential_change";
-  if (klass === "excluded") return "none";
+  if (klass === "excluded" || klass === "index_only") return "none";
   if (alreadyTracked) return "none";
   return "new_guidance";
 }

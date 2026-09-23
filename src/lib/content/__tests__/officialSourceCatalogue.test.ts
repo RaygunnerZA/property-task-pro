@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildCatalogueReviewReport,
   classifyCatalogueHit,
+  classifyScottishBuildingStandardsHit,
   detectionFromHitClass,
   ENGLAND_OFFICIAL_CATALOGUE,
   ENGLAND_RECOMMENDED_CATALOGUE_IDS,
@@ -9,6 +10,9 @@ import {
   formatPotentialChangeCopy,
   hashRelevantSections,
   queueLaneForCatalogueDetection,
+  SCOTLAND_BUILDING_STANDARDS_CATALOGUE,
+  SCOTLAND_BUILDING_STANDARDS_PROPOSAL,
+  scotlandHandbookAppliesWhen,
   shouldCreateKnowledgeFromDetection,
   shouldFetchCataloguePageBody,
   type CatalogueSearchHit,
@@ -37,6 +41,54 @@ describe("England official catalogue seed", () => {
       expect(section.include_types.length).toBeGreaterThan(0);
       expect(section.exclude_types.length).toBeGreaterThan(0);
     }
+  });
+});
+
+describe("Scottish Building Standards catalogue", () => {
+  it("is one collection-page section, not a PDF-per-row import", () => {
+    expect(SCOTLAND_BUILDING_STANDARDS_CATALOGUE.jurisdiction).toBe("Scotland");
+    expect(SCOTLAND_BUILDING_STANDARDS_CATALOGUE.publisher).toBe("gov.scot");
+    expect(SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.adapter).toBe("collection_page");
+    expect(SCOTLAND_BUILDING_STANDARDS_CATALOGUE.locator.collection_url).toContain(
+      "building-standards"
+    );
+    expect(SCOTLAND_BUILDING_STANDARDS_PROPOSAL.recommended_watch_areas.length).toBeGreaterThanOrEqual(
+      6
+    );
+    expect(SCOTLAND_BUILDING_STANDARDS_PROPOSAL.potential_change_note).toMatch(/Potential change/i);
+    expect(SCOTLAND_BUILDING_STANDARDS_PROPOSAL.index_note).toMatch(/indexed/i);
+  });
+
+  it("classifies handbooks and consultations; indexes superseded editions without queue noise", () => {
+    expect(
+      classifyScottishBuildingStandardsHit({
+        title: "Building standards technical handbook 2026: domestic",
+      })
+    ).toBe("compliance_guidance");
+    expect(
+      classifyScottishBuildingStandardsHit({
+        title: "Consultation on proposed changes to fire standards",
+      })
+    ).toBe("news_lead");
+    expect(
+      classifyScottishBuildingStandardsHit({
+        title: "Previous edition — technical handbook 2019 domestic",
+      })
+    ).toBe("index_only");
+    expect(detectionFromHitClass("index_only", false)).toBe("none");
+    expect(detectionFromHitClass("news_lead", false)).toBe("potential_change");
+  });
+
+  it("encodes warrant-date applicability for the April 2026 edition", () => {
+    expect(scotlandHandbookAppliesWhen("2026-04-06")).toEqual({
+      jurisdiction: "Scotland",
+      building_scope: "domestic",
+      edition: "April 2026",
+      applies_when: {
+        warrant_submitted_on_or_after: "2026-04-06",
+        or_unwarranted_work_commenced_on_or_after: "2026-04-06",
+      },
+    });
   });
 });
 

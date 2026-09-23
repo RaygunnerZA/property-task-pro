@@ -69,6 +69,18 @@ export type KnowledgeApplicability = {
   audiences: KnowledgeAudience[];
   /** Explicit platform-global: allowed when jurisdictions is empty */
   unscoped?: boolean;
+  /** Scottish Building Standards: domestic | non-domestic (optional). */
+  building_scope?: string;
+  /** Edition label, e.g. "April 2026". */
+  edition?: string;
+  /**
+   * Warrant-date triggers (Scotland). Applicable guidance depends on the
+   * building-warrant application date, or work-commencement date if unwarranted.
+   */
+  applies_when?: {
+    warrant_submitted_on_or_after?: string;
+    or_unwarranted_work_commenced_on_or_after?: string;
+  };
 };
 
 export const EMPTY_APPLICABILITY: KnowledgeApplicability = {
