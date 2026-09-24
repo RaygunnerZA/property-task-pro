@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { ComplianceTaskCard } from "@/components/tasks/ComplianceTaskCard";
 import { TaskListSectionHeader } from "@/components/tasks/TaskListSectionHeader";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { useComplianceTasks } from "@/hooks/useComplianceTasks";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
 import { LoadingState } from "@/components/design-system/LoadingState";

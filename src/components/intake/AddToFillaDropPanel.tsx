@@ -9,7 +9,8 @@ import {
   uploadIntakeFile,
 } from "@/services/intake/intakeUpload";
 import { cn } from "@/lib/utils";
-import addToFillaIllustration from "@/assets/add-to-filla-drop.gif";
+import addToFillaIllustration from "@/assets/add-to-filla-drop-sm.png";
+import addToFillaIllustrationWebp from "@/assets/add-to-filla-drop-sm.webp";
 
 const DEFAULT_ACCEPT = "image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv";
 
@@ -217,27 +218,32 @@ export function AddToFillaDropPanel({
             {uploading ? (
               <Loader2 className="h-6 w-6 animate-spin text-primary-deep" />
             ) : (
-              <img
-                src={addToFillaIllustration}
-                alt=""
-                className={cn(
-                  "object-contain transition-opacity duration-700 ease-in-out motion-reduce:transition-none",
-                  compact ? "h-9 w-9" : undefined
-                )}
-                style={
-                  compact
-                    ? undefined
-                    : {
-                        height: illustrationH,
-                        width: illustrationW,
-                        opacity:
-                          illustrationDimmed && !dragActive
-                            ? ILLUSTRATION_DIM_OPACITY
-                            : 1,
-                      }
-                }
-                draggable={false}
-              />
+              <picture>
+                <source srcSet={addToFillaIllustrationWebp} type="image/webp" />
+                <img
+                  src={addToFillaIllustration}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  className={cn(
+                    "object-contain transition-opacity duration-700 ease-in-out motion-reduce:transition-none",
+                    compact ? "h-9 w-9" : undefined
+                  )}
+                  style={
+                    compact
+                      ? undefined
+                      : {
+                          height: illustrationH,
+                          width: illustrationW,
+                          opacity:
+                            illustrationDimmed && !dragActive
+                              ? ILLUSTRATION_DIM_OPACITY
+                              : 1,
+                        }
+                  }
+                  draggable={false}
+                />
+              </picture>
             )}
           </div>
 

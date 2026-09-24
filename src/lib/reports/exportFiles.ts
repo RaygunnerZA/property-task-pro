@@ -2,7 +2,6 @@ import type { ReportInstance } from "./types";
 import { DATE_RANGE_OPTIONS } from "./dateRange";
 import { getReportTemplate } from "./templates";
 import { buildReportExportHtml } from "./exportHtml";
-import { downloadReportPdfFile } from "./exportPdf";
 
 export type ReportExportFormat = "csv" | "excel" | "pdf";
 
@@ -208,7 +207,9 @@ export function downloadReportExcel(instance: ReportInstance): void {
 
 /** Generate and download a real PDF file (client-side via jsPDF). */
 export function downloadReportPdf(instance: ReportInstance): void {
-  downloadReportPdfFile(instance);
+  void import("./exportPdf").then(({ downloadReportPdfFile }) => {
+    downloadReportPdfFile(instance);
+  });
 }
 
 export function downloadReportAs(

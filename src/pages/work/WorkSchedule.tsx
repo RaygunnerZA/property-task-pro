@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import TaskCard from '@/components/TaskCard';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';

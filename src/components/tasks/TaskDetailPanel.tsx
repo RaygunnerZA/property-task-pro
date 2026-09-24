@@ -119,7 +119,7 @@ import {
 } from "@/lib/taskStatus";
 import type { TaskStatus } from "@/types/database";
 
-interface TaskDetailPanelProps {
+export interface TaskDetailPanelProps {
   taskId: string;
   onClose: () => void;
   variant?: "modal" | "column"; // "modal" for mobile overlay, "column" for desktop third column

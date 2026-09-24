@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { useMessages } from '@/hooks/useMessages';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { MessageSquare, Paperclip, Sparkles, AlertCircle, Clock, Inbox } from 'lucide-react';
 import { StandardPage } from '@/components/design-system/StandardPage';
 import { LoadingState } from '@/components/design-system/LoadingState';

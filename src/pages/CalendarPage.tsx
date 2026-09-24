@@ -10,7 +10,7 @@ import {
   CalendarToolbar,
   type CalendarViewMode,
 } from "@/components/calendar/CalendarToolbar";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { TaskOpenModeSwitch } from "@/components/tasks/TaskOpenModeSwitch";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
 import { useTaskOpenMode } from "@/hooks/useTaskOpenMode";

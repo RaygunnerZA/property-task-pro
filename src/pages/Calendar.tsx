@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { DashboardCalendar } from "@/components/dashboard/DashboardCalendar";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import TaskCard from "@/components/TaskCard";

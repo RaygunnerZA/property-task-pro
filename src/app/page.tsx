@@ -1,18 +1,16 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { format, isValid, parseISO, startOfDay } from "date-fns";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
 import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina";
 import { LeftColumn } from "@/components/layout/LeftColumn";
 import { RightColumn } from "@/components/layout/RightColumn";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
-import { MessageDetailPanel } from "@/components/messaging/MessageDetailPanel";
-import {
-  SignalFeedDetailPanel,
-  type SignalFeedDetailSnapshot,
-  type WorkbenchAttentionSelectPayload,
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
+import type {
+  SignalFeedDetailSnapshot,
+  WorkbenchAttentionSelectPayload,
 } from "@/components/dashboard/SignalFeedDetailPanel";
-import { IntakeModal } from "@/components/intake/IntakeModal";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
@@ -85,6 +83,17 @@ import {
   resolveWorkbenchLayout,
   shouldRouteCentreTabsToWorkSurface,
 } from "@/lib/workbenchLayoutMode";
+
+const MessageDetailPanel = lazy(() =>
+  import("@/components/messaging/MessageDetailPanel").then((m) => ({
+    default: m.MessageDetailPanel,
+  }))
+);
+const SignalFeedDetailPanel = lazy(() =>
+  import("@/components/dashboard/SignalFeedDetailPanel").then((m) => ({
+    default: m.SignalFeedDetailPanel,
+  }))
+);
 
 export type { DashboardWorkbenchPanel };
 
@@ -1139,19 +1148,23 @@ export default function Dashboard({
                           }}
                         />
                       ) : selectedItem.type === "message" ? (
-                        <MessageDetailPanel
-                          messageId={selectedItem.id}
-                          onClose={handleClosePanel}
-                          variant="column"
-                        />
+                        <Suspense fallback={null}>
+                          <MessageDetailPanel
+                            messageId={selectedItem.id}
+                            onClose={handleClosePanel}
+                            variant="column"
+                          />
+                        </Suspense>
                       ) : (
-                        <SignalFeedDetailPanel
-                          snapshot={selectedItem.snapshot}
-                          onClose={handleClosePanel}
-                          variant="column"
-                          onOpenIntake={handleOpenIntake}
-                          onOpenAddToFilla={openHomePendingReview}
-                        />
+                        <Suspense fallback={null}>
+                          <SignalFeedDetailPanel
+                            snapshot={selectedItem.snapshot}
+                            onClose={handleClosePanel}
+                            variant="column"
+                            onOpenIntake={handleOpenIntake}
+                            onOpenAddToFilla={openHomePendingReview}
+                          />
+                        </Suspense>
                       )}
                     </div>
                   ),
@@ -1442,15 +1455,19 @@ export default function Dashboard({
       ) : null}
       {selectedItem && !isLargeScreen && selectedItem.type !== "task" ? (
         selectedItem.type === "message" ? (
-          <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
+          <Suspense fallback={null}>
+            <MessageDetailPanel messageId={selectedItem.id} onClose={handleClosePanel} variant="modal" />
+          </Suspense>
         ) : (
-          <SignalFeedDetailPanel
-            snapshot={selectedItem.snapshot}
-            onClose={handleClosePanel}
-            variant="modal"
-            onOpenIntake={handleOpenIntake}
-            onOpenAddToFilla={openHomePendingReview}
-          />
+          <Suspense fallback={null}>
+            <SignalFeedDetailPanel
+              snapshot={selectedItem.snapshot}
+              onClose={handleClosePanel}
+              variant="modal"
+              onOpenIntake={handleOpenIntake}
+              onOpenAddToFilla={openHomePendingReview}
+            />
+          </Suspense>
         )
       ) : null}
       </div>

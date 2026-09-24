@@ -1,4 +1,5 @@
 export { IntakeModal } from "./IntakeModal";
+export { LazyIntakeModal } from "./LazyIntakeModal";
 export { AddToFillaSheet } from "./AddToFillaSheet";
 export { AddToFillaDropPanel } from "./AddToFillaDropPanel";
 export { IntakeReviewSheet } from "./IntakeReviewSheet";

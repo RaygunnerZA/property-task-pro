@@ -10,8 +10,8 @@ import { ThirdColumnConcertina } from "@/components/layout/ThirdColumnConcertina
 import { SpaceGroupIdentityCard } from "@/components/spaces/SpaceGroupIdentityCard";
 import { SpaceGroupMiniCardsStrip } from "@/components/spaces/SpaceGroupMiniCardsStrip";
 import { AddSpaceDialog } from "@/components/spaces/AddSpaceDialog";
-import { IntakeModal } from "@/components/intake/IntakeModal";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { AssistantPanelBody } from "@/components/assistant/AssistantPanel";
 import { SuggestedSpacesStrip } from "@/components/spaces/SuggestedSpacesStrip";
 import { getSpaceGroupById } from "@/components/onboarding/onboardingSpaceGroups";

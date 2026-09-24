@@ -3,7 +3,7 @@ import {
   WorkbenchGradientHeader,
   createGradientHeaderStyle,
 } from "@/components/layout/WorkbenchGradientHeader";
-import { IntakeModal } from "@/components/intake/IntakeModal";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { useRegisterAppChromeHeader } from "@/contexts/AppChromeContext";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import {

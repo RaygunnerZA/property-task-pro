@@ -21,14 +21,23 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
 import { initAnalytics, identifyUser, resetAnalyticsUser } from "@/lib/analytics";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
-// Onboarding wizard — eager imports so step-to-step navigation never hits a lazy chunk fetch failure.
-import CreateOrganisationScreen from "./pages/onboarding/CreateOrganisationScreen";
-import AddPropertyScreen from "./pages/onboarding/AddPropertyScreen";
-import AddSpaceScreen from "./pages/onboarding/AddSpaceScreen";
-import InviteTeamScreen from "./pages/onboarding/InviteTeamScreen";
-// Primary nav — Tasks · Calendar · Records workspace.
-import TasksWorkbenchPage from "./pages/workbench/TasksWorkbenchPage";
-import CalendarWorkbenchPage from "./pages/workbench/CalendarWorkbenchPage";
+
+// Onboarding + primary workbench — lazy with retry so step/nav swaps survive chunk invalidation
+// without pulling the Home dashboard into the initial shell.
+const CreateOrganisationScreen = lazyWithRetry(
+  () => import("./pages/onboarding/CreateOrganisationScreen")
+);
+const AddPropertyScreen = lazyWithRetry(() => import("./pages/onboarding/AddPropertyScreen"));
+const AddSpaceScreen = lazyWithRetry(() => import("./pages/onboarding/AddSpaceScreen"));
+const InviteTeamScreen = lazyWithRetry(() => import("./pages/onboarding/InviteTeamScreen"));
+const TasksWorkbenchPage = lazyWithRetry(() => import("./pages/workbench/TasksWorkbenchPage"));
+const CalendarWorkbenchPage = lazyWithRetry(
+  () => import("./pages/workbench/CalendarWorkbenchPage")
+);
+const SpaceOrganisationScreen = lazyWithRetry(
+  () => import("./pages/spaces/SpaceOrganisationScreen")
+);
+const SpaceGroupScreen = lazyWithRetry(() => import("./pages/spaces/SpaceGroupScreen"));
 
 initAnalytics();
 
@@ -113,9 +122,6 @@ const PropertyTasks = lazy(() => import("./pages/PropertyTasks"));
 const PropertyPhotos = lazy(() => import("./pages/PropertyPhotos"));
 const PropertyDocuments = lazy(() => import("./pages/PropertyDocuments"));
 const PropertyBuildingPlans = lazy(() => import("./pages/PropertyBuildingPlans"));
-// Property spaces — eager import so hub navigation never hits a lazy chunk fetch failure.
-import SpaceOrganisationScreen from "./pages/spaces/SpaceOrganisationScreen";
-import SpaceGroupScreen from "./pages/spaces/SpaceGroupScreen";
 const SpaceDetailPage = lazy(() => import("./pages/spaces/SpaceDetailPage"));
 const ComplianceReviews = lazy(() => import("./pages/ComplianceReviews"));
 const ReviewWorkspace = lazy(() => import("./pages/ReviewWorkspace"));

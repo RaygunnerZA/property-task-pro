@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { propertyHubPath } from '@/lib/propertyRoutes';
 import { PropertyTaskCard } from '@/components/tasks/PropertyTaskCard';
 import { TaskListSectionHeader } from '@/components/tasks/TaskListSectionHeader';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { usePropertyTasks } from '@/hooks/usePropertyTasks';
 import { Plus, CheckSquare } from 'lucide-react';
 import { StandardPageWithBack } from '@/components/design-system/StandardPageWithBack';

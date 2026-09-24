@@ -47,7 +47,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
-import { IntakeModal } from "@/components/intake/IntakeModal";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { AssetDetailHero } from "@/components/assets/AssetDetailHero";
 import { AssetDetailActionBar } from "@/components/assets/AssetDetailActionBar";

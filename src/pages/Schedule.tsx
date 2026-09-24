@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import { SegmentedControl } from "@/components/filla/SegmentedControl";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { useScheduleData } from "@/hooks/useScheduleData";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { getScheduleRange, ScheduleViewMode } from "@/utils/scheduleRange";

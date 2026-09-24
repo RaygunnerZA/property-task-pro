@@ -1,14 +1,17 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { Plus, Mic, FileText, Inbox } from 'lucide-react';
-import { IntakeModal } from '@/components/intake/IntakeModal';
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { AddToFillaSheet } from '@/components/intake/AddToFillaSheet';
 import { useIntakeItems } from '@/hooks/useIntakeItems';
 import type { IntakeMode } from '@/types/intake';
-import { AudioRecorder } from '@/components/audio/AudioRecorder';
 import { AnimatedIcon } from '@/components/ui/AnimatedIcon';
 import { cn } from '@/lib/utils';
 import { intakeFabSatelliteAddClassName, intakeFabSatelliteReportClassName } from '@/lib/intake-action-buttons';
+
+const AudioRecorder = lazy(() =>
+  import('@/components/audio/AudioRecorder').then((m) => ({ default: m.AudioRecorder }))
+);
 
 interface FloatingAddButtonProps {
   onTaskCreated?: (taskId: string) => void;
@@ -160,10 +163,14 @@ export const FloatingAddButton = ({ onTaskCreated }: FloatingAddButtonProps = {}
         initialIntakeMode={fabIntakeMode}
       />
 
-      <AudioRecorder
-        open={showAudioRecorder}
-        onOpenChange={setShowAudioRecorder}
-      />
+      {showAudioRecorder ? (
+        <Suspense fallback={null}>
+          <AudioRecorder
+            open={showAudioRecorder}
+            onOpenChange={setShowAudioRecorder}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 };

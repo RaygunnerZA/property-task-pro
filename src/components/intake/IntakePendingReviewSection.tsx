@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { IntakeInboxPanel, type IntakeReviewPayload } from "@/components/intake/IntakeInboxPanel";
 import { IntakeReviewSheet } from "@/components/intake/IntakeReviewSheet";
-import { IntakeModal } from "@/components/intake/IntakeModal";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import type { IntakeMode } from "@/types/intake";
 import { readInboundEmailProposal } from "@/lib/intake/inboundEmailProposal";
 import { cn } from "@/lib/utils";

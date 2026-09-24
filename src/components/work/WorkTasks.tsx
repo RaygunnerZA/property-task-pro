@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import TaskCard from '@/components/TaskCard';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { mockTasks, mockProperties } from '@/data/mockData';
 import { TaskStatus } from '@/types/task';
 import { SegmentControl, SegmentOption } from '@/components/filla';

@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useEffect } from 'react';
+import { ReactNode, useRef, useEffect, lazy, Suspense } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { SidebarProvider } from '@/components/ui/sidebar';
@@ -13,9 +13,12 @@ import {
   isMobileHeaderExcludedPath,
   isWorkbenchHeaderAboveNavPath,
 } from '@/lib/mainNavigation';
-import { DevToolsOverlays } from '@/components/dev/DevToolsOverlays';
 import { useCanAccessDevTools } from '@/hooks/useCanAccessDevTools';
 import { cn } from '@/lib/utils';
+
+const DevToolsOverlays = lazy(() =>
+  import('@/components/dev/DevToolsOverlays').then((m) => ({ default: m.DevToolsOverlays }))
+);
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -118,7 +121,9 @@ function AppLayoutShell({ children }: AppLayoutProps) {
 
         {canAccessDevTools && (
           <ErrorBoundary regionTitle="Dev tools">
-            <DevToolsOverlays />
+            <Suspense fallback={null}>
+              <DevToolsOverlays />
+            </Suspense>
           </ErrorBoundary>
         )}
       </div>

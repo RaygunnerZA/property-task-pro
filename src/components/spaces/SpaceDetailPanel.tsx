@@ -18,8 +18,8 @@ import { getSpaceDisplayIllustration } from "@/lib/spaceTypeIllustrations";
 import { toSentenceCaseSpaceName } from "@/lib/spaceNameUtils";
 import { dialogContentClass, columnShellClass } from "@/lib/layoutClasses";
 import { cn } from "@/lib/utils";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
-import { IntakeModal } from "@/components/intake/IntakeModal";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 
 type SpaceDetailPanelProps = {
   spaceId: string | null;

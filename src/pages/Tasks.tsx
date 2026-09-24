@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Plus, CheckSquare } from "lucide-react";
 import { TaskList } from "@/components/tasks/TaskList";
 import { CreateTaskModal } from "@/components/tasks/CreateTaskModal";
-import { TaskDetailPanel } from "@/components/tasks/TaskDetailPanel";
+import { LazyTaskDetailPanel as TaskDetailPanel } from "@/components/tasks/LazyTaskDetailPanel";
 import { NeomorphicButton } from "@/components/design-system/NeomorphicButton";
 import { StandardPage } from "@/components/design-system/StandardPage";
 import { useQueryClient } from "@tanstack/react-query";

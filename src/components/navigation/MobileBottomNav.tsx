@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useLocation, Link, useSearchParams } from "react-router-dom";
 import { Plus, FileText } from "lucide-react";
 import {
@@ -23,10 +23,13 @@ import {
   DrawerTitle,
   DrawerDescription,
 } from "@/components/ui/drawer";
-import { IntakeModal } from "@/components/intake/IntakeModal";
-import { AudioRecorder } from "@/components/audio/AudioRecorder";
+import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { MobileMoreMenuDrawer } from "@/components/navigation/MobileMoreMenuDrawer";
 import type { ComponentType } from "react";
+
+const AudioRecorder = lazy(() =>
+  import("@/components/audio/AudioRecorder").then((m) => ({ default: m.AudioRecorder }))
+);
 
 /**
  * Mobile Bottom Navigation
@@ -220,12 +223,14 @@ export function MobileBottomNav() {
       )}
 
       {createView === "audio" && (
-        <AudioRecorder
-          open
-          onOpenChange={(open) => {
-            if (!open) handleCloseDrawer();
-          }}
-        />
+        <Suspense fallback={null}>
+          <AudioRecorder
+            open
+            onOpenChange={(open) => {
+              if (!open) handleCloseDrawer();
+            }}
+          />
+        </Suspense>
       )}
     </>
   );

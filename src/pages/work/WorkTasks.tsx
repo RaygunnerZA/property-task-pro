@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import TaskCard from '@/components/TaskCard';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { FloatingAddButton } from '@/components/FloatingAddButton';
 import { SegmentControl, SegmentedControlOption } from '@/components/filla';
 import { useTasksQuery } from '@/hooks/useTasksQuery';

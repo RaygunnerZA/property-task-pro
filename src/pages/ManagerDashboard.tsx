@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { StatCard } from '@/components/dashboard/StatCard';
-import { TaskDetailPanel } from '@/components/tasks/TaskDetailPanel';
+import { LazyTaskDetailPanel as TaskDetailPanel } from '@/components/tasks/LazyTaskDetailPanel';
 import { useDashboardMetrics } from '@/hooks/use-dashboard-metrics';
 import { useTasksQuery } from '@/hooks/useTasksQuery';
 import { useActiveOrg } from '@/hooks/useActiveOrg';

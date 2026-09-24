@@ -17,7 +17,8 @@ import {
   pngUrlToBase64,
 } from "@/lib/intake/fillaIntakeVCard";
 import { cn } from "@/lib/utils";
-import emailThingsGif from "@/assets/intake/email-things-to-filla.gif";
+import emailThingsPng from "@/assets/intake/email-things-to-filla.png";
+import emailThingsWebp from "@/assets/intake/email-things-to-filla.webp";
 import vcardPhotoUrl from "@/assets/intake/fwd-filla-vcard.png";
 
 type Props = {
@@ -128,15 +129,20 @@ export function EmailThingsToFillaPanel({
       >
         {!hideIllustration ? (
           <div className="min-w-0 overflow-hidden rounded-[10px] bg-muted/20 shadow-engraved">
-            <img
-              src={emailThingsGif}
-              alt=""
-              className={cn(
-                "w-full object-contain object-center",
-                compact ? "h-[120px]" : "h-[160px]"
-              )}
-              draggable={false}
-            />
+            <picture>
+              <source srcSet={emailThingsWebp} type="image/webp" />
+              <img
+                src={emailThingsPng}
+                alt=""
+                loading="lazy"
+                decoding="async"
+                className={cn(
+                  "w-full object-contain object-center",
+                  compact ? "h-[120px]" : "h-[160px]"
+                )}
+                draggable={false}
+              />
+            </picture>
           </div>
         ) : null}
 
