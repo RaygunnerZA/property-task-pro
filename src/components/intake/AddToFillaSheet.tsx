@@ -7,7 +7,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { GlobalDropZone } from "@/components/attachments/GlobalDropZone";
-import { ForwardEmailSection } from "@/components/intake/ForwardEmailSection";
+import { EmailThingsToFillaPanel } from "@/components/intake/EmailThingsToFillaPanel";
 import { CalendarImportSection, CloudPickerSection } from "@/components/intake/IntakeImportSections";
 
 interface AddToFillaSheetProps {
@@ -38,7 +38,7 @@ export function AddToFillaSheet({ open, onOpenChange }: AddToFillaSheetProps) {
 
         <div className="space-y-6 pt-2">
           <GlobalDropZone compact onUploadComplete={() => undefined} />
-          <ForwardEmailSection />
+          <EmailThingsToFillaPanel compact />
           <CalendarImportSection />
           <CloudPickerSection />
         </div>

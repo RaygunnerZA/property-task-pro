@@ -51,6 +51,7 @@ import { useThemeColor } from "@/hooks/useThemeColor";
 import { supabase } from "@/integrations/supabase/client";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { AddToFillaDropPanel } from "@/components/intake/AddToFillaDropPanel";
+import { EmailThingsToFillaPanel } from "@/components/intake/EmailThingsToFillaPanel";
 import { TasksMessagesThirdColumnList } from "@/components/workbench/TasksMessagesThirdColumnList";
 import {
   TASKS_MESSAGES_TAB_EVENT,
@@ -1179,10 +1180,13 @@ export default function Dashboard({
             title: "",
             variant: "static" as const,
             children: (
-              <AddToFillaDropPanel
-                collapsedHeight={tasksMessagesTabActive}
-                onReviewClick={openHomePendingReview}
-              />
+              <div className="space-y-3">
+                <AddToFillaDropPanel
+                  collapsedHeight={tasksMessagesTabActive}
+                  onReviewClick={openHomePendingReview}
+                />
+                <EmailThingsToFillaPanel compact={tasksMessagesTabActive} />
+              </div>
             ),
           },
           ...(tasksMessagesTabActive
