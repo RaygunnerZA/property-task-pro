@@ -75,6 +75,8 @@ export function buildFillaIntakeVCard(input: {
   return `${lines.join("\r\n")}\r\n`;
 }
 
+const VCARD_MIME = "text/vcard;charset=utf-8";
+
 export function downloadTextFile(filename: string, contents: string, mime: string) {
   const blob = new Blob([contents], { type: mime });
   const url = URL.createObjectURL(blob);
@@ -85,10 +87,11 @@ export function downloadTextFile(filename: string, contents: string, mime: strin
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  // Safari cancels the download if the blob URL is revoked immediately.
+  window.setTimeout(() => URL.revokeObjectURL(url), 2_000);
 }
 
-/** True when the browser usually hands .vcf off to Contacts instead of forcing Save. */
+/** True when Apple Safari / iOS usually prefers Contacts handoff language in the UI. */
 export function prefersContactsHandoff(): boolean {
   if (typeof navigator === "undefined") return false;
   const ua = navigator.userAgent;
@@ -99,30 +102,15 @@ export function prefersContactsHandoff(): boolean {
 }
 
 /**
- * Open a vCard so macOS/iOS Contacts can import it.
- * Safari/iOS: data URI without `download` → Contacts (no Save dialog).
- * Chrome/Firefox: named .vcf download (browsers block Contacts handoff).
+ * Start a .vcf download / Contacts import.
+ *
+ * Must run synchronously inside a user gesture (Safari blocks downloads after `await`).
+ * Uses a Blob object URL — Safari silently ignores programmatic `data:` navigations.
+ * MIME is `text/vcard` so iOS can hand off to Contacts; desktop Safari saves then opens.
  */
 export function openVCardForImport(filename: string, contents: string): "opened" | "downloaded" {
-  const mime = "text/x-vcard;charset=utf-8";
-
-  if (prefersContactsHandoff()) {
-    const dataUrl = `data:${mime},${encodeURIComponent(contents)}`;
-    // Photo-backed cards are typically ~100KB; stay under Safari data-URI limits.
-    if (dataUrl.length < 1_800_000) {
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.rel = "noopener";
-      // Intentionally no `download` — that forces a Save dialog on Mac.
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      return "opened";
-    }
-  }
-
-  downloadTextFile(filename, contents, mime);
-  return "downloaded";
+  downloadTextFile(filename, contents, VCARD_MIME);
+  return prefersContactsHandoff() ? "opened" : "downloaded";
 }
 
 export async function pngUrlToBase64(url: string): Promise<string> {

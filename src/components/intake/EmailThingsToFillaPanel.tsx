@@ -2,7 +2,7 @@
  * Email things to Filla — personal address + vCard download.
  * Neomorphic companion to Add to Filla (illustration + short copy + two actions).
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Contact, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -44,6 +44,22 @@ export function EmailThingsToFillaPanel({
   const { data: address, isLoading: addressLoading, error } = useMemberIntakeEmail();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  /** Preloaded so Add to Contacts stays inside Safari’s user-gesture window (no await). */
+  const [photoPngBase64, setPhotoPngBase64] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void pngUrlToBase64(vcardPhotoUrl)
+      .then((b64) => {
+        if (!cancelled) setPhotoPngBase64(b64);
+      })
+      .catch(() => {
+        if (!cancelled) setPhotoPngBase64(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const orgMetaQuery = useQuery({
     queryKey: ["member_intake_vcard_meta", orgId],
@@ -87,16 +103,11 @@ export function EmailThingsToFillaPanel({
     window.setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleDownloadVCard = async () => {
+  const handleDownloadVCard = () => {
     if (!address) return;
     setDownloading(true);
     try {
-      let photoPngBase64: string | null = null;
-      try {
-        photoPngBase64 = await pngUrlToBase64(vcardPhotoUrl);
-      } catch {
-        photoPngBase64 = null;
-      }
+      // Stay synchronous: Safari blocks Blob downloads after any await in the click path.
       const vcf = buildFillaIntakeVCard({
         email: address,
         orgName,
@@ -109,7 +120,7 @@ export function EmailThingsToFillaPanel({
       );
       toast.success(
         mode === "opened"
-          ? "Opening Contacts — add Fwd → Filla when prompted"
+          ? "Contact file ready — open Fwd → Filla in Contacts or Downloads"
           : "Contact file ready — open it to add Filla to Contacts"
       );
     } catch (err) {
@@ -193,7 +204,7 @@ export function EmailThingsToFillaPanel({
           size="sm"
           className="shadow-primary-btn border-0 h-8 min-w-0 flex-1 px-2 text-[11px]"
           disabled={!address || busy || downloading}
-          onClick={() => void handleDownloadVCard()}
+          onClick={handleDownloadVCard}
         >
           {downloading ? (
             <Loader2 className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin" />
