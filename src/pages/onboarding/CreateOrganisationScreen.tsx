@@ -13,6 +13,25 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { isPropertyProfileId, orgTypeForPropertyProfile } from "@/lib/propertyProfiles";
 import { toast } from "sonner";
 
+function messageForCreateOrgError(err: unknown): string {
+  const raw =
+    err instanceof Error
+      ? err.message
+      : typeof err === "object" &&
+          err !== null &&
+          "message" in err &&
+          typeof err.message === "string"
+        ? err.message
+        : "";
+  if (/already have a personal organisation/i.test(raw)) {
+    return "You already have a personal organisation. You can only have one.";
+  }
+  if (/already exists/i.test(raw)) {
+    return "An organisation with this name already exists. Choose a different name.";
+  }
+  return "Couldn't create the organisation. Please try again.";
+}
+
 export default function CreateOrganisationScreen() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -189,9 +208,11 @@ export default function CreateOrganisationScreen() {
       setTimeout(() => {
         navigate("/onboarding/add-property", { state: { orgId }, replace: true });
       }, 800);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Create org failed:", err);
-      toast.error(err.message || "Failed to create organisation");
+      const message = messageForCreateOrgError(err);
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
