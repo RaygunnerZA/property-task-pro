@@ -49,11 +49,21 @@ export function ProgressDots({
   };
 
   return (
-    <div className="flex items-center justify-center gap-2 mb-8">
+    <div
+      className="flex items-center justify-center gap-2 mb-8"
+      role="group"
+      aria-label={`Onboarding, step ${current + 1} of ${total}`}
+    >
       {Array.from({ length: total }).map((_, i) => {
         const isClickable = allowNavigation && i <= current;
         const isCurrent = i === current;
         const isCompleted = i < current;
+        const label = steps[i]?.label || `Step ${i + 1}`;
+        const accessibleName = isCurrent
+          ? `Current step: ${label}`
+          : isClickable
+            ? `Go back to ${label}`
+            : `${label}, not started`;
 
         return (
           <button
@@ -61,6 +71,7 @@ export function ProgressDots({
             type="button"
             onClick={() => handleDotClick(i)}
             disabled={!isClickable}
+            aria-current={isCurrent ? "step" : undefined}
             className={`
               h-2 rounded-full transition-all duration-300 ease-out
               ${isClickable ? "cursor-pointer hover:scale-110" : "cursor-default"}
@@ -77,8 +88,8 @@ export function ProgressDots({
                 ? "inset 1px 1px 2px rgba(0,0,0,0.1), inset -1px -1px 2px rgba(255,255,255,0.7)"
                 : "none",
             }}
-            title={steps[i]?.label || `Step ${i + 1}`}
-            aria-label={`Go to ${steps[i]?.label || `step ${i + 1}`}`}
+            title={label}
+            aria-label={accessibleName}
           />
         );
       })}

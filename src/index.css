@@ -321,8 +321,11 @@
     background-size: 100% !important;
   }
 
-  /* Cards use Tailwind bg-card color (supports opacity variants like bg-card/70) */
-  div[class*="bg-card"] {
+  /* Cards use Tailwind bg-card color (supports opacity variants like bg-card/70).
+     Skip elements that already choose fixed, absolute, or sticky — this rule
+     is more specific than those utilities and was pinning the mobile More
+     sheet to the bottom of the document instead of the screen. */
+  div[class*="bg-card"]:not(.fixed):not(.absolute):not(.sticky) {
     position: relative;
   }
 

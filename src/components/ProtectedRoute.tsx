@@ -61,7 +61,9 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
     }).finally(() => setCheckingProperties(false));
   }, [orgId, loading, orgLoading]);
 
-  const showSkeleton = loading || orgLoading || checkingProperties;
+  // Don't blank the app while the property count is in flight. A slow count
+  // was leaving /settings and /properties on "Loading Filla…".
+  const showSkeleton = loading || orgLoading;
 
   if (showSkeleton) {
     return <ProtectedRouteSkeleton />;
@@ -85,6 +87,7 @@ export function ProtectedRoute({ children, requireOrg = true }: ProtectedRoutePr
   if (
     requireOrg &&
     orgId &&
+    !checkingProperties &&
     hasProperties === false &&
     !isInvitedStaff
   ) {

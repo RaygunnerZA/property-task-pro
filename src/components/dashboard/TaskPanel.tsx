@@ -762,7 +762,7 @@ export function TaskPanel({
                   iconOnly ? "w-full" : "w-max max-w-full",
                   iconOnly
                     ? "flex flex-nowrap items-center justify-start gap-x-[7px] overflow-x-auto"
-                    : "flex flex-nowrap items-center justify-start gap-x-1.5 overflow-x-auto max-sm:w-full max-sm:justify-between max-sm:gap-1 max-sm:overflow-x-hidden",
+                    : "flex w-full min-w-0 flex-nowrap items-center justify-start gap-x-1.5 overflow-x-auto",
                   "max-pane:pl-1 max-pane:pr-1",
                   iconOnly && "max-pane:gap-x-1"
                 )}

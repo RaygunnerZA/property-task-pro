@@ -17,7 +17,7 @@ export function OnboardingContainer({ children, className, topRight }: Onboardin
         </div>
       )}
 
-      <div className="w-full max-w-md relative z-10">
+      <div className="relative z-10 w-full min-w-0 max-w-md">
         {children}
       </div>
     </div>

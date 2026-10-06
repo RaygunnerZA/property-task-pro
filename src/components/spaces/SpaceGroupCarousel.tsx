@@ -25,13 +25,13 @@ export function SpaceGroupCarousel({
   useTrackpadHorizontalElementScroll(scrollRef);
 
   return (
-    <div className={className}>
-      <div className="relative">
+    <div className={cn("min-w-0 max-w-full", className)}>
+      <div className="relative min-w-0 max-w-full">
         <div
           ref={scrollRef}
           onScroll={onScroll}
           className={cn(
-            "flex gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl pt-2 pb-2 px-1 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] overscroll-x-contain",
+            "flex w-full min-w-0 max-w-full gap-3 overflow-x-auto rounded-tr-xl rounded-br-xl px-1 pb-2 pr-4 pt-2 scrollbar-hz-teal shadow-[1px_0px_1px_0px_rgba(255,255,255,0.7)] overscroll-x-contain",
             autoHeight ? "h-auto items-start" : "h-[310px]"
           )}
         >

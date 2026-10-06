@@ -168,7 +168,7 @@ export function PropertySpaceGroupCarousel({
   const navigate = useNavigate();
   const { orgId } = useActiveOrg();
   const queryClient = useQueryClient();
-  const { spaces, refresh } = useSpacesWithTypes(propertyId);
+  const { spaces, loading: spacesLoading, error: spacesError, refresh } = useSpacesWithTypes(propertyId);
 
   const [internalView, setInternalView] = useState<SpacesOrganiseView>("category");
   const view = viewProp ?? internalView;
@@ -1518,7 +1518,11 @@ export function PropertySpaceGroupCarousel({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
-          {visibleSpaces.length === 0 ? (
+          {spacesLoading ? (
+            <p className="py-14 text-center text-sm text-muted-foreground">Loading spaces…</p>
+          ) : spacesError ? (
+            <p className="py-14 text-center text-sm text-foreground/90">{spacesError}</p>
+          ) : visibleSpaces.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
               <p className="text-sm text-foreground/90">
                 {selectedGroupId === "all" && selectedFilters.size === 0 && !effectiveSearch
@@ -1537,7 +1541,7 @@ export function PropertySpaceGroupCarousel({
               ) : null}
             </div>
           ) : (
-            <div className="grid grid-cols-5 gap-2 pb-4">
+            <div className="grid grid-cols-2 gap-2 pb-4 sm:grid-cols-3 lg:grid-cols-5">
               {visibleSpaces.map((space) => renderSpaceMiniCard(space, "area"))}
             </div>
           )}
@@ -1592,7 +1596,7 @@ export function PropertySpaceGroupCarousel({
               </div>
             </DroppableZone>
             {areaRooms.length > 0 ? (
-              <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
+              <div className="grid grid-cols-2 gap-2 px-0.5 pt-2 sm:grid-cols-3 lg:grid-cols-5">
                 {areaRooms.map((space) => renderSpaceMiniCard(space, "category"))}
               </div>
             ) : (
@@ -1624,7 +1628,7 @@ export function PropertySpaceGroupCarousel({
             unassigned.filter((s) => !subSpaceIds.has(s.id) && passesControls(s))
           );
           return rows.length > 0 ? (
-            <div className="grid grid-cols-5 gap-2 px-0.5 pt-2">
+            <div className="grid grid-cols-2 gap-2 px-0.5 pt-2 sm:grid-cols-3 lg:grid-cols-5">
               {rows.map((space) => renderSpaceMiniCard(space, "category"))}
             </div>
           ) : (

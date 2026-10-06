@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
+import * as Dialog from "@radix-ui/react-dialog";
 import {
   Calendar,
   BarChart3,
@@ -10,13 +11,6 @@ import {
   Package,
   Users,
 } from "lucide-react";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
 import { cn } from "@/lib/utils";
 import {
   PROPERTY_ASSETS_PATH,
@@ -41,45 +35,62 @@ type MobileMoreMenuDrawerProps = {
 };
 
 /**
- * Mobile “More” slider — secondary destinations not on the bottom bar.
+ * Mobile “More” sheet — secondary destinations not on the bottom bar.
+ * Anchored to the bottom of the visual viewport. Vaul’s bottom-sheet
+ * transform was leaving this panel below the phone while the scrim stayed put.
  */
 export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawerProps) {
   const items = useMemo(() => MORE_MENU_ITEMS, []);
 
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh] border-0 bg-card shadow-e3">
-        <DrawerHeader className="text-left">
-          <DrawerTitle className="font-display text-xl">More</DrawerTitle>
-          <DrawerDescription>Workspace and account</DrawerDescription>
-        </DrawerHeader>
-        <nav className="grid gap-1 px-4 pb-8" aria-label="More destinations">
-          {items.map((item) => {
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                onClick={() => onOpenChange(false)}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-3 no-underline transition-colors",
-                  "text-foreground hover:bg-muted/50"
-                )}
-              >
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted/40 shadow-sm">
-                  <Icon className="h-4 w-4 text-primary" aria-hidden />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">{item.label}</span>
-                  <span className="block text-caption text-muted-foreground">
-                    {item.description}
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="modal-scrim fixed inset-0 z-[110]" />
+        <Dialog.Content
+          className={cn(
+            "fixed inset-x-0 bottom-0 z-[120] flex w-full flex-col overflow-hidden outline-none",
+            "max-h-[min(85dvh,calc(100dvh-env(safe-area-inset-top)-12px))]",
+            "rounded-t-2xl border-0 bg-card shadow-e3",
+            "pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          )}
+        >
+          <div className="shrink-0 px-4 pt-3">
+            <Dialog.Title className="font-display text-xl">More</Dialog.Title>
+            <Dialog.Description className="text-sm text-muted-foreground">
+              Workspace and account
+            </Dialog.Description>
+          </div>
+          <nav
+            className="grid min-h-0 gap-1 overflow-y-auto overscroll-contain px-4 pb-2 pt-3"
+            aria-label="More destinations"
+          >
+            {items.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  onClick={() => onOpenChange(false)}
+                  className={cn(
+                    "flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 no-underline transition-colors",
+                    "text-foreground hover:bg-muted/50"
+                  )}
+                >
+                  <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted/40 shadow-sm">
+                    <Icon className="h-4 w-4 text-primary" aria-hidden />
                   </span>
-                </span>
-              </Link>
-            );
-          })}
-        </nav>
-      </DrawerContent>
-    </Drawer>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{item.label}</span>
+                    <span className="block text-caption text-muted-foreground">
+                      {item.description}
+                    </span>
+                  </span>
+                </Link>
+              );
+            })}
+          </nav>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

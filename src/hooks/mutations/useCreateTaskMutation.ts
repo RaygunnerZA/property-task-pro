@@ -82,6 +82,7 @@ export function useCreateTaskMutation() {
       patchBriefingCache(queryClient, data);
       void queryClient.invalidateQueries({ queryKey: ["tasks"] });
       void queryClient.invalidateQueries({ queryKey: ["tasks-briefing"] });
+      void queryClient.invalidateQueries({ queryKey: ["properties"] });
       if (data.property_id) {
         void queryClient.invalidateQueries({
           queryKey: ["property-timeline", data.org_id, data.property_id],

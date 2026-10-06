@@ -23,7 +23,7 @@ const SLOTS: { id: IntakeChipSlotId; icon: typeof User; title: string }[] = [
   { id: "compliance", icon: Shield, title: "Compliance" },
 ];
 
-const RAIL_ICON_PX = 24;
+const RAIL_ICON_PX = 44;
 const RAIL_FADE_TEXTURE_STYLE: CSSProperties = {
   backgroundImage:
     "linear-gradient(to left, hsl(var(--background) / 0.98) 0%, hsl(var(--background) / 0.88) 48%, transparent 100%), var(--paper-texture)",
@@ -257,14 +257,16 @@ export function IntakeChipRow({
             : { width: RAIL_ICON_PX, minWidth: RAIL_ICON_PX }
         }
         className={cn(
-          "flex h-6 shrink-0 items-center justify-center overflow-hidden rounded-card",
+          "flex shrink-0 items-center justify-center overflow-hidden rounded-card",
+          expandAdd ? "h-11 sm:h-6" : "h-11",
           "transition-[width,min-width,background-color,box-shadow,color,gap] duration-150 ease-out",
           expandAdd
             ? cn(
-                // Rest tight to the glyph; hover grows +12px for the +.
-                "w-5 min-w-5 justify-start gap-0 pl-0.5",
-                "group-hover/slot:w-8 group-hover/slot:min-w-8 group-hover/slot:gap-0.5",
-                isOpen && "w-8 min-w-8 gap-0.5"
+                // Phone: 44px tap target. sm+: rest tight to the glyph; hover grows for the +.
+                "h-11 w-11 min-w-11 justify-center gap-0 p-0",
+                "sm:h-6 sm:w-5 sm:min-w-5 sm:justify-start sm:pl-0.5",
+                "sm:group-hover/slot:w-8 sm:group-hover/slot:min-w-8 sm:group-hover/slot:gap-0.5",
+                isOpen && "gap-0.5 sm:w-8 sm:min-w-8"
               )
             : null,
           isOpen
@@ -272,7 +274,12 @@ export function IntakeChipRow({
             : "bg-transparent text-muted-foreground shadow-none hover:shadow-inset"
         )}
       >
-        <Icon className="h-[14px] w-[14px] shrink-0" />
+        <Icon
+          className={cn(
+            "shrink-0",
+            expandAdd ? "h-5 w-5 sm:h-[14px] sm:w-[14px]" : "h-5 w-5"
+          )}
+        />
         {expandAdd ? (
           <Plus
             className={cn(

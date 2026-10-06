@@ -58,7 +58,7 @@ function SettingsNavLinks({
         horizontal
           ? cn(
               "sticky top-0 z-20 border-b border-border/15 bg-background/80 py-2 backdrop-blur-md",
-              "flex min-w-0 snap-x snap-mandatory flex-row gap-1 overflow-x-auto overscroll-x-contain pb-2 pt-0.5",
+              "flex w-full min-w-0 max-w-full snap-x snap-mandatory flex-row gap-1 overflow-x-auto overscroll-x-contain pb-2 pr-4 pt-0.5",
               "scrollbar-hz-teal touch-pan-x"
             )
           : "flex w-full flex-col gap-1"

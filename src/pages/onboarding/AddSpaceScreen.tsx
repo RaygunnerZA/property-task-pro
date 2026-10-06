@@ -276,12 +276,13 @@ export default function AddSpaceScreen() {
         // Fetch property name/address for breadcrumb
         const { data: propertyData } = await supabase
           .from('properties')
-          .select('address')
+          .select('address, nickname')
           .eq('id', property.id)
           .single();
         
         if (propertyData) {
-          setPropertyName(propertyData.address || "Property");
+          const nickname = propertyData.nickname?.trim();
+          setPropertyName(nickname || propertyData.address || "Property");
         }
       } else {
         setHasProperties(false);
