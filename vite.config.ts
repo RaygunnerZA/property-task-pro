@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    /** Keep hashed files off `/assets`, which is the Assets SPA route. */
+    assetsDir: "static",
     rollupOptions: {
       output: {
         manualChunks(id) {

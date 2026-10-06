@@ -116,7 +116,17 @@ export interface IntakeChipRowChip {
   custom?: ReactNode;
 }
 
-export type IntakeChipRowLayout = "stacked" | "interleaved";
+export type IntakeChipRowLayout = "stacked" | "interleaved" | "rows";
+
+const ROW_LABELS: Record<IntakeChipSlotId, string> = {
+  who: "Assigned to",
+  where: "Location",
+  when: "Due",
+  asset: "Asset",
+  priority: "Priority",
+  category: "Tag",
+  compliance: "Compliance",
+};
 
 export interface IntakeChipRowProps {
   chips: IntakeChipRowChip[];
@@ -375,6 +385,32 @@ export function IntakeChipRow({
       </div>
     </div>
   );
+
+  if (layout === "rows") {
+    return (
+      <div ref={containerRef} className={cn("min-w-0 space-y-1.5", className)}>
+        {SLOTS.map(({ id }) => {
+          const labels = chips.filter((chip) => chip.slot === id).map((chip) => chip.label);
+          const value = labels.length > 0 ? labels.join(", ") : "Not set";
+          return (
+            <button
+              key={id}
+              type="button"
+              disabled={readOnly}
+              onClick={() => onOpenSlot(id)}
+              className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl bg-card/80 px-3 py-2 text-left shadow-sm disabled:opacity-70"
+            >
+              <span className="min-w-0 truncate text-sm normal-case">
+                <span className="text-muted-foreground">{ROW_LABELS[id]}: </span>
+                <span className="font-medium text-foreground">{value}</span>
+              </span>
+            </button>
+          );
+        })}
+        {panelBlock}
+      </div>
+    );
+  }
 
   if (layout === "interleaved") {
     return (

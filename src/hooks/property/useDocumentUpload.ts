@@ -10,12 +10,18 @@ export interface AIDocAnalysisResult {
   /** Phase 5: No auto-linking. Suggestions stored in metadata only. */
 }
 
+export type DocumentUploadHints = {
+  document_type?: string | null;
+  expiry_date?: string | null;
+  location?: string | null;
+};
+
 export function useDocumentUpload(propertyId: string) {
   const { orgId } = useActiveOrg();
   const [uploading, setUploading] = useState(false);
   const [previews, setPreviews] = useState<{ file: File; url: string }[]>([]);
 
-  const upload = async (files: File[]) => {
+  const upload = async (files: File[], hints?: DocumentUploadHints) => {
     if (!orgId || !propertyId) return [];
 
     setUploading(true);
@@ -54,11 +60,11 @@ export function useDocumentUpload(propertyId: string) {
             metadata: {
               title,
               category: null,
-              document_type: null,
-              expiry_date: null,
+              document_type: hints?.document_type?.trim() || null,
+              expiry_date: hints?.expiry_date?.trim() || null,
               renewal_frequency: null,
               status: null,
-              notes: null,
+              notes: hints?.location?.trim() || null,
             },
           })
           .select("id")

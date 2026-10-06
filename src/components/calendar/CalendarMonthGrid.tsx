@@ -9,6 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Plus, Repeat } from "lucide-react";
+import { useIsBelowMd } from "@/hooks/use-mobile";
 import {
   addDays,
   endOfMonth,
@@ -690,6 +691,8 @@ type CalendarDayCellProps = {
   afternoonOnly?: boolean;
   /** Narrow cells: flush task cards to the cell edges. */
   flushEdges?: boolean;
+  /** Phone month cells: coloured dot and count. Titles live in the day sheet. */
+  phoneSummary?: boolean;
 };
 
 function CalendarDayCell({
@@ -707,6 +710,7 @@ function CalendarDayCell({
   compact = false,
   afternoonOnly = false,
   flushEdges = false,
+  phoneSummary = false,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
@@ -781,7 +785,7 @@ function CalendarDayCell({
   }, [date, onCreateForDate]);
 
   const fillRow = !compact || isDragging;
-  const fullCellCreate = Boolean(onCreateForDate) && !occupied;
+  const fullCellCreate = Boolean(onCreateForDate) && !occupied && !phoneSummary;
 
   const dateNumberClassName = cn(
     "relative inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
@@ -861,6 +865,22 @@ function CalendarDayCell({
           />
         </button>
       ) : null}
+      {phoneSummary ? (
+        placements.length > 0 ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDateSelect?.(date);
+            }}
+            className="mt-0.5 flex items-center justify-center gap-1"
+            aria-label={`${placements.length} on ${dateLabel}`}
+          >
+            <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
+            <span className="font-mono text-2xs tabular-nums text-foreground">{placements.length}</span>
+          </button>
+        ) : null
+      ) : (
       <div
         className={cn(
           "relative flex flex-col",
@@ -932,6 +952,7 @@ function CalendarDayCell({
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -951,6 +972,7 @@ export function CalendarMonthGrid({
   selectedTaskId,
   propertyMap,
 }: CalendarMonthGridProps) {
+  const phoneSummary = useIsBelowMd();
   const [activePlacement, setActivePlacement] = useState<CalendarTaskPlacement | null>(null);
   /** Lock overlay width to the source chip so it doesn't jump size under the cursor. */
   const [activeChipWidth, setActiveChipWidth] = useState<number | null>(null);
@@ -1139,6 +1161,7 @@ export function CalendarMonthGrid({
                 compact={compact}
                 afternoonOnly={compact && weekAfternoonOnly[weekIndex]}
                 flushEdges={flushEdges}
+                phoneSummary={phoneSummary}
               />
             );
           })}

@@ -11,7 +11,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import { DocumentDetailDrawer } from "@/components/properties/DocumentDetailDrawer";
-import { useDocumentUpload } from "@/hooks/property/useDocumentUpload";
+import { useDocumentUpload, type DocumentUploadHints } from "@/hooks/property/useDocumentUpload";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import { useAttachmentSpaceLinks } from "@/hooks/property/useAttachmentSpaceLinks";
 import { ComplianceDetailDrawer } from "@/components/compliance/ComplianceDetailDrawer";
 import type { RecordsView } from "@/lib/propertyRoutes";
@@ -104,6 +114,11 @@ export function PropertyRecordsTab({
   );
 
   const recordsUploadInputRef = useRef<HTMLInputElement | null>(null);
+  const addRecordHintsRef = useRef<DocumentUploadHints>({});
+  const [addRecordOpen, setAddRecordOpen] = useState(false);
+  const [recordType, setRecordType] = useState("");
+  const [recordLocation, setRecordLocation] = useState("");
+  const [recordExpiry, setRecordExpiry] = useState("");
   const lastRailPickerOpenMs = useRef(0);
 
   const scopedPropertyId =
@@ -187,7 +202,7 @@ export function PropertyRecordsTab({
     }
     const t = window.setTimeout(() => {
       if (myNonce !== recordsUploadDeepLinkNonce) return;
-      recordsUploadInputRef.current?.click();
+      setAddRecordOpen(true);
     }, 0);
     return () => window.clearTimeout(t);
   }, [searchParams, setSearchParams, scopedPropertyId, toast]);
@@ -378,7 +393,7 @@ export function PropertyRecordsTab({
     async (fileList: FileList | null) => {
       if (!fileList?.length || !scopedPropertyId) return;
       try {
-        const created = await uploadPropertyDocuments(Array.from(fileList));
+        const created = await uploadPropertyDocuments(Array.from(fileList), addRecordHintsRef.current);
         toast({
           title: "Upload complete",
           description: `${created.length} document(s) uploaded · set a type so they don't sit in “Needs info”`,
@@ -454,7 +469,13 @@ export function PropertyRecordsTab({
             propertyId={scopedPropertyId}
             complianceCreateNonce={complianceCreateNonce}
             onOpenDocument={openDocument}
-            onAddRecord={openRecordsFilePicker}
+            onAddRecord={() => {
+              if (!scopedPropertyId) {
+                openRecordsFilePicker();
+                return;
+              }
+              setAddRecordOpen(true);
+            }}
             onFileToSpace={handleFileToSpace}
             onRemoveSpaceLink={handleRemoveSpaceLink}
             onSetSpaceLinks={handleSetSpaceLinks}
@@ -522,6 +543,61 @@ export function PropertyRecordsTab({
         onClose={() => openDocument(null)}
         onRefresh={handleRefresh}
       />
+
+      <Drawer open={addRecordOpen} onOpenChange={setAddRecordOpen}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>Add record</DrawerTitle>
+            <DrawerDescription>
+              Set the type, where it belongs, and the expiry, then choose the file.
+            </DrawerDescription>
+          </DrawerHeader>
+          <form
+            className="space-y-3 px-4 pb-6"
+            onSubmit={(e) => {
+              e.preventDefault();
+              addRecordHintsRef.current = {
+                document_type: recordType,
+                location: recordLocation,
+                expiry_date: recordExpiry,
+              };
+              setAddRecordOpen(false);
+              openRecordsFilePicker();
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="record-type">Type</Label>
+              <Input
+                id="record-type"
+                value={recordType}
+                onChange={(e) => setRecordType(e.target.value)}
+                placeholder="EPC, invoice, photo"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="record-location">Location</Label>
+              <Input
+                id="record-location"
+                value={recordLocation}
+                onChange={(e) => setRecordLocation(e.target.value)}
+                placeholder="Kitchen, boiler cupboard"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="record-expiry">Expiry</Label>
+              <Input
+                id="record-expiry"
+                type="date"
+                value={recordExpiry}
+                onChange={(e) => setRecordExpiry(e.target.value)}
+              />
+            </div>
+            <Button type="submit" className="min-h-11 w-full">
+              Choose file
+            </Button>
+          </form>
+        </DrawerContent>
+      </Drawer>
 
       <input
         ref={recordsUploadInputRef}

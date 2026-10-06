@@ -1,6 +1,10 @@
 import { useMemo, useState } from "react";
 import { Navigate, useSearchParams, Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { UserPlus } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import type { OrgMember } from "@/hooks/useOrgMembers";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { GlobalAppHeader } from "@/components/layout/GlobalAppHeader";
 import {
@@ -30,6 +34,78 @@ const PEOPLE_DESCRIPTION = "Staff, contractors, and contacts for this property."
 
 type PeopleHealthFilter = "all" | "scope" | "leads";
 
+function PersonDetailSheet({
+  member,
+  onClose,
+}: {
+  member: OrgMember | null;
+  onClose: () => void;
+}) {
+  const { orgId } = useActiveOrg();
+  const { data: tasks = [] } = useQuery({
+    queryKey: ["person-assigned-tasks", orgId, member?.user_id],
+    enabled: Boolean(member && orgId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, title, status, due_at")
+        .eq("org_id", orgId!)
+        .eq("assigned_user_id", member!.user_id)
+        .limit(12);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  return (
+    <Sheet open={Boolean(member)} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <SheetContent side="right" className="sm:max-w-md">
+        {member ? (
+          <>
+            <SheetHeader>
+              <SheetTitle>{member.display_name}</SheetTitle>
+            </SheetHeader>
+            <div className="mt-6 space-y-4 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Role</p>
+                <p className="mt-1 font-medium">
+                  {member.is_primary_owner ? "Primary Owner" : roleLabel(member.role)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Contact</p>
+                <p className="mt-1 [overflow-wrap:anywhere]">
+                  {member.email || "No email on file"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Assigned tasks</p>
+                {tasks.length === 0 ? (
+                  <p className="mt-1 text-muted-foreground">No tasks assigned.</p>
+                ) : (
+                  <ul className="mt-2 space-y-2">
+                    {tasks.map((task) => (
+                      <li key={task.id}>
+                        <Link to={`/task/${task.id}`} className="font-medium text-foreground hover:underline">
+                          {task.title || "Untitled"}
+                        </Link>
+                        <p className="text-xs text-muted-foreground">
+                          {task.status}
+                          {task.due_at ? ` · ${task.due_at.slice(0, 10)}` : ""}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
+      </SheetContent>
+    </Sheet>
+  );
+}
+
 function roleLabel(role: string): string {
   const r = role.toLowerCase();
   if (r === "owner") return "Owner";
@@ -55,6 +131,7 @@ function PropertyPeoplePageInner() {
   const { members, loading: membersLoading, error } = useOrgMembers();
   const { searchQuery } = useWorkbenchControls();
   const [peopleFilter, setPeopleFilter] = useState<PeopleHealthFilter>("scope");
+  const [selectedMember, setSelectedMember] = useState<OrgMember | null>(null);
 
   const scopedProperty = useMemo(
     () => properties.find((p) => p.id === propertyFromUrl),
@@ -186,12 +263,14 @@ function PropertyPeoplePageInner() {
         ) : (
           <ul className="mt-3 space-y-2">
             {displayedMembers.map((member) => (
-              <li
-                key={member.id}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl bg-card/80 px-3 py-2.5 shadow-e1"
-                )}
-              >
+              <li key={member.id}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMember(member)}
+                  className={cn(
+                    "flex w-full min-h-11 items-center gap-3 rounded-xl bg-card/80 px-3 py-2.5 text-left shadow-e1"
+                  )}
+                >
                 <Avatar className="h-10 w-10 shrink-0">
                   <AvatarImage src={member.avatar_url || undefined} />
                   <AvatarFallback className="bg-primary/10 text-primary text-sm font-semibold">
@@ -202,13 +281,14 @@ function PropertyPeoplePageInner() {
                   <p className="font-medium text-foreground leading-tight truncate">
                     {member.display_name}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
                     {member.email || `${member.user_id.slice(0, 8)}…`}
                   </p>
                 </div>
                 <Badge variant="secondary" className="shrink-0 text-2xs">
                   {member.is_primary_owner ? "Primary Owner" : roleLabel(member.role)}
                 </Badge>
+                </button>
               </li>
             ))}
           </ul>
@@ -249,6 +329,7 @@ function PropertyPeoplePageInner() {
     <div className="dashboard-workbench min-h-screen w-full max-w-full overflow-x-hidden bg-background">
       {header}
       <div className="w-full pt-[20px]">{workspace}</div>
+      <PersonDetailSheet member={selectedMember} onClose={() => setSelectedMember(null)} />
     </div>
   );
 }

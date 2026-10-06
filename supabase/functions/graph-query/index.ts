@@ -4,6 +4,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
+import { isMissingRelation, requireOrgMember } from "../_shared/requireOrgMember.ts";
 
 interface GraphQueryInput {
   org_id: string;
@@ -50,6 +51,9 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: "org_id and start { type, id } required" }, 400);
   }
 
+  const denied = await requireOrgMember(req, orgId);
+  if (denied) return denied;
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -62,7 +66,12 @@ Deno.serve(async (req) => {
       .select("source_type, source_id, target_type, target_id, relationship, weight, metadata")
       .eq("org_id", orgId);
 
-    if (edgesErr) throw edgesErr;
+    if (edgesErr) {
+      if (isMissingRelation(edgesErr, "property_graph_edges")) {
+        return jsonResponse({ ok: true, nodes: [], edges: [] });
+      }
+      throw edgesErr;
+    }
 
     const edgeList = (edges ?? []) as Array<{
       source_type: string;

@@ -92,6 +92,7 @@ import {
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
 import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
+import { useIsBelowMd } from "@/hooks/use-mobile";
 import { TaskDetailHeroMeta } from "@/components/tasks/detail/TaskDetailHeroMeta";
 import {
   TaskDetailChecklistTab,
@@ -200,6 +201,8 @@ export function TaskDetailPanel({
   const [title, setTitle] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [status, setStatus] = useState<string>("open");
+  const statusCommitRef = useRef<string | null>(null);
+  const labelledAttributes = useIsBelowMd();
   const [priority, setPriority] = useState<string>("medium");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -313,7 +316,12 @@ export function TaskDetailPanel({
     if (task) {
       setTitle((task as any).title || "");
       setDescriptionDraft(String((task as any).description ?? ""));
-      setStatus((task as any).status || "open");
+      setStatus((current) => {
+        const incoming = String((task as any).status || "open");
+        if (statusCommitRef.current && statusCommitRef.current !== incoming) return current;
+        statusCommitRef.current = null;
+        return incoming;
+      });
       setPriority(toTaskPriorityDb((task as any).priority));
       setSelectedUserId(task.assigned_user_id || undefined);
       const teamsArray = Array.isArray(task.teams) ? task.teams : (typeof task.teams === 'string' ? JSON.parse(task.teams) : []);
@@ -834,10 +842,9 @@ export function TaskDetailPanel({
     }
     setIsUpdating(true);
     const prev = status;
+    statusCommitRef.current = next;
     setStatus(next);
-    if (next === "completed" || next === "archived") {
-      patchTasksCacheStatus(queryClient, taskId, next);
-    }
+    patchTasksCacheStatus(queryClient, taskId, next);
     const orgId = (task as any)?.org_id;
     const propId = (task as any)?.property_id ?? undefined;
     try {
@@ -895,6 +902,7 @@ export function TaskDetailPanel({
         onClose();
       }
     } catch (err: any) {
+      statusCommitRef.current = null;
       setStatus(prev);
       clearTaskCompletionMotion(taskId);
       await queryClient.invalidateQueries({ queryKey: ["tasks"] });
@@ -1404,11 +1412,11 @@ export function TaskDetailPanel({
                 onActivate={() => setOpenChipSlot("status")}
                 factChips={statusFactChips}
                 hoverChips={[
-                  { id: "open", label: "NOT STARTED", onPress: () => setStatus("open") },
-                  { id: "in_progress", label: "IN PROGRESS", onPress: () => setStatus("in_progress") },
-                  { id: "waiting_review", label: "ON HOLD", onPress: () => setStatus("waiting_review") },
-                  { id: "completed", label: "COMPLETED", onPress: () => setStatus("completed") },
-                  { id: "archived", label: "CANCELLED", onPress: () => setStatus("archived") },
+                  { id: "open", label: "NOT STARTED", onPress: () => void handleStatusChange("open") },
+                  { id: "in_progress", label: "IN PROGRESS", onPress: () => void handleStatusChange("in_progress") },
+                  { id: "waiting_review", label: "ON HOLD", onPress: () => void handleStatusChange("waiting_review") },
+                  { id: "completed", label: "COMPLETED", onPress: () => void handleStatusChange("completed") },
+                  { id: "archived", label: "CANCELLED", onPress: () => void handleStatusChange("archived") },
                 ]}
               />
             ),
@@ -2020,7 +2028,7 @@ export function TaskDetailPanel({
             imageOpen={showAnnotationEditor}
             metaRow={
               <IntakeChipRow
-                layout="interleaved"
+                layout={labelledAttributes ? "rows" : "interleaved"}
                 chips={taskDetailChips}
                 onOpenSlot={setOpenChipSlot}
                 openSlot={openChipSlot}
@@ -2048,8 +2056,8 @@ export function TaskDetailPanel({
                 onToggleCollapsed={() => setChecklistCollapsed((v) => !v)}
               />
             ),
-            // Empty: hide. Editing: checklist lives in the description composer (avoid duplicate).
-            hidden: checklistItemCount === 0 || taskEditOpen,
+            // Editing: checklist lives in the description composer (avoid duplicate).
+            hidden: taskEditOpen,
           },
         ]}
       />
@@ -2151,7 +2159,7 @@ export function TaskDetailPanel({
           <button
             type="button"
             onClick={() => setActivityExpanded((open) => !open)}
-            className="shrink-0 self-end pt-px text-caption font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+            className="flex min-h-11 w-full items-center justify-center rounded-xl bg-card/80 text-sm font-medium text-foreground shadow-sm"
             aria-expanded={activityExpanded}
             aria-controls="task-detail-activity-panel"
           >

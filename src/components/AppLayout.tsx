@@ -97,7 +97,7 @@ function AppLayoutShell({ children }: AppLayoutProps) {
 
           <main 
             ref={mainRef}
-            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-20 md:pb-0 [overflow-anchor:none]"
+            className="flex-1 overflow-auto overflow-x-hidden relative bg-background w-full max-w-full pb-[var(--mobile-content-inset)] md:pb-0 [overflow-anchor:none]"
             style={{
               backgroundImage: `url("/textures/white-texture2.jpg")`,
               backgroundRepeat: 'repeat',

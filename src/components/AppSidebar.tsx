@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Package,
   FileText,
@@ -12,7 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { FillaIcon } from "@/components/filla/FillaIcon";
-import { useLocation, useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useLocation, useSearchParams, Link } from "react-router-dom";
 import {
   MAIN_NAV_ENTRIES,
   isMainNavActive,
@@ -22,6 +22,7 @@ import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { useCanAccessDevTools } from "@/hooks/useCanAccessDevTools";
 import { DevToolsDropdown } from "@/components/dev/DevToolsDropdown";
+import { CreateActionDrawer } from "@/components/navigation/CreateActionDrawer";
 import fillaLogo from "@/assets/filla-logo.svg";
 import fillaLogoTeal2 from "@/assets/filla-logo-teal-2.svg";
 import fillaDarkLogo from "@/assets/filla-dark.png";
@@ -111,7 +112,7 @@ export function AppSidebar() {
   const { open, isMobile } = useSidebar();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
+  const [createOpen, setCreateOpen] = useState(false);
   const currentPath = location.pathname;
   const { openAssistant } = useAssistantContext();
   const { data: properties = [] } = usePropertiesQuery();
@@ -155,28 +156,6 @@ export function AppSidebar() {
     if (entityContext.type === "asset") return assetContextItems;
     return [];
   }, [entityContext]);
-
-  const handleCreateNew = () => {
-    const params = new URLSearchParams(searchParams);
-    params.set("add", "true");
-    const path = currentPath === "" ? "/" : currentPath;
-    const workbenchPaths = new Set([
-      "/",
-      "/home",
-      "/tasks",
-      "/calendar",
-      "/records",
-      "/agenda",
-    ]);
-    if (workbenchPaths.has(path)) {
-      navigate(`${path}?${params.toString()}`);
-      return;
-    }
-    const property = searchParams.get("property");
-    const q = new URLSearchParams({ add: "true" });
-    if (property) q.set("property", property);
-    navigate(`/tasks?${q.toString()}`);
-  };
 
   const navLinkClass = (active: boolean) =>
     cn(
@@ -339,6 +318,7 @@ export function AppSidebar() {
   };
 
   return (
+    <>
     <Sidebar
       collapsible={isMobile ? "offcanvas" : "icon"}
       className={cn("relative overflow-hidden", !isMobile && "bg-background")}
@@ -472,7 +452,7 @@ export function AppSidebar() {
                 <SidebarMenuButton asChild className="!bg-transparent hover:!bg-transparent">
                   <button
                     type="button"
-                    onClick={handleCreateNew}
+                    onClick={() => setCreateOpen(true)}
                     className={cn(
                       navLinkClass(false),
                       "w-full",
@@ -543,5 +523,7 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
+    <CreateActionDrawer open={createOpen} onOpenChange={setCreateOpen} />
+    </>
   );
 }

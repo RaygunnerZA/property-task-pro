@@ -264,22 +264,21 @@ function PropertyScopeFilterBarPrimary({
           className={cn(
             "overflow-hidden transition-[max-height,opacity,margin-bottom] duration-300 ease-in-out",
             isPropertiesHeadingExpanded
-              ? "max-h-[52px] opacity-100 mb-1"
+              ? "max-h-28 opacity-100 mb-1"
               : "max-h-0 opacity-0 mb-0 pointer-events-none"
           )}
         >
-          <div className="flex items-center justify-between px-1">
-            <PanelSectionTitle as="h2" className="mb-0 text-lg">
+          <div className="flex flex-col items-start gap-1 px-1 sm:flex-row sm:items-center sm:justify-between">
+            <PanelSectionTitle as="h2" className="mb-0 shrink-0 whitespace-nowrap text-lg">
               {properties.length > 1 && isAllActive ? "All Properties" : "Properties"}
             </PanelSectionTitle>
             <button
               type="button"
               onClick={() => setShowAddProperty(true)}
-              className="flex items-center justify-center rounded-sharp transition-all duration-200 hover:bg-muted/30"
-              style={{ width: "20px", height: "35px" }}
-              aria-label="Add property"
+              className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-1 text-sm font-medium text-foreground"
             >
-              <Plus className="h-4 w-[18px] text-muted-foreground" style={{ width: "18px", height: "16px" }} />
+              <Plus className="h-4 w-4 text-muted-foreground" />
+              New Property
             </button>
           </div>
         </div>

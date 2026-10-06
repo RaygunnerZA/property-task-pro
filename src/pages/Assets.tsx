@@ -10,15 +10,10 @@ import { AssetCard } from "@/components/assets/AssetCard";
 import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
 import type { AssetMetricKey } from "@/components/assets/AssetsSummaryRow";
 import { AssetLinkedTasksList } from "@/components/assets/AssetLinkedTasksList";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Package, Search } from "lucide-react";
+import { Package, Search, SlidersHorizontal } from "lucide-react";
+import { OrganiseViewTabs } from "@/components/organise/OrganiseViewTabs";
+import { FilterDimensionSheet } from "@/components/ui/filters/FilterDimensionSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
@@ -29,7 +24,6 @@ import { NeomorphicInput } from "@/components/design-system/NeomorphicInput";
 import { FrameworkEmptyState } from "@/components/property-framework";
 import { LoadingState } from "@/components/design-system/LoadingState";
 import { ErrorState } from "@/components/design-system/ErrorState";
-import { FilterChip } from "@/components/chips/filter";
 import { PropertyWorkspaceLayout, WorkspaceHealthGrid, WorkspaceSurfaceCard } from "@/components/property-workspace";
 import { PropertyRecentAssetsList } from "@/components/properties/PropertyRecentAssetsList";
 import {
@@ -91,6 +85,260 @@ function useWorkspaceWide() {
   return wide;
 }
 
+const PORTFOLIO_VIEW_TABS = [
+  {
+    id: "attention" as const,
+    label: "Attention",
+    subtitle: "Assets with open work or poor condition.",
+  },
+  {
+    id: "spaces" as const,
+    label: "Spaces",
+    subtitle: "Assets grouped by the space they live in.",
+  },
+  {
+    id: "category" as const,
+    label: "Category",
+    subtitle: "Assets grouped by category.",
+  },
+];
+
+function PortfolioAssetsOrganise({
+  assets,
+  hasAnyAssets,
+  view,
+  onViewChange,
+  pageSearch,
+  onPageSearchChange,
+  sort,
+  onSortChange,
+  filterOpen,
+  onFilterOpenChange,
+  statusFilters,
+  onToggleStatus,
+  complianceOnly,
+  onComplianceChange,
+  properties,
+  filterPropertyId,
+  onPropertyChange,
+  spaces,
+  assetSpaces,
+  filterSpaceId,
+  onSpaceChange,
+  showAdd,
+  onAdd,
+  propertyMap,
+  propertyObjMap,
+  imageMap,
+  onOpenAsset,
+}: {
+  assets: AssetViewRow[];
+  hasAnyAssets: boolean;
+  view: AssetsOrganiseView;
+  onViewChange: (view: AssetsOrganiseView) => void;
+  pageSearch: string;
+  onPageSearchChange: (value: string) => void;
+  sort: "title" | "recent" | "attention";
+  onSortChange: (sort: "title" | "recent" | "attention") => void;
+  filterOpen: boolean;
+  onFilterOpenChange: (open: boolean) => void;
+  statusFilters: string[];
+  onToggleStatus: (value: string) => void;
+  complianceOnly: boolean;
+  onComplianceChange: (value: boolean) => void;
+  properties: Array<{ id: string; address?: string | null; nickname?: string | null }>;
+  filterPropertyId: string;
+  onPropertyChange: (id: string) => void;
+  spaces: Array<{ id: string; name: string }>;
+  assetSpaces: Array<{ id: string; name: string }>;
+  filterSpaceId: string;
+  onSpaceChange: (id: string) => void;
+  showAdd: boolean;
+  onAdd: () => void;
+  propertyMap: { get(id: string): string | null | undefined };
+  propertyObjMap: { get(id: string): unknown };
+  imageMap: { get(id: string): string | undefined };
+  onOpenAsset: (id: string) => void;
+}) {
+  const spaceOptions = (filterPropertyId ? spaces : assetSpaces).filter(
+    (space, index, list) => list.findIndex((item) => item.id === space.id) === index
+  );
+  const selectedIds = new Set<string>([
+    ...statusFilters.map((status) => `asset-status-${status}`),
+    ...(complianceOnly ? ["asset-compliance"] : []),
+    ...(filterPropertyId ? [`asset-property-${filterPropertyId}`] : []),
+    ...(filterSpaceId ? [`asset-space-${filterSpaceId}`] : []),
+  ]);
+  const activeFilterCount = selectedIds.size;
+
+  const groups = new Map<string, AssetViewRow[]>();
+  if (view !== "attention") {
+    for (const asset of assets) {
+      const key =
+        view === "spaces"
+          ? asset.space_name || "No space"
+          : asset.category || asset.asset_type || "Uncategorised";
+      const bucket = groups.get(key) ?? [];
+      bucket.push(asset);
+      groups.set(key, bucket);
+    }
+  }
+
+  const renderCard = (asset: AssetViewRow) =>
+    asset.id ? (
+      <AssetCard
+        key={asset.id}
+        asset={asset}
+        propertyName={propertyMap.get(asset.property_id ?? "") ?? undefined}
+        property={asset.property_id ? (propertyObjMap.get(asset.property_id) as never) : null}
+        spaceName={asset.space_name ?? undefined}
+        imageUrl={imageMap.get(asset.id) ?? undefined}
+        onClick={() => onOpenAsset(asset.id!)}
+      />
+    ) : null;
+
+  return (
+    <div className="space-y-4">
+      {showAdd ? (
+        <button
+          type="button"
+          onClick={onAdd}
+          className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary/15 text-sm font-medium text-foreground shadow-sm"
+        >
+          Add asset
+        </button>
+      ) : null}
+      <OrganiseViewTabs
+        tabs={PORTFOLIO_VIEW_TABS}
+        active={view}
+        onChange={onViewChange}
+        ariaLabel="Asset organisation"
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onFilterOpenChange(true)}
+          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-card px-4 text-sm font-medium text-foreground shadow-sm"
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          Filter
+          {activeFilterCount > 0 ? (
+            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/25 px-1 text-xs tabular-nums">
+              {activeFilterCount}
+            </span>
+          ) : null}
+        </button>
+        <label className="inline-flex min-h-11 items-center gap-2 rounded-full bg-card px-3 text-sm shadow-sm">
+          <span className="text-muted-foreground">Sort</span>
+          <select
+            value={sort}
+            onChange={(event) => onSortChange(event.target.value as "title" | "recent" | "attention")}
+            className="bg-transparent text-sm text-foreground outline-none"
+            aria-label="Sort assets"
+          >
+            <option value="title">A–Z</option>
+            <option value="recent">Updated</option>
+            <option value="attention">Attention</option>
+          </select>
+        </label>
+      </div>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <input
+          value={pageSearch}
+          onChange={(event) => onPageSearchChange(event.target.value)}
+          placeholder="Search assets"
+          aria-label="Search assets"
+          className="h-11 w-full rounded-xl bg-card pl-9 pr-3 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      <FilterDimensionSheet
+        open={filterOpen}
+        onOpenChange={onFilterOpenChange}
+        title="Asset filters"
+        selectedIds={selectedIds}
+        onToggle={(id, selected) => {
+          if (id.startsWith("asset-status-")) {
+            const value = id.slice("asset-status-".length);
+            if (selected !== statusFilters.includes(value)) onToggleStatus(value);
+            return;
+          }
+          if (id === "asset-compliance") {
+            onComplianceChange(selected);
+            return;
+          }
+          if (id.startsWith("asset-property-")) {
+            onPropertyChange(selected ? id.slice("asset-property-".length) : "");
+            return;
+          }
+          if (id.startsWith("asset-space-")) {
+            onSpaceChange(selected ? id.slice("asset-space-".length) : "");
+          }
+        }}
+        groups={[
+          {
+            id: "status",
+            label: "Status",
+            options: STATUS_FILTERS.map((status) => ({
+              id: `asset-status-${status.value}`,
+              label: status.label,
+            })),
+          },
+          {
+            id: "compliance",
+            label: "Compliance",
+            options: [{ id: "asset-compliance", label: "Compliance issues" }],
+          },
+          {
+            id: "property",
+            label: "Property",
+            options: properties.map((property) => ({
+              id: `asset-property-${property.id}`,
+              label: property.nickname || property.address || "Property",
+            })),
+          },
+          {
+            id: "space",
+            label: "Space",
+            options: spaceOptions.map((space) => ({
+              id: `asset-space-${space.id}`,
+              label: space.name,
+            })),
+          },
+        ]}
+      />
+      {!hasAnyAssets ? (
+        <FrameworkEmptyState
+          icon={Package}
+          title="No assets yet"
+          description="Add your first asset to get started"
+          action={{ label: "Add Asset", onClick: onAdd }}
+        />
+      ) : assets.length === 0 ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">No assets match your filters.</p>
+      ) : view === "attention" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {assets.map(renderCard)}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {Array.from(groups.entries()).map(([label, groupAssets]) => (
+            <section key={label} className="rounded-xl bg-card p-3 shadow-sm">
+              <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+              <p className="mb-3 text-xs text-muted-foreground">
+                {groupAssets.length} asset{groupAssets.length === 1 ? "" : "s"}
+              </p>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {groupAssets.map(renderCard)}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const Assets = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -111,6 +359,9 @@ const Assets = () => {
   const [attentionIssuesOnly, setAttentionIssuesOnly] = useState(false);
   const [selectedAssetId, setSelectedAssetId] = useState<string | null>(null);
   const [organiseView, setOrganiseView] = useState<AssetsOrganiseView>("category");
+  const [pageSearch, setPageSearch] = useState("");
+  const [portfolioSort, setPortfolioSort] = useState<"title" | "recent" | "attention">("title");
+  const [assetFilterOpen, setAssetFilterOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isWide = useWorkspaceWide();
@@ -380,7 +631,7 @@ const Assets = () => {
   // Client-side filtering
   const filteredAssets = useMemo(() => {
     let list = assets as AssetViewRow[];
-    const q = searchQuery.trim().toLowerCase();
+    const q = `${searchQuery} ${pageSearch}`.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (a) =>
@@ -420,6 +671,7 @@ const Assets = () => {
   }, [
     assets,
     searchQuery,
+    pageSearch,
     filterPropertyId,
     filterSpaceId,
     statusFilters,
@@ -427,6 +679,27 @@ const Assets = () => {
     needsInspectionOnly,
     attentionIssuesOnly,
   ]);
+
+  const organisedAssets = useMemo(() => {
+    let list = [...filteredAssets];
+    if (!isPropertyScoped && organiseView === "attention") {
+      list = list.filter(
+        (asset) => (asset.condition_score ?? 100) < 60 || (asset.open_tasks_count ?? 0) > 0
+      );
+    }
+    list.sort((a, b) => {
+      if (portfolioSort === "recent") {
+        return (b.updated_at ?? "").localeCompare(a.updated_at ?? "");
+      }
+      if (portfolioSort === "attention") {
+        const rank = (asset: AssetViewRow) =>
+          (asset.condition_score ?? 100) - (asset.open_tasks_count ?? 0) * 10;
+        return rank(a) - rank(b);
+      }
+      return (a.name ?? "").localeCompare(b.name ?? "");
+    });
+    return list;
+  }, [filteredAssets, isPropertyScoped, organiseView, portfolioSort]);
 
   const contextAssets = useMemo(() => {
     const list = assets as AssetViewRow[];
@@ -492,7 +765,6 @@ const Assets = () => {
     return map;
   }, [properties, assets]);
   const propertyObjMap = useMemo(() => new Map(properties.map((p: any) => [p.id, p])), [properties]);
-  const spaceMap = new Map(filterSpaces.map((s) => [s.id, s.name]));
 
   const filteredAssetIds = useMemo(
     () => filteredAssets.filter((a) => a.id).map((a) => a.id!),
@@ -715,6 +987,15 @@ const Assets = () => {
           workColumn={
             isPropertyScoped && effectiveScopeId ? (
               <div className="space-y-5">
+                {!isWide ? (
+                  <button
+                    type="button"
+                    onClick={openAddFlow}
+                    className="flex min-h-11 w-full items-center justify-center rounded-xl bg-primary/15 text-sm font-medium text-foreground shadow-sm"
+                  >
+                    Add asset
+                  </button>
+                ) : null}
                 <PropertyAssetGroupCarousel
                   propertyId={effectiveScopeId}
                   assetFilter={searchQuery}
@@ -724,93 +1005,40 @@ const Assets = () => {
                 />
               </div>
             ) : (
-              <>
-                <div className="space-y-4 mb-6">
-                  <div className="flex flex-wrap gap-3 items-center">
-                    <Select
-                      value={filterPropertyId || "all"}
-                      onValueChange={(v) => {
-                        setFilterPropertyId(v === "all" ? "" : v);
-                        setFilterSpaceId("");
-                      }}
-                    >
-                      <SelectTrigger className="input-neomorphic w-[180px]">
-                        <SelectValue placeholder="Property" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All properties</SelectItem>
-                        {properties.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.address}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {filterPropertyId && (
-                      <Select
-                        value={filterSpaceId || "all"}
-                        onValueChange={(v) => setFilterSpaceId(v === "all" ? "" : v)}
-                      >
-                        <SelectTrigger className="input-neomorphic w-[160px]">
-                          <SelectValue placeholder="Space" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All spaces</SelectItem>
-                          {filterSpaces.map((s) => (
-                            <SelectItem key={s.id} value={s.id}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    {STATUS_FILTERS.map((s) => (
-                      <FilterChip
-                        key={s.value}
-                        label={s.label}
-                        selected={statusFilters.includes(s.value)}
-                        onSelect={() => toggleStatusFilter(s.value)}
-                      />
-                    ))}
-                    <FilterChip
-                      label="Compliance"
-                      selected={complianceOnly}
-                      onSelect={() => setComplianceOnly((prev) => !prev)}
-                    />
-                  </div>
-                </div>
-                {assets.length === 0 ? (
-                  <FrameworkEmptyState
-                    icon={Package}
-                    title="No assets yet"
-                    description="Add your first asset to get started"
-                    action={{ label: "Add Asset", onClick: openAddFlow }}
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredAssets
-                      .filter((a) => a.id)
-                      .map((asset) => (
-                        <AssetCard
-                          key={asset.id!}
-                          asset={asset}
-                          propertyName={propertyMap.get(asset.property_id ?? "")}
-                          property={asset.property_id ? propertyObjMap.get(asset.property_id) : null}
-                          spaceName={asset.space_id ? spaceMap.get(asset.space_id) : undefined}
-                          imageUrl={imageMap.get(asset.id!)}
-                          onClick={() => openAsset(asset.id!)}
-                        />
-                      ))}
-                    {filteredAssets.length === 0 && assets.length > 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8 col-span-full">
-                        No assets match your filters.
-                      </p>
-                    )}
-                  </div>
-                )}
-              </>
+              <PortfolioAssetsOrganise
+                assets={organisedAssets}
+                hasAnyAssets={assets.length > 0}
+                view={organiseView}
+                onViewChange={setOrganiseView}
+                pageSearch={pageSearch}
+                onPageSearchChange={setPageSearch}
+                sort={portfolioSort}
+                onSortChange={setPortfolioSort}
+                filterOpen={assetFilterOpen}
+                onFilterOpenChange={setAssetFilterOpen}
+                statusFilters={statusFilters}
+                onToggleStatus={toggleStatusFilter}
+                complianceOnly={complianceOnly}
+                onComplianceChange={setComplianceOnly}
+                properties={properties}
+                filterPropertyId={filterPropertyId}
+                onPropertyChange={(id) => {
+                  setFilterPropertyId(id);
+                  setFilterSpaceId("");
+                }}
+                spaces={filterSpaces}
+                assetSpaces={(assets as AssetViewRow[])
+                  .filter((asset) => asset.space_id)
+                  .map((asset) => ({ id: asset.space_id!, name: asset.space_name || "Space" }))}
+                filterSpaceId={filterSpaceId}
+                onSpaceChange={setFilterSpaceId}
+                showAdd={!isWide}
+                onAdd={openAddFlow}
+                propertyMap={propertyMap}
+                propertyObjMap={propertyObjMap}
+                imageMap={imageMap}
+                onOpenAsset={openAsset}
+              />
             )
           }
           actionColumn={

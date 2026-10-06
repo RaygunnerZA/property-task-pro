@@ -11,8 +11,10 @@ export type SortOption = {
 
 const DEFAULT_SORT_OPTIONS: SortOption[] = [
   { id: "recent", label: "Recent" },
-  { id: "title", label: "A-Z" },
+  { id: "due_date", label: "Due" },
   { id: "priority", label: "Priority" },
+  { id: "updated", label: "Updated" },
+  { id: "title", label: "A-Z" },
 ];
 
 type SortBarProps = {

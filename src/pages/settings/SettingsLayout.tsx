@@ -82,7 +82,9 @@ function SettingsNavLinks({
             }
           >
             <Icon className="h-4 w-4 shrink-0 opacity-90" />
-            <span className="whitespace-nowrap">{item.label}</span>
+            <span className={horizontal ? "whitespace-nowrap" : "whitespace-normal"}>
+              {item.label}
+            </span>
           </NavLink>
         );
       })}
@@ -159,7 +161,7 @@ function SettingsThreeColumnFrame({ navItemsVisible }: { navItemsVisible: Settin
         />
         <SettingsNavLinks
           items={navItemsVisible}
-          orientation="horizontal"
+          orientation="vertical"
           footer={signOutButton}
         />
       </div>

@@ -5,6 +5,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders, corsPreflightResponse } from "../_shared/cors.ts";
+import { isMissingRelation, requireOrgMember } from "../_shared/requireOrgMember.ts";
 
 interface GraphInsightInput {
   org_id: string;
@@ -40,6 +41,18 @@ Deno.serve(async (req) => {
   }
   const depth = Math.min(3, Math.max(1, rawDepth ?? 3));
 
+  const denied = await requireOrgMember(req, orgId);
+  if (denied) return denied;
+
+  const emptyInsight = {
+    ok: true,
+    centrality: 0,
+    hazardExposure: 0,
+    complianceInfluence: 0,
+    taskImpact: 0,
+    riskPaths: [] as string[][],
+  };
+
   const supabase = createClient(
     Deno.env.get("SUPABASE_URL")!,
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -52,7 +65,12 @@ Deno.serve(async (req) => {
       .select("source_type, source_id, target_type, target_id, relationship, weight, metadata")
       .eq("org_id", orgId);
 
-    if (edgesErr) throw edgesErr;
+    if (edgesErr) {
+      if (isMissingRelation(edgesErr, "property_graph_edges")) {
+        return jsonResponse(emptyInsight);
+      }
+      throw edgesErr;
+    }
 
     const edgeList = (edges ?? []) as Array<{
       source_type: string;

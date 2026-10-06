@@ -35,7 +35,7 @@ export function PageContentTitle({
   if (illustrationSrc) {
     return (
       <header className={cn("mb-0 min-w-0", className)}>
-        <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
           <WorkbenchSectionHero
             title={title}
             description={subtitle}
@@ -50,7 +50,7 @@ export function PageContentTitle({
 
   return (
     <header className={cn("mb-5 min-w-0 border-b border-border/15 pb-4", className)}>
-      <div className="flex min-w-0 items-start justify-between gap-3">
+      <div className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           {leading ? <div className="shrink-0 pt-0.5">{leading}</div> : null}
           {icon ? (

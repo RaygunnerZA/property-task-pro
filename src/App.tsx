@@ -144,6 +144,8 @@ const Properties = lazy(() => import("./pages/Properties"));
 const Schedule = lazy(() => import("./pages/Schedule"));
 const Knowledge = lazy(() => import("./pages/Knowledge"));
 const Reports = lazy(() => import("./pages/Reports"));
+const HelpPage = lazy(() => import("./pages/Help"));
+const AskFillaPage = lazy(() => import("./pages/AskFilla"));
 const ReportWorkspacePage = lazy(() => import("./pages/ReportWorkspacePage"));
 const Compliance = lazy(() => import("./pages/Compliance"));
 const ContractorAccess = lazy(() => import("./pages/contractor/ContractorAccess"));
@@ -392,6 +394,8 @@ const App = () => {
                                 <Route path="/schedule" element={<RedirectToCentreCalendar />} />
                                 <Route path="/knowledge" element={<RouteBoundary title="Knowledge"><Knowledge /></RouteBoundary>} />
                                 <Route path="/reports" element={<RouteBoundary title="Reports"><Reports /></RouteBoundary>} />
+                                <Route path="/help" element={<RouteBoundary title="Help"><HelpPage /></RouteBoundary>} />
+                                <Route path="/assistant" element={<RouteBoundary title="Ask Filla"><AskFillaPage /></RouteBoundary>} />
                                 <Route path="/reports/:id" element={<RouteBoundary title="Report"><ReportWorkspacePage /></RouteBoundary>} />
                                 {/* Property activity area — Spaces · Assets · People */}
                                 <Route path="/property" element={<Navigate to="/property/spaces" replace />} />

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createMemberSignedUrl } from "@/lib/storage/signedAttachmentUrl";
 import { useDocumentDetail, type DocumentWithLinks } from "@/hooks/property/useDocumentDetail";
 import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
@@ -14,10 +15,10 @@ import {
   X,
   Download,
   Trash2,
+  Pencil,
   RefreshCw,
   FileText,
   Sparkles,
-  ExternalLink,
   CheckSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -26,6 +27,8 @@ import { sideSheetDesktopWidthClass } from "@/lib/layoutClasses";
 import { useAssistantContext } from "@/contexts/AssistantContext";
 import { FillaIcon } from "@/components/filla/FillaIcon";
 import { DOCUMENT_CATEGORIES } from "@/hooks/property/usePropertyDocuments";
+import { supabase } from "@/integrations/supabase/client";
+import { isSampleIllustrationUrl } from "@/lib/sampleIllustrationUrl";
 
 interface DocumentDetailDrawerProps {
   documentId: string | null;
@@ -57,6 +60,7 @@ export function DocumentDetailDrawer({
   const [notes, setNotes] = useState("");
   /** Only autosave after the open document has been hydrated once. */
   const allowAutosaveRef = useRef(false);
+  const replaceInputRef = useRef<HTMLInputElement>(null);
   const hydratedDocIdRef = useRef<string | null>(null);
   const baselineRef = useRef({
     title: "",
@@ -166,14 +170,73 @@ export function DocumentDetailDrawer({
     });
   }, [title, category, documentType, expiryDate, renewalFrequency, notes, documentId, debouncedUpdate]);
 
-  const handleDownload = () => {
-    if (document?.file_url) {
-      window.open(document.file_url, "_blank");
+  const fileUrl = document?.file_url ?? null;
+  const canOpenFile = Boolean(fileUrl) && !isSampleIllustrationUrl(fileUrl);
+  const titleFieldRef = useRef<HTMLInputElement>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const canManageFile = Boolean(orgId);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!canOpenFile || !fileUrl) {
+      setSignedUrl(null);
+      return;
     }
+    void createMemberSignedUrl(fileUrl).then((url) => {
+      if (!cancelled) setSignedUrl(url);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canOpenFile, fileUrl]);
+
+  const handleDownload = async () => {
+    if (!canOpenFile || !fileUrl) return;
+    const url = signedUrl ?? (await createMemberSignedUrl(fileUrl));
+    if (!url) {
+      toast({
+        title: "Download unavailable",
+        description: "This file could not be opened with your current access.",
+        variant: "destructive",
+      });
+      return;
+    }
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const handleReplace = () => {
-    toast({ title: "Replace", description: "Replace document flow - use upload zone" });
+    replaceInputRef.current?.click();
+  };
+
+  const handleReplaceFile = async (file: File) => {
+    if (!documentId || !orgId || !propertyId) return;
+    const ext = file.name.split(".").pop() || "bin";
+    const path = `org/${orgId}/properties/${propertyId}/documents/${crypto.randomUUID()}.${ext}`;
+    const { error: uploadError } = await supabase.storage
+      .from("task-images")
+      .upload(path, file, { cacheControl: "3600", upsert: false });
+    if (uploadError) {
+      toast({ title: "Replace failed", description: uploadError.message, variant: "destructive" });
+      return;
+    }
+    const { data: urlData } = supabase.storage.from("task-images").getPublicUrl(path);
+    const { error } = await supabase
+      .from("attachments")
+      .update({
+        file_url: urlData.publicUrl,
+        file_name: file.name,
+        file_type: file.type || null,
+        file_size: file.size,
+      })
+      .eq("id", documentId)
+      .eq("org_id", orgId);
+    if (error) {
+      toast({ title: "Replace failed", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "File replaced" });
+    await refresh();
+    onRefresh?.();
   };
 
   const handleDelete = async () => {
@@ -241,33 +304,34 @@ export function DocumentDetailDrawer({
             <section>
               <h3 className="text-sm font-semibold mb-2">Preview</h3>
               <div className="rounded-card bg-muted/30 overflow-hidden min-h-[200px] border border-border/30">
-                {document.file_url && (
+                {canOpenFile && signedUrl ? (
                   <>
                     {document.file_type?.includes("pdf") ? (
                       <iframe
-                        src={document.file_url}
+                        src={signedUrl}
                         title="Document preview"
                         className="w-full h-[280px] border-0"
                       />
                     ) : document.file_type?.startsWith("image/") ? (
                       <img
-                        src={document.file_url}
+                        src={signedUrl}
                         alt=""
                         className="w-full max-h-[280px] object-contain"
                       />
                     ) : (
-                      <a
-                        href={document.file_url}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={() => void handleDownload()}
                         className="flex items-center gap-2 p-4 text-primary"
                       >
                         <FileText className="h-8 w-8" />
                         Open file
-                      </a>
+                      </button>
                     )}
                   </>
-                )}
+                ) : canOpenFile ? (
+                  <p className="p-4 text-sm text-muted-foreground">Preparing a secure link…</p>
+                ) : null}
               </div>
             </section>
 
@@ -278,6 +342,7 @@ export function DocumentDetailDrawer({
                 <div>
                   <Label className="text-xs">Title</Label>
                   <Input
+                    ref={titleFieldRef}
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     className="rounded-card mt-1"
@@ -421,14 +486,51 @@ export function DocumentDetailDrawer({
             <section>
               <h3 className="text-sm font-semibold mb-2">Actions</h3>
               <div className="flex flex-wrap gap-2">
-                <Button size="sm" variant="outline" onClick={handleDownload}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-                <Button size="sm" variant="outline" onClick={handleReplace}>
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                  Replace
-                </Button>
+                {canManageFile ? (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => titleFieldRef.current?.focus()}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                ) : null}
+                {canOpenFile ? (
+                  <Button size="sm" variant="outline" onClick={() => void handleDownload()}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                  </Button>
+                ) : null}
+                {canManageFile ? (
+                  <>
+                    <input
+                      ref={replaceInputRef}
+                      type="file"
+                      className="sr-only"
+                      accept="image/*,.pdf,.doc,.docx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        e.target.value = "";
+                        if (file) void handleReplaceFile(file);
+                      }}
+                    />
+                    <Button size="sm" variant="outline" onClick={handleReplace}>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Replace file
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        if (window.confirm("Delete this document?")) void handleDelete();
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
                 <Button size="sm" variant="outline" onClick={handleCreateTask}>
                   <CheckSquare className="h-4 w-4 mr-2" />
                   Create Task

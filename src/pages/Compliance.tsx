@@ -18,6 +18,9 @@ import ComplianceOverviewCard from "@/components/dashboard/ComplianceOverviewCar
 import RuleStatusDistribution from "@/components/dashboard/RuleStatusDistribution";
 import PropertyDriftHeatmap from "@/components/dashboard/PropertyDriftHeatmap";
 import RecentActivityFeed from "@/components/dashboard/RecentActivityFeed";
+import { isSampleIllustrationUrl } from "@/lib/sampleIllustrationUrl";
+import { createMemberSignedUrl } from "@/lib/storage/signedAttachmentUrl";
+import { toast } from "sonner";
 import { useComplianceOverview } from "@/hooks/useComplianceOverview";
 import { useRuleStatusDistribution } from "@/hooks/useRuleStatusDistribution";
 import { usePropertyDriftHeatmap } from "@/hooks/usePropertyDriftHeatmap";
@@ -213,14 +216,23 @@ const Compliance = () => {
                       </div>
                     )}
 
-                    {(doc as any).file_url && (
+                    {(doc as any).file_url &&
+                      !isSampleIllustrationUrl((doc as any).file_url) && (
                       <NeomorphicButton
                         variant="secondary"
                         size="sm"
                         className="w-full"
                         onClick={(e) => {
                           e.stopPropagation();
-                          window.open((doc as any).file_url, "_blank");
+                          const fileUrl = (doc as { file_url?: string }).file_url;
+                          if (!fileUrl) return;
+                          void createMemberSignedUrl(fileUrl).then((url) => {
+                            if (!url) {
+                              toast.error("This file could not be opened with your current access.");
+                              return;
+                            }
+                            window.open(url, "_blank", "noopener,noreferrer");
+                          });
                         }}
                       >
                         <ExternalLink className="h-4 w-4 mr-2" />

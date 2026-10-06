@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { addMonths, startOfMonth, subMonths } from "date-fns";
 import { CalendarMonthGrid } from "@/components/calendar/CalendarMonthGrid";
 import {
@@ -17,6 +17,7 @@ import { useActiveOrg } from "@/hooks/useActiveOrg";
 import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { useUpdateTaskMutation } from "@/hooks/mutations/useUpdateTaskMutation";
 import { useToast } from "@/hooks/use-toast";
+import { scrollActiveChipIntoView } from "@/lib/scrollActiveChip";
 import {
   applyCalendarDisplayFilters,
   filterTasksForCalendar,
@@ -85,6 +86,10 @@ export function CalendarWorkbenchPanel({
   const { toast } = useToast();
 
   const [view, setView] = useState<WorkspaceCalendarView>(initialCalendarView);
+  const viewTablistRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    scrollActiveChipIntoView(viewTablistRef.current);
+  }, [view]);
 
   useEffect(() => {
     setView(initialCalendarView);
@@ -255,9 +260,10 @@ export function CalendarWorkbenchPanel({
         >
           <div className={cn("min-w-0 flex-1", workbenchTitleBandLabelOffsetClassName)}>
             <div
+              ref={viewTablistRef}
               role="tablist"
               aria-label="Calendar views"
-              className="flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
+              className="chip-row-scroll flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
             >
               {VIEW_TABS.map((tab, index) => {
                 const selected = view === tab.id;

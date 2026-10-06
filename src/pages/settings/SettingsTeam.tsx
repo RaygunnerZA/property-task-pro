@@ -436,6 +436,7 @@ export default function SettingsTeam() {
   const [teamTab, setTeamTab] = useState<TeamWorkbenchTab>("members");
   const [invitations, setInvitations] = useState<InvitationRecord[]>([]);
   const [loadingInvites, setLoadingInvites] = useState(false);
+  const [inviteLoadError, setInviteLoadError] = useState<string | null>(null);
   const [actionBusyId, setActionBusyId] = useState<string | null>(null);
 
   // Edit / delete member state
@@ -453,8 +454,9 @@ export default function SettingsTeam() {
 
   // ── Fetch invitations ──────────────────────────────────────────────────────
   const fetchInvitations = useCallback(async () => {
-    if (!orgId) { setInvitations([]); return; }
+    if (!orgId) { setInvitations([]); setInviteLoadError(null); return; }
     setLoadingInvites(true);
+    setInviteLoadError(null);
     try {
       const { data, error: inviteError } = await supabase
         .from("invitations")
@@ -464,7 +466,20 @@ export default function SettingsTeam() {
       if (inviteError) throw inviteError;
       setInvitations((data ?? []) as InvitationRecord[]);
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : "Failed to load invitations");
+      const err = e as { message?: string; code?: string };
+      const raw = err.message || "Invitations couldn’t be loaded.";
+      const code = err.code ?? "";
+      if (/permission denied for table users/i.test(raw)) {
+        setInviteLoadError(
+          "Invitations couldn’t be loaded. The pending-invitation rule reads auth.users, which this session cannot access. Members of this organisation are still allowed to see its invitations once that rule uses the session email."
+        );
+      } else if (code === "42501" || /permission|row-level|rls|not authorized/i.test(raw)) {
+        setInviteLoadError("You don’t have permission to view invitations for this organisation.");
+      } else if (!orgId) {
+        setInviteLoadError("No organisation is selected, so invitations can’t be loaded.");
+      } else {
+        setInviteLoadError("Invitations couldn’t be loaded. Refresh to try again.");
+      }
     } finally {
       setLoadingInvites(false);
     }
@@ -866,6 +881,8 @@ export default function SettingsTeam() {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
+            ) : inviteLoadError ? (
+              <p className="py-4 text-sm text-muted-foreground">{inviteLoadError}</p>
             ) : visibleInvitations.length === 0 ? (
               <p className="py-4 text-sm text-muted-foreground">
                 No invitations yet. Send one from the <strong>Invite member</strong> panel{" "}

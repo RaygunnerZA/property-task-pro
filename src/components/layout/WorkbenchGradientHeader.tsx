@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useIsBelowMd } from "@/hooks/use-mobile";
 import { ArrowLeft } from "lucide-react";
 import { PageHeader } from "@/components/design-system/PageHeader";
 import { WorkbenchHeaderToolbar } from "@/components/dashboard/WorkbenchHeaderToolbar";
@@ -78,10 +79,14 @@ export function WorkbenchGradientHeader({
   onBack,
 }: WorkbenchGradientHeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const belowMd = useIsBelowMd();
   const hasThirdColumn = useThirdColumn();
   const showPropertySelector = properties.length > 1;
   const isActivity = variant === "activity";
-  const showSearch = !hideSearch && !isActivity;
+  const pageOwnsSearch =
+    belowMd && /^\/(tasks|calendar)\/?$/.test(location.pathname);
+  const showSearch = !hideSearch && !isActivity && !pageOwnsSearch;
 
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 

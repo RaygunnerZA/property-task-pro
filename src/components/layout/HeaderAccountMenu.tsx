@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Bell, BookOpen, LogOut, Plus, Settings, Trash2, UserCircle } from "lucide-react";
+import { BookOpen, LogOut, Plus, Settings, Trash2, UserCircle, Zap } from "lucide-react";
 import { useDataContext } from "@/contexts/DataContext";
 import { useIsPlatformAdmin } from "@/hooks/admin/useIsPlatformAdmin";
 import { useEffectiveAccess } from "@/hooks/useEffectiveAccess";
@@ -72,13 +72,15 @@ export function HeaderAccountMenu({
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
-        sideOffset={8}
-        className="w-[min(100vw-2rem,280px)] rounded-[10px] border-border/40 p-1 shadow-md"
+        side="bottom"
+        sideOffset={24}
+        collisionPadding={16}
+        className="z-[80] max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom)-4.5rem)] w-[min(100vw-2rem,280px)] overflow-y-auto rounded-[10px] border-border/40 p-1 shadow-md"
       >
         <DropdownMenuLabel className="space-y-0.5 px-2 py-2 font-normal">
           <p className="truncate text-sm font-semibold text-foreground">{userDisplayName(user)}</p>
           {user?.email && (
-            <p className="truncate text-xs text-muted-foreground" title={user.email}>
+            <p className="text-xs text-muted-foreground [overflow-wrap:anywhere]" title={user.email}>
               {user.email}
             </p>
           )}
@@ -116,8 +118,8 @@ export function HeaderAccountMenu({
         </DropdownMenuItem>
         <DropdownMenuItem asChild className="cursor-pointer rounded-[6px]">
           <Link to="/settings/automation" className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-muted-foreground" />
-            Notifications
+            <Zap className="h-4 w-4 text-muted-foreground" />
+            Automation & AI
           </Link>
         </DropdownMenuItem>
         {isPlatformAdmin === true && (

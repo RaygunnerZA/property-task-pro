@@ -106,7 +106,7 @@ export default function Reports() {
     () =>
       DATE_RANGE_OPTIONS.map((opt) => ({
         id: `${RANGE_PREFIX}${opt.value}`,
-        label: opt.label.replace(/^Last /, ""),
+        label: opt.shortLabel,
         icon: <Calendar className="h-4 w-4" />,
       })),
     []

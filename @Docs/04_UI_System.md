@@ -182,6 +182,14 @@ DualPane owns horizontal insets and column gaps — do not wrap it in a centerin
 
 Primary destinations: Home, Tasks, Calendar / Records as capacity allows. Spaces · Assets · People remain available via More; complex coordination may defer to desktop.
 
+**Phone chrome**
+
+The phone bottom bar is **Home · Tasks · Create · Compliance · More**. Compliance on that bar is a work shortcut for obligations while someone is on site. It is **not** a desktop primary nav item. Desktop primary nav stays Home · Tasks · Calendar · Records · Spaces · Assets · People · Reports.
+
+Calendar, Records, Spaces, Assets, People, Reports, Ask Filla, Help, and Settings live in **More**. Create is the centre button (Create Task, Add Record, Record Audio). The desktop rail **Create New** action opens that same menu. Ask Filla opens the existing Filla AI panel; `/assistant` opens that panel and is not a primary destination. `/help` is the in-app Help page.
+
+Page content scrolls in the app shell with a bottom inset that clears the bar, the Create button overhang, and the safe-area inset. Settings sections are a vertical list on the phone. Horizontal chip and tab rows stay on one line, scroll, and fade at the trailing edge. They do not wrap onto a second row.
+
 **Gradient header (all primary screens)**
 
 At middle widths (no third column), **Create Task** and **Add Record** live in the gradient header between Search and Profile — consistent across Home, workspace, and Spaces / Assets / People screens. Closing or completing Create Task stays on the current screen; it does not switch to Home.
@@ -229,8 +237,9 @@ Primary flows:
 
 * Home (Inflow)
 * Tasks
-* Calendar / Records
-* Report Issue
+* Create (centre button)
+* Compliance (phone bar shortcut — not a desktop primary item)
+* More (Calendar, Records, Spaces, Assets, People, Reports, Ask Filla, Help, Settings)
 
 Additional activity areas (Spaces · Assets · People, Reports) may appear depending on role and permissions.
 
@@ -657,7 +666,7 @@ Desktop:
 
 Mobile:
 
-* Floating action button or central action entry point
+* Centre Create button on the bottom bar (Create Task, Add Record, Record Audio). Content inset clears that button.
 
 ⸻
 

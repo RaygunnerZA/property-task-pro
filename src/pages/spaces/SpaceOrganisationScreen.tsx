@@ -5,6 +5,7 @@ import { propertySubPath, propertyActivitySpacesPath } from "@/lib/propertyRoute
 import { useProperty } from "@/hooks/property/useProperty";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { useSpaces } from "@/hooks/useSpaces";
+import { listedBenchSpaces } from "@/lib/spaces/partitionPropertySpaces";
 import { PropertySpacesList } from "@/components/properties/PropertySpacesList";
 import {
   PropertySpaceGroupCarousel,
@@ -138,22 +139,24 @@ function SpaceOrganisationScreenInner() {
   const issuesRequested =
     searchParams.get("workTab") === "issues" || urgentOnly;
 
+  const listedSpaces = useMemo(() => listedBenchSpaces(spaces), [spaces]);
+
   const spacesWithIssuesCount = useMemo(
-    () => spaces.filter((s) => openTaskSpaceIds.has(s.id)).length,
-    [spaces, openTaskSpaceIds]
+    () => listedSpaces.filter((s) => openTaskSpaceIds.has(s.id)).length,
+    [listedSpaces, openTaskSpaceIds]
   );
 
-  const clearSpacesCount = Math.max(0, spaces.length - spacesWithIssuesCount);
+  const clearSpacesCount = Math.max(0, listedSpaces.length - spacesWithIssuesCount);
 
   const spacesHealthStats = useMemo(() => {
-    const urgentWithIssues = spaces.filter(
+    const urgentWithIssues = listedSpaces.filter(
       (s) => openTaskSpaceIds.has(s.id) && urgentPrioritySpaceIds.has(s.id)
     ).length;
     return [
       {
         line1: "total",
         line2: "spaces",
-        value: spaces.length,
+        value: listedSpaces.length,
         secondaryCount: spacesWithIssuesCount,
         secondaryLabel: "OPEN",
         secondaryTone: (spacesWithIssuesCount > 0 ? "urgent" : "neutral") as "urgent" | "warning" | "neutral",
@@ -181,7 +184,7 @@ function SpaceOrganisationScreenInner() {
       },
     ];
   }, [
-    spaces,
+    listedSpaces,
     openTaskSpaceIds,
     urgentPrioritySpaceIds,
     spacesWithIssuesCount,

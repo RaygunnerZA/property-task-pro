@@ -11,6 +11,13 @@
   :root {
     /* Layout */
     --header-height: 60px;
+    /* Phone bottom bar (72px) plus the centre Create button that sits above it. */
+    --mobile-nav-height: 72px;
+    --mobile-create-overhang: 28px;
+    --mobile-content-inset: calc(
+      var(--mobile-nav-height) + var(--mobile-create-overhang) + 16px +
+        env(safe-area-inset-bottom, 0px)
+    );
 
     /* Spacing scale — matches Docs/04_UI_System (xs 4px … xl 24px) */
     --space-xs: 0.25rem;
@@ -1485,4 +1492,19 @@
   --gmp-mat-color-on-surface: #1c1c1c;
   --gmp-mat-color-on-surface-variant: #6d7480;
   border-radius: 0.75rem;
+}
+
+@layer utilities {
+  /* One-line chip / tab rows: scroll instead of clipping, fade the trailing edge. */
+  .chip-row-scroll {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+  }
+  .chip-row-scroll::-webkit-scrollbar {
+    display: none;
+  }
 }

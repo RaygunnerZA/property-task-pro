@@ -1,4 +1,5 @@
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useLayoutEffect, useRef } from "react";
+import { scrollActiveChipIntoView } from "@/lib/scrollActiveChip";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { DualPaneLayout } from "@/components/layout/DualPaneLayout";
@@ -73,6 +74,10 @@ export default function SpaceDetailPage() {
   const [visualDraft, setVisualDraft] = useState<SpaceVisualValue | null>(null);
   const { orgId } = useActiveOrg();
   const [centreTab, setCentreTab] = useState<SpaceCentreTab>("overview");
+  const spaceTablistRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    scrollActiveChipIntoView(spaceTablistRef.current);
+  }, [centreTab]);
 
   const assetsInSpace = useMemo(() => {
     return allAssets.filter((a: any) => a.space_id === spaceId);
@@ -367,15 +372,18 @@ export default function SpaceDetailPage() {
               onValueChange={(v) => setCentreTab(v as SpaceCentreTab)}
               className="w-full"
             >
-              <TabsList className="mb-4 grid w-full grid-cols-3 sm:grid-cols-6">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="tasks">
+              <TabsList
+                ref={spaceTablistRef}
+                className="chip-row-scroll mb-4 flex h-auto w-full justify-start gap-1 overflow-x-auto bg-transparent p-0"
+              >
+                <TabsTrigger value="overview" className="shrink-0">Overview</TabsTrigger>
+                <TabsTrigger value="tasks" className="shrink-0">
                   Tasks{spaceTasks.length > 0 ? ` (${spaceTasks.length})` : ""}
                 </TabsTrigger>
-                <TabsTrigger value="assets">Assets</TabsTrigger>
-                <TabsTrigger value="compliance">Compliance</TabsTrigger>
-                <TabsTrigger value="documents">Documents</TabsTrigger>
-                <TabsTrigger value="insights">
+                <TabsTrigger value="assets" className="shrink-0">Assets</TabsTrigger>
+                <TabsTrigger value="compliance" className="shrink-0">Compliance</TabsTrigger>
+                <TabsTrigger value="documents" className="shrink-0">Documents</TabsTrigger>
+                <TabsTrigger value="insights" className="shrink-0">
                   <Sparkles className="mr-2 h-4 w-4" />
                   Insights
                 </TabsTrigger>

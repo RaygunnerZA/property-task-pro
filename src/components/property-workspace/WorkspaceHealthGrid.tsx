@@ -122,9 +122,9 @@ export function WorkspaceHealthGrid({
               </div>
             </div>
             {stat.secondaryLabel != null && stat.secondaryCount != null ? (
-              <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden pl-0.5 tracking-[0.3px]">
+              <div className="mt-1.5 flex min-w-0 max-w-full flex-wrap items-center gap-0.5 pl-0.5 tracking-[0.3px]">
                 <span className={secondaryCountBoxClass[tone]}>{stat.secondaryCount}</span>
-                <span className={cn(secondaryLabelClass[tone], "truncate")}>
+                <span className={cn(secondaryLabelClass[tone], "min-w-0 whitespace-normal leading-tight")}>
                   {stat.secondaryLabel}
                 </span>
               </div>

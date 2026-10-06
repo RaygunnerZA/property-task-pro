@@ -77,6 +77,19 @@ export function partitionPropertySpaces<T extends SpaceLike>(spaces: T[]) {
   return { areas, rooms, roomsByAreaId, unassigned };
 }
 
+/**
+ * Rooms shown on the Spaces “All” card: excludes areas and spaces nested under a room.
+ * Health totals must use this same set.
+ */
+export function listedBenchSpaces<T extends SpaceLike>(spaces: T[]): T[] {
+  const { areas, rooms } = partitionPropertySpaces(spaces);
+  const areaIds = new Set(areas.map((a) => a.id));
+  return rooms.filter((space) => {
+    const parentId = space.parent_space_id ?? null;
+    return !parentId || areaIds.has(parentId);
+  });
+}
+
 /** Flat picker rows for assigning an asset to a space (rooms, then unassigned). */
 export function spaceAssignmentOptions<T extends SpaceLike>(
   spaces: T[]

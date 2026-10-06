@@ -24,10 +24,19 @@ export function GraphInsightPanel({ start, depth = 3, variant = "full", classNam
     taskImpact,
     riskPaths,
     loading,
+    error,
   } = useGraphInsight({ start, depth });
 
   if (loading) {
     return <Skeleton className="h-[200px] w-full rounded-lg" />;
+  }
+
+  if (error) {
+    return (
+      <p className={cn("text-sm text-muted-foreground py-4", className)}>
+        No impact data yet
+      </p>
+    );
   }
 
   const hasInsights =

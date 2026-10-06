@@ -346,7 +346,7 @@ export function FilterBar({
   return (
     <div className={cn("flex items-center justify-between gap-2 min-h-[36px]", className)}>
       {/* Scroll track: a few px inset so neumorphic outer shadows are not clipped */}
-      <div className="flex flex-1 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar px-1 py-1">
+      <div className="chip-row-scroll flex flex-1 min-w-0 items-center gap-2 px-1 py-1">
         <div 
           key={`${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(

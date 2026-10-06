@@ -47,6 +47,7 @@ import {
   savePropertyCustomSpaceGroups,
 } from "@/lib/propertyCustomSpaceGroupsStorage";
 import {
+  listedBenchSpaces,
   partitionPropertySpaces,
   toOnboardingAreas,
 } from "@/lib/spaces/partitionPropertySpaces";
@@ -264,10 +265,7 @@ export function PropertySpaceGroupCarousel({
   }, [subSpacesByParentId]);
 
   /** Every top-level space on the property (rooms + unassigned are one set — unassigned is already a subset of rooms). */
-  const benchSpaces = useMemo(
-    () => rooms.filter((s) => !subSpaceIds.has(s.id)),
-    [rooms, subSpaceIds]
-  );
+  const benchSpaces = useMemo(() => listedBenchSpaces(spaces), [spaces]);
 
   const areaById = useMemo(() => new Map(areas.map((a) => [a.id, a])), [areas]);
   const spaceById = useMemo(() => new Map(spaces.map((s) => [s.id, s])), [spaces]);

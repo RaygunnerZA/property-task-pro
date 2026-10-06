@@ -1,35 +1,16 @@
-import { useState, lazy, Suspense } from "react";
+import { useState, type ComponentType } from "react";
 import { useLocation, Link, useSearchParams } from "react-router-dom";
-import { Plus, FileText } from "lucide-react";
+import { Plus } from "lucide-react";
 import {
   MOBILE_NAV_ITEMS,
   MOBILE_MORE_NAV_URL,
   isMobileNavActive,
 } from "@/lib/mainNavigation";
 import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
-import type { IntakeMode } from "@/types/intake";
 import { cn } from "@/lib/utils";
 import { paperTexturedColorStyle } from "@/lib/paperTexture";
-import {
-  intakeAddRecordDrawerCardClassName,
-  intakeDrawerIconWrapAddClassName,
-  intakeDrawerIconWrapReportClassName,
-  intakeReportIssueDrawerCardClassName,
-} from "@/lib/intake-action-buttons";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-} from "@/components/ui/drawer";
-import { LazyIntakeModal as IntakeModal } from "@/components/intake/LazyIntakeModal";
 import { MobileMoreMenuDrawer } from "@/components/navigation/MobileMoreMenuDrawer";
-import type { ComponentType } from "react";
-
-const AudioRecorder = lazy(() =>
-  import("@/components/audio/AudioRecorder").then((m) => ({ default: m.AudioRecorder }))
-);
+import { CreateActionDrawer } from "@/components/navigation/CreateActionDrawer";
 
 /**
  * Mobile Bottom Navigation
@@ -42,8 +23,6 @@ export function MobileBottomNav() {
   const [searchParams] = useSearchParams();
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [createView, setCreateView] = useState<"menu" | "task" | "audio">("menu");
-  const [mobileIntakeInitial, setMobileIntakeInitial] = useState<IntakeMode>("report_issue");
 
   const leftItems = MOBILE_NAV_ITEMS.slice(0, 2);
   const rightItems = MOBILE_NAV_ITEMS.slice(2);
@@ -53,21 +32,6 @@ export function MobileBottomNav() {
 
   const handleCreateClick = () => {
     setShowCreateDrawer(true);
-    setCreateView("menu");
-  };
-
-  const openIntake = (mode: IntakeMode) => {
-    setMobileIntakeInitial(mode);
-    setCreateView("task");
-  };
-
-  const handleCreateAudio = () => {
-    setCreateView("audio");
-  };
-
-  const handleCloseDrawer = () => {
-    setShowCreateDrawer(false);
-    setTimeout(() => setCreateView("menu"), 200);
   };
 
   const renderNavLink = (to: string, icon: ComponentType<{ className?: string }>, label: string) => {
@@ -162,76 +126,7 @@ export function MobileBottomNav() {
       </nav>
 
       <MobileMoreMenuDrawer open={showMoreMenu} onOpenChange={setShowMoreMenu} />
-
-      {createView === "menu" && (
-        <Drawer open={showCreateDrawer} onOpenChange={handleCloseDrawer}>
-          <DrawerContent className="max-h-[85vh]">
-            <DrawerHeader className="border-b border-border">
-              <DrawerTitle>Create</DrawerTitle>
-              <DrawerDescription>Choose what you&apos;d like to create</DrawerDescription>
-            </DrawerHeader>
-            <div className="space-y-3 p-4">
-              <button onClick={() => openIntake("report_issue")} className={intakeReportIssueDrawerCardClassName}>
-                <div className="flex items-center gap-3">
-                  <div className={intakeDrawerIconWrapReportClassName}>
-                    <Plus className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">Create Task</div>
-                    <div className="text-sm text-white/85">Capture a problem or maintenance need</div>
-                  </div>
-                </div>
-              </button>
-              <button onClick={() => openIntake("add_record")} className={intakeAddRecordDrawerCardClassName}>
-                <div className="flex items-center gap-3">
-                  <div className={intakeDrawerIconWrapAddClassName}>
-                    <FileText className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold">Add Record</div>
-                    <div className="text-sm text-white/85">File a certificate, inspection, or document</div>
-                  </div>
-                </div>
-              </button>
-              <button
-                onClick={handleCreateAudio}
-                className="w-full rounded-lg border border-border bg-card p-4 text-left shadow-e1 transition-all hover:shadow-md"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-accent/10 p-2">
-                    <Plus className="h-5 w-5 text-accent" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Record Audio</div>
-                    <div className="text-sm text-muted-foreground">Record an audio note</div>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      )}
-
-      {createView === "task" && (
-        <IntakeModal
-          open
-          onOpenChange={(open) => {
-            if (!open) handleCloseDrawer();
-          }}
-          initialIntakeMode={mobileIntakeInitial}
-        />
-      )}
-
-      {createView === "audio" && (
-        <Suspense fallback={null}>
-          <AudioRecorder
-            open
-            onOpenChange={(open) => {
-              if (!open) handleCloseDrawer();
-            }}
-          />
-        </Suspense>
-      )}
+      <CreateActionDrawer open={showCreateDrawer} onOpenChange={setShowCreateDrawer} />
     </>
   );
 }

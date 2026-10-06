@@ -10,7 +10,9 @@ import {
   Layers,
   Package,
   Users,
+  Sparkles,
 } from "lucide-react";
+import { useAssistantContext } from "@/contexts/AssistantContext";
 import { cn } from "@/lib/utils";
 import {
   PROPERTY_ASSETS_PATH,
@@ -41,6 +43,7 @@ type MobileMoreMenuDrawerProps = {
  */
 export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawerProps) {
   const items = useMemo(() => MORE_MENU_ITEMS, []);
+  const { openAssistant } = useAssistantContext();
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -64,6 +67,25 @@ export function MobileMoreMenuDrawer({ open, onOpenChange }: MobileMoreMenuDrawe
             className="grid min-h-0 gap-1 overflow-y-auto overscroll-contain px-4 pb-2 pt-3"
             aria-label="More destinations"
           >
+            <button
+              type="button"
+              onClick={() => {
+                openAssistant();
+                onOpenChange(false);
+              }}
+              className={cn(
+                "flex min-h-11 items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors",
+                "text-foreground hover:bg-muted/50"
+              )}
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-muted/40 shadow-sm">
+                <Sparkles className="h-4 w-4 text-primary" aria-hidden />
+              </span>
+              <span className="min-w-0">
+                <span className="block text-sm font-medium">Ask Filla</span>
+                <span className="block text-xs text-muted-foreground">Questions about this workspace</span>
+              </span>
+            </button>
             {items.map((item) => {
               const Icon = item.icon;
               return (

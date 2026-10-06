@@ -1,4 +1,6 @@
+import { useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { scrollActiveChipIntoView } from "@/lib/scrollActiveChip";
 import {
   WORKBENCH_CENTRE_TAB_ACTIVE_COLOR,
   WORKBENCH_CENTRE_TAB_INACTIVE_COLOR,
@@ -35,6 +37,10 @@ export function OrganiseViewTabs<Id extends string>({
   className,
 }: OrganiseViewTabsProps<Id>) {
   const activeMeta = tabs.find((tab) => tab.id === active) ?? tabs[0];
+  const tablistRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    scrollActiveChipIntoView(tablistRef.current);
+  }, [active]);
   return (
     <div
       className={cn(
@@ -45,9 +51,10 @@ export function OrganiseViewTabs<Id extends string>({
     >
       <div className={cn("min-w-0 flex-1", workbenchTitleBandLabelOffsetClassName)}>
         <div
+          ref={tablistRef}
           role="tablist"
           aria-label={ariaLabel}
-          className="flex min-w-0 flex-nowrap items-center gap-x-1.5 md:gap-x-2"
+          className="chip-row-scroll flex min-w-0 items-center gap-x-1.5 md:gap-x-2"
         >
           {tabs.map((tab, index) => {
             const selected = active === tab.id;
