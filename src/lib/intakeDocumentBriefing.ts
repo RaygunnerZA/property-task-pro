@@ -1,4 +1,8 @@
-import { mapIntakeDocumentType, normalizeIntakeExpiryDate, inferExpiryFromOcrText, naturalLanguageRecordTitle } from "@/lib/mapIntakeDocumentType";
+import { mapIntakeDocumentType, naturalLanguageRecordTitle } from "@/lib/mapIntakeDocumentType";
+import {
+  interpretDocument,
+  type DocumentUnderstanding,
+} from "@/lib/intake/documentUnderstanding";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
 import {
   inboundEmailOutcomeLabel,
@@ -15,9 +19,15 @@ export type IntakeDocOutcome =
 
 export type IntakeReadProvenance = "document" | "filename" | "none";
 
+/** Where the document type came from. A filename hit is not a document read. */
+export type IntakeTypeEvidence = "document" | "inference" | "filename" | "none";
+
 export interface IntakeDocumentBriefing {
   title: string;
   documentType: string | null;
+  /** Type supported by document text, when any. Filename-only types stay out of this field. */
+  contentType: string | null;
+  typeEvidence: IntakeTypeEvidence;
   outcome: IntakeDocOutcome;
   expiryDate: string | null;
   summary: string;
@@ -26,6 +36,14 @@ export interface IntakeDocumentBriefing {
   provenance: IntakeReadProvenance;
   needsFollowUp: boolean;
   fileKindLabel: string;
+  /** Document-level reading. Fields below are promoted only when this allows it. */
+  understanding: DocumentUnderstanding;
+}
+
+export interface IntakeBriefingContext {
+  propertyName?: string | null;
+  propertyAddress?: string | null;
+  asOf?: Date;
 }
 
 const OUTCOME_LABEL: Record<IntakeDocOutcome, string> = {
@@ -73,6 +91,10 @@ function inferTypeFromText(text: string): string | null {
   if (/\bfire\s+risk/.test(value)) return "Fire Risk Assessment";
   if (/\bfire\b/.test(value) && /\bcertificate\b/.test(value)) return "Fire Certificate";
   if (/\binvoice\b|\breceipt\b|\bquote\b/.test(value)) return "Invoice";
+  if (/\basbestos\b/.test(value) && /\bregister\b/.test(value)) return "Asbestos Management Survey";
+  if (/\basbestos\b/.test(value) && /\b(survey|management|reinspection)\b/.test(value)) {
+    return "Asbestos Management Survey";
+  }
 
   if (
     trimmed.length <= 80 &&
@@ -101,6 +123,10 @@ function extractedRecord(artifact: IntakeSourceArtifact): Record<string, unknown
   return artifact.aiExtracted ?? {};
 }
 
+function isEmptyIntakeSummary(summary: string): boolean {
+  return /^this is an?\s+(unclear|unknown|misc|other|uncertain|document)\.?$/i.test(summary.trim());
+}
+
 function titleFromStem(fileName: string | null): string {
   const human = humanizeIntakeFileStem(fileName);
   return human
@@ -111,35 +137,45 @@ function titleFromStem(fileName: string | null): string {
 
 export function buildIntakeDocumentBriefing(
   artifact: IntakeSourceArtifact,
-  officeText?: string | null
+  officeText?: string | null,
+  context?: IntakeBriefingContext
 ): IntakeDocumentBriefing {
   const extracted = extractedRecord(artifact);
   const metadata = (extracted.metadata as Record<string, unknown> | undefined) ?? {};
   const isStub = metadata.stub === true;
   const ocr = String(extracted.ocr_text || artifact.rawText || officeText || "").trim();
-  const combined = [artifact.fileName, artifact.aiClassification, extracted.document_type, extracted.title, ocr]
-    .filter(Boolean)
-    .join("\n");
 
   const rawType = String(extracted.document_type || artifact.aiClassification || "");
   const mappedType = mapIntakeDocumentType(rawType);
-  const filenameMapped = mapIntakeDocumentType(humanizeIntakeFileStem(artifact.fileName));
-  const documentType =
-    (mappedType && !mappedType.isOther ? mappedType.type : null) ||
-    inferTypeFromText(rawType) ||
-    inferTypeFromText(combined) ||
-    (filenameMapped && !filenameMapped.isOther ? filenameMapped.type : null) ||
-    inferTypeFromText(humanizeIntakeFileStem(artifact.fileName)) ||
-    (mappedType?.isOther ? mappedType.type : null);
+  const filenameStem = humanizeIntakeFileStem(artifact.fileName);
+  const filenameMapped = mapIntakeDocumentType(filenameStem);
+  const filenameType =
+    inferTypeFromText(filenameStem) ||
+    (filenameMapped && !filenameMapped.isOther ? filenameMapped.type : null);
+  const bodyType =
+    inferTypeFromText(ocr) ||
+    (!isStub ? inferTypeFromText(rawType) : null) ||
+    (!isStub && mappedType && !mappedType.isOther ? mappedType.type : null);
+  const contentType = bodyType;
+  const documentType = contentType || filenameType;
+  const typeEvidence: IntakeTypeEvidence = contentType
+    ? ocr.length >= 40
+      ? "document"
+      : "inference"
+    : filenameType
+      ? "filename"
+      : "none";
 
-  const outcomeFromAi = inferOutcomeFromText(String(extracted.outcome || extracted.status || ""));
-  const outcome =
-    outcomeFromAi !== "unknown" ? outcomeFromAi : inferOutcomeFromText(combined);
-
-  const expiryDate =
-    normalizeIntakeExpiryDate(
-      (extracted.expiry_date as string | undefined) || (extracted.expiry_date_hint as string | undefined)
-    ) || inferExpiryFromOcrText(ocr);
+  const understanding = interpretDocument({
+    text: ocr,
+    fileName: artifact.fileName,
+    documentType,
+    propertyName: context?.propertyName,
+    propertyAddress: context?.propertyAddress,
+    asOf: context?.asOf,
+  });
+  const outcome = ocr ? understanding.promotedOutcome : "unknown";
+  const expiryDate = ocr ? understanding.promotedExpiry : null;
 
   const aiTitle = String(extracted.title || "").trim();
   const title =
@@ -177,14 +213,24 @@ export function buildIntakeDocumentBriefing(
           : "";
 
   const summaryFromAi = String(extracted.summary || "").trim();
+  const usableAiSummary =
+    summaryFromAi && !isStub && !isEmptyIntakeSummary(summaryFromAi) ? summaryFromAi : "";
+  const lead =
+    typeEvidence === "document" && documentType
+      ? `This is ${article} ${typeLabel}.`
+      : typeEvidence === "inference" && documentType
+        ? `This looks like ${article} ${typeLabel}.`
+        : typeEvidence === "filename" && documentType
+          ? `The file name looks like ${article} ${typeLabel}. The document has not confirmed that.`
+          : "Filla couldn't tell what this is.";
   const summary =
-    summaryFromAi && !isStub
-      ? summaryFromAi
-      : [`This is ${article} ${typeLabel}.`, outcomeSentence].filter(Boolean).join(" ");
+    understanding.summary || usableAiSummary || [lead, outcomeSentence].filter(Boolean).join(" ");
 
   return {
     title,
     documentType,
+    contentType,
+    typeEvidence,
     outcome,
     expiryDate,
     summary,
@@ -193,6 +239,7 @@ export function buildIntakeDocumentBriefing(
     provenance: effectiveProvenance,
     needsFollowUp: outcome === "unsatisfactory" || outcome === "expired",
     fileKindLabel: fileKindLabel(artifact.mimeType, artifact.fileName),
+    understanding,
   };
 }
 
@@ -264,7 +311,15 @@ export function intakeInboxCardCopy(item: {
     };
   }
 
-  if (briefing.outcome !== "unknown") {
+  if (briefing.typeEvidence === "document" && briefing.understanding.statusLabel) {
+    return {
+      title,
+      insight: briefing.documentType
+        ? `${briefing.understanding.statusLabel} · ${briefing.documentType}`
+        : briefing.understanding.statusLabel,
+    };
+  }
+  if (briefing.typeEvidence === "document" && briefing.outcome !== "unknown") {
     return {
       title,
       insight: briefing.documentType
@@ -272,7 +327,13 @@ export function intakeInboxCardCopy(item: {
         : intakeOutcomeLabel(briefing.outcome),
     };
   }
-  if (briefing.expiryDate) {
+  if (briefing.typeEvidence === "inference" && briefing.contentType) {
+    return { title, insight: `Looks like ${briefing.contentType}` };
+  }
+  if (briefing.typeEvidence === "filename" && briefing.documentType) {
+    return { title, insight: `File name suggests ${briefing.documentType}` };
+  }
+  if (briefing.typeEvidence === "document" && briefing.expiryDate) {
     const expiry = new Date(`${briefing.expiryDate}T00:00:00`);
     const expiryLabel = Number.isNaN(expiry.getTime())
       ? briefing.expiryDate

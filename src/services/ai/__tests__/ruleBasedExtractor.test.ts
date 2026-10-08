@@ -286,12 +286,33 @@ describe("extractChipsFromText — space detection", () => {
       { description: "Fix the kitchen tap tomorrow, urgent", propertyId: "p1" },
       entities
     );
-    const exact = result.chips.filter(
-      (c) => c.type === "space" && c.metadata?.matchedExactName
+    const ambiguity = result.chips.find((c) => c.metadata?.spaceAmbiguity);
+    expect(ambiguity?.label).toMatch(/kitchen/i);
+    const optionIds = (
+      ambiguity?.metadata?.options as Array<{ id: string }> | undefined
+    )?.map((option) => option.id);
+    expect(optionIds).toEqual(expect.arrayContaining(["s-kitchen", "s-chefs", "s-terrace"]));
+    expect(optionIds).not.toContain("s-bar");
+    expect(result.chips.some((c) => c.metadata?.matchedExactName)).toBe(false);
+  });
+
+  it("treats several kitchens as one question and ignores the word floor", () => {
+    const entities = {
+      ...EMPTY_ENTITIES,
+      spaces: [
+        { id: "k1", name: "Kitchen", property_id: "p1" },
+        { id: "k2", name: "Chef's Kitchen", property_id: "p1" },
+        { id: "f1", name: "Ground Floor", property_id: "p1" },
+        { id: "f2", name: "Garden Floor Landing", property_id: "p1" },
+      ],
+    };
+    const result = extractChipsFromText(
+      { description: "The kitchen tap is dripping onto the floor.", propertyId: "p1" },
+      entities
     );
-    expect(exact.map((c) => c.resolvedEntityId)).toEqual(["s-kitchen"]);
-    const bar = result.chips.find((c) => c.resolvedEntityId === "s-bar");
-    expect(bar?.metadata?.matchedExactName).toBeFalsy();
+    const spaces = result.chips.filter((chip) => chip.type === "space");
+    expect(spaces.map((chip) => chip.label)).toEqual(["Which kitchen space?"]);
+    expect(result.chips.some((chip) => String(chip.label).toLowerCase() === "floor")).toBe(false);
   });
 
   it("'at the bowling alley' → multi-word space detection", () => {

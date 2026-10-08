@@ -14,6 +14,7 @@ const MEANINGLESS_TYPE_VALUES = new Set([
   "undefined",
   "not_applicable",
   "not applicable",
+  "unclear",
   "",
 ]);
 

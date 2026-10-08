@@ -89,6 +89,7 @@ export function extractChipsFromText(
   
   // Ghost groups for detected spaces
   spaceChips.forEach(chip => {
+    if (chip.metadata?.spaceAmbiguity) return;
     if (chip.score >= 0.6) {
       ghostCategories.push({
         id: `ghost-space-${chip.value}`,
@@ -280,10 +281,17 @@ function detectSpaces(
   // and "set" doesn't match a "Closet" space via plain substring containment.
   for (const space of filteredSpaces) {
     const spaceName = space.name.toLowerCase();
+    if (GENERIC_SPACE_TOKENS.has(spaceName)) continue;
     const spaceNameWordRe = new RegExp(`\\b${escapeForRegex(spaceName)}\\b`);
 
     const exactName = spaceNameWordRe.test(text);
-    const fuzzyName = !exactName && words.some((w) => isFuzzyMatch(w, spaceName));
+    const fuzzyName =
+      !exactName &&
+      words.some((word) => {
+        const token = word.toLowerCase().replace(/[^a-z0-9]/g, "");
+        if (token.length < 4 || GENERIC_SPACE_TOKENS.has(token)) return false;
+        return isFuzzyMatch(token, spaceName);
+      });
     if (exactName || fuzzyName) {
       chips.push({
         id: `space-${space.id}`,
@@ -300,8 +308,11 @@ function detectSpaces(
     }
   }
   
-  // Asset-to-space mapping
+  // Asset-to-space mapping. Generic building words ("floor") are not evidence
+  // that a named room is relevant.
+  const genericAssetKeys = new Set(["floor", "ceiling", "light", "window", "door", "wall"]);
   for (const [asset, possibleSpaces] of Object.entries(extractionPatterns.assetToSpaceMap)) {
+    if (genericAssetKeys.has(asset.toLowerCase())) continue;
     if (text.includes(asset.toLowerCase())) {
       for (const spaceName of possibleSpaces) {
         const matchingSpace = filteredSpaces.find(s => 
@@ -394,6 +405,11 @@ function detectSpaces(
         const spaceName = match[0].replace(/^the\s+/i, "").trim();
         const spaceNameLower = spaceName.toLowerCase();
         if (matchedSpaces.has(spaceNameLower)) break;
+        if (
+          spaceNameLower.split(/\s+/).every((token) => GENERIC_SPACE_TOKENS.has(token) || token === "onto" || token === "the")
+        ) {
+          break;
+        }
         const tokenCount = spaceNameLower.split(/\s+/).filter(Boolean).length;
         const prefix = text.slice(Math.max(0, match.index - 24), match.index);
         const hasLocationCue = LOCATION_CUE_RE.test(prefix) || /^the\s+/i.test(match[0]);
@@ -418,7 +434,65 @@ function detectSpaces(
     }
   }
   
-  return chips;
+  return collapseAmbiguousSpaceChips(chips, words);
+}
+
+const GENERIC_SPACE_TOKENS = new Set([
+  "floor",
+  "floors",
+  "room",
+  "rooms",
+  "area",
+  "areas",
+  "space",
+  "spaces",
+  "landing",
+  "house",
+  "building",
+  "level",
+  "levels",
+]);
+
+/**
+ * Several spaces that share one word from the text are one question, not several suggestions.
+ */
+function collapseAmbiguousSpaceChips(chips: SuggestedChip[], words: string[]): SuggestedChip[] {
+  const resolved = chips.filter(
+    (chip) =>
+      chip.type === "space" &&
+      chip.resolvedEntityId &&
+      !chip.metadata?.matchedAsset &&
+      !chip.metadata?.matchedActivity
+  );
+  const collapsedIds = new Set<string>();
+  const questions: SuggestedChip[] = [];
+  const tokens = [...new Set(words.map((word) => word.toLowerCase()))].filter(
+    (word) => word.length >= 5 && !GENERIC_SPACE_TOKENS.has(word)
+  );
+
+  for (const token of tokens) {
+    const hits = resolved.filter(
+      (chip) => !collapsedIds.has(chip.id) && isFuzzyMatch(token, (chip.label || "").toLowerCase())
+    );
+    if (hits.length < 2) continue;
+    for (const hit of hits) collapsedIds.add(hit.id);
+    questions.push({
+      id: `space-ambiguity-${token}`,
+      type: "space",
+      value: token,
+      label: `Which ${token} space?`,
+      score: 0.9,
+      source: "rule",
+      blockingRequired: true,
+      metadata: {
+        spaceAmbiguity: true,
+        options: hits.map((hit) => ({ id: hit.resolvedEntityId, label: hit.label })),
+      },
+    });
+  }
+
+  if (collapsedIds.size === 0) return chips;
+  return [...chips.filter((chip) => !collapsedIds.has(chip.id)), ...questions];
 }
 
 /**
@@ -466,9 +540,12 @@ function detectAssets(
     matchedAssets.add(normalizedAsset);
   }
   
-  // Check for known asset keywords from assetToSpaceMap
+  // Check for known asset keywords from assetToSpaceMap.
+  // Generic building words are not evidence of an asset.
+  const genericAssetKeywords = new Set(["floor", "ceiling", "light", "window", "door", "wall"]);
   for (const asset of Object.keys(extractionPatterns.assetToSpaceMap)) {
     const assetLower = asset.toLowerCase();
+    if (genericAssetKeywords.has(assetLower)) continue;
     const normalizedAsset = singularize(assetLower);
     const assetWords = assetLower.split(/\s+/).filter(Boolean);
     const hasKnownAssetMention =

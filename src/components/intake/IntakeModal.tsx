@@ -1821,8 +1821,8 @@ export function IntakeModal({
   }, [chipSuggestions, dismissedSuggestionIds, assignedUserId, assignedTeamIds, selectedSpaceIds, dueDate, repeatPreset, selectedAssetIds, priorityDefined]);
 
   /**
-   * Person invite verbs lead the strip. When the org is small (≤3 others),
-   * also surface those teammates as soft WHO suggestions so Filla can predict assignees.
+   * Person invite verbs lead the strip. People are only suggested when the text
+   * or an existing relationship already named them.
    */
   const suggestionStripChips = useMemo(() => {
     const out: SuggestedChip[] = [];
@@ -1845,31 +1845,8 @@ export function IntakeModal({
       }
     }
 
-    const otherMembers = (members ?? []).filter(
-      (m) => m.user_id && m.user_id !== currentUserId && m.user_id !== assignedUserId
-    );
-    if (
-      intakeMode === "report_issue" &&
-      description.trim().length >= 8 &&
-      otherMembers.length > 0 &&
-      otherMembers.length <= 3
-    ) {
-      for (const m of otherMembers) {
-        push({
-          id: `person-soft-${m.user_id}`,
-          type: "person",
-          value: m.user_id,
-          label: m.display_name || "Teammate",
-          score: 0.52,
-          source: "fallback",
-          resolvedEntityId: m.user_id,
-          blockingRequired: false,
-          metadata: { detectedAs: "small_team_suggestion" },
-        });
-      }
-    }
-
     for (const chip of filteredChipSuggestions) {
+      if (chip.metadata?.spaceAmbiguity) continue;
       push(chip);
     }
 
@@ -1878,11 +1855,6 @@ export function IntakeModal({
     filteredChipSuggestions,
     chipSuggestions,
     dismissedSuggestionIds,
-    members,
-    currentUserId,
-    assignedUserId,
-    intakeMode,
-    description,
   ]);
 
   // Auto-apply named spaces that match a property space (like due date / assets).
@@ -2462,6 +2434,7 @@ export function IntakeModal({
             chip.type === "space" &&
             chip.blockingRequired &&
             !chip.resolvedEntityId &&
+            !chip.metadata?.spaceAmbiguity &&
             !selectedSpaces.some((space) => space.name.toLowerCase() === chip.label.toLowerCase())
         );
         const spaceSuggestionChips = chipSuggestions.filter((chip) => chip.type === "space");
@@ -2476,12 +2449,26 @@ export function IntakeModal({
           limit: 8,
         });
         const sq = intakeWhereSpaceQuery.trim().toLowerCase();
+        const ambiguitySpaceOptions = chipSuggestions
+          .filter((chip) => chip.metadata?.spaceAmbiguity && !dismissedSuggestionIds.has(chip.id))
+          .flatMap((chip) =>
+            Array.isArray(chip.metadata?.options)
+              ? (chip.metadata.options as Array<{ id?: string; label?: string }>)
+              : []
+          )
+          .flatMap((option) => {
+            if (!option.id) return [];
+            const match = spaces.find((space) => space.id === option.id);
+            return match ? [match] : [];
+          });
         const spacePickSuggestions =
           propertyId && sq
             ? spaces.filter((s) => s.name.toLowerCase().includes(sq)).slice(0, 6)
-            : propertyId && intakeWhereSpaceEditing
-              ? likelySpaces.slice(0, 6)
-              : [];
+            : propertyId && intakeWhereSpaceEditing && ambiguitySpaceOptions.length > 0
+              ? ambiguitySpaceOptions
+              : propertyId && intakeWhereSpaceEditing
+                ? likelySpaces.slice(0, 6)
+                : [];
         const hasExactSpaceMatch =
           Boolean(sq) && spaces.some((s) => s.name.toLowerCase() === sq);
         const spaceInputW = intakeInlineInputWidth(intakeWhereSpaceQuery.length);
@@ -2670,6 +2657,7 @@ export function IntakeModal({
               )}
               {propertyId &&
                 !intakeWhereSpaceEditing &&
+                ambiguitySpaceOptions.length === 0 &&
                 likelySpaces.map((space) => {
                   const selected = selectedSpaceIds.includes(space.id);
                   return (
@@ -4878,6 +4866,47 @@ export function IntakeModal({
               </div>
             </div>
           )}
+
+          {hasDescriptionDraft
+            ? chipSuggestions
+                .filter((chip) => chip.metadata?.spaceAmbiguity && !dismissedSuggestionIds.has(chip.id))
+                .map((chip) => {
+                  const options = Array.isArray(chip.metadata?.options)
+                    ? (chip.metadata.options as Array<{ id?: string; label?: string }>)
+                    : [];
+                  return (
+                    <div key={chip.id} className="space-y-2 px-0">
+                      <p className="text-sm font-medium text-foreground">{chip.label}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {options.map((option) =>
+                          option.id ? (
+                            <button
+                              key={option.id}
+                              type="button"
+                              className="min-h-11 rounded-lg bg-card px-3 py-2 text-sm font-medium text-foreground shadow-e1"
+                              onClick={() => {
+                                setDismissedSuggestionIds((prev) => new Set([...prev, chip.id]));
+                                void handleIntakeSuggestedChip({
+                                  id: `space-${option.id}`,
+                                  type: "space",
+                                  value: option.id!,
+                                  label: option.label || "Space",
+                                  score: 0.9,
+                                  source: "rule",
+                                  resolvedEntityId: option.id,
+                                  blockingRequired: false,
+                                });
+                              }}
+                            >
+                              {option.label}
+                            </button>
+                          ) : null
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+            : null}
 
           {/* AI suggestion strip — single line, directly above active chip row */}
           {hasDescriptionDraft && suggestionStripChips.length > 0 && (

@@ -23,7 +23,13 @@ import { useToast } from "@/hooks/use-toast";
 import type { IntakeMode } from "@/types/intake";
 import type { IntakeReviewPayload } from "@/components/intake/IntakeInboxPanel";
 import type { IntakeItemStatus, IntakeSourceArtifact } from "@/types/intake-item";
-import { formatIntakeFileSize, suggestIntakeMode } from "@/lib/intakeReviewSummary";
+import { formatIntakeFileSize } from "@/lib/intakeReviewSummary";
+import {
+  decideIntake,
+  intakeDecisionActionLabel,
+  type IntakeDecision,
+  type IntakeDecisionAction,
+} from "@/lib/intake/intakeDecision";
 import {
   inboundEmailOutcomeLabel,
   inboundEmailSenderLabel,
@@ -32,7 +38,6 @@ import {
 import {
   buildIntakeDocumentBriefing,
   intakeOutcomeLabel,
-  intakeReadFromLabel,
 } from "@/lib/intakeDocumentBriefing";
 import { useInboxFilePreview } from "@/hooks/useInboxFilePreview";
 import { IntakeFileThumb } from "@/components/intake/IntakeFileThumb";
@@ -47,8 +52,122 @@ interface IntakeReviewSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   payload: IntakeReviewPayload | null;
+  propertyName?: string | null;
+  propertyAddress?: string | null;
   onContinue: (mode: IntakeMode) => void;
   onBackToUploads?: () => void;
+}
+
+function IntakeDecisionPanel({
+  decision,
+  confirmedAction,
+  showOtherActions,
+  filingKnowledge,
+  allowKnowledge,
+  onConfirm,
+  onRun,
+  onToggleOther,
+}: {
+  decision: IntakeDecision;
+  confirmedAction: IntakeDecisionAction | null;
+  showOtherActions: boolean;
+  filingKnowledge: boolean;
+  allowKnowledge: boolean;
+  onConfirm: (action: IntakeDecisionAction | "something_else") => void;
+  onRun: (action: IntakeDecisionAction) => void;
+  onToggleOther: () => void;
+}) {
+  const ready =
+    decision.action_confidence === "sufficient" || confirmedAction != null;
+  const action = confirmedAction || (decision.recommended_action === "ask" ? null : decision.recommended_action);
+  const alternatives = decision.alternative_actions.filter(
+    (item) => item !== action && (item !== "keep_knowledge" || allowKnowledge)
+  );
+
+  return (
+    <div className="space-y-3">
+      {!ready && decision.blocking_uncertainty === "still_reading" ? (
+        <p className="text-sm text-muted-foreground">{decision.reason}</p>
+      ) : null}
+
+      {!ready && decision.clarifying_question ? (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">{decision.clarifying_question}</p>
+          <div className="flex flex-col gap-2">
+            {decision.clarifying_options.map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => onConfirm(option.action)}
+                className="min-h-11 rounded-lg bg-card px-3 py-2 text-left text-sm font-medium text-foreground shadow-e1"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {ready && action ? (
+        <button
+          type="button"
+          disabled={action === "keep_knowledge" && filingKnowledge}
+          onClick={() => onRun(action)}
+          className={cn(
+            action === "create_task"
+              ? intakeReportIssueDrawerCardClassName
+              : action === "keep_knowledge"
+                ? "w-full rounded-lg border-0 bg-card p-4 text-left text-foreground shadow-e1"
+                : intakeAddRecordDrawerCardClassName
+          )}
+        >
+          <div className="flex items-start gap-3">
+            {action === "create_task" ? (
+              <Plus className="h-5 w-5 shrink-0 mt-0.5" />
+            ) : action === "keep_knowledge" ? (
+              filingKnowledge ? (
+                <Loader2 className="h-5 w-5 shrink-0 mt-0.5 animate-spin" />
+              ) : (
+                <BookOpen className="h-5 w-5 shrink-0 mt-0.5" />
+              )
+            ) : (
+              <ShieldCheck className="h-5 w-5 shrink-0 mt-0.5" />
+            )}
+            <div className="text-left">
+              <p className="font-semibold">
+                {intakeDecisionActionLabel(action, decision.understanding.label)}
+              </p>
+              <p className="text-xs font-normal mt-0.5 opacity-90">{decision.reason}</p>
+            </div>
+          </div>
+        </button>
+      ) : null}
+
+      {(ready || decision.blocking_uncertainty === "still_reading") && alternatives.length > 0 ? (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={onToggleOther}
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Other actions
+          </button>
+          {showOtherActions
+            ? alternatives.map((item) => (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => onRun(item)}
+                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/40"
+                >
+                  {intakeDecisionActionLabel(item, decision.understanding.label)}
+                </button>
+              ))
+            : null}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function FactRow({ label, value }: { label: string; value: string }) {
@@ -64,6 +183,8 @@ export function IntakeReviewSheet({
   open,
   onOpenChange,
   payload,
+  propertyName,
+  propertyAddress,
   onContinue,
   onBackToUploads,
 }: IntakeReviewSheetProps) {
@@ -71,12 +192,18 @@ export function IntakeReviewSheet({
   const invalidate = useIntakeItemsInvalidator();
   const [dismissing, setDismissing] = useState(false);
   const [filingKnowledge, setFilingKnowledge] = useState(false);
+  const [confirmedAction, setConfirmedAction] = useState<IntakeDecisionAction | null>(null);
+  const [showOtherActions, setShowOtherActions] = useState(false);
+  const [askedWhatThisIs, setAskedWhatThisIs] = useState(false);
   const [artifact, setArtifact] = useState<IntakeSourceArtifact | null>(payload?.sourceArtifact ?? null);
   const [itemStatus, setItemStatus] = useState<IntakeItemStatus | null>(null);
 
   useEffect(() => {
     setArtifact(payload?.sourceArtifact ?? null);
     setItemStatus(null);
+    setConfirmedAction(null);
+    setShowOtherActions(false);
+    setAskedWhatThisIs(false);
   }, [payload?.sourceArtifact?.intakeItemId]);
 
   useEffect(() => {
@@ -133,15 +260,24 @@ export function IntakeReviewSheet({
   const isMemberEmail =
     (artifact?.emailProvenance as { channel?: string } | null | undefined)?.channel ===
     "member_intake_email";
-  const suggestedMode =
-    proposal?.outcome === "task"
-      ? "report_issue"
-      : proposal?.outcome === "record"
-        ? "add_record"
-        : artifact
-          ? suggestIntakeMode(artifact)
-          : "add_record";
-  const briefing = artifact ? buildIntakeDocumentBriefing(artifact, preview.extractedText) : null;
+  const briefing = artifact
+    ? buildIntakeDocumentBriefing(artifact, preview.extractedText, {
+        propertyName,
+        propertyAddress,
+      })
+    : null;
+  const decision: IntakeDecision | null = briefing
+    ? decideIntake({
+        briefing,
+        mimeType: artifact?.mimeType,
+        scanStillRunning:
+          itemStatus === "pending" ||
+          itemStatus === "processing" ||
+          (preview.loading && briefing.typeEvidence !== "document"),
+        allowKnowledge: isMemberEmail,
+        proposal,
+      })
+    : null;
   const scanStillRunning = itemStatus === "pending" || itemStatus === "processing";
   const fileSizeLabel = formatIntakeFileSize(payload?.fileSize ?? null);
   const isEmailOnly = !artifact?.storagePath && !!artifact?.rawText;
@@ -226,9 +362,11 @@ export function IntakeReviewSheet({
             <SheetTitle className="text-base">What we found</SheetTitle>
           </div>
           <SheetDescription>
-            {briefing.needsFollowUp
-              ? "File the record, then raise follow-up if the outcome needs work."
-              : "Check the read, then choose where this should go."}
+            {confirmedAction
+              ? decision?.reason
+              : decision?.clarifying_question ||
+                decision?.reason ||
+                "Check the read, then confirm the next action."}
           </SheetDescription>
         </SheetHeader>
 
@@ -275,18 +413,24 @@ export function IntakeReviewSheet({
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            {briefing.documentType ? (
-              <span className="rounded-sharp bg-input px-2.5 py-1 text-caption font-medium text-foreground shadow-sm">
-                {briefing.documentType}
-              </span>
-            ) : null}
-            {briefing.outcome !== "unknown" ? (
-              <span className={cn("rounded-sharp px-2.5 py-1 text-caption font-medium", outcomeTone)}>
-                {intakeOutcomeLabel(briefing.outcome)}
-              </span>
-            ) : null}
-          </div>
+          {briefing.typeEvidence === "document" ? (
+            <div className="flex flex-wrap gap-1.5">
+              {briefing.documentType ? (
+                <span className="rounded-sharp bg-input px-2.5 py-1 text-caption font-medium text-foreground shadow-sm">
+                  {briefing.documentType}
+                </span>
+              ) : null}
+              {briefing.understanding.statusLabel ? (
+                <span className="rounded-sharp bg-muted px-2.5 py-1 text-caption font-medium text-foreground shadow-sm">
+                  {briefing.understanding.statusLabel}
+                </span>
+              ) : briefing.outcome !== "unknown" ? (
+                <span className={cn("rounded-sharp px-2.5 py-1 text-caption font-medium", outcomeTone)}>
+                  {intakeOutcomeLabel(briefing.outcome)}
+                </span>
+              ) : null}
+            </div>
+          ) : null}
 
           {preview.loading || preview.thumbnailUrl || preview.kind === "pdf" || preview.kind === "image" ? (
             <IntakeFilePreviewFrame
@@ -307,8 +451,22 @@ export function IntakeReviewSheet({
                 Reading document…
               </div>
             ) : null}
-            <FactRow label="Type" value={briefing.documentType || "Not identified"} />
-            <FactRow label="Outcome" value={intakeOutcomeLabel(briefing.outcome)} />
+            <FactRow
+              label="Type"
+              value={
+                briefing.typeEvidence === "document"
+                  ? briefing.documentType || "Not identified"
+                  : "Not confirmed"
+              }
+            />
+            <FactRow
+              label="Outcome"
+              value={
+                briefing.typeEvidence === "document"
+                  ? briefing.understanding.statusLabel || intakeOutcomeLabel(briefing.outcome)
+                  : "Not stated"
+              }
+            />
             <FactRow
               label="Expiry"
               value={
@@ -318,10 +476,21 @@ export function IntakeReviewSheet({
                       month: "short",
                       year: "numeric",
                     })
-                  : "Not found"
+                  : briefing.understanding.withheldExpiry
+                    ? "Not applied"
+                    : "Not found"
               }
             />
-            <FactRow label="Read from" value={intakeReadFromLabel(briefing.provenance)} />
+            <FactRow
+              label="Read from"
+              value={
+                briefing.typeEvidence === "document" || briefing.typeEvidence === "inference"
+                  ? "Document text"
+                  : briefing.typeEvidence === "filename"
+                    ? "File name"
+                    : "Not enough to read"
+              }
+            />
           </dl>
 
           {briefing.findings.length > 0 ? (
@@ -357,78 +526,47 @@ export function IntakeReviewSheet({
             </div>
           ) : null}
 
-          <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">Where should this go?</p>
-            <button
-              type="button"
-              onClick={() => onContinue("add_record")}
-              className={cn(
-                intakeAddRecordDrawerCardClassName,
-                suggestedMode === "add_record" && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <ShieldCheck className="h-5 w-5 shrink-0 mt-0.5" />
-                <div className="text-left">
-                  <p className="font-semibold">Add to Records</p>
-                  <p className="text-xs opacity-90 font-normal mt-0.5">
-                    {briefing.documentType
-                      ? `Keep this ${briefing.documentType} on the property file`
-                      : "Certificates, invoices, leases, and property documents"}
-                  </p>
-                </div>
-              </div>
-            </button>
-            <button
-              type="button"
-              onClick={() => onContinue("report_issue")}
-              className={cn(
-                intakeReportIssueDrawerCardClassName,
-                suggestedMode === "report_issue" && "ring-2 ring-destructive/50 ring-offset-2 ring-offset-background"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <Plus className="h-5 w-5 shrink-0 mt-0.5" />
-                <div className="text-left">
-                  <p className="font-semibold">
-                    {proposal?.task_fields?.reminder ? "Create a reminder" : "Report an issue"}
-                  </p>
-                  <p className="text-xs opacity-90 font-normal mt-0.5">
-                    {proposal?.task_fields?.reminder
-                      ? "A task with the proposed due date. You can change the date before saving."
-                      : briefing.needsFollowUp
-                        ? "Unsatisfactory or expired — raise remedial or renewal work"
-                        : "Something needs fixing, inspection, or follow-up work"}
-                  </p>
-                </div>
-              </div>
-            </button>
-            {isMemberEmail ? (
-              <button
-                type="button"
-                disabled={filingKnowledge}
-                onClick={() => void handleKnowledge()}
-                className={cn(
-                  "w-full rounded-lg border-0 bg-card p-4 text-left text-foreground shadow-e1 transition-all hover:bg-card/80",
-                  proposal?.outcome === "knowledge" && "ring-2 ring-primary/60 ring-offset-2 ring-offset-background"
-                )}
-              >
-                <div className="flex items-start gap-3">
-                  {filingKnowledge ? (
-                    <Loader2 className="h-5 w-5 shrink-0 mt-0.5 animate-spin text-primary" />
-                  ) : (
-                    <BookOpen className="h-5 w-5 shrink-0 mt-0.5 text-primary" />
-                  )}
-                  <div className="text-left">
-                    <p className="font-semibold">Keep as Knowledge</p>
-                    <p className="text-xs font-normal mt-0.5 text-muted-foreground">
-                      Reusable guidance for this organisation. It stays a candidate until it is reviewed.
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ) : null}
-          </div>
+          {decision ? (
+            <IntakeDecisionPanel
+              decision={
+                askedWhatThisIs
+                  ? {
+                      ...decision,
+                      action_confidence: "insufficient",
+                      clarifying_question: "What is this?",
+                      clarifying_options: [
+                        { id: "record", label: "A property document", action: "file_record" },
+                        { id: "issue", label: "Something that needs fixing", action: "create_task" },
+                        ...(isMemberEmail
+                          ? [{ id: "knowledge" as const, label: "Guidance to keep", action: "keep_knowledge" as const }]
+                          : []),
+                      ],
+                      recommended_action: "ask",
+                    }
+                  : decision
+              }
+              confirmedAction={confirmedAction}
+              showOtherActions={showOtherActions}
+              filingKnowledge={filingKnowledge}
+              allowKnowledge={isMemberEmail}
+              onConfirm={(action) => {
+                if (action === "something_else") {
+                  setAskedWhatThisIs(true);
+                  setConfirmedAction(null);
+                  return;
+                }
+                setConfirmedAction(action);
+              }}
+              onRun={(action) => {
+                if (action === "keep_knowledge") {
+                  void handleKnowledge();
+                  return;
+                }
+                onContinue(action === "create_task" ? "report_issue" : "add_record");
+              }}
+              onToggleOther={() => setShowOtherActions((open) => !open)}
+            />
+          ) : null}
 
           <Button
             type="button"

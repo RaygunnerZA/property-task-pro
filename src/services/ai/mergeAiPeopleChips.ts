@@ -31,6 +31,13 @@ function personTokens(name: string): Set<string> {
   );
 }
 
+function personMentionedInText(name: string, contextText: string): boolean {
+  return [...personTokens(name)].some((token) => {
+    const escaped = token.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return new RegExp(`\\b${escaped}\\b`, "i").test(contextText);
+  });
+}
+
 function personNamesOverlap(a: string, b: string): boolean {
   const ta = personTokens(a);
   const tb = personTokens(b);
@@ -71,6 +78,7 @@ export function mergeAiPeopleIntoChips(
     const raw = person.name?.trim();
     if (!raw || raw.length < 2) continue;
     if (isRejectedPersonName(raw, contextText)) continue;
+    if (contextText && !personMentionedInText(raw, contextText)) continue;
 
     const display = normalizePersonName(raw);
     const lower = display.toLowerCase();

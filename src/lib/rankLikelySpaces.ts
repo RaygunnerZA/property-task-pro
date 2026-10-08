@@ -39,8 +39,25 @@ export function rankLikelySpaces<T extends RankableSpace>({
 }: RankLikelySpacesOptions<T>): T[] {
   if (spaces.length === 0 || limit <= 0) return [];
 
+  const genericTokens = new Set([
+    "floor",
+    "floors",
+    "room",
+    "rooms",
+    "area",
+    "areas",
+    "space",
+    "spaces",
+    "landing",
+    "house",
+    "building",
+    "level",
+    "levels",
+  ]);
   const text = contextText.toLowerCase();
-  const tokens = text.split(/[^\p{L}\p{N}]+/u).filter((t) => t.length > 2);
+  const tokens = text
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((token) => token.length > 2 && !genericTokens.has(token));
   const selected = new Set(selectedIds);
   const suggestedIds = new Set(suggestedEntityIds.filter(Boolean));
   const labels = suggestedLabels
@@ -74,6 +91,7 @@ export function rankLikelySpaces<T extends RankableSpace>({
 
     const nameTokens = name.split(/[^\p{L}\p{N}]+/u).filter((t) => t.length > 2);
     for (const nt of nameTokens) {
+      if (genericTokens.has(nt)) continue;
       if (tokens.includes(nt)) score += 18;
     }
 

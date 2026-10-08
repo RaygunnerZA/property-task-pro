@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 type IntakePendingReviewSectionProps = {
   className?: string;
   defaultPropertyId?: string;
+  propertyName?: string | null;
+  propertyAddress?: string | null;
   onTaskCreated?: (taskId: string) => void;
   /** Optional ref target wrapper for deep-link scroll (`?inflow=pending`). */
   sectionRef?: React.RefObject<HTMLElement | null>;
@@ -20,6 +22,8 @@ type IntakePendingReviewSectionProps = {
 export function IntakePendingReviewSection({
   className,
   defaultPropertyId,
+  propertyName,
+  propertyAddress,
   onTaskCreated,
   sectionRef,
 }: IntakePendingReviewSectionProps) {
@@ -70,6 +74,8 @@ export function IntakePendingReviewSection({
         open={reviewSheetOpen}
         onOpenChange={handleReviewSheetChange}
         payload={reviewPayload}
+        propertyName={propertyName}
+        propertyAddress={propertyAddress}
         onContinue={handleContinueFromReview}
       />
 

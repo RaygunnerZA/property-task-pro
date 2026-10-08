@@ -300,9 +300,17 @@ export function InflowPanel({
   }
 
   const pendingUploadsBlock = (
-    <IntakePendingReviewSection
+      <IntakePendingReviewSection
       sectionRef={pendingUploadsRef}
       defaultPropertyId={focusedPropertyId}
+      propertyName={
+        (properties.find((property) => property.id === focusedPropertyId) as { nickname?: string | null } | undefined)
+          ?.nickname
+      }
+      propertyAddress={
+        (properties.find((property) => property.id === focusedPropertyId) as { address?: string | null } | undefined)
+          ?.address
+      }
       onTaskCreated={(taskId) => onTaskClick?.(taskId)}
       className="mb-2"
     />

@@ -37,9 +37,12 @@ export async function inspectPdf(data: ArrayBuffer): Promise<PdfInspection> {
 
     try {
       const page = await doc.getPage(1);
-      const [thumbnailUrl, text] = await Promise.all([
+      const text = await readPageText(page);
+      const thumbnailUrl = await Promise.race([
         renderPage(page),
-        readPageText(page),
+        new Promise<null>((resolve) => {
+          window.setTimeout(() => resolve(null), 4000);
+        }),
       ]);
       return { thumbnailUrl, text };
     } finally {

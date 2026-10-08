@@ -35,10 +35,10 @@ describe("intake document briefing", () => {
   it("reads unsatisfactory from the filename even when AI only stubbed EICR", () => {
     const briefing = buildIntakeDocumentBriefing(artifact({}));
     expect(briefing.documentType).toBe("EICR");
-    expect(briefing.outcome).toBe("unsatisfactory");
-    expect(briefing.needsFollowUp).toBe(true);
+    expect(briefing.outcome).toBe("unknown");
+    expect(briefing.needsFollowUp).toBe(false);
     expect(briefing.title).toBe("EICR Record");
-    expect(briefing.summary.toLowerCase()).toContain("unsatisfactory");
+    expect(briefing.summary.toLowerCase()).not.toContain("unsatisfactory");
     expect(briefing.provenance).toBe("filename");
   });
 
@@ -85,7 +85,7 @@ describe("intake document briefing", () => {
       })
     );
     expect(briefing.documentType).toBe("EPC");
-    expect(briefing.outcome).toBe("valid");
+    expect(briefing.outcome).toBe("unknown");
     expect(briefing.provenance).toBe("filename");
     expect(briefing.title).toBe("EPC Record");
   });
@@ -101,7 +101,8 @@ describe("intake document briefing", () => {
       ai_extracted: { document_type: "EICR", metadata: { stub: true } },
       status: "ready",
     });
-    expect(eicr.insight.toLowerCase()).toContain("unsatisfactory");
+    expect(eicr.insight.toLowerCase()).toContain("file name");
+    expect(eicr.insight.toLowerCase()).toContain("eicr");
 
     const invoice = intakeInboxCardCopy({
       id: "2",

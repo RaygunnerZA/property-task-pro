@@ -53,4 +53,16 @@ describe("mergeAiPeopleIntoChips", () => {
     const labels = merged.filter((c) => c.type === "person").map((c) => c.label);
     expect(labels).toEqual(["Oliver"]);
   });
+
+  it("does not add a person who is absent from the provided text", () => {
+    const merged = mergeAiPeopleIntoChips(
+      [],
+      [
+        { name: "Flash McLeod", exists: true, id: "u1" },
+        { name: "Matthew", exists: true, id: "u2" },
+      ],
+      { contextText: "The kitchen tap is dripping onto the floor." }
+    );
+    expect(merged.filter((chip) => chip.type === "person")).toHaveLength(0);
+  });
 });
