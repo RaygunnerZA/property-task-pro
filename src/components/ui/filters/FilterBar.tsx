@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import React, { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, type RefObject } from "react";
 import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/chips/filter";
@@ -98,6 +98,23 @@ interface FilterBarProps {
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
 
+export type FilterRowSortSession = {
+  options: { id: string; label: string }[];
+  sortBy: string;
+  onSortChange: (id: string) => void;
+};
+
+type FilterRowSortApi = {
+  openSort: (session: FilterRowSortSession) => void;
+};
+
+const FilterRowSortContext = React.createContext<FilterRowSortApi | null>(null);
+
+/** Sort trigger inside a FilterBar row uses this to replace the row, matching FILTER. */
+export function useFilterRowSort() {
+  return React.useContext(FilterRowSortContext);
+}
+
 /**
  * FilterBar - Single-Row Progressive Filter System
  * 
@@ -148,6 +165,7 @@ export function FilterBar({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [animationDirection, setAnimationDirection] = useState<'right-to-left' | 'left-to-right' | null>(null);
   const [filterChipCollapsed, setFilterChipCollapsed] = useState(false);
+  const [sortSession, setSortSession] = useState<FilterRowSortSession | null>(null);
   const collapseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onExpandedChangeRef = useRef(onExpandedChange);
   onExpandedChangeRef.current = onExpandedChange;
@@ -178,7 +196,26 @@ export function FilterBar({
     onFilterChange(filterId, !isSelected);
   };
 
+  const openSort = useCallback((session: FilterRowSortSession) => {
+    setAnimationDirection("left-to-right");
+    setSortSession(session);
+  }, []);
+
+  const closeSort = useCallback(() => {
+    setAnimationDirection("right-to-left");
+    setSortSession(null);
+  }, []);
+
+  const sortRowApi = useMemo(() => ({ openSort }), [openSort]);
+
+  const handleSortSelect = (id: string) => {
+    if (!sortSession) return;
+    sortSession.onSortChange(id);
+    setSortSession({ ...sortSession, sortBy: id });
+  };
+
   const handleFilterByClick = () => {
+    setSortSession(null);
     setAnimationDirection('left-to-right');
     setNavigationLevel('categories');
     setSelectedCategory(null);
@@ -344,19 +381,41 @@ export function FilterBar({
   };
 
   return (
+    <FilterRowSortContext.Provider value={sortRowApi}>
     <div className={cn("flex items-center justify-between gap-2 min-h-[36px]", className)}>
       {/* Scroll track: a few px inset so neumorphic outer shadows are not clipped */}
       <div className="chip-row-scroll flex flex-1 min-w-0 items-center gap-2 px-1 py-1">
         <div 
-          key={`${navigationLevel}-${selectedCategory || 'none'}`}
+          key={sortSession ? "sort" : `${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
             "flex h-[28px] items-center gap-[5px] flex-nowrap min-w-max",
-            navigationLevel === "primary" && "transition-[gap] duration-300 ease-out",
+            navigationLevel === "primary" && !sortSession && "transition-[gap] duration-300 ease-out",
             getAnimationClass()
           )}
         >
+          {sortSession ? (
+            <>
+              <IconButton
+                role="filter-toggle"
+                icon={<ArrowLeftToLine className="h-[14px] w-[14px] text-foreground" />}
+                onClick={closeSort}
+                size={28}
+                aria-label="Close sort"
+              />
+              {sortSession.options.map((option) => (
+                <FilterChip
+                  key={option.id}
+                  label={option.label}
+                  selected={sortSession.sortBy === option.id}
+                  onSelect={() => handleSortSelect(option.id)}
+                  className="!duration-300 ease-out"
+                />
+              ))}
+            </>
+          ) : null}
+
           {/* Level 1: Primary filters + Filter By button */}
-          {navigationLevel === 'primary' && (
+          {!sortSession && navigationLevel === 'primary' && (
             <>
               {!hideFilterByButton ? (
                 <button
@@ -406,7 +465,7 @@ export function FilterBar({
           )}
 
           {/* Level 2: Category chips + Back button */}
-          {navigationLevel === 'categories' && (
+          {!sortSession && navigationLevel === 'categories' && (
             <>
               {renderBackButton()}
               {secondaryGroups.map((group, index) => (
@@ -440,7 +499,7 @@ export function FilterBar({
           )}
 
           {/* Level 3: Category options + Back button */}
-          {navigationLevel === 'options' && selectedGroup && (
+          {!sortSession && navigationLevel === 'options' && selectedGroup && (
             <>
               {renderBackButton()}
               {selectedGroup.options.map((option, index) => {
@@ -472,5 +531,6 @@ export function FilterBar({
         </div>
       )}
     </div>
+    </FilterRowSortContext.Provider>
   );
 }

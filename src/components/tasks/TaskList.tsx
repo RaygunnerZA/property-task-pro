@@ -12,6 +12,8 @@ import TaskCard from "@/components/TaskCard";
 import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import { EmptyState } from "@/components/design-system/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
+import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
+import { useIsBelowMd } from "@/hooks/use-mobile";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
 import { Calendar, AlertTriangle, User, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search } from "lucide-react";
@@ -175,6 +177,7 @@ export function TaskList({
     ? workbenchControls.setSelectedFilters
     : setInternalSelectedFilters;
   const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
+  const belowMd = useIsBelowMd();
   const [taskSearchOpen, setTaskSearchOpen] = useState(false);
   const [internalTaskSearchQuery, setInternalTaskSearchQuery] = useState("");
   const tasksPanelInteractionRef = useRef<HTMLDivElement | null>(null);
@@ -783,7 +786,13 @@ export function TaskList({
             />
           }
           primaryTrailing={
-            embeddedInIssuesWorkbench ? undefined : (
+            embeddedInIssuesWorkbench ? undefined : belowMd ? (
+              <FilterRowSearchField
+                value={taskSearchQuery}
+                onChange={setTaskSearchQuery}
+                placeholder="Search tasks"
+              />
+            ) : (
               <FilterChip
                 label="Search"
                 icon={<Search className="h-4 w-4" />}
@@ -795,7 +804,7 @@ export function TaskList({
           }
         />
         ) : null}
-        {!embeddedInIssuesWorkbench ? (
+        {!embeddedInIssuesWorkbench && !belowMd ? (
         <div
           className={cn(
             "grid transition-[grid-template-rows] duration-200 ease-out",

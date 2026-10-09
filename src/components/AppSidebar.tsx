@@ -341,7 +341,7 @@ export function AppSidebar() {
       >
         <div
           className={cn(
-            "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out lg:hidden",
+            "mb-[15px] pt-[9px] pb-0 transition-[padding] duration-200 ease-out md:hidden",
             open ? "pl-[11px] pr-0" : "flex justify-center px-0"
           )}
         >

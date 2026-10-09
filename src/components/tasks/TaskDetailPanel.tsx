@@ -92,7 +92,6 @@ import {
   type IntakeSlotPanelRows,
 } from "@/components/intake/IntakeChipRow";
 import { TaskDetailContent } from "@/components/tasks/detail/TaskDetailContent";
-import { useIsBelowMd } from "@/hooks/use-mobile";
 import { TaskDetailHeroMeta } from "@/components/tasks/detail/TaskDetailHeroMeta";
 import {
   TaskDetailChecklistTab,
@@ -202,7 +201,6 @@ export function TaskDetailPanel({
   const [descriptionDraft, setDescriptionDraft] = useState("");
   const [status, setStatus] = useState<string>("open");
   const statusCommitRef = useRef<string | null>(null);
-  const labelledAttributes = useIsBelowMd();
   const [priority, setPriority] = useState<string>("medium");
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
   const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([]);
@@ -2028,7 +2026,7 @@ export function TaskDetailPanel({
             imageOpen={showAnnotationEditor}
             metaRow={
               <IntakeChipRow
-                layout={labelledAttributes ? "rows" : "interleaved"}
+                layout="interleaved"
                 chips={taskDetailChips}
                 onOpenSlot={setOpenChipSlot}
                 openSlot={openChipSlot}

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
+import { EphemeralDescription } from "@/components/ui/EphemeralDescription";
 import { cn } from "@/lib/utils";
 import {
   workbenchSectionSubtitleClassName,
@@ -57,7 +58,9 @@ export function IssuesWorkbenchSectionHeader({
             {trailing}
           </div>
           {subtitle ? (
-            <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
+            <EphemeralDescription id={`section:${title}`}>
+              <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
+            </EphemeralDescription>
           ) : null}
         </div>
         <div
@@ -119,7 +122,9 @@ export function IssuesWorkbenchSectionHeader({
         )}
       </div>
       {subtitle ? (
-        <p className={cn("mt-1", workbenchSectionSubtitleClassName)}>{subtitle}</p>
+        <EphemeralDescription id={`section:${title}`}>
+          <p className={cn("mt-1", workbenchSectionSubtitleClassName)}>{subtitle}</p>
+        </EphemeralDescription>
       ) : null}
     </div>
   );

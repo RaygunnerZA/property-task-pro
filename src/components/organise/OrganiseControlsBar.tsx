@@ -4,6 +4,7 @@ import {
   type FilterGroup,
   type FilterOption,
 } from "@/components/ui/filters/FilterBar";
+import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
 import { SortBar, type SortOption } from "@/components/ui/filters/SortBar";
 import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
 import { cn } from "@/lib/utils";
@@ -78,20 +79,10 @@ export function OrganiseControlsBar({
             options={sortOptions}
             forceCollapsed={filterExpanded}
           />
-          <input
-            type="search"
+          <FilterRowSearchField
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={onSearchChange}
             placeholder={searchPlaceholder}
-            aria-label={searchPlaceholder}
-            className={cn(
-              "h-[28px] min-w-[120px] max-w-[220px] flex-1 rounded-[8px] px-2.5",
-              "font-mono text-2xs uppercase tracking-wide leading-none text-foreground",
-              "placeholder:text-muted-foreground",
-              "bg-background",
-              "shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.55)]",
-              "outline-none focus-visible:ring-1 focus-visible:ring-primary/40"
-            )}
           />
         </>
       }

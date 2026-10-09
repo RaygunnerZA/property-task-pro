@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
+import { EphemeralDescription } from "@/components/ui/EphemeralDescription";
 import { scrollActiveChipIntoView } from "@/lib/scrollActiveChip";
 import {
   WORKBENCH_CENTRE_TAB_ACTIVE_COLOR,
@@ -92,9 +93,11 @@ export function OrganiseViewTabs<Id extends string>({
           })}
         </div>
         {activeMeta?.subtitle ? (
-          <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
-            {activeMeta.subtitle}
-          </p>
+          <EphemeralDescription key={activeMeta.id} id={`${ariaLabel}:${activeMeta.id}`}>
+            <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
+              {activeMeta.subtitle}
+            </p>
+          </EphemeralDescription>
         ) : null}
       </div>
     </div>

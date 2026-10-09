@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/chips/filter";
+import { useFilterRowSort } from "@/components/ui/filters/FilterBar";
 import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
 
 export type SortOption = {
@@ -27,9 +28,10 @@ type SortBarProps = {
 };
 
 /**
- * Sort control — sits beside FILTER; click expands options to the right.
- * Collapsed: [SORT]
- * Expanded:  [SORT] [Recent] [A-Z] [Priority]
+ * Sort control — sits beside FILTER.
+ * Inside a FilterBar row, opening sort replaces the row: close chip, then options
+ * (FILTER and search leave, same wipe as filter categories).
+ * Standalone: options expand to the right of SORT.
  */
 export function SortBar({
   sortBy,
@@ -38,6 +40,7 @@ export function SortBar({
   className,
   forceCollapsed = false,
 }: SortBarProps) {
+  const sortRow = useFilterRowSort();
   const [expanded, setExpanded] = useState(false);
   const [animationDirection, setAnimationDirection] = useState<"right-to-left" | "left-to-right" | null>(
     null
@@ -56,6 +59,14 @@ export function SortBar({
   }, [animationDirection, expanded]);
 
   const handleSortClick = () => {
+    if (sortRow) {
+      sortRow.openSort({
+        options: options.map((option) => ({ id: option.id, label: option.label })),
+        sortBy,
+        onSortChange: (id) => onSortChange(id as WorkbenchSortBy),
+      });
+      return;
+    }
     if (expanded) {
       setAnimationDirection("right-to-left");
       setExpanded(false);

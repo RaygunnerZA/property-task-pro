@@ -11,9 +11,10 @@ import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
 import type { AssetMetricKey } from "@/components/assets/AssetsSummaryRow";
 import { AssetLinkedTasksList } from "@/components/assets/AssetLinkedTasksList";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Package, Search, SlidersHorizontal } from "lucide-react";
+import { Package } from "lucide-react";
+import { OrganiseControlsBar, ORGANISE_SORT_OPTIONS } from "@/components/organise/OrganiseControlsBar";
 import { OrganiseViewTabs } from "@/components/organise/OrganiseViewTabs";
-import { FilterDimensionSheet } from "@/components/ui/filters/FilterDimensionSheet";
+import type { FilterGroup } from "@/components/ui/filters/FilterBar";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { createTempImage, cleanupTempImage } from "@/utils/image-optimization";
@@ -112,8 +113,6 @@ function PortfolioAssetsOrganise({
   onPageSearchChange,
   sort,
   onSortChange,
-  filterOpen,
-  onFilterOpenChange,
   statusFilters,
   onToggleStatus,
   complianceOnly,
@@ -140,8 +139,6 @@ function PortfolioAssetsOrganise({
   onPageSearchChange: (value: string) => void;
   sort: "title" | "recent" | "attention";
   onSortChange: (sort: "title" | "recent" | "attention") => void;
-  filterOpen: boolean;
-  onFilterOpenChange: (open: boolean) => void;
   statusFilters: string[];
   onToggleStatus: (value: string) => void;
   complianceOnly: boolean;
@@ -169,7 +166,55 @@ function PortfolioAssetsOrganise({
     ...(filterPropertyId ? [`asset-property-${filterPropertyId}`] : []),
     ...(filterSpaceId ? [`asset-space-${filterSpaceId}`] : []),
   ]);
-  const activeFilterCount = selectedIds.size;
+  const filterGroups: FilterGroup[] = [
+    {
+      id: "status",
+      label: "Status",
+      options: STATUS_FILTERS.map((status) => ({
+        id: `asset-status-${status.value}`,
+        label: status.label,
+      })),
+    },
+    {
+      id: "compliance",
+      label: "Compliance",
+      options: [{ id: "asset-compliance", label: "Compliance issues" }],
+    },
+    {
+      id: "property",
+      label: "Property",
+      options: properties.map((property) => ({
+        id: `asset-property-${property.id}`,
+        label: property.nickname || property.address || "Property",
+      })),
+    },
+    {
+      id: "space",
+      label: "Space",
+      options: spaceOptions.map((space) => ({
+        id: `asset-space-${space.id}`,
+        label: space.name,
+      })),
+    },
+  ];
+  const handlePortfolioFilter = (id: string, selected: boolean) => {
+    if (id.startsWith("asset-status-")) {
+      const value = id.slice("asset-status-".length);
+      if (selected !== statusFilters.includes(value)) onToggleStatus(value);
+      return;
+    }
+    if (id === "asset-compliance") {
+      onComplianceChange(selected);
+      return;
+    }
+    if (id.startsWith("asset-property-")) {
+      onPropertyChange(selected ? id.slice("asset-property-".length) : "");
+      return;
+    }
+    if (id.startsWith("asset-space-")) {
+      onSpaceChange(selected ? id.slice("asset-space-".length) : "");
+    }
+  };
 
   const groups = new Map<string, AssetViewRow[]>();
   if (view !== "attention") {
@@ -214,98 +259,21 @@ function PortfolioAssetsOrganise({
         onChange={onViewChange}
         ariaLabel="Asset organisation"
       />
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => onFilterOpenChange(true)}
-          className="inline-flex min-h-11 items-center gap-2 rounded-full bg-card px-4 text-sm font-medium text-foreground shadow-sm"
-        >
-          <SlidersHorizontal className="h-4 w-4" />
-          Filter
-          {activeFilterCount > 0 ? (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/25 px-1 text-xs tabular-nums">
-              {activeFilterCount}
-            </span>
-          ) : null}
-        </button>
-        <label className="inline-flex min-h-11 items-center gap-2 rounded-full bg-card px-3 text-sm shadow-sm">
-          <span className="text-muted-foreground">Sort</span>
-          <select
-            value={sort}
-            onChange={(event) => onSortChange(event.target.value as "title" | "recent" | "attention")}
-            className="bg-transparent text-sm text-foreground outline-none"
-            aria-label="Sort assets"
-          >
-            <option value="title">A–Z</option>
-            <option value="recent">Updated</option>
-            <option value="attention">Attention</option>
-          </select>
-        </label>
-      </div>
-      <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={pageSearch}
-          onChange={(event) => onPageSearchChange(event.target.value)}
-          placeholder="Search assets"
-          aria-label="Search assets"
-          className="h-11 w-full rounded-xl bg-card pl-9 pr-3 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground"
-        />
-      </div>
-      <FilterDimensionSheet
-        open={filterOpen}
-        onOpenChange={onFilterOpenChange}
-        title="Asset filters"
-        selectedIds={selectedIds}
-        onToggle={(id, selected) => {
-          if (id.startsWith("asset-status-")) {
-            const value = id.slice("asset-status-".length);
-            if (selected !== statusFilters.includes(value)) onToggleStatus(value);
-            return;
-          }
-          if (id === "asset-compliance") {
-            onComplianceChange(selected);
-            return;
-          }
-          if (id.startsWith("asset-property-")) {
-            onPropertyChange(selected ? id.slice("asset-property-".length) : "");
-            return;
-          }
-          if (id.startsWith("asset-space-")) {
-            onSpaceChange(selected ? id.slice("asset-space-".length) : "");
-          }
+      <OrganiseControlsBar
+        primaryOptions={[]}
+        secondaryGroups={filterGroups}
+        selectedFilters={selectedIds}
+        onFilterChange={handlePortfolioFilter}
+        sortBy={sort === "attention" ? "priority" : sort}
+        onSortChange={(next) => {
+          if (next === "priority") onSortChange("attention");
+          else if (next === "recent") onSortChange("recent");
+          else onSortChange("title");
         }}
-        groups={[
-          {
-            id: "status",
-            label: "Status",
-            options: STATUS_FILTERS.map((status) => ({
-              id: `asset-status-${status.value}`,
-              label: status.label,
-            })),
-          },
-          {
-            id: "compliance",
-            label: "Compliance",
-            options: [{ id: "asset-compliance", label: "Compliance issues" }],
-          },
-          {
-            id: "property",
-            label: "Property",
-            options: properties.map((property) => ({
-              id: `asset-property-${property.id}`,
-              label: property.nickname || property.address || "Property",
-            })),
-          },
-          {
-            id: "space",
-            label: "Space",
-            options: spaceOptions.map((space) => ({
-              id: `asset-space-${space.id}`,
-              label: space.name,
-            })),
-          },
-        ]}
+        sortOptions={ORGANISE_SORT_OPTIONS}
+        search={pageSearch}
+        onSearchChange={onPageSearchChange}
+        searchPlaceholder="Search assets"
       />
       {!hasAnyAssets ? (
         <FrameworkEmptyState
@@ -361,7 +329,6 @@ const Assets = () => {
   const [organiseView, setOrganiseView] = useState<AssetsOrganiseView>("category");
   const [pageSearch, setPageSearch] = useState("");
   const [portfolioSort, setPortfolioSort] = useState<"title" | "recent" | "attention">("title");
-  const [assetFilterOpen, setAssetFilterOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isWide = useWorkspaceWide();
@@ -1014,8 +981,6 @@ const Assets = () => {
                 onPageSearchChange={setPageSearch}
                 sort={portfolioSort}
                 onSortChange={setPortfolioSort}
-                filterOpen={assetFilterOpen}
-                onFilterOpenChange={setAssetFilterOpen}
                 statusFilters={statusFilters}
                 onToggleStatus={toggleStatusFilter}
                 complianceOnly={complianceOnly}

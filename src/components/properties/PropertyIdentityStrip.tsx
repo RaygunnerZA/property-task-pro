@@ -311,26 +311,33 @@ export function PropertyIdentityStrip({
             onCentreWorkbenchTabChange={onCentreWorkbenchTabChange}
             showCentreNavBelowPhone={showCentreNavBelowPhone}
             routeCentreNavToWorkSurface={routeCentreNavToWorkSurface}
+            belowMetrics={
+              <PropertyHubNavCards
+                propertyId={property.id}
+                ownerName={property.owner_name}
+                contactName={property.contact_name}
+                counts={{
+                  spaces: property.spaces_count ?? 0,
+                  assets: property.assets_count ?? 0,
+                  people: peopleCount,
+                  records: propertyDocuments.length,
+                }}
+                onOpen={openHubNav}
+                onAdd={(id) => {
+                  if (id === "people") {
+                    setShowEditSheet(true);
+                    return;
+                  }
+                  openHubNav(id);
+                }}
+              />
+            }
           />
           )}
         </div>
       </div>
 
       {betweenSummaryAndNav}
-
-      <PropertyHubNavCards
-        propertyId={property.id}
-        ownerName={property.owner_name}
-        contactName={property.contact_name}
-        onOpen={openHubNav}
-        onAdd={(id) => {
-          if (id === "people") {
-            setShowEditSheet(true);
-            return;
-          }
-          openHubNav(id);
-        }}
-      />
 
       <PropertyEditSheet
         property={property}

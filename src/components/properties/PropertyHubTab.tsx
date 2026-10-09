@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { paperTexturedColorStyle, paperTexturedDiagonalFadeStyle } from "@/lib/paperTexture";
+import { paperTexturedColorStyle } from "@/lib/paperTexture";
 
 export type PropertyHubNavCardId = "spaces" | "assets" | "people" | "records";
 
@@ -15,13 +15,13 @@ export const TAB_OVERLAP_RATIO = 63 / 300;
 export const TAB_GAP_PX = 5;
 /** Tab row chrome height (tabs sit `TAB_TOP_PX` below the top edge). */
 export const TAB_ROW_HEIGHT_PX = 37;
-/** Inactive tab button + shape height. */
+/** Tab button + shape height. Active and inactive share this so the right slant matches. */
 export const TAB_SHAPE_HEIGHT_PX = 35;
-/** Active tab grows taller than inactive tabs while sharing the same top offset. */
-export const ACTIVE_TAB_SHAPE_HEIGHT_PX = 37;
 export const TAB_TOP_PX = 2;
 
 const TAB_TITLE_FONT = '500 15px "Inter Tight", system-ui, -apple-system, sans-serif';
+const TAB_COUNT_GAP_PX = 4;
+const TAB_COUNT_BADGE_MIN_PX = 18;
 const TAB_PAD_LEFT_FIRST = 20;
 const TAB_PAD_X = 15;
 const TAB_PAD_RIGHT_LAST = 17;
@@ -41,13 +41,24 @@ export function measureTabTitleWidth(title: string): number {
   return Math.ceil(ctx.measureText(title).width);
 }
 
+function countBadgeWidth(count: number): number {
+  const digits = String(count).length;
+  return Math.max(TAB_COUNT_BADGE_MIN_PX, digits * 7 + 8);
+}
+
+function tabLabelWidth(title: string, count?: number): number {
+  if (count == null) return measureTabTitleWidth(title);
+  return measureTabTitleWidth(title) + TAB_COUNT_GAP_PX + countBadgeWidth(count);
+}
+
 /** Natural tab button widths from title text + shape padding. */
-export function tabWidthsFromTitles(titles: readonly string[]): number[] {
+export function tabWidthsFromTitles(titles: readonly string[], counts?: readonly number[]): number[] {
   return titles.map((title, index) => {
-    const textWidth = measureTabTitleWidth(title);
+    const textWidth = tabLabelWidth(title, counts?.[index]);
     const left = index === 0 ? TAB_PAD_LEFT_FIRST : TAB_PAD_X;
     const right = index === titles.length - 1 ? TAB_PAD_RIGHT_LAST : TAB_PAD_X;
-    return textWidth + left + right;
+    const slantClear = index === titles.length - 1 ? 18 : 0;
+    return textWidth + left + right + slantClear;
   });
 }
 
@@ -108,7 +119,7 @@ export function getTabRowWidth(
   return tabTargetLeft(activeIndex, trailingIndex, stackSize, widths) + tabWidthAt(trailingIndex, widths);
 }
 
-/** Scale tab widths down when the stacked row exceeds `containerWidth`. */
+/** Scale tab widths so the stacked row fills `containerWidth`. */
 export function scaleTabWidthsToContainer(
   containerWidth: number,
   activeIndex: number,
@@ -118,7 +129,7 @@ export function scaleTabWidthsToContainer(
   if (containerWidth <= 0) return [...baseWidths];
 
   const nominalWidth = getTabRowWidth(activeIndex, stackSize, baseWidths);
-  if (nominalWidth <= containerWidth) return [...baseWidths];
+  if (nominalWidth <= 0) return [...baseWidths];
 
   const scale = containerWidth / nominalWidth;
   return baseWidths.map((width) => width * scale);
@@ -168,10 +179,6 @@ const ACTIVE_FILL_SHADOW = "inset 1px 1px 1px 0px rgba(255, 255, 255, 1)";
 const INACTIVE_FILL_SHADOW =
   "inset 1px 1px 1px 0px rgba(255, 255, 255, 0.6), inset 0px -13px 11px -10.6px rgba(1, 17, 65, 0.17)";
 
-/** Inactive tab overlay — 70.2° linear gradient; does not replace the base fill. */
-const INACTIVE_GRADIENT_OVERLAY =
-  "linear-gradient(70.2deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 19%)";
-
 const SLANT_CAST_SHADOW = "drop-shadow(2px 0 2px rgba(0, 0, 0, 0.1))";
 
 /** Debossed tab title letters — subtle 1px offset / 1px blur */
@@ -181,6 +188,7 @@ const TAB_TITLE_TEXT_SHADOW =
 type PropertyHubTabProps = {
   id: string;
   title: string;
+  count?: number;
   fill: string;
   isActive: boolean;
   isFirst: boolean;
@@ -194,23 +202,27 @@ type PropertyHubTabProps = {
 export function PropertyHubTab({
   id,
   title,
+  count,
   fill,
   isActive,
-  isFirst,
+  isFirst: _isFirst,
   stackIndex,
   stackSize,
   activeIndex,
   tabWidths,
   onSelect,
 }: PropertyHubTabProps) {
-  const { left, zIndex, isVisuallyLast, isVisuallyFront } = getTabStackLayout(
+  const tabWidth = tabWidthAt(stackIndex, tabWidths);
+  const shapeHeight = TAB_SHAPE_HEIGHT_PX;
+  const { left, zIndex, isVisuallyFront, isVisuallyLast } = getTabStackLayout(
     activeIndex,
     stackIndex,
     stackSize,
     tabWidths
   );
-  const tabWidth = tabWidthAt(stackIndex, tabWidths);
-  const shapeHeight = isActive ? ACTIVE_TAB_SHAPE_HEIGHT_PX : TAB_SHAPE_HEIGHT_PX;
+  const clearWidth = tabWidth * (1 - (isVisuallyLast ? 0.12 : TAB_OVERLAP_RATIO)) - 8;
+  const showCount = count != null && tabLabelWidth(title, count) <= clearWidth;
+  const labelWidth = tabLabelWidth(title, showCount ? count : undefined);
 
   return (
     <button
@@ -230,9 +242,8 @@ export function PropertyHubTab({
         height: shapeHeight,
         width: tabWidth,
         top: TAB_TOP_PX,
-        paddingLeft:
-          isFirst || isVisuallyFront ? undefined : 3,
-        paddingRight: isVisuallyLast ? 9 : isVisuallyFront ? undefined : 10,
+        paddingLeft: 6,
+        paddingRight: 4,
         zIndex,
         clipPath: TAB_SHAPE_CLIP_PATH,
         WebkitClipPath: TAB_SHAPE_CLIP_PATH,
@@ -244,47 +255,31 @@ export function PropertyHubTab({
         style={{
           height: shapeHeight,
           ...TAB_SHAPE_MASK_STYLE,
-          ...(isActive
-            ? {
-                ...paperTexturedDiagonalFadeStyle(fill),
-                boxShadow: ACTIVE_FILL_SHADOW,
-              }
-            : {
-                ...paperTexturedColorStyle(fill),
-                filter: `brightness(0.96) saturate(0.92) ${SLANT_CAST_SHADOW}`,
-                boxShadow: INACTIVE_FILL_SHADOW,
-              }),
+          ...paperTexturedColorStyle(fill),
+          filter: isActive ? undefined : SLANT_CAST_SHADOW,
+          boxShadow: isActive ? ACTIVE_FILL_SHADOW : INACTIVE_FILL_SHADOW,
         }}
       />
-
-      {!isActive ? (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute bottom-0 left-0 right-0 z-[1] rounded-tl-xl"
-          style={{
-            top: 0,
-            height: shapeHeight,
-            ...TAB_SHAPE_MASK_STYLE,
-            backgroundImage: INACTIVE_GRADIENT_OVERLAY,
-            boxShadow: "inset 1px 1px 1px 0px rgba(255, 255, 255, 0.9)",
-          }}
-        />
-      ) : null}
-
       <span
         className={cn(
-          "relative z-[2] block max-w-full overflow-visible whitespace-nowrap text-[15px] font-medium",
-          isVisuallyFront || isFirst ? "ml-px leading-[21px]" : "mx-auto",
-          isVisuallyFront && "px-1"
+          "relative z-[2] block max-w-full overflow-visible whitespace-nowrap text-left font-medium",
+          isVisuallyFront && "ml-px px-1"
         )}
         style={{
           textShadow: TAB_TITLE_TEXT_SHADOW,
           ...(isVisuallyFront
-            ? { width: measureTabTitleWidth(title) + ACTIVE_TITLE_SPAN_PAD }
+            ? { width: labelWidth + ACTIVE_TITLE_SPAN_PAD }
             : undefined),
         }}
       >
-        {title}
+        <span className="inline-flex items-center gap-1">
+          <span className="text-[15px] font-medium leading-[21px]">{title}</span>
+          {showCount && count != null ? (
+            <span className="inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-full bg-white px-1 text-2xs font-bold tabular-nums leading-none text-foreground">
+              {count}
+            </span>
+          ) : null}
+        </span>
       </span>
     </button>
   );

@@ -7,6 +7,7 @@ import {
 } from "@/components/calendar/CalendarMonthYearLabel";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { Button } from "@/components/ui/button";
+import { EphemeralDescription } from "@/components/ui/EphemeralDescription";
 import {
   WorkbenchTaskFilterBar,
   type CalendarListScope,
@@ -307,9 +308,11 @@ export function CalendarWorkbenchPanel({
               })}
             </div>
 
-            <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
-              {activeViewMeta.subtitle}
-            </p>
+            <EphemeralDescription key={view} id={`calendar:${view}`}>
+              <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
+                {activeViewMeta.subtitle}
+              </p>
+            </EphemeralDescription>
           </div>
         </div>
 

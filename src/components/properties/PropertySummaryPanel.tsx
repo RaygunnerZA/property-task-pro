@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ChevronRight, ChevronUp } from "lucide-react";
-import { RadialProgress } from "@/components/ui/radial-progress";
+import { ChevronUp } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FillaRecommends } from "@/components/filla/FillaRecommends";
 import { SeasonalGuidanceCard } from "@/components/filla/SeasonalGuidanceCard";
@@ -25,7 +24,6 @@ import {
   centreWorkbenchTasksPath,
   type CentreWorkbenchTab,
 } from "@/lib/centreWorkbenchTabs";
-
 const statWordClass =
   "block font-mono text-caption font-semibold uppercase leading-snug tracking-[0.12px] text-foreground transition-colors group-hover:font-bold group-hover:text-white";
 
@@ -110,6 +108,8 @@ type PropertySummaryPanelProps = {
    */
   showCentreNavBelowPhone?: boolean;
   routeCentreNavToWorkSurface?: boolean;
+  /** Hub tabs rendered under the metric squares, inside the same collapse. */
+  belowMetrics?: ReactNode;
 };
 
 type StatCentreNav = {
@@ -151,8 +151,9 @@ function StatColumn({
   value: number;
   line1: string;
   line2: string;
-  secondaryCount: number;
-  secondaryLabel: string;
+  /** Omitted when there is no urgent, expired, or due-soon signal. */
+  secondaryCount: number | null;
+  secondaryLabel?: string;
   secondaryTone?: StatSecondaryTone;
   onActivate?: () => void;
   /**
@@ -202,12 +203,14 @@ function StatColumn({
         <span className={numberClass}>{displayValue}</span>
         {labelStack}
       </div>
-      <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 overflow-hidden tracking-[0.3px]">
-        <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
-        <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
-          {secondaryLabel}
-        </span>
-      </div>
+      {secondaryCount != null && secondaryLabel ? (
+        <div className="mt-1.5 flex w-full min-w-0 items-center gap-0.5 overflow-hidden tracking-[0.3px]">
+          <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
+          <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
+            {secondaryLabel}
+          </span>
+        </div>
+      ) : null}
     </>
   ) : (
     <>
@@ -215,12 +218,14 @@ function StatColumn({
         <span className={numberClass}>{displayValue}</span>
         {labelStack}
       </div>
-      <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden pl-0.5 tracking-[0.3px]">
-        <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
-        <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
-          {secondaryLabel}
-        </span>
-      </div>
+      {secondaryCount != null && secondaryLabel ? (
+        <div className="mt-1.5 flex min-w-0 max-w-full items-center gap-0.5 overflow-hidden pl-0.5 tracking-[0.3px]">
+          <span className={secondaryCountBoxClass[secondaryTone]}>{secondaryCount}</span>
+          <span className={cn(secondaryLabelClass[secondaryTone], "truncate")}>
+            {secondaryLabel}
+          </span>
+        </div>
+      ) : null}
     </>
   );
 
@@ -244,148 +249,21 @@ function StatColumn({
   );
 }
 
-function TaskCompletionGauge({
-  completionPct,
-  gaugeEyebrow,
-  completedLabel,
-  gaugeHint,
-  onOpenTasks,
-}: {
-  completionPct: number;
-  gaugeEyebrow: string;
-  completedLabel: string;
-  gaugeHint?: string | null;
-  onOpenTasks?: () => void;
-}) {
-  const body = (
-    <>
-      <span className="mb-0.5 font-mono text-2xs font-semibold uppercase tracking-[0.08em] text-muted-foreground">
-        {gaugeEyebrow}
-      </span>
-      <RadialProgress
-        value={completionPct}
-        size={100}
-        thickness={7}
-        innerDiscSize={74}
-        labelMarginLeft={6}
-        embed
-        visualWeight="soft"
-        aria-label={`${gaugeEyebrow}: ${completedLabel}, ${completionPct}%`}
-      />
-      <p className="mt-1 max-w-[120px] text-center text-2xs font-semibold leading-tight text-foreground/80">
-        {completedLabel}
-      </p>
-      {gaugeHint ? (
-        <p className="mt-0.5 max-w-[120px] text-center text-2xs font-medium leading-tight text-muted-foreground">
-          {gaugeHint}
-        </p>
-      ) : null}
-    </>
-  );
-  const className =
-    "flex w-[52%] min-w-[118px] shrink-0 flex-col items-center justify-center rounded-lg px-0.5 py-0.5";
-  const ariaLabel = `${gaugeEyebrow}: ${completedLabel}${gaugeHint ? `, ${gaugeHint}` : ""}, ${completionPct}%`;
-
-  if (onOpenTasks) {
-    return (
-      <button
-        type="button"
-        className={cn(
-          className,
-          "cursor-pointer outline-none transition-colors",
-          "hover:bg-muted/25 focus-visible:ring-2 focus-visible:ring-primary/25"
-        )}
-        onClick={onOpenTasks}
-        aria-label={ariaLabel}
-      >
-        {body}
-      </button>
-    );
-  }
-
-  return (
-    <div className={className} role="group" aria-label={ariaLabel}>
-      {body}
-    </div>
-  );
-}
-
-function CountRow({
-  label,
-  count,
-  onActivate,
-}: {
-  label: string;
-  count: number;
-  onActivate?: () => void;
-}) {
-  const displayCount = Math.round(useCountUp(count));
-
-  const content = (interactive: boolean) => (
-    <>
-      <span
-        className={cn(
-          "text-sm font-medium text-muted-foreground",
-          interactive && "transition-colors duration-150 group-hover/row:text-foreground"
-        )}
-      >
-        {label}
-      </span>
-      <span className="flex items-center gap-0.5">
-        {interactive ? (
-          <ChevronRight
-            className="h-3 w-3 -translate-x-1 text-muted-foreground/60 opacity-0 transition-[opacity,transform] duration-150 ease-out group-hover/row:translate-x-0 group-hover/row:opacity-100"
-            aria-hidden
-          />
-        ) : null}
-        <span className="inline-flex h-[26px] min-w-[26px] items-center justify-center rounded-card bg-white px-1 text-sm font-semibold tabular-nums text-muted-foreground shadow-[inset_1px_1px_1px_0px_rgba(0,0,0,0.15)]">
-          {displayCount}
-        </span>
-      </span>
-    </>
-  );
-
-  if (!onActivate) {
-    return (
-      <div className="ml-auto flex w-full max-w-[118px] items-center justify-between gap-2 py-1">
-        {content(false)}
-      </div>
-    );
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={onActivate}
-      className={cn(
-        "group/row ml-auto flex w-full max-w-[118px] items-center justify-between gap-2 rounded-xl py-1 pl-2.5 pr-[3px] text-left text-sm",
-        "bg-transparent shadow-none",
-        "transition-[background-color,box-shadow,transform] duration-150 ease-out",
-        "hover:bg-muted/30 hover:shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)]",
-        "active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/25",
-        "focus-visible:bg-muted/30 focus-visible:shadow-[1px_2px_1px_0px_rgba(0,0,0,0.1),inset_1px_2px_2px_0px_rgba(255,255,255,1)]"
-      )}
-    >
-      {content(true)}
-    </button>
-  );
-}
-
 export function PropertySummaryPanel({
   property,
   tasks = [],
   documents = [],
-  peopleCount = 0,
+  peopleCount: _peopleCount = 0,
   urgentOpenTaskCount = 0,
   loading = false,
   onOpenUrgent: _onOpenUrgent,
-  onOpenTasks,
+  onOpenTasks: _onOpenTasks,
   onOpenCompliance: _onOpenCompliance,
   onOpenInspections: _onOpenInspections,
-  onOpenSpaces,
-  onOpenAssets,
-  onOpenPeople,
-  onOpenRecords,
+  onOpenSpaces: _onOpenSpaces,
+  onOpenAssets: _onOpenAssets,
+  onOpenPeople: _onOpenPeople,
+  onOpenRecords: _onOpenRecords,
   className,
   variant = "full",
   metricsOverride,
@@ -396,6 +274,7 @@ export function PropertySummaryPanel({
   onCentreWorkbenchTabChange,
   showCentreNavBelowPhone = false,
   routeCentreNavToWorkSurface = false,
+  belowMetrics,
 }: PropertySummaryPanelProps) {
   /**
    * Compact property cards on phone always expose Inflow · Tasks · Calendar entry
@@ -485,12 +364,8 @@ export function PropertySummaryPanel({
     if (metrics.dueSoonTasks > 0) {
       return { count: metrics.dueSoonTasks, label: "DUE SOON", tone: "warning" as const };
     }
-    return {
-      count: metrics.incompleteTasks,
-      label: "INCOMPLETE TASKS",
-      tone: "neutral" as const,
-    };
-  }, [metrics.dueSoonTasks, metrics.incompleteTasks, metrics.urgentItems]);
+    return null;
+  }, [metrics.dueSoonTasks, metrics.urgentItems]);
 
   const complianceSecondary = useMemo(() => {
     const expired = property.expired_compliance_count ?? 0;
@@ -500,7 +375,7 @@ export function PropertySummaryPanel({
     if (metrics.complianceDueSoon > 0) {
       return { count: metrics.complianceDueSoon, label: "DUE SOON", tone: "warning" as const };
     }
-    return { count: 0, label: "DUE SOON", tone: "neutral" as const };
+    return null;
   }, [metrics.complianceDueSoon, property.expired_compliance_count]);
 
   const signalsSecondary = useMemo(() => {
@@ -508,7 +383,7 @@ export function PropertySummaryPanel({
     if (upcoming > 0) {
       return { count: upcoming, label: "DUE", tone: "warning" as const };
     }
-    return { count: 0, label: "CLEAR", tone: "neutral" as const };
+    return null;
   }, [metrics.upcomingInspections]);
 
   if (loading) {
@@ -542,8 +417,7 @@ export function PropertySummaryPanel({
   return (
     <div className={cn("w-full", className)}>
       <div className="w-full rounded-xl">
-        {/* Phone: Inflow · Tasks · Calendar entry (icons + metrics) */}
-        {showPhoneWorkEntries ? (
+        {variant === "compact" && showPhoneWorkEntries ? (
           <div
             className={cn(
               "grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden",
@@ -559,9 +433,9 @@ export function PropertySummaryPanel({
                 value={stat.value}
                 line1={stat.line1}
                 line2={stat.line2}
-                secondaryCount={stat.secondary.count}
-                secondaryLabel={stat.secondary.label}
-                secondaryTone={stat.secondary.tone}
+                secondaryCount={stat.secondary?.count ?? null}
+                secondaryLabel={stat.secondary?.label}
+                secondaryTone={stat.secondary?.tone}
                 centreNav={{
                   tab: stat.centreTab,
                   isActive: centreWorkbenchTab === stat.centreTab,
@@ -572,8 +446,7 @@ export function PropertySummaryPanel({
           </div>
         ) : null}
 
-        {/* Phone (no work-entry nav): keep the three metric blocks visible while desktop collapses. */}
-        {!showPhoneWorkEntries ? (
+        {variant === "compact" && !showPhoneWorkEntries ? (
           <div
             className={cn(
               "grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden",
@@ -587,9 +460,9 @@ export function PropertySummaryPanel({
                 value={stat.value}
                 line1={stat.line1}
                 line2={stat.line2}
-                secondaryCount={stat.secondary.count}
-                secondaryLabel={stat.secondary.label}
-                secondaryTone={stat.secondary.tone}
+                secondaryCount={stat.secondary?.count ?? null}
+                secondaryLabel={stat.secondary?.label}
+                secondaryTone={stat.secondary?.tone}
                 onActivate={() => openCentreTab(stat.centreTab)}
               />
             ))}
@@ -605,7 +478,46 @@ export function PropertySummaryPanel({
               )}
             >
               <div className="min-h-0 overflow-hidden">
-                {/* Desktop: three metric blocks collapse with the snapshot below. */}
+                {showPhoneWorkEntries ? (
+                  <div
+                    className="grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden"
+                    role="navigation"
+                    aria-label="Open Needs review, Open tasks, or Found signals"
+                  >
+                    {desktopStats.map((stat) => (
+                      <StatColumn
+                        key={stat.centreTab}
+                        value={stat.value}
+                        line1={stat.line1}
+                        line2={stat.line2}
+                        secondaryCount={stat.secondary?.count ?? null}
+                        secondaryLabel={stat.secondary?.label}
+                        secondaryTone={stat.secondary?.tone}
+                        centreNav={{
+                          tab: stat.centreTab,
+                          isActive: centreWorkbenchTab === stat.centreTab,
+                        }}
+                        onActivate={() => openCentreTab(stat.centreTab)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:hidden">
+                    {desktopStats.map((stat) => (
+                      <StatColumn
+                        key={stat.centreTab}
+                        value={stat.value}
+                        line1={stat.line1}
+                        line2={stat.line2}
+                        secondaryCount={stat.secondary?.count ?? null}
+                        secondaryLabel={stat.secondary?.label}
+                        secondaryTone={stat.secondary?.tone}
+                        onActivate={() => openCentreTab(stat.centreTab)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {/* Desktop squares and the hub tabs collapse together. */}
                 <div className="hidden grid-cols-3 grid-rows-1 items-stretch gap-[3px] border-b border-border/30 py-[10px] md:grid">
                   {desktopStats.map((stat) => (
                     <StatColumn
@@ -613,29 +525,14 @@ export function PropertySummaryPanel({
                       value={stat.value}
                       line1={stat.line1}
                       line2={stat.line2}
-                      secondaryCount={stat.secondary.count}
-                      secondaryLabel={stat.secondary.label}
-                      secondaryTone={stat.secondary.tone}
+                      secondaryCount={stat.secondary?.count ?? null}
+                      secondaryLabel={stat.secondary?.label}
+                      secondaryTone={stat.secondary?.tone}
                       onActivate={() => openCentreTab(stat.centreTab)}
                     />
                   ))}
                 </div>
-                <div className="flex items-start gap-1 border-b border-dashed border-border/40 px-1 pb-2 pt-[7px]">
-                  <TaskCompletionGauge
-                    completionPct={metrics.completionPct}
-                    gaugeEyebrow={metrics.gaugeEyebrow}
-                    completedLabel={metrics.completedLabel}
-                    gaugeHint={metrics.gaugeHint}
-                    onOpenTasks={onOpenTasks}
-                  />
-
-                  <div className="flex min-w-0 flex-1 flex-col items-stretch justify-center gap-0.5 border-l border-dashed border-border/35 py-1 pl-1.5 pr-0.5">
-                    <CountRow label="Spaces" count={metrics.spacesCount} onActivate={onOpenSpaces} />
-                    <CountRow label="Assets" count={metrics.assetsCount} onActivate={onOpenAssets} />
-                    <CountRow label="People" count={peopleCount} onActivate={onOpenPeople} />
-                    <CountRow label="Records" count={metrics.documentsCount} onActivate={onOpenRecords} />
-                  </div>
-                </div>
+                {belowMetrics ? <div className="pb-1 pt-2">{belowMetrics}</div> : null}
               </div>
             </div>
 
@@ -673,9 +570,9 @@ export function PropertySummaryPanel({
                 value={stat.value}
                 line1={stat.line1}
                 line2={stat.line2}
-                secondaryCount={stat.secondary.count}
-                secondaryLabel={stat.secondary.label}
-                secondaryTone={stat.secondary.tone}
+                secondaryCount={stat.secondary?.count ?? null}
+                secondaryLabel={stat.secondary?.label}
+                secondaryTone={stat.secondary?.tone}
                 onActivate={() => openCentreTab(stat.centreTab)}
               />
             ))}

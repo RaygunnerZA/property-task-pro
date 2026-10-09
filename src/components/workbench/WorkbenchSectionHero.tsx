@@ -1,3 +1,4 @@
+import { EphemeralDescription } from "@/components/ui/EphemeralDescription";
 import { cn } from "@/lib/utils";
 import {
   workbenchPageTitleClassName,
@@ -49,7 +50,9 @@ export function WorkbenchSectionHero({
       <div className={cn("min-w-0", workbenchTitleBandLabelOffsetClassName)}>
         <h1 className={cn(workbenchPageTitleClassName, "font-medium")}>{title}</h1>
         {description ? (
-          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+          <EphemeralDescription id={`screen:${title}`}>
+            <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">{description}</p>
+          </EphemeralDescription>
         ) : null}
       </div>
     </div>

@@ -5,12 +5,11 @@ import {
   Building2,
   Calendar,
   Minus,
-  SlidersHorizontal,
   User,
   Users,
 } from "lucide-react";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
-import { FilterDimensionSheet } from "@/components/ui/filters/FilterDimensionSheet";
+import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
 import { useIsBelowMd } from "@/hooks/use-mobile";
 import { SortBar } from "@/components/ui/filters/SortBar";
 import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
@@ -79,7 +78,6 @@ export function WorkbenchTaskFilterBar({
   const { teams } = useTeams();
   const belowMd = useIsBelowMd();
   const [filterExpanded, setFilterExpanded] = useState(false);
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
 
   const allSpaces = useMemo(() => {
     const spaceMap = new Map<string, { id: string; name: string; property_id: string }>();
@@ -287,26 +285,10 @@ export function WorkbenchTaskFilterBar({
     [calendarListScope, selectedFilters, setSelectedFilters]
   );
 
-  const sheetGroups = useMemo(
-    () =>
-      secondaryGroups.map((group) => ({
-        id: group.id,
-        label: group.label,
-        options: group.options.map((option) => ({ id: option.id, label: option.label })),
-      })),
-    [secondaryGroups]
-  );
-
-  const activeFilterCount = useMemo(() => {
-    const sheetIds = new Set(sheetGroups.flatMap((group) => group.options.map((option) => option.id)));
-    let count = 0;
-    selectedFilters.forEach((id) => {
-      if (sheetIds.has(id) || id === "filter-urgent" || id === "filter-due" || id === "filter-assigned-me") {
-        count += 1;
-      }
-    });
-    return count;
-  }, [selectedFilters, sheetGroups]);
+  const mobileGroups = useMemo(() => {
+    if (primaryOptions.length === 0) return secondaryGroups;
+    return [{ id: "scope", label: "Scope", options: primaryOptions }, ...secondaryGroups];
+  }, [primaryOptions, secondaryGroups]);
 
   const midControls = messagesMode ? (
     <MessageAuthorAvatarStrip
@@ -323,68 +305,31 @@ export function WorkbenchTaskFilterBar({
 
   if (belowMd) {
     return (
-      <div className={cn("flex flex-col gap-2", className)}>
-        {calendarListScope ? (
-          <div
-            role="tablist"
-            aria-label="Calendar task scope"
-            className="chip-row-scroll flex min-w-0 items-center gap-2"
-          >
-            {primaryOptions.map((option) => {
-              const selected = effectiveSelectedFilters.has(option.id) ||
-                (option.id === CALENDAR_SCOPE_FILTER_IDS.all && calendarListScope.value === "all");
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  onClick={() => handleFilterChange(option.id, !effectiveSelectedFilters.has(option.id))}
-                  className={cn(
-                    "inline-flex min-h-11 shrink-0 items-center rounded-full px-3 text-sm shadow-sm",
-                    selected ? "bg-primary/20 font-medium text-foreground" : "bg-card text-muted-foreground"
-                  )}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setFilterSheetOpen(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full bg-card px-4 text-sm font-medium text-foreground shadow-sm"
-          >
-            <SlidersHorizontal className="h-4 w-4" />
-            Filter
-            {activeFilterCount > 0 ? (
-              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary/25 px-1 text-xs tabular-nums">
-                {activeFilterCount}
-              </span>
+      <FilterBar
+        primaryOptions={[]}
+        secondaryGroups={mobileGroups}
+        selectedFilters={effectiveSelectedFilters}
+        onFilterChange={handleFilterChange}
+        className={className}
+        onExpandedChange={showSortBar ? setFilterExpanded : undefined}
+        afterFilterTrigger={
+          <>
+            {messagesMode ? midControls : null}
+            {showSortBar ? (
+              <SortBar
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                forceCollapsed={filterExpanded}
+              />
             ) : null}
-          </button>
-          {messagesMode ? midControls : null}
-          {showSortBar ? (
-            <SortBar sortBy={sortBy} onSortChange={setSortBy} />
-          ) : null}
-        </div>
-        <input
-          value={searchQuery}
-          onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search"
-          aria-label="Search"
-          className="h-11 w-full rounded-xl bg-card px-3 text-sm text-foreground shadow-sm outline-none placeholder:text-muted-foreground"
-        />
-        <FilterDimensionSheet
-          open={filterSheetOpen}
-          onOpenChange={setFilterSheetOpen}
-          groups={sheetGroups}
-          selectedIds={selectedFilters}
-          onToggle={handleFilterChange}
-        />
-      </div>
+            <FilterRowSearchField
+              value={searchQuery}
+              onChange={setSearchQuery}
+              placeholder="Search"
+            />
+          </>
+        }
+      />
     );
   }
 

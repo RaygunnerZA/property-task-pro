@@ -33,6 +33,7 @@ import {
 import { isStaffTrainingTask } from "@/lib/staffTraining";
 import type { CalendarTaskScope } from "@/lib/calendarDayMeta";
 import { cn } from "@/lib/utils";
+import { EphemeralDescription } from "@/components/ui/EphemeralDescription";
 import { scrollActiveChipIntoView } from "@/lib/scrollActiveChip";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
 
@@ -552,9 +553,11 @@ export function TasksWorkbenchPanel({
               </div>
             </div>
 
-            <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
-              {activeTabMeta.subtitle}
-            </p>
+            <EphemeralDescription key={listTab} id={`tasks:${listTab}`}>
+              <p className="mt-2 whitespace-pre-line text-sm leading-snug text-muted-foreground md:whitespace-normal">
+                {activeTabMeta.subtitle}
+              </p>
+            </EphemeralDescription>
           </div>
 
           <div

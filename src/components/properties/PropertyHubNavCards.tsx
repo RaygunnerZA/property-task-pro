@@ -13,6 +13,8 @@ import { useSpaces } from "@/hooks/useSpaces";
 import { useAssetsQuery } from "@/hooks/useAssetsQuery";
 import { usePropertyDocuments } from "@/hooks/property/usePropertyDocuments";
 import { useOrgMembers } from "@/hooks/useOrgMembers";
+import { useTasksQuery } from "@/hooks/useTasksQuery";
+import { listedBenchSpaces } from "@/lib/spaces/partitionPropertySpaces";
 import { UserAvatar } from "@/components/tasks/UserAvatar";
 import {
   Tooltip,
@@ -150,6 +152,63 @@ export function countPropertyPeople(
   return count;
 }
 
+type HubStatusCountTone = "urgent" | "warning" | "neutral";
+
+type PanelMetric = {
+  id: string;
+  count: number;
+  label: string;
+  tone: HubStatusCountTone;
+};
+
+const statusCountBoxClass: Record<HubStatusCountTone, string> = {
+  urgent:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-destructive",
+  warning:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-warning-foreground",
+  neutral:
+    "inline-flex h-[18px] min-w-[18px] shrink-0 items-center justify-center rounded-card bg-white px-1 text-2xs font-bold tabular-nums leading-none text-muted-foreground",
+};
+
+const statusCountLabelClass: Record<HubStatusCountTone, string> = {
+  urgent: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-destructive",
+  warning: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-warning-foreground",
+  neutral: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-muted-foreground",
+};
+
+function PanelMetricItem({ item }: { item: PanelMetric }) {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5" aria-label={`${item.count} ${item.label}`}>
+      <span className={statusCountBoxClass[item.tone]}>{item.count}</span>
+      <span className={statusCountLabelClass[item.tone]}>{item.label}</span>
+    </span>
+  );
+}
+
+function linkedSpaceIds(spaces: unknown): string[] {
+  const linked = typeof spaces === "string" ? safeJsonArray(spaces) : spaces;
+  if (!Array.isArray(linked)) return [];
+  return linked.flatMap((space) => {
+    if (!space || typeof space !== "object" || !("id" in space)) return [];
+    const id = String((space as { id?: string }).id ?? "");
+    return id ? [id] : [];
+  });
+}
+
+function safeJsonArray(value: string): unknown[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function isOpenTaskStatus(status: string | null | undefined): boolean {
+  const value = String(status ?? "").toLowerCase();
+  return value !== "completed" && value !== "archived" && value !== "done";
+}
+
 const hubCardActionClass = cn(
   "inline-flex h-6 shrink-0 items-center gap-0.5 rounded-sharp px-1.5",
   "font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground",
@@ -212,6 +271,7 @@ type PropertyHubNavCardsProps = {
   propertyId: string;
   ownerName?: string | null;
   contactName?: string | null;
+  counts?: Partial<Record<PropertyHubNavCardId, number>>;
   onOpen: (id: PropertyHubNavCardId) => void;
   onAdd?: (id: PropertyHubNavCardId) => void;
   className?: string;
@@ -221,6 +281,7 @@ export function PropertyHubNavCards({
   propertyId,
   ownerName,
   contactName,
+  counts: _counts,
   onOpen,
   onAdd,
   className,
@@ -230,7 +291,8 @@ export function PropertyHubNavCards({
   const [tabRowWidth, setTabRowWidth] = useState(0);
   const { spaces } = useSpaces(propertyId);
   const { data: assets = [] } = useAssetsQuery(propertyId);
-  const { documents = [] } = usePropertyDocuments(propertyId, undefined, { limit: 20 });
+  const { documents = [] } = usePropertyDocuments(propertyId, undefined, { limit: 500 });
+  const { data: tasks = [] } = useTasksQuery(propertyId);
   const { members } = useOrgMembers();
 
   const activeCard = NAV_CARDS.find((card) => card.id === activeTab) ?? NAV_CARDS[0];
@@ -248,7 +310,10 @@ export function PropertyHubNavCards({
     return () => observer.disconnect();
   }, []);
 
-  const baseTabWidths = useMemo(() => tabWidthsFromTitles(NAV_CARDS.map((card) => card.title)), []);
+  const baseTabWidths = useMemo(
+    () => tabWidthsFromTitles(NAV_CARDS.map((card) => card.title)),
+    []
+  );
 
   const tabWidths = useMemo(
     () =>
@@ -288,6 +353,67 @@ export function PropertyHubNavCards({
     (onAdd ?? onOpen)(id);
   };
 
+  const panelMetrics = useMemo((): PanelMetric[] => {
+    if (activeTab === "spaces") {
+      const listed = listedBenchSpaces(spaces);
+      const issueIds = new Set<string>();
+      for (const task of tasks) {
+        if (!isOpenTaskStatus(task.status)) continue;
+        for (const spaceId of linkedSpaceIds(task.spaces)) issueIds.add(spaceId);
+      }
+      const issues = listed.filter((space) => issueIds.has(space.id)).length;
+      return [
+        { id: "active", count: listed.length, label: "Active", tone: "neutral" },
+        { id: "issue", count: issues, label: "Issue", tone: issues > 0 ? "urgent" : "neutral" },
+      ];
+    }
+
+    if (activeTab === "assets") {
+      const active = assets.filter((asset) => (asset.status || "active") === "active");
+      const attention = active.filter(
+        (asset) => (asset.condition_score ?? 100) < 60 || (asset.open_tasks_count ?? 0) > 0
+      ).length;
+      return [
+        { id: "active", count: active.length, label: "Active", tone: "neutral" },
+        {
+          id: "attention",
+          count: attention,
+          label: "Need attention",
+          tone: attention > 0 ? "warning" : "neutral",
+        },
+      ];
+    }
+
+    if (activeTab === "people") {
+      const inScope = countPropertyPeople(propertyId, ownerName, contactName, members);
+      const openAssigneeIds = new Set<string>();
+      for (const task of tasks) {
+        if (!isOpenTaskStatus(task.status) || !task.assigned_user_id) continue;
+        openAssigneeIds.add(task.assigned_user_id);
+      }
+      const withWork = members.filter((member) => {
+        const assigned = member.assigned_properties;
+        const applies = !assigned?.length || assigned.includes(propertyId);
+        return applies && openAssigneeIds.has(member.user_id);
+      }).length;
+      return [
+        { id: "scope", count: inScope, label: "In scope", tone: "neutral" },
+        {
+          id: "work",
+          count: withWork,
+          label: "With work",
+          tone: withWork > 0 ? "warning" : "neutral",
+        },
+      ];
+    }
+
+    const today = new Date().toISOString().split("T")[0];
+    const expired = documents.filter((doc) => doc.expiry_date != null && doc.expiry_date < today).length;
+    return [
+      { id: "filed", count: documents.length, label: "Filed", tone: "neutral" },
+      { id: "expired", count: expired, label: "Expired", tone: expired > 0 ? "urgent" : "neutral" },
+    ];
+  }, [activeTab, spaces, assets, documents, members, tasks, propertyId, ownerName, contactName]);
   const recentItems = recentByCard[activeTab];
   const hasRecent =
     activeTab === "people"
@@ -303,7 +429,7 @@ export function PropertyHubNavCards({
       >
         <div
           ref={tabRowRef}
-          className="relative h-[37px] w-full overflow-visible rounded-t-xl bg-muted/50 px-0 pt-0"
+          className="relative h-[37px] w-full overflow-visible px-0 pt-0"
         >
           {NAV_CARDS.map(({ id, title, fill }, index) => (
             <PropertyHubTab
@@ -334,56 +460,68 @@ export function PropertyHubNavCards({
             }
           }}
           className={cn(
-            "group relative -mt-px flex h-[165px] cursor-pointer flex-col gap-[20px] rounded-[0_12px_12px_12px] px-1.5 pb-[10px] pt-1 text-left",
+            "group relative -mt-px flex h-auto min-h-[132px] cursor-pointer flex-col gap-3 rounded-[0_12px_12px_12px] px-1.5 pb-[10px] pt-1 text-left",
             "shadow-[inset_1px_1px_1px_0px_rgba(255,255,255,1),2px_2px_2px_-1px_rgba(0,0,0,0.15),0px_2px_4px_-2px_rgba(0,0,0,0.1)]",
             "transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           )}
           style={paperTexturedDiagonalFadeStyle(activeCard.fill)}
         >
-          <div className="flex h-[100px] flex-row items-start justify-start gap-2">
+          <div className="flex items-center justify-between gap-2 py-[5px]">
+            <div className="flex min-w-0 flex-1 items-center justify-start gap-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {panelMetrics.map((item, index) => (
+                <span key={item.id} className="inline-flex shrink-0 items-center gap-3">
+                  {index > 0 ? (
+                    <span className="font-mono text-2xs text-muted-foreground/50" aria-hidden>
+                      |
+                    </span>
+                  ) : null}
+                  <PanelMetricItem item={item} />
+                </span>
+              ))}
+            </div>
+            <div className="flex shrink-0 items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpen(activeTab);
+                }}
+                className={hubCardActionClass}
+                aria-label={`View ${activeCard.title.toLowerCase()}`}
+              >
+                View
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAdd(activeTab);
+                }}
+                className={hubCardActionClass}
+                aria-label={
+                  activeTab === "people"
+                    ? "Invite"
+                    : `New ${activeCard.title.toLowerCase().replace(/s$/, "")}`
+                }
+              >
+                <Plus className="h-4 w-4" strokeWidth={2.25} />
+                {hubAddActionLabel(activeTab)}
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-row items-center justify-start gap-2">
             <img
               src={activeCard.iconSrc}
               alt=""
               draggable={false}
-              width={80}
-              height={80}
+              width={52}
+              height={52}
               decoding="async"
-              className="pointer-events-none h-[80px] w-[80px] shrink-0 select-none object-contain px-[3px] align-top pb-0"
+              className="pointer-events-none h-[52px] w-[52px] shrink-0 select-none object-contain align-top"
             />
-            <div className="min-w-0 flex-1 pt-[3px] pb-[3px]">
-              <div className="flex items-center justify-end gap-1.5 py-[5px]">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpen(activeTab);
-                  }}
-                  className={hubCardActionClass}
-                  aria-label={`View ${activeCard.title.toLowerCase()}`}
-                >
-                  View
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAdd(activeTab);
-                  }}
-                  className={hubCardActionClass}
-                  aria-label={
-                    activeTab === "people"
-                      ? "Invite"
-                      : `New ${activeCard.title.toLowerCase().replace(/s$/, "")}`
-                  }
-                >
-                  <Plus className="h-4 w-4" strokeWidth={2.25} />
-                  {hubAddActionLabel(activeTab)}
-                </button>
-              </div>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {activeCard.description}
-              </p>
-            </div>
+            <p className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
+              {activeCard.description}
+            </p>
           </div>
 
           {hasRecent ? (
@@ -398,7 +536,7 @@ export function PropertyHubNavCards({
                     ))}
                   </div>
                 ) : (
-                  <div className="box-content flex min-h-[22px] min-w-0 flex-1 flex-nowrap gap-[3px] overflow-hidden">
+                  <div className={recentChipsScrollClass}>
                     {(recentItems as string[]).map((label, index) => (
                       <RecentChip key={`${activeTab}-${index}`} label={label} />
                     ))}
