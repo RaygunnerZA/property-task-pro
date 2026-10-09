@@ -34,6 +34,12 @@ import { centreWorkbenchTasksPath } from "@/lib/centreWorkbenchTabs";
 import type { RecordsView } from "@/lib/propertyRoutes";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import type { MyWorkPanelProps } from "@/components/workbench/MyWorkPanel";
+import {
+  AttentionResolvableList,
+  ResolutionLedger,
+  ResolutionLedgerProvider,
+} from "@/components/motion";
+import { noteResolution } from "@/lib/motion/resolutions";
 
 const FOUND_SIGNALS_SECTION = {
   title: "Found signals",
@@ -317,6 +323,7 @@ export function InflowPanel({
   );
 
   return (
+    <ResolutionLedgerProvider>
     <div className="min-w-0 space-y-6 pt-0">
       {onboardingEducationMode && focusedPropertyId && (
         <AttentionEducationSummary
@@ -372,22 +379,26 @@ export function InflowPanel({
             </section>
           ) : suggestions.length > 0 ? (
             <div className="mt-3 space-y-2">
-              {suggestions.slice(0, 2).map((suggestion) => (
-                <FillaRecommends
-                  key={suggestion.id}
-                  suggestion={suggestion}
-                  variant="feed"
-                  onPrimaryAction={(item) => {
-                    if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
-                      onTaskClick(item.action.taskId);
-                      return;
-                    }
-                    runPrimaryAction(item);
-                  }}
-                  onDismiss={dismissSuggestion}
-                  onSnooze={snoozeSuggestion}
-                />
-              ))}
+              <AttentionResolvableList items={suggestions.slice(0, 2)}>
+                {(suggestion) => (
+                  <FillaRecommends
+                    suggestion={suggestion}
+                    variant="feed"
+                    onPrimaryAction={(item) => {
+                      if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
+                        onTaskClick(item.action.taskId);
+                        return;
+                      }
+                      runPrimaryAction(item);
+                    }}
+                    onDismiss={(item) => {
+                      noteResolution("inflow", item.id, "dismissed");
+                      dismissSuggestion(item);
+                    }}
+                    onSnooze={snoozeSuggestion}
+                  />
+                )}
+              </AttentionResolvableList>
             </div>
           ) : (
             <div className="mt-1 space-y-2 rounded-xl bg-muted/20 px-3 py-3">
@@ -408,14 +419,15 @@ export function InflowPanel({
       ) : (
         <>
           <section className="min-w-0 rounded-2xl bg-transparent pt-0 pb-1">
-            <IssuesWorkbenchSectionHeader
-              title={ISSUES_NEEDS_REVIEW_SECTION.title}
-              subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}
-              count={reviewItems.length + needsAttentionTasks.length}
-              countVariant="review"
-              illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
-              onViewAll={hideViewAllLinks ? undefined : handleViewAllInflow}
-            />
+              <IssuesWorkbenchSectionHeader
+                title={ISSUES_NEEDS_REVIEW_SECTION.title}
+                subtitle={ISSUES_NEEDS_REVIEW_SECTION.subtitle}
+                count={reviewItems.length + needsAttentionTasks.length}
+                countVariant="review"
+                illustrationSrc={ISSUES_WORKBENCH_SECTION_ILLUSTRATION.needsReview}
+                onViewAll={hideViewAllLinks ? undefined : handleViewAllInflow}
+                trailing={<ResolutionLedger />}
+              />
             {reviewItems.length === 0 && needsAttentionTasks.length === 0 ? (
               <div className="mt-3 space-y-1 rounded-xl bg-muted/20 px-3 py-2.5">
                 <p className="text-xs font-medium text-foreground/90">
@@ -442,41 +454,46 @@ export function InflowPanel({
                     hideDoneSection
                   />
                 )}
-                {reviewItems.map((item) => (
-                  <IssuesSignalCard
-                    key={item.id}
-                    item={item}
-                    attentionCardRefs={attentionCardRefs}
-                    resolveAttentionItem={resolveAttentionItem}
-                    handleSignalAction={handleSignalAction}
-                    addAttentionItemToCompliance={addAttentionItemToCompliance}
-                    onOpenIntake={onOpenIntake}
-                    onMessageClick={onMessageClick}
-                    onAttentionItemSelect={onAttentionItemSelect}
-                  />
-                ))}
+                <AttentionResolvableList items={reviewItems}>
+                  {(item) => (
+                    <IssuesSignalCard
+                      item={item}
+                      attentionCardRefs={attentionCardRefs}
+                      resolveAttentionItem={resolveAttentionItem}
+                      handleSignalAction={handleSignalAction}
+                      addAttentionItemToCompliance={addAttentionItemToCompliance}
+                      onOpenIntake={onOpenIntake}
+                      onMessageClick={onMessageClick}
+                      onAttentionItemSelect={onAttentionItemSelect}
+                    />
+                  )}
+                </AttentionResolvableList>
               </div>
             )}
           </section>
 
           {furtherSuggestions.length > 0 && (
             <section className="min-w-0 space-y-2 rounded-2xl bg-transparent py-1">
-              {furtherSuggestions.map((suggestion) => (
-                <FillaRecommends
-                  key={suggestion.id}
-                  suggestion={suggestion}
-                  variant="feed"
-                  onPrimaryAction={(item) => {
-                    if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
-                      onTaskClick(item.action.taskId);
-                      return;
-                    }
-                    runPrimaryAction(item);
-                  }}
-                  onDismiss={dismissSuggestion}
-                  onSnooze={snoozeSuggestion}
-                />
-              ))}
+              <AttentionResolvableList items={furtherSuggestions}>
+                {(suggestion) => (
+                  <FillaRecommends
+                    suggestion={suggestion}
+                    variant="feed"
+                    onPrimaryAction={(item) => {
+                      if (item.action.kind === "open_task" && item.action.taskId && onTaskClick) {
+                        onTaskClick(item.action.taskId);
+                        return;
+                      }
+                      runPrimaryAction(item);
+                    }}
+                    onDismiss={(item) => {
+                      noteResolution("inflow", item.id, "dismissed");
+                      dismissSuggestion(item);
+                    }}
+                    onSnooze={snoozeSuggestion}
+                  />
+                )}
+              </AttentionResolvableList>
             </section>
           )}
 
@@ -502,19 +519,20 @@ export function InflowPanel({
               </div>
             ) : (
               <div className="mt-3 space-y-2">
-                {recentSignals.map((item) => (
-                  <IssuesSignalCard
-                    key={item.id}
-                    item={item}
-                    attentionCardRefs={attentionCardRefs}
-                    resolveAttentionItem={resolveAttentionItem}
-                    handleSignalAction={handleSignalAction}
-                    addAttentionItemToCompliance={addAttentionItemToCompliance}
-                    onOpenIntake={onOpenIntake}
-                    onMessageClick={onMessageClick}
-                    onAttentionItemSelect={onAttentionItemSelect}
-                  />
-                ))}
+                <AttentionResolvableList items={recentSignals}>
+                  {(item) => (
+                    <IssuesSignalCard
+                      item={item}
+                      attentionCardRefs={attentionCardRefs}
+                      resolveAttentionItem={resolveAttentionItem}
+                      handleSignalAction={handleSignalAction}
+                      addAttentionItemToCompliance={addAttentionItemToCompliance}
+                      onOpenIntake={onOpenIntake}
+                      onMessageClick={onMessageClick}
+                      onAttentionItemSelect={onAttentionItemSelect}
+                    />
+                  )}
+                </AttentionResolvableList>
               </div>
             )}
           </section>
@@ -584,5 +602,6 @@ export function InflowPanel({
         </>
       )}
     </div>
+    </ResolutionLedgerProvider>
   );
 }

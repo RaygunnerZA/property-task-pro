@@ -31,7 +31,10 @@
     "db:reset": "supabase db reset",
     "db:cutover-stamp": "node scripts/cutover-stamp-baseline.mjs",
     "seed:demo-linden": "node scripts/seed-demo-linden.mjs --reset",
-    "seed:demo-linden:staging": "node scripts/seed-demo-linden.mjs --reset --allow-staging"
+    "seed:demo-linden:staging": "node scripts/seed-demo-linden.mjs --reset --allow-staging",
+    "seed:demo-sales": "node scripts/seed-demo-sales.mjs --reset",
+    "seed:demo-sales:home": "node scripts/seed-demo-sales.mjs --reset --account=home",
+    "seed:demo-sales:ops": "node scripts/seed-demo-sales.mjs --reset --account=ops"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -99,6 +102,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/typography": "^0.5.16",
     "@types/google.maps": "^3.65.0",
     "@types/node": "^22.16.5",

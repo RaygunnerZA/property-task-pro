@@ -5,10 +5,11 @@
  * chips; confirmed fact chips replace the section word.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { User, MapPin, Calendar, AlertTriangle, Box, Tag, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SemanticChip } from "@/components/chips/semantic";
+import { AlignItem, Unfold } from "@/components/motion";
 import type { IntakeChipSlotId } from "@/components/intake/IntakeChipRow";
 
 export type StaggerFactChip = {
@@ -95,6 +96,7 @@ function StaggerRow({
   inlineActions?: ReactNode;
 }) {
   const [hovered, setHovered] = useState(false);
+  const rowMountedAt = useRef(performance.now()).current;
   const Icon = section.icon;
   const hasFacts = section.facts.length > 0;
   // Hover shows proposal chips; when the slot is open the panel owns actions
@@ -117,7 +119,7 @@ function StaggerRow({
   });
 
   return (
-    <div className="animate-in fade-in duration-700 fill-mode-both">
+    <Unfold step={0}>
       <div
         role="button"
         tabIndex={0}
@@ -149,18 +151,19 @@ function StaggerRow({
         >
           {hasFacts
             ? section.facts.map((chip) => (
-                <SemanticChip
-                  key={chip.id}
-                  epistemic="fact"
-                  label={chip.label}
-                  icon={chip.icon}
-                  truncate={false}
-                  removable={Boolean(chip.onRemove)}
-                  onRemove={chip.onRemove}
-                  onPress={chip.onPress}
-                  pressOnPointerDown={Boolean(chip.onPress)}
-                  className="h-6 shrink-0 max-w-none text-caption"
-                />
+                <AlignItem key={chip.id} as="span" since={rowMountedAt} className="inline-flex shrink-0">
+                  <SemanticChip
+                    epistemic="fact"
+                    label={chip.label}
+                    icon={chip.icon}
+                    truncate={false}
+                    removable={Boolean(chip.onRemove)}
+                    onRemove={chip.onRemove}
+                    onPress={chip.onPress}
+                    pressOnPointerDown={Boolean(chip.onPress)}
+                    className="h-6 shrink-0 max-w-none text-caption"
+                  />
+                </AlignItem>
               ))
             : null}
 
@@ -214,7 +217,7 @@ function StaggerRow({
       {isOpen && slotPanel ? (
         <div className="ml-6 mt-1 mb-1.5 min-w-0">{slotPanel}</div>
       ) : null}
-    </div>
+    </Unfold>
   );
 }
 

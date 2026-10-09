@@ -39,6 +39,7 @@ describe("intake document briefing", () => {
     expect(briefing.needsFollowUp).toBe(false);
     expect(briefing.title).toBe("EICR Record");
     expect(briefing.summary.toLowerCase()).not.toContain("unsatisfactory");
+    expect(briefing.summary.toLowerCase()).toContain("file name");
     expect(briefing.provenance).toBe("filename");
   });
 

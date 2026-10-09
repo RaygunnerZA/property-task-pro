@@ -13,7 +13,12 @@ describe("matchIntakeAssets", () => {
       assets
     );
     expect(result.matches).toEqual([
-      { assetId: "a1", name: "Passenger Lift LIFT-02", serial_number: "LIFT-02" },
+      {
+        assetId: "a1",
+        name: "Passenger Lift LIFT-02",
+        serial_number: "LIFT-02",
+        matchedBy: "serial",
+      },
     ]);
     expect(result.unmatched).toHaveLength(0);
   });
@@ -21,6 +26,11 @@ describe("matchIntakeAssets", () => {
   it("matches a unique compact name such as LIFT-02", () => {
     const result = matchIntakeAssets([{ name: "LIFT-02" }], assets);
     expect(result.matches[0]?.assetId).toBe("a1");
+  });
+
+  it("reports a name match when no serial was read", () => {
+    const result = matchIntakeAssets([{ name: "Boiler" }], assets);
+    expect(result.matches[0]).toMatchObject({ assetId: "a2", matchedBy: "name" });
   });
 
   it("does not match when two assets share the same normalised name", () => {

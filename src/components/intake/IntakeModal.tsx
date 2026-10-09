@@ -130,6 +130,7 @@ import type { TempImage } from "@/types/temp-image";
 import { cleanupTempImage, createTempImage } from "@/utils/image-optimization";
 import type { IntakeSourceArtifact } from "@/types/intake-item";
 import { confirmIntakeItem, downloadInboxFile } from "@/services/intake/intakeUpload";
+import { noteResolution } from "@/lib/motion/resolutions";
 import { INTAKE_ITEMS_QUERY_KEY } from "@/hooks/useIntakeItems";
 import { format, addDays, startOfDay } from "date-fns";
 import { FillaMiniCalendar } from "@/components/calendar/FillaMiniCalendar";
@@ -528,7 +529,7 @@ export function IntakeModal({
   const [tagCreateName, setTagCreateName] = useState("");
   const [tagCreating, setTagCreating] = useState(false);
   const [availableAssets, setAvailableAssets] = useState<
-    Array<{ id: string; name: string; serial_number?: string | null }>
+    Array<{ id: string; name: string; serial_number?: string | null; space_name?: string | null }>
   >([]);
   const autoLinkedAssetIdsRef = useRef(new Set<string>());
 
@@ -1145,12 +1146,28 @@ export function IntakeModal({
       return;
     }
     try {
-      const query = supabase
+      const withSpace = await supabase
+        .from("assets")
+        .select("id, name, serial_number, space:spaces(name)")
+        .eq("org_id", orgId)
+        .eq("property_id", propertyId);
+      if (!withSpace.error) {
+        setAvailableAssets(
+          (withSpace.data || []).map((asset) => ({
+            id: asset.id,
+            name: asset.name || "",
+            serial_number: asset.serial_number,
+            space_name: (asset.space as { name?: string | null } | null)?.name ?? null,
+          }))
+        );
+        return;
+      }
+      // Space names only enrich the knowledge thread; never lose the asset list over them.
+      const { data, error } = await supabase
         .from("assets")
         .select("id, name, serial_number")
         .eq("org_id", orgId)
         .eq("property_id", propertyId);
-      const { data, error } = await query;
       if (error) throw error;
       setAvailableAssets(
         (data || []).map((asset) => ({
@@ -1373,11 +1390,12 @@ export function IntakeModal({
     prevOpenRef.current = open;
   }, [open, initialIntakeMode, isIntakeControlled]);
 
-  const markIntakeItemConfirmed = useCallback(async () => {
+  const markIntakeItemConfirmed = useCallback(async (outcome: "filed" | "task") => {
     const artifact = sourceArtifactRef.current;
     if (!artifact) return;
     try {
       await confirmIntakeItem(supabase, artifact.intakeItemId);
+      noteResolution("intake", artifact.intakeItemId, outcome, { afterOverlay: true });
       await queryClient.invalidateQueries({ queryKey: [INTAKE_ITEMS_QUERY_KEY] });
     } catch (error) {
       console.warn("[IntakeModal] could not confirm intake item:", error);
@@ -3793,7 +3811,7 @@ export function IntakeModal({
             });
           }
         }
-        await markIntakeItemConfirmed();
+        await markIntakeItemConfirmed("filed");
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
@@ -3825,7 +3843,7 @@ export function IntakeModal({
         queryClient.invalidateQueries({ queryKey: ["property_documents"] });
         const celebrated = markQuickWinComplete("upload", propertyId);
         if (!celebrated) toast({ title: "Document saved" });
-        await markIntakeItemConfirmed();
+        await markIntakeItemConfirmed("filed");
         onOpenChange(false);
         resetForm();
       } catch (err: unknown) {
@@ -4045,7 +4063,7 @@ export function IntakeModal({
       const celebrated = markQuickWinComplete("task", propertyId);
       if (!celebrated) toast({ title: "Task created" });
       onTaskCreated?.(newTask.id);
-      await markIntakeItemConfirmed();
+      await markIntakeItemConfirmed("task");
       onOpenChange(false);
       resetForm();
     } catch (err: unknown) {
@@ -4844,6 +4862,10 @@ export function IntakeModal({
                           selectedAssetIds.includes(match.assetId)
                         )}
                         proposedAssets={intakeAssetMatch.unmatched}
+                        documentLabel={title.trim() || taskFiles[0]?.display_name || null}
+                        spaceNameForAsset={(assetId) =>
+                          availableAssets.find((asset) => asset.id === assetId)?.space_name ?? null
+                        }
                         onAddProposedAsset={(label) => {
                           setAssetDraftName(label);
                           setShowCreateAssetDialog(true);

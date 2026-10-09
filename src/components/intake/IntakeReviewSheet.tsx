@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowLeft,
   BookOpen,
@@ -47,6 +48,17 @@ import {
   intakeAddRecordDrawerCardClassName,
   intakeReportIssueDrawerCardClassName,
 } from "@/lib/intake-action-buttons";
+import { noteResolution } from "@/lib/motion/resolutions";
+import { transitions } from "@/lib/motion/tokens";
+import {
+  AlignBlock,
+  Lift,
+  MotionSequence,
+  Settle,
+  SettleValue,
+  SignalMark,
+  Unfold,
+} from "@/components/motion";
 
 interface IntakeReviewSheetProps {
   open: boolean;
@@ -58,7 +70,13 @@ interface IntakeReviewSheetProps {
   onBackToUploads?: () => void;
 }
 
-function IntakeDecisionPanel({
+const DECISION_EXIT = {
+  opacity: 0,
+  y: -2,
+  transition: transitions.exit,
+} as const;
+
+export function IntakeDecisionPanel({
   decision,
   confirmedAction,
   showOtherActions,
@@ -84,64 +102,85 @@ function IntakeDecisionPanel({
     (item) => item !== action && (item !== "keep_knowledge" || allowKnowledge)
   );
 
+  const showReading = !ready && decision.blocking_uncertainty === "still_reading";
+  const stage =
+    !ready && decision.clarifying_question
+      ? `question:${decision.clarifying_question}`
+      : ready && action
+        ? `action:${action}`
+        : "none";
+
   return (
     <div className="space-y-3">
-      {!ready && decision.blocking_uncertainty === "still_reading" ? (
-        <p className="text-sm text-muted-foreground">{decision.reason}</p>
-      ) : null}
+      <AnimatePresence mode="popLayout" initial={false}>
+        {showReading ? (
+          <motion.p key="reading" exit={DECISION_EXIT} className="text-sm text-muted-foreground">
+            {decision.reason}
+          </motion.p>
+        ) : null}
 
-      {!ready && decision.clarifying_question ? (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-foreground">{decision.clarifying_question}</p>
-          <div className="flex flex-col gap-2">
-            {decision.clarifying_options.map((option) => (
+        {stage.startsWith("question:") ? (
+          <motion.div key={stage} exit={DECISION_EXIT}>
+            <Lift step={3} radiusClassName="rounded-xl" className="space-y-2 rounded-xl bg-muted/30 p-3">
+              <p className="text-sm font-medium text-foreground">{decision.clarifying_question}</p>
+              <div className="flex flex-col gap-2">
+                {decision.clarifying_options.map((option, index) => (
+                  <Unfold key={option.id} step={3} index={index + 1}>
+                    <button
+                      type="button"
+                      onClick={() => onConfirm(option.action)}
+                      className="min-h-11 w-full rounded-lg bg-card px-3 py-2 text-left text-sm font-medium text-foreground shadow-e1"
+                    >
+                      {option.label}
+                    </button>
+                  </Unfold>
+                ))}
+              </div>
+            </Lift>
+          </motion.div>
+        ) : null}
+
+        {stage.startsWith("action:") && action ? (
+          <motion.div key={stage} exit={DECISION_EXIT}>
+            <Settle step={3} radiusClassName="rounded-lg">
               <button
-                key={option.id}
                 type="button"
-                onClick={() => onConfirm(option.action)}
-                className="min-h-11 rounded-lg bg-card px-3 py-2 text-left text-sm font-medium text-foreground shadow-e1"
+                disabled={action === "keep_knowledge" && filingKnowledge}
+                onClick={() => onRun(action)}
+                className={cn(
+                  action === "create_task"
+                    ? intakeReportIssueDrawerCardClassName
+                    : action === "keep_knowledge"
+                      ? "w-full rounded-lg border-0 bg-card p-4 text-left text-foreground shadow-e1"
+                      : intakeAddRecordDrawerCardClassName
+                )}
               >
-                {option.label}
+                <div className="flex items-start gap-3">
+                  {action === "create_task" ? (
+                    <Plus className="h-5 w-5 shrink-0 mt-0.5" />
+                  ) : action === "keep_knowledge" ? (
+                    filingKnowledge ? (
+                      <Loader2 className="h-5 w-5 shrink-0 mt-0.5 animate-spin" />
+                    ) : (
+                      <BookOpen className="h-5 w-5 shrink-0 mt-0.5" />
+                    )
+                  ) : (
+                    <ShieldCheck className="h-5 w-5 shrink-0 mt-0.5" />
+                  )}
+                  <div className="text-left">
+                    <p className="font-semibold">
+                      {intakeDecisionActionLabel(action, decision.understanding.label)}
+                    </p>
+                    {decision.reason ? (
+                      <p className="text-xs font-normal mt-0.5 opacity-90">{decision.reason}</p>
+                    ) : null}
+                  </div>
+                </div>
               </button>
-            ))}
-          </div>
-        </div>
-      ) : null}
-
-      {ready && action ? (
-        <button
-          type="button"
-          disabled={action === "keep_knowledge" && filingKnowledge}
-          onClick={() => onRun(action)}
-          className={cn(
-            action === "create_task"
-              ? intakeReportIssueDrawerCardClassName
-              : action === "keep_knowledge"
-                ? "w-full rounded-lg border-0 bg-card p-4 text-left text-foreground shadow-e1"
-                : intakeAddRecordDrawerCardClassName
-          )}
-        >
-          <div className="flex items-start gap-3">
-            {action === "create_task" ? (
-              <Plus className="h-5 w-5 shrink-0 mt-0.5" />
-            ) : action === "keep_knowledge" ? (
-              filingKnowledge ? (
-                <Loader2 className="h-5 w-5 shrink-0 mt-0.5 animate-spin" />
-              ) : (
-                <BookOpen className="h-5 w-5 shrink-0 mt-0.5" />
-              )
-            ) : (
-              <ShieldCheck className="h-5 w-5 shrink-0 mt-0.5" />
-            )}
-            <div className="text-left">
-              <p className="font-semibold">
-                {intakeDecisionActionLabel(action, decision.understanding.label)}
-              </p>
-              <p className="text-xs font-normal mt-0.5 opacity-90">{decision.reason}</p>
-            </div>
-          </div>
-        </button>
-      ) : null}
+            </Settle>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {(ready || decision.blocking_uncertainty === "still_reading") && alternatives.length > 0 ? (
         <div className="space-y-2">
@@ -153,15 +192,16 @@ function IntakeDecisionPanel({
             Other actions
           </button>
           {showOtherActions
-            ? alternatives.map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => onRun(item)}
-                  className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/40"
-                >
-                  {intakeDecisionActionLabel(item, decision.understanding.label)}
-                </button>
+            ? alternatives.map((item, index) => (
+                <Unfold key={item} step={0} index={index}>
+                  <button
+                    type="button"
+                    onClick={() => onRun(item)}
+                    className="block w-full rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/40"
+                  >
+                    {intakeDecisionActionLabel(item, decision.understanding.label)}
+                  </button>
+                </Unfold>
               ))
             : null}
         </div>
@@ -170,12 +210,27 @@ function IntakeDecisionPanel({
   );
 }
 
-function FactRow({ label, value }: { label: string; value: string }) {
+function FactRow({
+  label,
+  value,
+  index,
+  signal,
+}: {
+  label: string;
+  value: string;
+  index: number;
+  signal?: "risk";
+}) {
   return (
-    <div className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 py-2">
+    <Unfold step={1} index={index} className="grid grid-cols-[7.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 py-2">
       <dt className="text-xs text-muted-foreground pt-0.5">{label}</dt>
-      <dd className="text-sm font-medium text-foreground leading-snug">{value}</dd>
-    </div>
+      <dd className="text-sm font-medium text-foreground leading-snug">
+        <span className="relative inline-block">
+          <SettleValue value={value} />
+          {signal === "risk" ? <SignalMark tone="risk" edge="bottom" persist step={1} index={index} /> : null}
+        </span>
+      </dd>
+    </Unfold>
   );
 }
 
@@ -289,6 +344,7 @@ export function IntakeReviewSheet({
     setDismissing(true);
     try {
       await ignoreIntakeItem(supabase, artifact.intakeItemId);
+      noteResolution("intake", artifact.intakeItemId, "dismissed", { afterOverlay: true });
       void invalidate();
       onOpenChange(false);
     } catch (error) {
@@ -310,6 +366,7 @@ export function IntakeReviewSheet({
         p_intake_item_id: artifact.intakeItemId,
       });
       if (error) throw error;
+      noteResolution("intake", artifact.intakeItemId, "knowledge", { afterOverlay: true });
       void invalidate();
       toast({
         title: "Sent to Knowledge review",
@@ -333,13 +390,6 @@ export function IntakeReviewSheet({
   };
 
   if (!payload || !artifact || !briefing) return null;
-
-  const outcomeTone =
-    briefing.outcome === "unsatisfactory" || briefing.outcome === "expired"
-      ? "bg-destructive/15 text-destructive"
-      : briefing.outcome === "satisfactory" || briefing.outcome === "valid"
-        ? "bg-success/25 text-success-foreground"
-        : "bg-muted text-muted-foreground";
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -370,19 +420,24 @@ export function IntakeReviewSheet({
           </SheetDescription>
         </SheetHeader>
 
+        <MotionSequence id={`intake-review:${artifact.intakeItemId}`}>
         <div className="mt-4 space-y-5">
           {senderLabel ? (
-            <p className="rounded-[10px] bg-muted/50 px-3 py-2 text-sm font-medium text-foreground shadow-e1">
-              {senderLabel}
-            </p>
+            <Unfold step={0} index={0}>
+              <p className="rounded-[10px] bg-muted/50 px-3 py-2 text-sm font-medium text-foreground shadow-e1">
+                {senderLabel}
+              </p>
+            </Unfold>
           ) : null}
           {proposal ? (
-            <p className="text-sm text-muted-foreground">
-              {inboundEmailOutcomeLabel(proposal)}
-              {proposal.task_fields?.due_date ? ` · due ${proposal.task_fields.due_date}` : ""}
-            </p>
+            <Unfold step={0} index={1}>
+              <p className="text-sm text-muted-foreground">
+                {inboundEmailOutcomeLabel(proposal)}
+                {proposal.task_fields?.due_date ? ` · due ${proposal.task_fields.due_date}` : ""}
+              </p>
+            </Unfold>
           ) : null}
-          <div className="flex items-start gap-3">
+          <Unfold step={0} index={2} className="flex items-start gap-3">
             <IntakeFileThumb
               kind={preview.kind}
               thumbnailUrl={preview.thumbnailUrl}
@@ -411,38 +466,19 @@ export function IntakeReviewSheet({
                 ) : null}
               </div>
             </div>
-          </div>
-
-          {briefing.typeEvidence === "document" ? (
-            <div className="flex flex-wrap gap-1.5">
-              {briefing.documentType ? (
-                <span className="rounded-sharp bg-input px-2.5 py-1 text-caption font-medium text-foreground shadow-sm">
-                  {briefing.documentType}
-                </span>
-              ) : null}
-              {briefing.understanding.statusLabel ? (
-                <span className="rounded-sharp bg-muted px-2.5 py-1 text-caption font-medium text-foreground shadow-sm">
-                  {briefing.understanding.statusLabel}
-                </span>
-              ) : briefing.outcome !== "unknown" ? (
-                <span className={cn("rounded-sharp px-2.5 py-1 text-caption font-medium", outcomeTone)}>
-                  {intakeOutcomeLabel(briefing.outcome)}
-                </span>
-              ) : null}
-            </div>
-          ) : null}
+          </Unfold>
 
           {preview.loading || preview.thumbnailUrl || preview.kind === "pdf" || preview.kind === "image" ? (
-            <IntakeFilePreviewFrame
-              kind={preview.kind}
-              thumbnailUrl={preview.thumbnailUrl}
-              openUrl={openUrl}
-              title={displayName}
-              loading={preview.loading && !preview.thumbnailUrl}
-            />
+            <Unfold step={1} index={1}>
+              <IntakeFilePreviewFrame
+                kind={preview.kind}
+                thumbnailUrl={preview.thumbnailUrl}
+                openUrl={openUrl}
+                title={displayName}
+                loading={preview.loading && !preview.thumbnailUrl}
+              />
+            </Unfold>
           ) : null}
-
-          <p className="text-sm leading-relaxed text-foreground">{briefing.summary}</p>
 
           <dl className="divide-y divide-border/40">
             {scanStillRunning ? (
@@ -452,6 +488,7 @@ export function IntakeReviewSheet({
               </div>
             ) : null}
             <FactRow
+              index={0}
               label="Type"
               value={
                 briefing.typeEvidence === "document"
@@ -460,14 +497,17 @@ export function IntakeReviewSheet({
               }
             />
             <FactRow
+              index={1}
               label="Outcome"
               value={
                 briefing.typeEvidence === "document"
                   ? briefing.understanding.statusLabel || intakeOutcomeLabel(briefing.outcome)
                   : "Not stated"
               }
+              signal={briefing.needsFollowUp ? "risk" : undefined}
             />
             <FactRow
+              index={2}
               label="Expiry"
               value={
                 briefing.expiryDate
@@ -481,27 +521,38 @@ export function IntakeReviewSheet({
                     : "Not found"
               }
             />
-            <FactRow
-              label="Read from"
-              value={
-                briefing.typeEvidence === "document" || briefing.typeEvidence === "inference"
-                  ? "Document text"
-                  : briefing.typeEvidence === "filename"
-                    ? "File name"
-                    : "Not enough to read"
-              }
-            />
+            {briefing.typeEvidence !== "document" ? (
+              <FactRow
+                index={3}
+                label="Read from"
+                value={
+                  briefing.typeEvidence === "inference"
+                    ? "Short extract"
+                    : briefing.typeEvidence === "filename"
+                      ? "File name"
+                      : "Not enough to read"
+                }
+              />
+            ) : null}
           </dl>
 
           {briefing.findings.length > 0 ? (
-            <ul className="space-y-1.5 text-sm text-foreground">
-              {briefing.findings.map((finding) => (
-                <li key={finding} className="flex gap-2">
-                  <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground/50" />
-                  <span>{finding}</span>
-                </li>
-              ))}
-            </ul>
+            <Unfold step={1} index={6} as="div">
+              <ul className="space-y-1.5 text-sm text-foreground">
+                {briefing.findings.map((finding) => (
+                  <li key={finding} className="flex gap-2">
+                    <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-foreground/50" />
+                    <span>{finding}</span>
+                  </li>
+                ))}
+              </ul>
+            </Unfold>
+          ) : null}
+
+          {briefing.summary ? (
+            <AlignBlock key={briefing.summary} step={2}>
+              <p className="text-sm leading-relaxed text-foreground">{briefing.summary}</p>
+            </AlignBlock>
           ) : null}
 
           {preview.loading && !briefing.excerpt ? (
@@ -510,20 +561,24 @@ export function IntakeReviewSheet({
               Reading document…
             </div>
           ) : briefing.excerpt ? (
-            <div className="max-h-40 overflow-y-auto rounded-xl bg-muted/35 px-3 py-2.5 shadow-engraved">
-              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
-                From the document
-              </p>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {briefing.excerpt}
-              </p>
-            </div>
+            <Unfold step={2} index={1}>
+              <div className="max-h-40 overflow-y-auto rounded-xl bg-muted/35 px-3 py-2.5 shadow-engraved">
+                <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5">
+                  From the document
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                  {briefing.excerpt}
+                </p>
+              </div>
+            </Unfold>
           ) : isEmailOnly && artifact.rawText ? (
-            <div className="max-h-40 overflow-y-auto rounded-xl bg-muted/35 px-3 py-2.5 shadow-engraved">
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
-                {artifact.rawText}
-              </p>
-            </div>
+            <Unfold step={2} index={1}>
+              <div className="max-h-40 overflow-y-auto rounded-xl bg-muted/35 px-3 py-2.5 shadow-engraved">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+                  {artifact.rawText}
+                </p>
+              </div>
+            </Unfold>
           ) : null}
 
           {decision ? (
@@ -583,6 +638,7 @@ export function IntakeReviewSheet({
             Dismiss upload
           </Button>
         </div>
+        </MotionSequence>
       </SheetContent>
     </Sheet>
   );

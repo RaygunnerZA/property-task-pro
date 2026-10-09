@@ -18,6 +18,7 @@ import { useCreateTaskSubmit } from "./create/useCreateTaskSubmit";
 import { CreateTaskSections } from "./create/CreateTaskSections.tsx";
 import { CreateTaskFooter } from "./create/CreateTaskFooter";
 import { CreateTaskDialogs } from "./create/CreateTaskDialogs";
+import { Unfold } from "@/components/motion";
 
 export type { TaskCreatedSource };
 export interface CreateTaskPrefill {
@@ -271,35 +272,31 @@ export function CreateTaskModal({
           taskId={undefined}
         />
 
-        {/* AI-Generated Title (collapses until user starts description) */}
-        <div
-          className={cn(
-            "rounded-none transition-all duration-300 ease-out overflow-hidden",
-            shouldShowTitleField ? "!mt-2 max-h-28 opacity-100" : "!mt-3 max-h-0 opacity-0 pointer-events-none"
-          )}
-        >
-          <div className="relative">
-            <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => {
-                setUserEditedTitle(true);
-                setTitle(e.target.value);
-                if (e.target.value.trim() === "") {
-                  setUserEditedTitle(false);
-                }
-              }}
-              className="w-full h-10 pl-[22px] pr-4 py-3 rounded-card bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm transition-shadow"
-              placeholder="Generated title…"
-            />
-          </div>
-          {!aiLoading && aiError && !aiResult?.title && (
-            <p className="pt-2 text-2xs text-muted-foreground">
-              AI title is temporarily unavailable. You can still enter one manually.
-            </p>
-          )}
-        </div>
+        {shouldShowTitleField ? (
+          <Unfold step={1} className="!mt-2">
+            <div className="relative">
+              <FillaIcon size={12} className="text-primary absolute left-1.5 top-1.5 pointer-events-none text-left" />
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => {
+                  setUserEditedTitle(true);
+                  setTitle(e.target.value);
+                  if (e.target.value.trim() === "") {
+                    setUserEditedTitle(false);
+                  }
+                }}
+                className="w-full h-10 pl-[22px] pr-4 py-3 rounded-card bg-input shadow-engraved focus:outline-none focus:ring-2 focus:ring-primary/30 font-sans text-sm"
+                placeholder="Generated title…"
+              />
+            </div>
+            {!aiLoading && aiError && !aiResult?.title && (
+              <p className="pt-2 text-2xs text-muted-foreground">
+                AI title is temporarily unavailable. You can still enter one manually.
+              </p>
+            )}
+          </Unfold>
+        ) : null}
 
         {/* Description: 12px below upload when title hidden; 8px below AI title when visible */}
         <div className={cn(shouldShowTitleField ? "!mt-2" : "!mt-0")}>

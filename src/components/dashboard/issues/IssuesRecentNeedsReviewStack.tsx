@@ -6,6 +6,7 @@ import type { AttentionItem } from "@/components/dashboard/issues/issuesAttentio
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { pickTopRecentSignals, pickTopReviewSignals, countAttentionSectionItems } from "@/lib/issuesSignalOrdering";
 import type { IntakeMode } from "@/types/intake";
+import { ResolutionLedger } from "@/components/motion";
 
 /** Needs review queue — row cards via IssuesReviewSignalRow (through OperationalStreamCard). */
 export const ISSUES_NEEDS_REVIEW_SECTION = {
@@ -103,6 +104,7 @@ export function IssuesRecentNeedsReviewStack({
         renderCard={renderSignal}
         layout={layout}
         onViewAll={onViewAllIssues}
+        trailing={<ResolutionLedger />}
       />
       {middleSlot}
       <IssuesScrollColumn

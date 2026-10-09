@@ -329,6 +329,9 @@ All design tokens are defined in:
 - **`shadow-primary-btn`** - Primary button shadow
 - **`shadow-btn-pressed`** - Pressed button state
 - **`shadow-fab`** - Floating action button
+- **`shadow-lift`** - LIFT depth layer (opacity only; never tween `box-shadow`)
+
+**Motion** defers to **`@Docs/33_Motion_System.md`**. Tokens: `src/lib/motion/tokens.ts` and `--duration-*` / `--ease-*` in `src/index.css`. Six verbs (LIFT, ALIGN, STACK, UNFOLD, SETTLE, SIGNAL). Do not invent animation outside that chapter. Chapter 33 does not change IA, navigation, or workbench layout.
 
 ### Utility Classes
 - **`.bg-surface-gradient`** - Surface gradient background

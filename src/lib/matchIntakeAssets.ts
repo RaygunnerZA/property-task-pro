@@ -21,6 +21,8 @@ export type IntakeAssetMatch = {
   assetId: string;
   name: string;
   serial_number?: string | null;
+  /** Which identifier in the document matched the existing asset. */
+  matchedBy?: "serial" | "name";
 };
 
 export type IntakeUnmatchedAsset = {
@@ -129,6 +131,7 @@ export function matchIntakeAssets(
         assetId: hit.id,
         name: hit.name,
         serial_number: hit.serial_number,
+        matchedBy: bySerial ? "serial" : "name",
       });
       continue;
     }

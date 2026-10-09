@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MutableRefObject } from "react";
+import { useCallback, useEffect, useState, type MutableRefObject, type ReactNode } from "react";
 import { Check } from "lucide-react";
 import { IssuesScrollColumn } from "@/components/dashboard/issues/IssuesScrollColumn";
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
@@ -21,6 +21,7 @@ import {
   ONBOARDING_SAMPLE_DISMISSED_EVENT,
   readDismissedOnboardingSampleIds,
 } from "@/lib/onboardingEducation";
+import { ResolutionLedger } from "@/components/motion";
 
 export type OnboardingAttentionFeedProps = {
   attentionCardRefs: MutableRefObject<Record<string, HTMLDivElement | null>>;
@@ -35,10 +36,21 @@ export type OnboardingAttentionFeedProps = {
   propertyId?: string | null;
 };
 
-function FeedSectionHeader({ title, subtitle }: { title: string; subtitle: string }) {
+function FeedSectionHeader({
+  title,
+  subtitle,
+  trailing,
+}: {
+  title: string;
+  subtitle: string;
+  trailing?: ReactNode;
+}) {
   return (
     <div className="px-0">
-      <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+      <div className="flex items-center gap-2">
+        <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+        {trailing}
+      </div>
       <p className="mt-0.5 text-base text-muted-foreground">{subtitle}</p>
     </div>
   );
@@ -144,6 +156,7 @@ export function OnboardingAttentionFeed({
           <FeedSectionHeader
             title="Needs review"
             subtitle="Compliance, maintenance, and items needing a decision."
+            trailing={<ResolutionLedger />}
           />
           {needsAttention.length > 0 ? (
             <IssuesScrollColumn

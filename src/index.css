@@ -41,12 +41,17 @@
       --gutter-rail: 15px;
     }
 
-    /* Motion tokens — feedback 120ms, state change 200ms, panels/modals 320ms.
-       Enter = ease-out, exit = ease-in, in-place change = ease-in-out. */
+    /* Motion tokens — feedback 120ms, state change 200ms, settle 280ms, reveal/panels 320ms,
+       travel 360ms. Enter = ease-out, exit = ease-in, in-place change = ease-in-out,
+       paper (SETTLE/UNFOLD/travel) = ease-emphasized. Mirrors src/lib/motion/tokens.ts;
+       grammar in @Docs/33_Motion_System.md. */
     --duration-fast: 120ms;
     --duration-default: 200ms;
+    --duration-settle: 280ms;
     --duration-slow: 320ms;
+    --duration-travel: 360ms;
     --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+    --ease-paper: var(--ease-emphasized);
     --ease-out: cubic-bezier(0, 0, 0.2, 1);
     --ease-in: cubic-bezier(0.4, 0, 1, 1);
     --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
@@ -932,8 +937,10 @@
     box-shadow: 1px 3px 4px 0px rgba(0, 0, 0, 0.1), inset 1px 1px 1px rgba(255, 255, 255, 0.4);
   }
   
-  .bg-section-flat {
-    background-color: rgba(182, 184, 164, 0.74);
+  .bg-section-flat,
+  .card-section {
+    /* Recessed paper well — concrete, not the old olive slab. */
+    background-color: hsl(var(--concrete));
     background-image: var(--paper-texture);
     background-size: 100%;
   }

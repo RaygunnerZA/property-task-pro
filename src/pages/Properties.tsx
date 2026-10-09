@@ -98,7 +98,7 @@ const Properties = () => {
         icon={<Building2 className="h-6 w-6" />}
         maxWidth="md"
       >
-        <div className="list-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="animate-pulse rounded-card bg-card/40 p-4 shadow-e1">
               <div className="mb-4 h-24 rounded-xl bg-foreground/5" />

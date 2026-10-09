@@ -12,6 +12,11 @@ import { TaskList } from "@/components/tasks/TaskList";
 import { ScheduleView } from "@/components/schedule/ScheduleView";
 import { IssuesAllFilterFeed } from "@/components/dashboard/issues/IssuesAllFilterFeed";
 import { IssuesSignalCard } from "@/components/dashboard/issues/IssuesSignalCard";
+import {
+  AttentionResolvableList,
+  ResolutionLedger,
+  ResolutionLedgerProvider,
+} from "@/components/motion";
 import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
 import {
   ISSUES_NEEDS_REVIEW_SECTION,
@@ -656,6 +661,7 @@ export function TaskPanel({
   }, [activeTab]);
 
   return (
+    <ResolutionLedgerProvider>
     <div className="h-full flex flex-col bg-transparent">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full h-full flex flex-col pt-[8px] pb-[3px]">
         <div
@@ -958,6 +964,11 @@ export function TaskPanel({
 
                 {showSignalFeed && (
                   <div className="space-y-4">
+                    {issuesFilter !== "all" ? (
+                      <div className="flex justify-end">
+                        <ResolutionLedger />
+                      </div>
+                    ) : null}
                     {issuesFilter === "all" ? (
                       <>
                         <IssuesAllFilterFeed
@@ -988,18 +999,19 @@ export function TaskPanel({
                                 spacious
                               />
                               <div className="space-y-2">
-                                {items.map((item) => (
-                                  <IssuesSignalCard
-                                    key={item.id}
-                                    item={item}
-                                    attentionCardRefs={attentionCardRefs}
-                                    resolveAttentionItem={resolveAttentionItem}
-                                    addAttentionItemToCompliance={addAttentionItemToCompliance}
-                                    onOpenIntake={onOpenIntake}
-                                    onMessageClick={onMessageClick}
-                                    onAttentionItemSelect={onAttentionItemSelect}
-                                  />
-                                ))}
+                                <AttentionResolvableList items={items}>
+                                  {(item) => (
+                                    <IssuesSignalCard
+                                      item={item}
+                                      attentionCardRefs={attentionCardRefs}
+                                      resolveAttentionItem={resolveAttentionItem}
+                                      addAttentionItemToCompliance={addAttentionItemToCompliance}
+                                      onOpenIntake={onOpenIntake}
+                                      onMessageClick={onMessageClick}
+                                      onAttentionItemSelect={onAttentionItemSelect}
+                                    />
+                                  )}
+                                </AttentionResolvableList>
                               </div>
                             </div>
                           ) : null;
@@ -1184,5 +1196,6 @@ export function TaskPanel({
         </div>
       </Tabs>
     </div>
+    </ResolutionLedgerProvider>
   );
 }

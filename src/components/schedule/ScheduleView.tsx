@@ -352,7 +352,7 @@ export function ScheduleView({
               <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
                 Any Time
               </h3>
-              <div className="list-stagger space-y-3">
+              <div className="space-y-3">
                 {anyTimeTasks.map((task) => {
                   const property = task.property_id
                     ? propertyMap.get(task.property_id)

@@ -155,6 +155,8 @@ export default {
         'primary-btn': '3px 5px 5px 2px rgba(0, 0, 0, 0.13), -3px -3px 5px 0px rgba(255, 255, 255, 0.48), inset 1px 1px 2px 0px rgba(255, 255, 255, 0.5), inset -1px -2px 2px 0px rgba(0, 0, 0, 0.27)',
         'btn-pressed': '0px 0px 7px 2px rgba(0, 0, 0, 0), inset -1px -2px 2px 0px rgba(255, 255, 255, 0.41), inset 3px 3px 4px 0px rgba(0, 0, 0, 0.17)',
         'fab': '0 8px 24px rgba(235,104,52,0.4), 0 4px 8px rgba(235,104,52,0.3)',
+        /* Motion LIFT depth layer (ink-tinted, soft). Animated via opacity only — see @Docs/33_Motion_System.md */
+        'lift': '0 10px 24px -12px rgba(42, 41, 62, 0.28), 0 2px 6px -2px rgba(42, 41, 62, 0.10)',
         'inset': 'inset 2px 2px 4px rgba(0,0,0,0.15), inset -1px -1px 2px rgba(255,255,255,0.3)',
       },
       keyframes: {

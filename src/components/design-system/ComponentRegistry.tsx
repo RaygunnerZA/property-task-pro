@@ -154,7 +154,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.primaryBtn};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-primary text-primary-foreground rounded-sharp shadow-primary-btn">
+        <button className="inline-flex h-[42px] items-center px-4 font-medium text-sm bg-primary text-primary-foreground rounded-sharp shadow-primary-btn">
           Primary Button
         </button>
       ),
@@ -168,7 +168,7 @@ export function ComponentRegistry() {
   border-radius: ${radii.sharp};
   box-shadow: ${shadows.e1};`,
       preview: (
-        <button className="px-4 py-2 font-medium text-sm bg-surface text-ink rounded-sharp shadow-e1">
+        <button className="inline-flex h-[42px] items-center px-4 font-medium text-sm bg-surface text-ink rounded-sharp shadow-e1">
           Secondary Button
         </button>
       ),
@@ -380,11 +380,10 @@ export function ComponentRegistry() {
     {
       name: 'Card Section',
       category: 'Card',
-      cssClass: 'card-section',
-      cssValue: `  background-color: rgba(182, 184, 164, 0.74);
-  background-image: url('/textures/white-texture.jpg');
-  background-blend-mode: overlay;
-  background-size: 68%;
+      cssClass: 'bg-section-flat',
+      cssValue: `  background-color: hsl(var(--concrete));
+  background-image: var(--paper-texture);
+  background-size: 100%;
   border-radius: 8px;
   box-shadow: ${shadows.e2};`,
       preview: (

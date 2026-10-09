@@ -18,6 +18,8 @@ import { quickWinIdFromAttentionId } from "@/lib/quickWins";
 import { resolveAttentionStreamThumbnail } from "@/lib/taskIllustration";
 import { signalKindIcon } from "@/lib/signalKindIcons";
 import type { IntakeMode } from "@/types/intake";
+import { attentionOutcomeFromAction } from "@/lib/motion/attentionOutcome";
+import { noteResolution } from "@/lib/motion/resolutions";
 
 export type IssuesSignalCardProps = {
   item: AttentionItem;
@@ -67,15 +69,20 @@ function runFixtureAction(
     }
   }
 
+  const resolveLocal = (outcome = attentionOutcomeFromAction(actionId)) => {
+    noteResolution("inflow", item.id, outcome);
+    resolveAttentionItem(item.id);
+  };
+
   if (actionId === "signal-open") {
     if (item.messageId) onMessageClick?.(item.messageId);
-    resolveAttentionItem(item.id);
+    resolveLocal("dismissed");
     return;
   }
 
   if (actionId === "signal-convert" && item.complianceSeed) {
     addAttentionItemToCompliance(item);
-    resolveAttentionItem(item.id);
+    resolveLocal("filed");
     return;
   }
 
@@ -84,20 +91,20 @@ function runFixtureAction(
     isOnboardingSampleNotification(item)
   ) {
     if (propertyId) dismissOnboardingSample(propertyId, item.id);
-    resolveAttentionItem(item.id);
+    resolveLocal("dismissed");
     return;
   }
 
   // Local resolve for non-platform rows (compliance review, collapsed groups).
   if (actionId === "dismiss" || actionId === "ignore") {
-    resolveAttentionItem(item.id);
+    resolveLocal("dismissed");
     return;
   }
 
   performOnboardingFixtureAction(actionId, { navigate, propertyId, onOpenIntake });
   // Quick wins stay visible until the real action completes (save / upload / create).
   if (!quickWinIdFromAttentionId(item.id)) {
-    resolveAttentionItem(item.id);
+    resolveLocal();
   }
 }
 

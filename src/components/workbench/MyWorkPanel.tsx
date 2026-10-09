@@ -10,6 +10,7 @@ import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/Issu
 import { WorkbenchHorizontalScroller } from "@/components/workbench/WorkbenchHorizontalScroller";
 import { AttentionEducationSummary } from "@/components/onboarding/AttentionEducationSummary";
 import { OnboardingAttentionFeed } from "@/components/onboarding/OnboardingAttentionFeed";
+import { ResolutionLedgerProvider } from "@/components/motion";
 import { useTasksQuery } from "@/hooks/useTasksQuery";
 import { usePropertiesQuery } from "@/hooks/usePropertiesQuery";
 import { useWorkbenchAttentionStream } from "@/hooks/useWorkbenchAttentionStream";
@@ -262,6 +263,7 @@ export function MyWorkPanel({
   }
 
   return (
+    <ResolutionLedgerProvider>
     <div className={cn(centreScrollClass, "flex-1 min-h-0")}>
       <div className="min-w-0 space-y-6">
         <AttentionPanelHeader />
@@ -420,5 +422,6 @@ export function MyWorkPanel({
         )}
       </div>
     </div>
+    </ResolutionLedgerProvider>
   );
 }

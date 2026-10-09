@@ -13,6 +13,8 @@ import { formatIntakeDateDisplay } from "@/lib/intakeDocumentDates";
 import type { AggregatedIntakeScanReview } from "@/lib/aggregateIntakeScanReview";
 import type { IntakeAssetMatch, IntakeUnmatchedAsset } from "@/lib/matchIntakeAssets";
 import { formatLinkedAssetLabel } from "@/lib/matchIntakeAssets";
+import { buildKnowledgeConnectionNodes } from "@/lib/intake/knowledgeConnection";
+import { KnowledgeThread } from "@/components/motion";
 
 type Props = {
   review: AggregatedIntakeScanReview;
@@ -23,6 +25,10 @@ type Props = {
   linkedAssets?: IntakeAssetMatch[];
   proposedAssets?: IntakeUnmatchedAsset[];
   onAddProposedAsset?: (label: string) => void;
+  /** Title or file name of the document being recorded (first node of the knowledge thread). */
+  documentLabel?: string | null;
+  /** Space name for a linked asset, when the asset sits in a Space. */
+  spaceNameForAsset?: (assetId: string) => string | null;
   className?: string;
 };
 
@@ -35,6 +41,8 @@ export function IntakeComplianceScanReview({
   linkedAssets = [],
   proposedAssets = [],
   onAddProposedAsset,
+  documentLabel,
+  spaceNameForAsset,
   className,
 }: Props) {
   const [findingsOpen, setFindingsOpen] = useState(false);
@@ -60,6 +68,8 @@ export function IntakeComplianceScanReview({
   if (!hasContent) return null;
 
   const selectedCount = actions.filter((a) => selectedActionIds.has(a.id)).length;
+  const renewalDate = dates.find((d) => d.kind === "next_due") ?? dates.find((d) => d.kind === "expiry");
+  const [primaryAsset, ...otherAssets] = linkedAssets;
   const secondaryFailFindings = failFindings.slice(1);
   const collapsedFindings = [...secondaryFailFindings, ...otherFindings];
 
@@ -121,13 +131,24 @@ export function IntakeComplianceScanReview({
 
       {(linkedAssets.length > 0 || proposedAssets.length > 0) && (
         <div className="space-y-1.5">
-          {linkedAssets.length > 0 && (
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Linked to</Label>
-              {linkedAssets.map((asset) => (
+          {primaryAsset && (
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Connected to this property</Label>
+              <KnowledgeThread
+                sequenceId={`${documentLabel ?? "document"}:${primaryAsset.assetId}`}
+                nodes={buildKnowledgeConnectionNodes({
+                  documentLabel,
+                  asset: primaryAsset,
+                  spaceName: spaceNameForAsset?.(primaryAsset.assetId) ?? null,
+                  renewal: renewalDate
+                    ? { label: renewalDate.label, date: formatIntakeDateDisplay(renewalDate.date) }
+                    : null,
+                })}
+              />
+              {otherAssets.map((asset) => (
                 <div key={asset.assetId} className="flex items-center gap-1.5 text-xs text-foreground">
                   <Link2 className="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden />
-                  <span>{formatLinkedAssetLabel(asset)}</span>
+                  <span>Also linked: {formatLinkedAssetLabel(asset)}</span>
                 </div>
               ))}
             </div>

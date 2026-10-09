@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { IssuesWorkbenchSectionHeader } from "@/components/dashboard/issues/IssuesWorkbenchSectionHeader";
 import { WorkbenchHorizontalScroller } from "@/components/workbench/WorkbenchHorizontalScroller";
+import { AttentionResolvableList } from "@/components/motion";
 
 type IssuesScrollColumnProps<T extends { id: string }> = {
   title: string;
@@ -14,6 +16,8 @@ type IssuesScrollColumnProps<T extends { id: string }> = {
   renderCard: (item: T) => React.ReactNode;
   className?: string;
   onViewAll?: () => void;
+  /** Right of the title (resolution ledger). */
+  trailing?: ReactNode;
   /**
    * `vertical` — stacked list
    * `horizontal` — scroll row
@@ -40,6 +44,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
   renderCard,
   className,
   onViewAll,
+  trailing,
   layout = "vertical",
   horizontalItemClassName = "w-[min(100vw-2.5rem,300px)] flex-shrink-0",
   hideHeader = false,
@@ -59,6 +64,7 @@ export function IssuesScrollColumn<T extends { id: string }>({
         count={totalCount ?? items.length}
         countVariant={countVariant}
         onViewAll={onViewAll}
+        trailing={trailing}
       />
       )}
 
@@ -73,30 +79,24 @@ export function IssuesScrollColumn<T extends { id: string }>({
         ) : null
       ) : layout === "horizontal" ? (
         <WorkbenchHorizontalScroller className="mt-3">
-          {items.map((item) => (
-            <div key={item.id} className={cn("min-w-0", horizontalItemClassName)}>
-              {renderCard(item)}
-            </div>
-          ))}
+          <AttentionResolvableList items={items} itemClassName={cn("min-w-0", horizontalItemClassName)}>
+            {(item) => renderCard(item)}
+          </AttentionResolvableList>
         </WorkbenchHorizontalScroller>
       ) : layout === "flex-columns" ? (
-        <div className="list-stagger mt-3 flex flex-wrap gap-x-8 gap-y-3">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="min-w-[min(100%,14.5rem)] flex-1 basis-[calc(50%-1rem)]"
-            >
-              {renderCard(item)}
-            </div>
-          ))}
+        <div className="mt-3 flex flex-wrap gap-x-8 gap-y-3">
+          <AttentionResolvableList
+            items={items}
+            itemClassName="min-w-[min(100%,14.5rem)] flex-1 basis-[calc(50%-1rem)]"
+          >
+            {(item) => renderCard(item)}
+          </AttentionResolvableList>
         </div>
       ) : (
-        <div className="list-stagger mt-3 divide-y divide-input-bg">
-          {items.map((item) => (
-            <div key={item.id} className="min-w-0 pt-2.5 pb-0 first:pt-0">
-              {renderCard(item)}
-            </div>
-          ))}
+        <div className="mt-3 space-y-2">
+          <AttentionResolvableList items={items}>
+            {(item) => renderCard(item)}
+          </AttentionResolvableList>
         </div>
       )}
     </section>

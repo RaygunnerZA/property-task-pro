@@ -12,6 +12,8 @@ import { useSignalUiFixturesEnabled } from "@/hooks/useSignalUiFixtures";
 import { useSignalsQuery } from "@/hooks/useSignalsQuery";
 import { useSignalActions } from "@/hooks/useSignalActions";
 import { usePromoteExternalEmailSignal } from "@/hooks/usePromoteExternalEmailSignal";
+import { attentionOutcomeFromAction } from "@/lib/motion/attentionOutcome";
+import { noteResolution } from "@/lib/motion/resolutions";
 import { mapSignalRowToAttentionItem } from "@/lib/signals/mapSignalRowToAttentionItem";
 import {
   SIGNAL_UI_FIXTURES_RECENT,
@@ -319,21 +321,25 @@ export function useWorkbenchAttentionStream({
     if (!item.signalId) return false;
     if (actionId === "signal-accept") {
       await acceptRecommendation.mutateAsync(item.signalId);
+      noteResolution("inflow", item.id, attentionOutcomeFromAction(actionId));
       resolveAttentionItem(item.id);
       return true;
     }
     if (actionId === "signal-snooze") {
       await snooze.mutateAsync(item.signalId);
+      noteResolution("inflow", item.id, attentionOutcomeFromAction(actionId));
       resolveAttentionItem(item.id);
       return true;
     }
     if (actionId === "dismiss" || actionId === "ignore") {
       await dismiss.mutateAsync(item.signalId);
+      noteResolution("inflow", item.id, attentionOutcomeFromAction(actionId));
       resolveAttentionItem(item.id);
       return true;
     }
     if (actionId === "signal-promote-intake") {
       await promoteExternalEmail.mutateAsync(item.signalId);
+      noteResolution("inflow", item.id, attentionOutcomeFromAction(actionId));
       resolveAttentionItem(item.id);
       onOpenAddToFilla?.();
       return true;

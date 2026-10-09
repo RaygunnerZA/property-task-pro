@@ -483,7 +483,7 @@ export function TaskList({
   const autoArchiveCell = showAutoArchiveCard ? (
     <div
       key="auto-archive"
-      className="min-w-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both"
+      className="min-w-0"
     >
       <AutoArchiveCard
         layout={autoArchiveLayout}
@@ -843,7 +843,7 @@ export function TaskList({
               {view === 'vertical' ? (
                 embeddedVerticalList ? (
                   embeddedColumns === 2 ? (
-                    <div className="list-stagger grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {memoizedTaskCards.todo.map((props) => (
                         <div key={props.task.id} className="min-w-0">
                           <TaskCard
@@ -862,7 +862,7 @@ export function TaskList({
                       {autoArchiveCell}
                     </div>
                   ) : (
-                  <div className="list-stagger divide-y divide-input-bg">
+                  <div className=" divide-y divide-input-bg">
                     {memoizedTaskCards.todo.map((props) => (
                       <div key={props.task.id} className="min-w-0 py-2.5 first:pt-0 last:pb-0">
                         <TaskCard
@@ -886,7 +886,7 @@ export function TaskList({
                 ) : embeddedInIssuesWorkbench ? (
                   <div className="relative mt-[7px]">
                     <div className="overflow-x-auto -mx-1 pl-1 pr-0 scrollbar-hz-teal">
-                      <div className="list-stagger flex gap-3 min-w-max pb-0.5">
+                      <div className=" flex gap-3 min-w-max pb-0.5">
                         {memoizedTaskCards.todo.map((props) => (
                           <div key={props.task.id} className="w-[200px] flex-shrink-0">
                             <TaskCard
@@ -897,7 +897,7 @@ export function TaskList({
                           </div>
                         ))}
                         {showAutoArchiveCard ? (
-                          <div className="w-[200px] flex-shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+                          <div className="w-[200px] flex-shrink-0">
                             <AutoArchiveCard
                               layout="tile"
                               className="h-[290px]"
@@ -923,7 +923,7 @@ export function TaskList({
                 <>
                   {/* Mobile: Horizontal scroll */}
                   <div className="overflow-x-auto -mx-4 px-4 mt-[7px] scrollbar-hz-teal sm:hidden">
-                    <div className="list-stagger flex gap-4 min-w-max">
+                    <div className=" flex gap-4 min-w-max">
                       {memoizedTaskCards.todo.map((props) => (
                         <div key={props.task.id} className="w-[200px] flex-shrink-0">
                           <TaskCard
@@ -934,7 +934,7 @@ export function TaskList({
                         </div>
                       ))}
                       {showAutoArchiveCard ? (
-                        <div className="w-[200px] flex-shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both">
+                        <div className="w-[200px] flex-shrink-0">
                           <AutoArchiveCard
                             layout="tile"
                             className="h-[290px]"
@@ -949,7 +949,7 @@ export function TaskList({
                   {/* Desktop: Grid layout - 4 columns */}
                   <div
                     className={cn(
-                      "list-stagger mt-0 hidden min-w-0 gap-3 sm:grid",
+                      " mt-0 hidden min-w-0 gap-3 sm:grid",
                       cn(
                         "sm:grid-cols-3",
                         (groupedTasks.todo.length + (showAutoArchiveCard ? 1 : 0)) === 1 &&
@@ -973,7 +973,7 @@ export function TaskList({
                 </>
                 )
               ) : (
-                <div className="list-stagger space-y-3 mt-0">
+                <div className=" space-y-3 mt-0">
                   {memoizedTaskCards.todo.map((props) => (
                     <TaskCard
                       key={props.task.id}
@@ -1000,7 +1000,7 @@ export function TaskList({
                   </span>
                 ) : null}
               </h2>
-              <div className="list-stagger flex flex-col gap-2">
+              <div className=" flex flex-col gap-2">
                 {memoizedTaskCards.done.map((props) => (
                   <TaskCard
                     key={props.task.id}

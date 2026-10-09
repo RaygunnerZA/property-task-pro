@@ -182,20 +182,12 @@ function authorityOf(text: string): { authority: DocumentAuthority; label: strin
   return { authority: "unknown", label: null, snippet: null };
 }
 
-function friendlyType(type: string | null | undefined): string {
-  if (!type) return "document";
-  if (type === "EPC") return "energy performance certificate";
-  if (type === "Asbestos Management Survey") return "asbestos register";
-  return type;
-}
-
 /**
  * Read the whole text before promoting any field.
  */
 export function interpretDocument(input: DocumentUnderstandingInput): DocumentUnderstanding {
   const text = input.text.replace(/\u0000/g, " ").trim();
   const asOf = input.asOf ?? new Date();
-  const typeLabel = friendlyType(input.documentType);
   const statements: DocumentStatement[] = [];
   const contradictions: string[] = [];
 
@@ -317,31 +309,37 @@ export function interpretDocument(input: DocumentUnderstandingInput): DocumentUn
   }
 
   const statusLabel = limitsStatus ? banner.label : null;
-  const article = /^(eicr|epc|[aeiou])/i.test(typeLabel) ? "an" : "a";
-  const statusClause = limitsStatus ? ` The document says it is ${banner.label?.toLowerCase()}.` : "";
-  const dateClause =
+  const withheldDate =
     candidateExpiry && (limitsStatus || applicability === "other" || unresolved)
       ? ` A valid-until date of ${formatIso(candidateExpiry)} is in the text and is not treated as the certificate status.`
       : "";
+  const observationCodes = [...new Set([...text.matchAll(/\bC[123]\b/g)].map((match) => match[0]))];
   let summary = "";
   if (applicability === "other") {
-    summary = `This reads as ${article} ${typeLabel}, but the address does not match this property.${statusClause}${dateClause}`;
+    summary = `The address does not match this property.${withheldDate}`;
   } else if (unresolved) {
     summary = contradictions[0] || "The document contradicts itself, so no status was applied.";
-  } else if (limitsStatus && candidateExpiry) {
-    summary = `This reads as ${article} ${typeLabel}, but the document says it is ${banner.label?.toLowerCase()}. It includes a valid-until date of ${formatIso(candidateExpiry)}, which is not treated as the certificate status.`;
   } else if (limitsStatus) {
-    summary = `This reads as ${article} ${typeLabel}, but the document says it is ${banner.label?.toLowerCase()}.`;
-  } else if (promotedOutcome === "valid" && promotedExpiry) {
-    summary = `This is ${article} ${typeLabel}. It appears current, valid until ${formatIso(promotedExpiry)}.`;
-  } else if (promotedOutcome === "expired" && promotedExpiry) {
-    summary = `This is ${article} ${typeLabel}. The valid-until date ${formatIso(promotedExpiry)} is in the past.`;
+    summary = `The document says it is ${banner.label?.toLowerCase()}.${withheldDate}`;
   } else if (serviceCompletedOn) {
     summary = `The document states that the service was completed on ${formatIso(serviceCompletedOn)}.`;
   } else if (requiresService) {
     summary = "The document states that servicing is required. That is not a record of a completed service.";
   } else if (warrantyStatement) {
-    summary = "This is an invoice. It mentions a warranty; the invoice itself is not a warranty certificate.";
+    summary = "It mentions a warranty; the invoice itself is not a warranty certificate.";
+  } else if (promotedOutcome === "unsatisfactory") {
+    summary =
+      observationCodes.length > 0
+        ? `${observationCodes.join(" and ")} ${observationCodes.length === 1 ? "needs" : "need"} remedial work. Filing this does not close ${observationCodes.length === 1 ? "it" : "them"}.`
+        : "Not a clean result — remedial work is usually needed. Filing this does not close that.";
+  } else if (promotedOutcome === "satisfactory") {
+    summary = /all appliances passed/i.test(text)
+      ? "All appliances passed. Ready to keep as the current certificate."
+      : "Reads as a clean inspection. Ready to keep as the current certificate.";
+  } else if (promotedOutcome === "expired" && promotedExpiry) {
+    summary = `The valid-until date ${formatIso(promotedExpiry)} is in the past, so this should not stand as the current certificate.`;
+  } else if (promotedOutcome === "valid") {
+    summary = "Ready to keep as the current certificate.";
   }
 
   return {

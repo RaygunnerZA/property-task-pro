@@ -18,6 +18,11 @@ import type { RecordsView, WorkbenchIssuesFilter } from "@/lib/propertyRoutes";
 import { pickDoneWorkbenchTaskPreviews } from "@/lib/workbenchDoneTasks";
 import type { WorkbenchAttentionSelectPayload } from "@/components/dashboard/SignalFeedDetailPanel";
 import { useOptionalWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
+import {
+  AttentionResolvableList,
+  ResolutionLedger,
+  ResolutionLedgerProvider,
+} from "@/components/motion";
 
 export interface IssuesTriagePanelProps {
   tasks?: any[];
@@ -174,6 +179,7 @@ export function IssuesTriagePanel({
     "shadow-[-1px_-1px_1px_0px_rgba(0,0,0,0.1),1px_1px_1px_0px_rgba(255,255,255,0.8),inset_2px_12.9px_11px_-5.2px_rgba(0,0,0,0.3),inset_0px_-5.7px_5.9px_0px_rgba(255,255,255,0)]";
 
   return (
+    <ResolutionLedgerProvider>
     <div className="h-full flex flex-col bg-transparent pt-[8px] pb-[3px]">
       <div
         className={cn(
@@ -183,9 +189,14 @@ export function IssuesTriagePanel({
         )}
       >
         <div className="flex w-full min-w-0 flex-1 flex-col gap-1 lg:min-w-0">
-          {pageTitle ? (
-            <h1 className={cn("px-0", workbenchPageTitleClassName)}>{pageTitle}</h1>
-          ) : null}
+                        {pageTitle ? (
+            <h1 className={cn("flex items-center gap-2 px-0", workbenchPageTitleClassName)}>
+              {pageTitle}
+              <ResolutionLedger />
+            </h1>
+          ) : (
+            <ResolutionLedger />
+          )}
         </div>
 
         {onOpenIntake ? (
@@ -305,19 +316,20 @@ export function IssuesTriagePanel({
                                 spacious
                               />
                               <div className="space-y-2">
-                                {items.map((item) => (
-                                  <IssuesSignalCard
-                                    key={item.id}
-                                    item={item}
-                                    attentionCardRefs={attentionCardRefs}
-                                    resolveAttentionItem={resolveAttentionItem}
-                                    handleSignalAction={handleSignalAction}
-                                    addAttentionItemToCompliance={addAttentionItemToCompliance}
-                                    onOpenIntake={onOpenIntake}
-                                    onMessageClick={onMessageClick}
-                                    onAttentionItemSelect={onAttentionItemSelect}
-                                  />
-                                ))}
+                                <AttentionResolvableList items={items}>
+                                  {(item) => (
+                                    <IssuesSignalCard
+                                      item={item}
+                                      attentionCardRefs={attentionCardRefs}
+                                      resolveAttentionItem={resolveAttentionItem}
+                                      handleSignalAction={handleSignalAction}
+                                      addAttentionItemToCompliance={addAttentionItemToCompliance}
+                                      onOpenIntake={onOpenIntake}
+                                      onMessageClick={onMessageClick}
+                                      onAttentionItemSelect={onAttentionItemSelect}
+                                    />
+                                  )}
+                                </AttentionResolvableList>
                               </div>
                             </div>
                           ) : null;
@@ -335,5 +347,6 @@ export function IssuesTriagePanel({
         </div>
       </div>
     </div>
+    </ResolutionLedgerProvider>
   );
 }

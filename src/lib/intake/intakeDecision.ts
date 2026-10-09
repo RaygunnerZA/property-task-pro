@@ -231,13 +231,7 @@ export function decideIntake(input: DecideIntakeInput): IntakeDecision {
         understanding: { kind: "record", label: briefing.contentType, evidence: "document" },
       };
     }
-    return recommend(
-      "file_record",
-      briefing.contentType,
-      "document",
-      understood?.summary || `The document text supports ${friendlyType(briefing.contentType)}.`,
-      allowKnowledge
-    );
+    return recommend("file_record", briefing.contentType, "document", "", allowKnowledge);
   }
 
   if (briefing.typeEvidence === "inference" && briefing.contentType) {

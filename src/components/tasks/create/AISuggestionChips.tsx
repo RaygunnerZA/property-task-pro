@@ -6,11 +6,12 @@
  * When a chip is selected it moves into the IntakeChipRow as a fact chip.
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { SuggestedChip, GhostGroup, ChipType } from '@/types/chip-suggestions';
 import { FillaIcon } from '@/components/filla/FillaIcon';
+import { AlignItem } from '@/components/motion';
 
 interface AISuggestionChipsProps {
   chips: SuggestedChip[];
@@ -67,12 +68,14 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
   loading = false,
   className,
 }) => {
+  const rowMountedAt = useRef(performance.now()).current;
+
   if (loading) {
     return (
       <div className={cn('flex items-center gap-1.5 py-0.5', className)}>
-        <FillaIcon size={11} className="text-accent shrink-0 animate-pulse" />
-        <span className="text-2xs text-muted-foreground/60 font-mono uppercase tracking-wider animate-pulse">
-          Analyzing…
+        <FillaIcon size={11} className="text-accent shrink-0" />
+        <span className="text-2xs text-muted-foreground/60 font-mono uppercase tracking-wider">
+          Reading…
         </span>
       </div>
     );
@@ -88,8 +91,8 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
     'group shrink-0 inline-flex items-center h-[22px] pl-[9px] pr-[9px] rounded-[7px]',
     'bg-foreground/[0.07] text-foreground/60',
     'font-mono text-2xs uppercase tracking-wider whitespace-nowrap',
-    'hover:bg-foreground/[0.12] hover:text-foreground/80 transition-all duration-150',
-    'cursor-pointer select-none animate-in fade-in duration-200'
+    'hover:bg-foreground/[0.12] hover:text-foreground/80',
+    'cursor-pointer select-none'
   );
 
   const renderChip = (
@@ -117,7 +120,7 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
             'ml-0 w-0 overflow-hidden opacity-0',
             'group-hover:ml-[5px] group-hover:w-[10px] group-hover:opacity-60',
             'hover:!opacity-100',
-            'transition-all duration-150 flex items-center justify-center flex-shrink-0'
+            'flex items-center justify-center flex-shrink-0'
           )}
         >
           <X className="h-[9px] w-[9px]" strokeWidth={2.5} />
@@ -137,7 +140,11 @@ export const AISuggestionChips: React.FC<AISuggestionChipsProps> = ({
         const onSelect = isVerb
           ? () => onChipSelect(chip)
           : () => (onFactChipPress ? onFactChipPress(chip) : onChipSelect(chip));
-        return renderChip(chip, label, onSelect);
+        return (
+          <AlignItem key={chip.id} as="span" since={rowMountedAt} className="inline-flex shrink-0">
+            {renderChip(chip, label, onSelect)}
+          </AlignItem>
+        );
       })}
     </div>
   );

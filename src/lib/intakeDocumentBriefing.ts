@@ -203,28 +203,18 @@ export function buildIntakeDocumentBriefing(
 
   const typeLabel = documentType || "property document";
   const article = /^(eicr|epc|[aeiou])/i.test(typeLabel) ? "an" : "a";
-  const outcomeSentence =
-    outcome === "unsatisfactory"
-      ? `The outcome is unsatisfactory — this usually needs remedial work as well as filing.`
-      : outcome === "satisfactory"
-        ? `The outcome is satisfactory.`
-        : outcome === "expired"
-          ? `This looks expired or out of date.`
-          : "";
-
   const summaryFromAi = String(extracted.summary || "").trim();
   const usableAiSummary =
     summaryFromAi && !isStub && !isEmptyIntakeSummary(summaryFromAi) ? summaryFromAi : "";
   const lead =
-    typeEvidence === "document" && documentType
-      ? `This is ${article} ${typeLabel}.`
+    typeEvidence === "filename" && documentType
+      ? `The file name looks like ${article} ${typeLabel}. The document has not confirmed that.`
       : typeEvidence === "inference" && documentType
-        ? `This looks like ${article} ${typeLabel}.`
-        : typeEvidence === "filename" && documentType
-          ? `The file name looks like ${article} ${typeLabel}. The document has not confirmed that.`
-          : "Filla couldn't tell what this is.";
-  const summary =
-    understanding.summary || usableAiSummary || [lead, outcomeSentence].filter(Boolean).join(" ");
+        ? `This looks like ${article} ${typeLabel}, from a short extract.`
+        : typeEvidence === "none"
+          ? "Filla couldn't tell what this is."
+          : "";
+  const summary = understanding.summary || usableAiSummary || lead;
 
   return {
     title,

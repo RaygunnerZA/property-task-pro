@@ -41,9 +41,9 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const sizes = {
-    sm: 'px-3 py-1.5 text-xs gap-1.5',
-    md: 'px-5 py-3 text-sm gap-2',
-    lg: 'px-8 py-4 text-base gap-3',
+    sm: 'h-9 px-3 text-xs gap-1.5',
+    md: 'h-[42px] px-4 text-sm gap-2',
+    lg: 'h-11 px-6 text-sm gap-2',
   };
 
   const sizeClasses = variant === 'fab' 

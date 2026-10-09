@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -16,6 +17,8 @@ export type IssuesWorkbenchSectionHeaderProps = {
   /** Optional decorative illustration (Urgent / Open work sections). */
   illustrationSrc?: string;
   spacious?: boolean;
+  /** Right of the title (e.g. resolution ledger). */
+  trailing?: ReactNode;
 };
 
 /**
@@ -30,6 +33,7 @@ export function IssuesWorkbenchSectionHeader({
   className,
   illustrationSrc,
   spacious = false,
+  trailing,
 }: IssuesWorkbenchSectionHeaderProps) {
   const hasArt = Boolean(illustrationSrc);
   const badgeClass =
@@ -48,7 +52,10 @@ export function IssuesWorkbenchSectionHeader({
         )}
       >
         <div className="min-w-0 flex-1 md:pr-[min(6.5rem,28%)]">
-          <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+            {trailing}
+          </div>
           {subtitle ? (
             <p className={cn("mt-0.5", workbenchSectionSubtitleClassName)}>{subtitle}</p>
           ) : null}
@@ -73,6 +80,7 @@ export function IssuesWorkbenchSectionHeader({
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h2 className={workbenchSectionTitleClassName}>{title}</h2>
+          {trailing}
           {typeof count === "number" ? (
             <span
               className={cn(

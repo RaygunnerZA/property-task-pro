@@ -49,6 +49,24 @@ describe("document understanding", () => {
     expect(briefing.expiryDate).toBe("2034-03-11");
     expect(briefing.understanding.applicability).toBe("matches");
     expect(briefing.understanding.statusLabel).toBeNull();
+    expect(briefing.summary.toLowerCase()).not.toContain("this is an");
+    expect(briefing.summary.toLowerCase()).toContain("current certificate");
+  });
+
+  it("does not recap an unsatisfactory outcome; it says what that means", () => {
+    const briefing = read(
+      [
+        "Electrical Installation Condition Report",
+        "Property: 23 The Boltons, London",
+        "Overall assessment: Unsatisfactory",
+        "C2 observation recorded at the consumer unit; remedial work required.",
+      ].join("\n"),
+      "eicr.pdf"
+    );
+    expect(briefing.outcome).toBe("unsatisfactory");
+    expect(briefing.summary.toLowerCase()).not.toContain("the outcome is");
+    expect(briefing.summary.toLowerCase()).toContain("c2");
+    expect(briefing.summary.toLowerCase()).toContain("remedial");
   });
 
   it("B. does not treat a future date as validity when the document says it is not valid", () => {

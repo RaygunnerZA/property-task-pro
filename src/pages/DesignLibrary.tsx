@@ -10,7 +10,8 @@ import { NavigationSection } from '@/components/design-system/NavigationSection'
 import { TabsSection } from '@/components/design-system/TabsSection';
 import { ResponsiveDemo } from '@/components/design-system/ResponsiveDemo';
 import { ComponentRegistry } from '@/components/design-system/ComponentRegistry';
-import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, Monitor, Package } from 'lucide-react';
+import { MotionSection } from '@/components/design-system/MotionSection';
+import { Palette, Type, MousePointer, Tag, Calendar, LayoutGrid, Navigation, Layers, Monitor, Package, Move } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const sections = [
@@ -23,6 +24,7 @@ const sections = [
   { id: 'cards', label: 'Cards', icon: LayoutGrid },
   { id: 'navigation', label: 'Navigation', icon: Navigation },
   { id: 'tabs', label: 'Tabs', icon: Layers },
+  { id: 'motion', label: 'Motion', icon: Move },
   { id: 'responsive', label: 'Responsive', icon: Monitor }
 ];
 
@@ -88,6 +90,8 @@ export default function DesignLibrary() {
         <section id="navigation"><NavigationSection /></section>
         <div className="h-px bg-concrete" />
         <section id="tabs"><TabsSection /></section>
+        <div className="h-px bg-concrete" />
+        <section id="motion"><MotionSection /></section>
         <div className="h-px bg-concrete" />
         <section id="responsive"><ResponsiveDemo /></section>
 

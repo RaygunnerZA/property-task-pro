@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, Sparkles, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PanelSectionTitle } from "@/components/ui/panel-section-title";
@@ -13,6 +13,18 @@ import { readInboundEmailProposal } from "@/lib/intake/inboundEmailProposal";
 import { useInboxFilePreview } from "@/hooks/useInboxFilePreview";
 import { IntakeFileThumb } from "@/components/intake/IntakeFileThumb";
 import { cn } from "@/lib/utils";
+import { noteResolution } from "@/lib/motion/resolutions";
+import {
+  ResolutionLedger,
+  ResolutionLedgerProvider,
+  ResolvableItem,
+  ResolvableList,
+  SignalMark,
+  useResolutionLedger,
+} from "@/components/motion";
+
+/** Upper bound on keeping an emptied panel on screen while its last row resolves. */
+const EMPTY_HOLD_MAX_MS = 6000;
 
 export interface IntakeReviewPayload {
   description: string;
@@ -52,6 +64,12 @@ function IntakeInboxRow({
 }) {
   const isProcessing = item.status === "pending" || item.status === "processing";
   const isFailed = item.status === "failed";
+  const wasProcessing = useRef(isProcessing);
+  const [becameReady, setBecameReady] = useState(0);
+  useEffect(() => {
+    if (wasProcessing.current && item.status === "ready") setBecameReady((n) => n + 1);
+    wasProcessing.current = isProcessing;
+  }, [isProcessing, item.status]);
   const preview = useInboxFilePreview({
     storagePath: item.storage_path,
     mimeType: item.mime_type,
@@ -84,24 +102,30 @@ function IntakeInboxRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-3 rounded-[10px] bg-card/80 px-3 py-2.5 shadow-e1",
+        "relative flex items-center gap-3 rounded-[10px] bg-card/80 px-3 py-2.5 shadow-e1",
         isFailed && "opacity-80"
       )}
     >
+      {becameReady > 0 ? <SignalMark key={becameReady} tone="attention" edge="left" /> : null}
       {isProcessing ? (
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-muted/40 shadow-e1">
+        <div
+          data-resolve-content
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-card bg-muted/40 shadow-e1"
+        >
           <Loader2 className="h-4 w-4 animate-spin text-primary" />
         </div>
       ) : (
-        <IntakeFileThumb
-          kind={preview.kind}
-          thumbnailUrl={preview.thumbnailUrl}
-          label={item.file_name || title}
-          size="sm"
-        />
+        <span data-resolve-content className="shrink-0">
+          <IntakeFileThumb
+            kind={preview.kind}
+            thumbnailUrl={preview.thumbnailUrl}
+            label={item.file_name || title}
+            size="sm"
+          />
+        </span>
       )}
 
-      <div className="min-w-0 flex-1">
+      <div data-resolve-content className="min-w-0 flex-1">
         <p className="truncate text-sm font-medium text-foreground">{title}</p>
         <p className="truncate text-xs text-muted-foreground">{insight}</p>
         {item.file_name && item.file_name !== title ? (
@@ -109,7 +133,7 @@ function IntakeInboxRow({
         ) : null}
       </div>
 
-      <div className="flex shrink-0 items-center gap-1">
+      <div data-resolve-content className="flex shrink-0 items-center gap-1">
         {item.status === "ready" && (
           <Button type="button" size="sm" variant="default" className="h-8 px-3" onClick={handleReview}>
             Review
@@ -133,7 +157,49 @@ function IntakeInboxRow({
   );
 }
 
-export function IntakeInboxPanel({ className, onReview }: IntakeInboxPanelProps) {
+export function IntakeInboxPanel(props: IntakeInboxPanelProps) {
+  return (
+    <ResolutionLedgerProvider>
+      <IntakeInboxPanelBody {...props} />
+    </ResolutionLedgerProvider>
+  );
+}
+
+/**
+ * Keeps an emptied list on screen until its last row has resolved into the
+ * ledger, so the final item's motion is seen rather than cut off.
+ */
+function useHoldWhileResolving(visibleCount: number): boolean {
+  const ledger = useResolutionLedger();
+  const active = Boolean(ledger?.active);
+  const hadItems = useRef(false);
+  const sawResolving = useRef(false);
+  const [, release] = useState(0);
+
+  if (visibleCount > 0) {
+    hadItems.current = true;
+    sawResolving.current = false;
+  }
+  if (active) sawResolving.current = true;
+  if (visibleCount === 0 && hadItems.current && sawResolving.current && !active) {
+    hadItems.current = false;
+    sawResolving.current = false;
+  }
+  const holding = visibleCount === 0 && hadItems.current;
+
+  useEffect(() => {
+    if (!holding) return;
+    const timer = window.setTimeout(() => {
+      hadItems.current = false;
+      release((n) => n + 1);
+    }, EMPTY_HOLD_MAX_MS);
+    return () => window.clearTimeout(timer);
+  }, [holding]);
+
+  return holding;
+}
+
+function IntakeInboxPanelBody({ className, onReview }: IntakeInboxPanelProps) {
   const { toast } = useToast();
   const invalidate = useIntakeItemsInvalidator();
   const { data: items = [], isLoading } = useIntakeItems(["pending", "processing", "ready", "failed"]);
@@ -142,11 +208,13 @@ export function IntakeInboxPanel({ className, onReview }: IntakeInboxPanelProps)
   const visible = items.filter((item) =>
     ["pending", "processing", "ready", "failed"].includes(item.status)
   );
+  const holding = useHoldWhileResolving(visible.length);
 
   const handleIgnore = async (id: string) => {
     setIgnoringId(id);
     try {
       await ignoreIntakeItem(supabase, id);
+      noteResolution("intake", id, "dismissed");
       void invalidate();
     } catch (error) {
       toast({
@@ -168,7 +236,7 @@ export function IntakeInboxPanel({ className, onReview }: IntakeInboxPanelProps)
     );
   }
 
-  if (visible.length === 0) {
+  if (visible.length === 0 && !holding) {
     return null;
   }
 
@@ -182,17 +250,21 @@ export function IntakeInboxPanel({ className, onReview }: IntakeInboxPanelProps)
           Uploads to review
           {readyCount > 0 ? ` (${readyCount})` : ""}
         </PanelSectionTitle>
+        <ResolutionLedger className="ml-auto" />
       </div>
       <div className="space-y-2">
-        {visible.map((item) => (
-          <IntakeInboxRow
-            key={item.id}
-            item={item}
-            onReview={onReview}
-            onIgnore={handleIgnore}
-            ignoring={ignoringId === item.id}
-          />
-        ))}
+        <ResolvableList>
+          {visible.map((item) => (
+            <ResolvableItem key={item.id} id={item.id} scope="intake">
+              <IntakeInboxRow
+                item={item}
+                onReview={onReview}
+                onIgnore={handleIgnore}
+                ignoring={ignoringId === item.id}
+              />
+            </ResolvableItem>
+          ))}
+        </ResolvableList>
       </div>
     </section>
   );

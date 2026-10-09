@@ -14,10 +14,10 @@ export function ButtonsSection() {
         {/* Primary Buttons */}
         <div className="space-y-3">
           <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Primary</h3>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="primary" size="lg">Large Primary</Button>
-            <Button variant="primary" size="md">Medium Primary</Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="primary" size="md">Primary</Button>
             <Button variant="primary" size="sm">Small</Button>
+            <Button variant="primary" size="lg">Large</Button>
             <Button variant="primary" icon={<Plus className="w-4 h-4" />}>With Icon</Button>
             <Button variant="primary" disabled>Disabled</Button>
           </div>
@@ -26,10 +26,10 @@ export function ButtonsSection() {
         {/* Secondary Buttons - Clean, simple style */}
         <div className="space-y-3">
           <h3 className="font-mono text-2xs uppercase tracking-wider text-muted-foreground">Secondary</h3>
-          <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" size="lg">Large Secondary</Button>
-            <Button variant="secondary" size="md">Medium</Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button variant="secondary" size="md">Secondary</Button>
             <Button variant="secondary" size="sm">Small</Button>
+            <Button variant="secondary" size="lg">Large</Button>
             <Button variant="secondary" icon={<ChevronRight className="w-4 h-4" />}>Continue</Button>
           </div>
         </div>
