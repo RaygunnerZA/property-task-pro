@@ -9,7 +9,6 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { Plus, Repeat } from "lucide-react";
-import { useIsBelowMd } from "@/hooks/use-mobile";
 import {
   addDays,
   endOfMonth,
@@ -81,9 +80,13 @@ const CALENDAR_ROW_EXPANDED_PX = 118;
 const HAND_CHIP_HEIGHT = 42;
 const HAND_CHIP_COMPACT_HEIGHT = 22;
 
-/** Shared neo chip chrome — height is animated in px for a smooth slide-open. */
+/** Shared neo chip chrome — the frame around this button animates width and height. */
 const CALENDAR_TASK_CHIP_BASE_CLASS =
-  "relative flex shrink-0 w-full min-w-0 cursor-grab touch-none rounded text-left text-2xs active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)] overflow-hidden transition-[height,padding,box-shadow] duration-200 ease-out motion-reduce:transition-none";
+  "flex h-full w-full min-w-0 cursor-grab touch-none rounded text-left text-2xs active:cursor-grabbing shadow-[2px_2px_2px_0px_rgba(0,0,0,0.2),inset_1px_1px_1px_0px_rgba(255,255,255,0.8)] overflow-hidden transition-[height,width,margin,padding,box-shadow] duration-[320ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none";
+
+/** Lifted chip: soft drop, larger than the resting neo shadow. */
+const CHIP_REVEAL_SHADOW_CLASS =
+  "z-30 shadow-[0_18px_40px_rgba(0,0,0,0.22),0_6px_16px_rgba(0,0,0,0.14),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]";
 
 /** Fixed size for every task chip in the month grid (title + property rows). */
 const CALENDAR_TASK_CHIP_CLASS = cn(
@@ -105,11 +108,32 @@ const CALENDAR_TASK_CHIP_COMPACT_REVEAL_CLASS = cn(
 /** Gap between stacked hand cards while expanded (Tailwind gap-0.5). */
 const HAND_STACK_GAP_PX = 2;
 
-/** Fan → stack geometry + title grow. */
-const HAND_EXPAND_MS = 200;
+/** Fan → stack geometry + title grow. Paper unfold. */
+const HAND_EXPAND_MS = 320;
 
-/** Title reveal slide-open (matches --duration-default). */
-const CHIP_REVEAL_MS = 200;
+/** Title reveal — width and height ease together (motion settle / unfold). */
+const CHIP_REVEAL_MS = 320;
+const CHIP_REVEAL_EASE = "cubic-bezier(0.2, 0, 0, 1)";
+
+/**
+ * Hovered chip may cover up to half of each neighbouring day.
+ * Monday only reaches right; Sunday only reaches left.
+ */
+function chipRevealBox(columnIndex: number, baseWidth = 0): { width: string; marginLeft: string } {
+  if (baseWidth <= 0) {
+    if (columnIndex <= 0) return { width: "calc(150% + 3px)", marginLeft: "0px" };
+    if (columnIndex >= 6) return { width: "calc(150% + 3px)", marginLeft: "calc(-50% - 3px)" };
+    return { width: "calc(200% + 6px)", marginLeft: "calc(-50% - 3px)" };
+  }
+  const side = Math.round(baseWidth / 2 + 3);
+  if (columnIndex <= 0) {
+    return { width: `${Math.round(baseWidth + side)}px`, marginLeft: "0px" };
+  }
+  if (columnIndex >= 6) {
+    return { width: `${Math.round(baseWidth + side)}px`, marginLeft: `${-side}px` };
+  }
+  return { width: `${Math.round(baseWidth + side * 2)}px`, marginLeft: `${-side}px` };
+}
 
 /** Match TouchSensor delay so the chip collapses as drag arms. */
 const CALENDAR_CHIP_HOLD_MS = 150;
@@ -183,6 +207,8 @@ type CalendarTaskChipProps = {
   revealFullTitle?: boolean;
   /** Solo chips: hover expands truncated titles. Off inside a fanned hand. */
   allowHoverReveal?: boolean;
+  /** 0 = Monday … 6 = Sunday. Caps how far a hover chip may overlap. */
+  columnIndex?: number;
   /** Narrow day cells: drop horizontal chip padding so cards sit edge-to-edge. */
   flushEdges?: boolean;
   /** Position in a same-period hand (0 = furthest back / earliest). */
@@ -203,6 +229,7 @@ function CalendarTaskChip({
   elevated = false,
   revealFullTitle: revealFullTitleProp = false,
   allowHoverReveal = true,
+  columnIndex = 0,
   flushEdges = false,
   stackIndex = 0,
   stackCount = 1,
@@ -227,11 +254,16 @@ function CalendarTaskChip({
 
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const titleRef = useRef<HTMLSpanElement | null>(null);
+  const revealTokenRef = useRef(0);
   const [hovered, setHovered] = useState(false);
   const [isTruncated, setIsTruncated] = useState(false);
   /** Unclamp title while open / while collapsing so height can slide. */
   const [unwrapTitle, setUnwrapTitle] = useState(false);
+  const [widen, setWiden] = useState(false);
   const [animHeight, setAnimHeight] = useState(collapsedHeight);
+  const [revealBox, setRevealBox] = useState({ width: "100%", marginLeft: "0px" });
+  /** Solo chips widen themselves. A fanned hand widens its own frame. */
+  const spread = allowHoverReveal && widen;
 
   const wantsReveal =
     Boolean(revealFullTitleProp) ||
@@ -292,26 +324,52 @@ function CalendarTaskChip({
       setUnwrapTitle(true);
       return;
     }
+    revealTokenRef.current += 1;
+    setWiden(false);
+    setRevealBox({ width: "100%", marginLeft: "0px" });
     setAnimHeight(collapsedHeight);
   }, [wantsReveal, collapsedHeight]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!wantsReveal || !unwrapTitle) return;
     const el = buttonRef.current;
     if (!el) return;
 
-    let raf2 = 0;
-    const raf1 = requestAnimationFrame(() => {
-      const fullHeight = el.scrollHeight;
-      raf2 = requestAnimationFrame(() => {
-        setAnimHeight(Math.max(fullHeight, collapsedHeight));
-      });
-    });
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-    };
-  }, [wantsReveal, unwrapTitle, title, propertyLabel, compact, flushEdges, collapsedHeight]);
+    const sizer = el.parentElement?.parentElement;
+    const probe = document.createElement("div");
+    probe.style.cssText = "position:absolute;visibility:hidden;pointer-events:none;height:auto;";
+    const baseWidth = sizer?.clientWidth ?? el.parentElement?.clientWidth ?? 0;
+    const nextBox = chipRevealBox(columnIndex, baseWidth);
+    probe.style.width = allowHoverReveal ? nextBox.width : "100%";
+    const clone = el.cloneNode(true) as HTMLElement;
+    clone.style.height = "auto";
+    clone.style.width = "100%";
+    probe.appendChild(clone);
+    (sizer ?? el.parentElement ?? document.body).appendChild(probe);
+    const fullHeight = clone.scrollHeight;
+    probe.remove();
+    const nextHeight = Math.max(fullHeight, collapsedHeight);
+    // Wait a beat so the transition is already on the element before the size changes.
+    const token = ++revealTokenRef.current;
+    window.setTimeout(() => {
+      if (revealTokenRef.current !== token) return;
+      setAnimHeight((current) => (current === nextHeight ? current : nextHeight));
+      if (allowHoverReveal) {
+        setRevealBox(nextBox);
+        setWiden(true);
+      }
+    }, 16);
+  }, [
+    wantsReveal,
+    unwrapTitle,
+    title,
+    propertyLabel,
+    compact,
+    flushEdges,
+    collapsedHeight,
+    allowHoverReveal,
+    columnIndex,
+  ]);
 
   // Keep collapsed height in sync when compact mode toggles mid-drag.
   useEffect(() => {
@@ -330,7 +388,7 @@ function CalendarTaskChip({
   }, [wantsReveal, unwrapTitle]);
 
   const handleRevealTransitionEnd = useCallback(
-    (event: TransitionEvent<HTMLButtonElement>) => {
+    (event: TransitionEvent<HTMLDivElement>) => {
       if (event.propertyName !== "height") return;
       if (event.target !== event.currentTarget) return;
       if (!wantsReveal) {
@@ -349,14 +407,38 @@ function CalendarTaskChip({
   const revealFullTitle = unwrapTitle;
 
   return (
+    <div
+      className={cn(
+        "relative w-full min-w-0 shrink-0 motion-reduce:transition-none",
+        spread && "z-30"
+      )}
+      style={{
+        height: animHeight,
+        minHeight: animHeight,
+        transitionProperty: "height, min-height",
+        transitionDuration: `${CHIP_REVEAL_MS}ms`,
+        transitionTimingFunction: CHIP_REVEAL_EASE,
+      }}
+      onTransitionEnd={handleRevealTransitionEnd}
+    >
+    <div
+      className={cn(
+        "absolute top-0 motion-reduce:transition-none",
+        spread && CHIP_REVEAL_SHADOW_CLASS
+      )}
+      style={{
+        height: spread ? animHeight : collapsedHeight,
+        width: spread ? revealBox.width : "100%",
+        marginLeft: spread ? revealBox.marginLeft : "0px",
+        transitionProperty: "width, margin-left, height, box-shadow",
+        transitionDuration: `${CHIP_REVEAL_MS}ms`,
+        transitionTimingFunction: CHIP_REVEAL_EASE,
+      }}
+    >
     <button
       ref={setButtonRef}
       type="button"
-      style={{
-        backgroundColor: chipBackground,
-        height: animHeight,
-        transitionDuration: `${CHIP_REVEAL_MS}ms`,
-      }}
+      style={{ backgroundColor: chipBackground }}
       {...(isDragOverlay ? {} : { ...listeners, ...attributes })}
       onPointerDown={(e) => {
         listeners?.onPointerDown?.(e);
@@ -368,7 +450,6 @@ function CalendarTaskChip({
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setHovered(true)}
       onBlur={() => setHovered(false)}
-      onTransitionEnd={handleRevealTransitionEnd}
       onClick={(e) => {
         e.stopPropagation();
         onTaskClick?.(task.id);
@@ -381,9 +462,7 @@ function CalendarTaskChip({
             "shadow-[1px_1px_1px_0px_rgba(0,0,0,0.08),inset_1px_1px_1px_0px_rgba(255,255,255,0.55)]",
             !flushEdges && "pl-1.5"
           ),
-        elevated &&
-          "shadow-[3px_4px_8px_-2px_rgba(0,0,0,0.18),1px_1px_1px_0px_rgba(0,0,0,0.1),inset_1px_1px_1px_0px_rgba(255,255,255,0.85)]",
-        revealFullTitle && "z-30",
+        elevated && !spread && CHIP_REVEAL_SHADOW_CLASS,
         isDragging && !isDragOverlay && "opacity-40",
         isDragOverlay && "w-full cursor-grabbing shadow-md ring-1 ring-white/30"
       )}
@@ -457,6 +536,8 @@ function CalendarTaskChip({
         </>
       )}
     </button>
+    </div>
+    </div>
   );
 }
 
@@ -519,6 +600,7 @@ type CalendarEventHandProps = {
   onTaskClick?: (taskId: string) => void;
   isDragging: boolean;
   flushEdges?: boolean;
+  columnIndex?: number;
   onExpandedChange?: (expanded: boolean) => void;
 };
 
@@ -534,8 +616,10 @@ function CalendarEventHand({
   onTaskClick,
   isDragging,
   flushEdges = false,
+  columnIndex = 0,
   onExpandedChange,
 }: CalendarEventHandProps) {
+  const revealBox = chipRevealBox(columnIndex);
   const [expanded, setExpanded] = useState(false);
   const n = items.length;
   const restHeight = Math.max(...items.map(handChipHeight));
@@ -623,13 +707,14 @@ function CalendarEventHand({
   return (
     <div
       className={cn(
-        "relative w-full overflow-visible transition-[height] duration-200 ease-out motion-reduce:transition-none",
+        "relative w-full shrink-0 overflow-visible transition-[height] duration-[320ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none",
         expanded ? "z-40" : "z-[1]"
       )}
-      style={{
-        height: expanded ? stackHeight : restHeight,
-        transitionDuration: `${HAND_EXPAND_MS}ms`,
-      }}
+        style={{
+          height: expanded ? stackHeight : restHeight,
+          transitionDuration: `${HAND_EXPAND_MS}ms`,
+          transitionTimingFunction: CHIP_REVEAL_EASE,
+        }}
       onMouseEnter={() => setExpandedSafe(true)}
       onMouseLeave={() => setExpandedSafe(false)}
       onFocusCapture={() => setExpandedSafe(true)}
@@ -645,13 +730,14 @@ function CalendarEventHand({
           ref={(el) => {
             chipWrapRefs.current[index] = el;
           }}
-          className="absolute top-0 transition-[top,left,width] duration-200 ease-out motion-reduce:transition-none"
+          className="absolute top-0 transition-[top,left,width,margin] duration-[320ms] ease-[cubic-bezier(0.2,0,0,1)] motion-reduce:transition-none"
           style={{
             top: expanded ? stackTops[index] : 0,
-            left: expanded ? 0 : `${index * peekFraction * 100}%`,
-            width: expanded ? "100%" : `${fanWidthPercent}%`,
+            left: expanded ? revealBox.marginLeft : `${index * peekFraction * 100}%`,
+            width: expanded ? revealBox.width : `${fanWidthPercent}%`,
             zIndex: index + 1,
             transitionDuration: `${HAND_EXPAND_MS}ms`,
+            transitionTimingFunction: CHIP_REVEAL_EASE,
           }}
         >
           <CalendarTaskChip
@@ -663,6 +749,7 @@ function CalendarEventHand({
             elevated={expanded}
             revealFullTitle={expanded}
             allowHoverReveal={false}
+            columnIndex={columnIndex}
             flushEdges={flushEdges}
             stackIndex={index}
             stackCount={n}
@@ -691,8 +778,8 @@ type CalendarDayCellProps = {
   afternoonOnly?: boolean;
   /** Narrow cells: flush task cards to the cell edges. */
   flushEdges?: boolean;
-  /** Phone month cells: coloured dot and count. Titles live in the day sheet. */
-  phoneSummary?: boolean;
+  /** 0 = Monday … 6 = Sunday. */
+  columnIndex?: number;
 };
 
 function CalendarDayCell({
@@ -710,7 +797,7 @@ function CalendarDayCell({
   compact = false,
   afternoonOnly = false,
   flushEdges = false,
-  phoneSummary = false,
+  columnIndex = 0,
 }: CalendarDayCellProps) {
   const dateKey = format(date, "yyyy-MM-dd");
   const inMonth = isSameMonth(date, month);
@@ -785,7 +872,7 @@ function CalendarDayCell({
   }, [date, onCreateForDate]);
 
   const fillRow = !compact || isDragging;
-  const fullCellCreate = Boolean(onCreateForDate) && !occupied && !phoneSummary;
+  const fullCellCreate = Boolean(onCreateForDate) && !occupied;
 
   const dateNumberClassName = cn(
     "relative inline-flex shrink-0 items-center justify-center rounded-sharp font-mono text-caption font-medium",
@@ -815,10 +902,12 @@ function CalendarDayCell({
     <div
       className={cn(
         "calendar-day-cell group relative flex flex-col text-left select-none",
+        "min-w-0 overflow-visible",
         flushEdges ? "px-0 pt-[3px]" : "px-[3px] pt-[3px]",
         fillRow ? "h-full pb-1.5" : "h-auto pb-0.5",
-        // Let hover stacks paint above neighbouring days.
-        handExpanded && "z-30 overflow-visible"
+        // Hovered chips paint over the neighbouring days they overlap.
+        handExpanded && "z-30",
+        "hover:z-30 focus-within:z-30"
       )}
       style={{ minHeight: isDragging ? CALENDAR_ROW_EXPANDED_PX : rowMinHeight }}
       onDoubleClick={() => {
@@ -865,26 +954,10 @@ function CalendarDayCell({
           />
         </button>
       ) : null}
-      {phoneSummary ? (
-        placements.length > 0 ? (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDateSelect?.(date);
-            }}
-            className="mt-0.5 flex items-center justify-center gap-1"
-            aria-label={`${placements.length} on ${dateLabel}`}
-          >
-            <span className="h-2 w-2 rounded-full bg-primary" aria-hidden />
-            <span className="font-mono text-2xs tabular-nums text-foreground">{placements.length}</span>
-          </button>
-        ) : null
-      ) : (
       <div
         className={cn(
-          "relative flex flex-col",
-          fillRow ? "min-h-0 flex-1" : "min-h-[22px]",
+          "relative flex min-h-min flex-col",
+          fillRow ? "flex-1" : "min-h-[22px]",
           // Title reveal / stacked hands may spill past the cell.
           "z-[1] overflow-visible",
           handExpanded && "z-20"
@@ -894,8 +967,8 @@ function CalendarDayCell({
         <DayDropZone dateKey={dateKey} period="afternoon" isDragging={isDragging} />
         <div
           className={cn(
-            "relative flex flex-col gap-0.5 overflow-visible",
-            fillRow ? "min-h-0 flex-1" : "min-h-0",
+            "relative flex min-h-min flex-col gap-0.5 overflow-visible",
+            fillRow && "flex-1",
             handExpanded ? "z-20" : "z-[1]",
             collapseForPeriodMove && fillRow && "h-full",
             // Source chips must not steal the drop target under the pointer.
@@ -913,6 +986,7 @@ function CalendarDayCell({
                   onTaskClick={onTaskClick}
                   isDragging={isDragging}
                   flushEdges={flushEdges}
+                  columnIndex={columnIndex}
                   onExpandedChange={onHandExpandedChange}
                 />
               );
@@ -931,6 +1005,7 @@ function CalendarDayCell({
               <div
                 key={placement.id}
                 className={cn(
+                  "min-w-0 shrink-0",
                   pinAbsolute && "absolute inset-x-0 z-[1]",
                   pinAbsolute && period === "morning" && "top-0",
                   pinAbsolute && period === "afternoon" && "bottom-0",
@@ -944,6 +1019,7 @@ function CalendarDayCell({
                   onTaskClick={onTaskClick}
                   singleLine={collapseForPeriodMove}
                   flushEdges={flushEdges}
+                  columnIndex={columnIndex}
                   onHoldStart={startHold}
                   onHoldEnd={endHold}
                 />
@@ -952,7 +1028,6 @@ function CalendarDayCell({
           })}
         </div>
       </div>
-      )}
     </div>
   );
 }
@@ -972,7 +1047,6 @@ export function CalendarMonthGrid({
   selectedTaskId,
   propertyMap,
 }: CalendarMonthGridProps) {
-  const phoneSummary = useIsBelowMd();
   const [activePlacement, setActivePlacement] = useState<CalendarTaskPlacement | null>(null);
   /** Lock overlay width to the source chip so it doesn't jump size under the cursor. */
   const [activeChipWidth, setActiveChipWidth] = useState<number | null>(null);
@@ -1161,7 +1235,7 @@ export function CalendarMonthGrid({
                 compact={compact}
                 afternoonOnly={compact && weekAfternoonOnly[weekIndex]}
                 flushEdges={flushEdges}
-                phoneSummary={phoneSummary}
+                columnIndex={index % 7}
               />
             );
           })}
