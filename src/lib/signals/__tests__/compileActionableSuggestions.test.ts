@@ -57,6 +57,27 @@ function kinds(suggestions: ActionableSuggestion[]) {
 }
 
 describe("compileActionableSuggestions", () => {
+  it("still plans renewal when a signal has no subtype", () => {
+    const suggestions = compileActionableSuggestions(
+      ctx({
+        documents: [doc({ id: "doc-1", expiry_date: "2026-10-22" })],
+        signals: [
+          {
+            id: "sig-legacy",
+            property_id: "prop-1",
+            kind: undefined as unknown as string,
+            subtype: undefined as unknown as string,
+            severity: "warning",
+            title: "Boiler note",
+            disposition: undefined as unknown as string,
+            created_at: "2026-09-01T12:00:00.000Z",
+          },
+        ],
+      })
+    );
+    expect(suggestions[0]?.kind).toBe("certificate_expiry");
+  });
+
   it("suggests planning renewal when a certificate is expiring and no renewal task is linked", () => {
     const suggestions = compileActionableSuggestions(
       ctx({

@@ -221,7 +221,7 @@ function certificateExpirySuggestions(ctx: SuggestionCompileContext): Actionable
       taskId: null,
       people: [],
       signalIds: ctx.signals
-        .filter((signal) => signal.property_id === doc.property_id && signal.subtype.startsWith("compliance."))
+        .filter((signal) => signal.property_id === doc.property_id && signal.subtype?.startsWith("compliance."))
         .map((signal) => signal.id),
       confidence: "observed",
       priority: (expired ? 92 : 80) + Math.max(0, 20 - Math.abs(days)) + (!expired && days <= 14 ? 10 : 0),
@@ -395,7 +395,7 @@ function duplicateReportSuggestions(ctx: SuggestionCompileContext): ActionableSu
   for (const signal of ctx.signals) {
     if (!inScope(signal.property_id, ctx)) continue;
     if (signal.resolved_at) continue;
-    const kind = signal.kind.toLowerCase();
+    const kind = (signal.kind ?? "").toLowerCase();
     const isReport =
       kind === "upload" ||
       kind === "email" ||
@@ -780,8 +780,8 @@ export function signalsForCompiler(rows: SignalRow[]): SuggestionCompileContext[
     property_id: row.property_id,
     asset_id: row.asset_id,
     space_id: row.space_id,
-    kind: row.kind,
-    subtype: row.subtype,
+    kind: row.kind ?? "",
+    subtype: row.subtype ?? "",
     severity: row.severity,
     title: row.title,
     body: row.body,

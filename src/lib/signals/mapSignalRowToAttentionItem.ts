@@ -44,13 +44,14 @@ export function mapSignalRowToAttentionItem(
   const emailFrom = isExternalEmail ? String(row.payload?.from ?? "") : "";
   const emailSubject = isExternalEmail ? String(row.payload?.subject ?? row.title) : row.title;
 
+  const sourceLabel = (row.source ?? "system").replace(/_/g, " ");
   const context = isExternalEmail
     ? emailFrom
       ? `From ${emailFrom}`
       : "External email"
     : propertyName
-      ? `${propertyName} • ${row.source.replace(/_/g, " ")}`
-      : row.source.replace(/_/g, " ");
+      ? `${propertyName} • ${sourceLabel}`
+      : sourceLabel;
 
   return {
     id: `signal-${row.id}`,
