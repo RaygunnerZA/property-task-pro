@@ -33,6 +33,7 @@ import { formatTaskTrashDeleteCopy } from "@/lib/taskTrash";
 import { getTaskStatusVisual } from "@/lib/taskStatus";
 import type { TaskStatus } from "@/types/database";
 import { useActiveOrg } from "@/hooks/useActiveOrg";
+import { useIsBelowMd } from "@/hooks/use-mobile";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { toErrorMessage } from "@/lib/error";
@@ -236,6 +237,7 @@ function TaskCardComponent({
   messagePreview?: TaskMessagePreview | null;
 }) {
   const { orgId, role: orgRole } = useActiveOrg();
+  const belowMd = useIsBelowMd();
   const { horizonId: autoUrgentHorizon } = useAutoUrgentPreference();
   const { members } = useOrgMembers();
   const { user: currentUser } = useAuth();
@@ -599,7 +601,9 @@ function TaskCardComponent({
     : isOnboardingDemoTask(task)
       ? ONBOARDING_SAMPLE_LABEL
       : null;
-  const dueFormattedLabel = dueDateRaw ? formatTaskDate(dueDateRaw) : null;
+  const dueFormattedLabel = dueDateRaw
+    ? formatTaskDate(dueDateRaw, { compact: belowMd })
+    : null;
   const dueRelativeLabel = formatTaskDueRelative(dueDateRaw);
   /** Property name is redundant when the org only has one property. */
   const propertyLabel = showPropertyIconInMeta
@@ -870,7 +874,8 @@ function TaskCardComponent({
               {/* Property Icon + Space + Date/Time + Teams + From / For */}
               <div
                 className={cn(
-                  "flex gap-2 flex-wrap items-center",
+                  "flex items-center",
+                  belowMd ? "flex-nowrap gap-1.5 overflow-hidden" : "flex-wrap gap-2",
                   themeTagChips ? "mt-1" : "mt-[7px]",
                   (dimThumbnail || isConfirmingComplete) && dimCopyClass,
                   isCompleted &&
@@ -886,7 +891,7 @@ function TaskCardComponent({
                       <span className={cn(WORKBENCH_TASK_META_CLASS, "min-w-0 flex-1")}>
                         {spaces[0]?.name ? `${spaces[0].name}` : ""}
                         {spaces[0]?.name && t.due_at ? " · " : ""}
-                        {t.due_at ? formatTaskDate(t.due_at) : ""}
+                        {t.due_at ? formatTaskDate(t.due_at, { compact: belowMd }) : ""}
                       </span>
                     )}
                     <TaskCardPeopleMeta
@@ -901,7 +906,10 @@ function TaskCardComponent({
                       <Badge
                         variant="neutral"
                         size="sm"
-                        className="text-2xs px-[5px] font-mono uppercase h-[24px]"
+                        className={cn(
+                          "h-[24px] px-[5px] text-2xs font-mono uppercase",
+                          belowMd && "min-w-0 max-w-[42%] truncate"
+                        )}
                       >
                         {spaces[0].name}
                       </Badge>
@@ -910,10 +918,10 @@ function TaskCardComponent({
                       <Badge
                         variant="neutral"
                         size="sm"
-                        className="text-2xs px-[5px] flex items-center gap-1 font-mono h-[24px]"
+                        className="h-[24px] shrink-0 whitespace-nowrap px-[5px] text-2xs font-mono flex items-center gap-1"
                       >
-                        <Clock className="h-3 w-3" />
-                        {formatTaskDate(t.due_at)}
+                        <Clock className="h-3 w-3 shrink-0" />
+                        {formatTaskDate(t.due_at, { compact: belowMd })}
                       </Badge>
                     )}
                     {teams.length > 0 &&

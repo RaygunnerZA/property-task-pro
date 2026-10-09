@@ -11,16 +11,21 @@ import {
 } from "@/lib/calendarTaskSchedule";
 import { cn } from "@/lib/utils";
 
-const SCHEDULE_TIME_COLUMN_CLASS = "w-[81px] sm:w-[5.5rem] flex-shrink-0";
+/** Phone rail fits "Today" / "Oct 11" and a HH:mm pill. Wider from md, where the full weekday is shown. */
+const SCHEDULE_TIME_COLUMN_CLASS =
+  "w-10 min-w-10 max-w-10 shrink-0 md:w-[5.5rem] md:min-w-[5.5rem] md:max-w-[5.5rem]";
 
 const SCHEDULE_DAY_DIVIDER_CLASS =
   "pt-[15px] pb-[15px] transition-[padding] duration-200 ease-out motion-reduce:transition-none group-hover/day:pt-0 group-hover/day:pb-[10px] group-focus-within/day:pt-0 group-focus-within/day:pb-[10px] max-md:pt-0 max-md:pb-[10px]";
 
 const SCHEDULE_DATE_LABEL_CLASS =
-  "text-sm font-semibold text-primary pb-[11px]";
+  "pb-1 text-[11px] font-semibold leading-none text-primary md:pb-[11px] md:text-sm md:leading-tight";
+
+const SCHEDULE_WEEKDAY_LABEL_CLASS =
+  "text-xs font-semibold leading-none tracking-wide text-foreground md:text-base md:leading-tight";
 
 const SCHEDULE_TIME_BADGE_CLASS =
-  "text-xs font-mono font-medium uppercase tracking-wider text-muted-foreground w-[57px] h-6 -ml-1 pl-[9px] pr-[16px] py-[5px] rounded-xl bg-black/5 shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)]";
+  "h-5 w-full rounded-xl bg-black/5 px-0.5 py-0.5 text-center text-[10px] font-mono font-medium uppercase tracking-wide text-muted-foreground shadow-[1px_1px_1px_0px_rgba(255,255,255,0.47),inset_1px_2px_2px_0px_rgba(0,0,0,0.11)] md:-ml-1 md:h-6 md:w-[57px] md:py-[5px] md:pl-[9px] md:pr-[16px] md:text-left md:text-xs md:tracking-wider";
 
 function formatScheduleTimeLabel(time: Date, hasSpecificTime: boolean): string | null {
   if (!hasSpecificTime) return null;
@@ -237,7 +242,7 @@ export function ScheduleView({
       <MagneticScrollArea
         ref={scrollContainerRef}
         className="min-w-0 flex-1"
-        viewportClassName="px-2 pt-0.5 pb-4"
+        viewportClassName="px-1 pt-0.5 pb-4 md:px-2"
       >
         <div>
           {/* Dated tasks grouped by date */}
@@ -246,7 +251,9 @@ export function ScheduleView({
             const date = parseScheduleDateTime(dateKey) ?? new Date(dateKey);
             const isTodayDate = format(date, "yyyy-MM-dd") === format(new Date(), "yyyy-MM-dd");
             const weekdayLabel = isTodayDate ? "Today" : format(date, "EEEE");
+            const weekdayShort = isTodayDate ? "Today" : format(date, "EEE");
             const dateLabel = format(date, "MMMM d");
+            const dateShort = format(date, "MMM d");
             return (
               <div
                 key={dateKey}
@@ -262,7 +269,7 @@ export function ScheduleView({
                   const isFirstOfDay = taskIndex === 0;
 
                   return (
-                    <div key={task.id} className="flex items-start gap-3">
+                    <div key={task.id} className="flex items-start gap-1.5 md:gap-3">
                       <div
                         className={cn(
                           SCHEDULE_TIME_COLUMN_CLASS,
@@ -271,10 +278,14 @@ export function ScheduleView({
                       >
                         {isFirstOfDay ? (
                           <>
-                            <span className="text-base font-semibold text-foreground tracking-wide">
-                              {weekdayLabel}
+                            <span className={SCHEDULE_WEEKDAY_LABEL_CLASS}>
+                              <span className="md:hidden">{weekdayShort}</span>
+                              <span className="hidden md:inline">{weekdayLabel}</span>
                             </span>
-                            <span className={SCHEDULE_DATE_LABEL_CLASS}>{dateLabel}</span>
+                            <span className={SCHEDULE_DATE_LABEL_CLASS}>
+                              <span className="md:hidden">{dateShort}</span>
+                              <span className="hidden md:inline">{dateLabel}</span>
+                            </span>
                           </>
                         ) : null}
                         {timeLabel ? (
@@ -299,17 +310,21 @@ export function ScheduleView({
                 })}
 
                 {dateTasks.length === 0 ? (
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-1.5 md:gap-3">
                     <div
                       className={cn(
                         SCHEDULE_TIME_COLUMN_CLASS,
                         "pt-3 flex flex-col gap-0.5 leading-tight"
                       )}
                     >
-                      <span className="text-base font-semibold text-foreground tracking-wide">
-                        {weekdayLabel}
+                      <span className={SCHEDULE_WEEKDAY_LABEL_CLASS}>
+                        <span className="md:hidden">{weekdayShort}</span>
+                        <span className="hidden md:inline">{weekdayLabel}</span>
                       </span>
-                      <span className={SCHEDULE_DATE_LABEL_CLASS}>{dateLabel}</span>
+                      <span className={SCHEDULE_DATE_LABEL_CLASS}>
+                        <span className="md:hidden">{dateShort}</span>
+                        <span className="hidden md:inline">{dateLabel}</span>
+                      </span>
                     </div>
                     <div className="flex-1 min-w-0 pt-3 text-sm text-muted-foreground">
                       No tasks
@@ -359,7 +374,7 @@ export function ScheduleView({
                     : undefined;
 
                   return (
-                    <div key={task.id} className="flex items-start gap-3">
+                    <div key={task.id} className="flex items-start gap-1.5 md:gap-3">
                       <div className={SCHEDULE_TIME_COLUMN_CLASS} />
                       <div className="flex-1 min-w-0">
                         <TaskCard
