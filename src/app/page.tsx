@@ -1082,7 +1082,7 @@ export default function Dashboard({
   const thirdColumnContent = isLargeScreen ? (
     <div
       ref={thirdColumnScrollRef}
-      className="flex min-w-0 max-w-full flex-col justify-start pt-0 pr-[15px] pb-0 pl-[15px] [overflow-anchor:none]"
+      className="flex min-w-0 max-w-full flex-col justify-start pt-0 pb-0 [overflow-anchor:none]"
     >
       {activeTab === "records" && intakeScopedPropertyId && !recordsIntakeOpen ? (
         <div className="pb-[16px] shrink-0">

@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   dismissDescription,
   isDescriptionDismissed,
+  isPageTitleMinimised,
   localDescriptionDay,
+  minimisePageTitle,
 } from "@/lib/ephemeralDescription";
 
 const memory = new Map<string, string>();
@@ -42,5 +44,15 @@ describe("ephemeral screen descriptions", () => {
 
   it("keys the day in local time", () => {
     expect(localDescriptionDay(new Date(2026, 9, 9, 23, 30, 0))).toBe("2026-10-09");
+  });
+
+  it("minimises each page title on its own, until the next local day", () => {
+    const today = new Date(2026, 9, 10, 14, 0, 0);
+    expect(isPageTitleMinimised("screen:Tasks", today)).toBe(false);
+    minimisePageTitle("screen:Tasks", today);
+    expect(isPageTitleMinimised("screen:Tasks", today)).toBe(true);
+    expect(isPageTitleMinimised("screen:Calendar", today)).toBe(false);
+    expect(isDescriptionDismissed("screen:Tasks", today)).toBe(false);
+    expect(isPageTitleMinimised("screen:Tasks", new Date(2026, 9, 11, 9, 0, 0))).toBe(false);
   });
 });

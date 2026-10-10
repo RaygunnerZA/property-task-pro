@@ -1714,6 +1714,11 @@ export function PropertySpaceGroupCarousel({
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Search spaces"
+            favouritesKey="spaces"
+            defaultFavourites={[
+              { kind: "option", id: FILTER_OPEN_WORK },
+              { kind: "option", id: FILTER_UNASSIGNED },
+            ]}
           />
 
           {view === "attention" ? attentionView : view === "areas" ? areasView : categoryView}

@@ -10,7 +10,7 @@ export type SortOption = {
   label: string;
 };
 
-const DEFAULT_SORT_OPTIONS: SortOption[] = [
+export const DEFAULT_SORT_OPTIONS: SortOption[] = [
   { id: "recent", label: "Recent" },
   { id: "due_date", label: "Due" },
   { id: "priority", label: "Priority" },

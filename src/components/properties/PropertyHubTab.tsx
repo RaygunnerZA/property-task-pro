@@ -6,9 +6,9 @@ export type PropertyHubNavCardId = "spaces" | "assets" | "people" | "records";
 
 /** Keep in sync with `public/property-hub/tab-shape.svg` (viewBox 0 0 300 130). */
 export const TAB_SHAPE_PATH =
-  "M 0 128 L 291 128 L 244 8 L 228 0 L 20 0 C 4 0 0 10 0 21 Z";
+  "M 0 130 L 291 130 L 244 8 L 228 0 L 20 0 C 4 0 0 10 0 21 Z";
 
-const TAB_SHAPE_MASK = "url(/property-hub/tab-shape.svg)";
+const TAB_SHAPE_MASK = "url(/property-hub/tab-shape.svg?v=130)";
 /** Slant width as a fraction of tab width (291 − 228 over viewBox width). */
 export const TAB_OVERLAP_RATIO = 63 / 300;
 /** Extra horizontal space between stacked tabs. */
@@ -17,6 +17,8 @@ export const TAB_GAP_PX = 5;
 export const TAB_ROW_HEIGHT_PX = 37;
 /** Tab button + shape height. Active and inactive share this so the right slant matches. */
 export const TAB_SHAPE_HEIGHT_PX = 35;
+/** Painted overlap into the panel so the tab and body share one edge. */
+export const TAB_SEAM_OVERLAP_PX = 3;
 export const TAB_TOP_PX = 2;
 
 const TAB_TITLE_FONT = '500 15px "Inter Tight", system-ui, -apple-system, sans-serif';
@@ -172,7 +174,7 @@ const TAB_SHAPE_MASK_STYLE: CSSProperties = {
  * Coordinates are object-bounding-box percentages derived from {@link TAB_SHAPE_PATH}.
  */
 const TAB_SHAPE_CLIP_PATH =
-  "polygon(0% 98.5%, 97% 98.5%, 81.3% 6.2%, 76% 0%, 6.7% 0%, 0% 16.2%)";
+  "polygon(0% 100%, 97% 100%, 81.3% 6.2%, 76% 0%, 6.7% 0%, 0% 16.2%)";
 
 const ACTIVE_FILL_SHADOW = "inset 1px 1px 1px 0px rgba(255, 255, 255, 1)";
 
@@ -213,7 +215,7 @@ export function PropertyHubTab({
   onSelect,
 }: PropertyHubTabProps) {
   const tabWidth = tabWidthAt(stackIndex, tabWidths);
-  const shapeHeight = TAB_SHAPE_HEIGHT_PX;
+  const shapeHeight = TAB_SHAPE_HEIGHT_PX + TAB_SEAM_OVERLAP_PX;
   const { left, zIndex, isVisuallyFront, isVisuallyLast } = getTabStackLayout(
     activeIndex,
     stackIndex,
@@ -251,9 +253,8 @@ export function PropertyHubTab({
     >
       <span
         aria-hidden
-        className="pointer-events-none absolute bottom-0 left-0 right-0 rounded-tl-xl"
+        className="pointer-events-none absolute inset-0 rounded-tl-xl"
         style={{
-          height: shapeHeight,
           ...TAB_SHAPE_MASK_STYLE,
           ...paperTexturedColorStyle(fill),
           filter: isActive ? undefined : SLANT_CAST_SHADOW,

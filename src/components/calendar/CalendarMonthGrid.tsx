@@ -289,8 +289,10 @@ function CalendarTaskChip({
     [isDragOverlay, setNodeRef]
   );
 
+  const floating = spread || elevated || revealFullTitleProp || unwrapTitle;
   const chipBackground = resolveCalendarChipBackground(placement.task, isRepeat, {
     opaque,
+    floating,
     stackIndex,
     stackCount,
   });

@@ -18,7 +18,6 @@ import { useWorkbenchControls } from "@/contexts/WorkbenchControlsContext";
 import { useIdentityMode } from "@/hooks/useIdentityMode";
 import { useAutoUrgentPreference } from "@/hooks/useAutoUrgentPreference";
 import { isTaskEffectivelyUrgent } from "@/lib/autoUrgent";
-import { getTaskDueUrgency } from "@/lib/taskDueUrgency";
 import { useTaskMessageActivity } from "@/hooks/useTaskMessageActivity";
 import { setTasksMessagesTabActive } from "@/lib/tasksMessagesTab";
 import {
@@ -28,6 +27,7 @@ import {
 import { taskMatchesPropertyScope } from "@/utils/propertyFilter";
 import {
   isOnboardingDemoTask,
+  shouldAutoHideSeededSamples,
   shouldHideOwnerDemoTaskForRole,
 } from "@/lib/onboardingEducation";
 import { isStaffTrainingTask } from "@/lib/staffTraining";
@@ -101,17 +101,20 @@ function filterScopedTasksForTasksTab(
   includeCompleted: boolean
 ) {
   const propertyIds = properties.map((p) => p.id);
-  return tasks.filter((task) => {
+  const inScope = tasks.filter((task) => {
     if (!taskMatchesPropertyScope(task, selectedPropertyIds, propertyIds)) return false;
     if (shouldHideOwnerDemoTaskForRole(task, memberRole)) return false;
     if (isStaffTrainingTask(task)) return false;
-    if (includeCompleted) {
-      if (!isVisibleInAllTasks(task)) return false;
-    } else if (!isOpenTask(task)) {
-      return false;
-    }
-    const isDemo = isOnboardingDemoTask(task);
-    return !isDemo || memberRole === "owner" || memberRole === "manager";
+    return true;
+  });
+  // Seeded samples teach an empty list. The first real task retires them.
+  const hideDemos = shouldAutoHideSeededSamples({
+    realItemCount: inScope.filter((task) => !isOnboardingDemoTask(task)).length,
+  });
+  return inScope.filter((task) => {
+    if (hideDemos && isOnboardingDemoTask(task)) return false;
+    if (includeCompleted) return isVisibleInAllTasks(task);
+    return isOpenTask(task);
   });
 }
 
@@ -232,34 +235,6 @@ export function TasksWorkbenchPanel({
   const urgentTasks = useMemo(
     () => scopedOpenTasks.filter((t) => isTaskEffectivelyUrgent(t, autoUrgentHorizon)),
     [scopedOpenTasks, autoUrgentHorizon]
-  );
-
-  const taskHealth = useMemo(() => {
-    let overdue = 0;
-    let dueSoon = 0;
-    let late = 0;
-    for (const task of scopedOpenTasks) {
-      const urgency = getTaskDueUrgency(task);
-      if (urgency === "overdue") {
-        overdue += 1;
-        if (String(task.status ?? "") === "in_progress") late += 1;
-      } else if (urgency === "due_soon") {
-        dueSoon += 1;
-      }
-    }
-    return { overdue, dueSoon, urgent: urgentTasks.length, late };
-  }, [scopedOpenTasks, urgentTasks.length]);
-
-  const recentTasks = useMemo(
-    () =>
-      [...scopedOpenTasks]
-        .sort(
-          (a, b) =>
-            new Date(b.updated_at || b.created_at || 0).getTime() -
-            new Date(a.updated_at || a.created_at || 0).getTime()
-        )
-        .slice(0, 5),
-    [scopedOpenTasks]
   );
 
   const myTasks = useMemo(
@@ -582,44 +557,6 @@ export function TasksWorkbenchPanel({
           </div>
         </div>
 
-        <div className="mt-3 flex gap-1.5 overflow-x-auto md:hidden">
-          {(
-            [
-              { id: "overdue", label: "Overdue", count: taskHealth.overdue, filters: ["filter-date-overdue"] },
-              { id: "due-soon", label: "Due soon", count: taskHealth.dueSoon, filters: ["filter-date-this-week"] },
-              { id: "urgent", label: "Urgent", count: taskHealth.urgent, filters: ["filter-urgent"] },
-              {
-                id: "late",
-                label: "Late",
-                count: taskHealth.late,
-                filters: ["filter-date-overdue", "filter-status-in-progress"],
-              },
-            ] as const
-          ).map((pill) => {
-            const active = pill.filters.every((id) => selectedFilters.has(id));
-            return (
-              <button
-                key={pill.id}
-                type="button"
-                aria-pressed={active}
-                onClick={() => {
-                  const next = new Set(selectedFilters);
-                  if (active) pill.filters.forEach((id) => next.delete(id));
-                  else pill.filters.forEach((id) => next.add(id));
-                  setSelectedFilters(next);
-                }}
-                className={cn(
-                  "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium shadow-sm",
-                  active ? "bg-primary/20 text-foreground" : "bg-card/80 text-muted-foreground"
-                )}
-              >
-                <span className="tabular-nums">{pill.count}</span>
-                {pill.label}
-              </button>
-            );
-          })}
-        </div>
-
         <div className="mt-3 px-0 md:mt-5 md:mb-5">
           <WorkbenchTaskFilterBar
             key={`task-filters-${listEpoch}`}
@@ -633,27 +570,6 @@ export function TasksWorkbenchPanel({
             onSelectMessageAuthor={setAuthorFilterKey}
           />
         </div>
-
-        <details className="mt-3 rounded-xl bg-card/70 px-3 py-2 shadow-sm md:hidden">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Recent</summary>
-          {recentTasks.length === 0 ? (
-            <p className="mt-2 text-xs text-muted-foreground">No recent tasks.</p>
-          ) : (
-            <ul className="mt-2 space-y-1">
-              {recentTasks.map((task) => (
-                <li key={task.id}>
-                  <button
-                    type="button"
-                    onClick={() => onTaskClick?.(task.id)}
-                    className="flex min-h-11 w-full items-center text-left text-sm text-foreground"
-                  >
-                    <span className="min-w-0 truncate">{task.title || "Untitled"}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </details>
 
         {/* List is in document flow — page scroll moves left · centre · right together. */}
         <div className="mt-3 px-0 pb-4 pt-0.5 md:mt-0">

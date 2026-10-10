@@ -4,6 +4,8 @@
  */
 
 const STORAGE_KEY = "filla.contextual-descriptions";
+/** Page-title heroes (illustration + H1 + description) minimise once per local day. */
+const PAGE_TITLE_KEY = "filla.page-title-minimise";
 
 type DismissStore = {
   day: string;
@@ -26,11 +28,11 @@ function storage(): Storage | null {
   }
 }
 
-function readStore(): DismissStore | null {
+function readStore(key: string): DismissStore | null {
   const store = storage();
   if (!store) return null;
   try {
-    const raw = store.getItem(STORAGE_KEY);
+    const raw = store.getItem(key);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<DismissStore>;
     if (typeof parsed.day !== "string" || !Array.isArray(parsed.ids)) return null;
@@ -43,22 +45,38 @@ function readStore(): DismissStore | null {
   }
 }
 
-export function isDescriptionDismissed(id: string, now = new Date()): boolean {
-  const store = readStore();
+function remember(key: string, id: string, now: Date): void {
+  const bin = storage();
+  if (!bin) return;
+  const day = localDescriptionDay(now);
+  const store = readStore(key);
+  const ids = store && store.day === day ? [...store.ids] : [];
+  if (!ids.includes(id)) ids.push(id);
+  try {
+    bin.setItem(key, JSON.stringify({ day, ids } satisfies DismissStore));
+  } catch {
+    /* private mode / quota — the view still closes for this mount */
+  }
+}
+
+function remembered(key: string, id: string, now: Date): boolean {
+  const store = readStore(key);
   if (!store || store.day !== localDescriptionDay(now)) return false;
   return store.ids.includes(id);
 }
 
+export function isDescriptionDismissed(id: string, now = new Date()): boolean {
+  return remembered(STORAGE_KEY, id, now);
+}
+
 export function dismissDescription(id: string, now = new Date()): void {
-  const bin = storage();
-  if (!bin) return;
-  const day = localDescriptionDay(now);
-  const store = readStore();
-  const ids = store && store.day === day ? [...store.ids] : [];
-  if (!ids.includes(id)) ids.push(id);
-  try {
-    bin.setItem(STORAGE_KEY, JSON.stringify({ day, ids } satisfies DismissStore));
-  } catch {
-    /* private mode / quota — the description still closes for this view */
-  }
+  remember(STORAGE_KEY, id, now);
+}
+
+export function isPageTitleMinimised(id: string, now = new Date()): boolean {
+  return remembered(PAGE_TITLE_KEY, id, now);
+}
+
+export function minimisePageTitle(id: string, now = new Date()): void {
+  remember(PAGE_TITLE_KEY, id, now);
 }

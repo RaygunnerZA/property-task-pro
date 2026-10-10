@@ -47,6 +47,7 @@ import {
   type OrganiseViewTab,
 } from "@/components/organise/OrganiseViewTabs";
 import { OrganiseControlsBar } from "@/components/organise/OrganiseControlsBar";
+import type { FilterFavourite } from "@/lib/filterFavourites";
 import {
   AttentionListView,
   type AttentionSection,
@@ -86,6 +87,11 @@ const VIEW_TABS: readonly OrganiseViewTab<RecordsOrganiseView>[] = [
 ] as const;
 
 const ATTENTION_FILTER_PREFIX = "filter-record-";
+
+const RECORD_FAVOURITES: FilterFavourite[] = [
+  { kind: "option", id: `${ATTENTION_FILTER_PREFIX}expiring` },
+  { kind: "option", id: `${ATTENTION_FILTER_PREFIX}missing-info` },
+];
 const CATEGORY_FILTER_PREFIX = "filter-record-cat-";
 
 const ATTENTION_FILTER_OPTIONS: { id: ExplorerAttentionFilter; label: string }[] = [
@@ -293,12 +299,12 @@ export function RecordsExplorer({
       {
         id: `${ATTENTION_FILTER_PREFIX}expiring`,
         label: "Expiring",
-        icon: <Clock className="h-4 w-4" />,
+        icon: <Clock className="h-4 w-4 text-amber-600" />,
       },
       {
         id: `${ATTENTION_FILTER_PREFIX}missing-info`,
         label: "Missing info",
-        icon: <FileQuestion className="h-4 w-4" />,
+        icon: <FileQuestion className="h-4 w-4 text-sky-700" />,
       },
     ],
     []
@@ -623,6 +629,8 @@ export function RecordsExplorer({
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Search documents"
+            favouritesKey="records"
+            defaultFavourites={RECORD_FAVOURITES}
           />
         ) : null}
 

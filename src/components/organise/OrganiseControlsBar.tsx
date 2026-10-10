@@ -7,6 +7,7 @@ import {
 import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
 import { SortBar, type SortOption } from "@/components/ui/filters/SortBar";
 import type { WorkbenchSortBy } from "@/contexts/WorkbenchControlsContext";
+import type { FilterFavourite } from "@/lib/filterFavourites";
 import { cn } from "@/lib/utils";
 
 export const ORGANISE_SORT_OPTIONS: SortOption[] = [
@@ -27,6 +28,9 @@ type OrganiseControlsBarProps = {
   onSearchChange: (value: string) => void;
   searchPlaceholder?: string;
   className?: string;
+  /** Screen key for the pinned favourites row under FILTER / SORT / SEARCH. */
+  favouritesKey?: string;
+  defaultFavourites?: FilterFavourite[];
 };
 
 /**
@@ -46,6 +50,8 @@ export function OrganiseControlsBar({
   onSearchChange,
   searchPlaceholder = "Search",
   className,
+  favouritesKey,
+  defaultFavourites,
 }: OrganiseControlsBarProps) {
   const [filterExpanded, setFilterExpanded] = useState(false);
 
@@ -86,6 +92,11 @@ export function OrganiseControlsBar({
           />
         </>
       }
+      favouritesKey={favouritesKey}
+      defaultFavourites={defaultFavourites}
+      sortOptions={sortOptions}
+      sortBy={sortBy}
+      onSortChange={(id) => onSortChange(id as WorkbenchSortBy)}
     />
   );
 }

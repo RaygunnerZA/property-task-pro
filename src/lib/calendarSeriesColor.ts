@@ -13,6 +13,8 @@ import { getTaskRepeatRule } from "@/lib/taskWhenNormalize";
 
 /** Warm paper card tone — mix target for opaque stacked chips. */
 const CHIP_PAPER = "#FBFAF8";
+/** Expanded floating chips — nearly solid so the day underneath does not read through. */
+const FLOATING_CHIP_ALPHA = 0.9;
 /** Soft ink for darkening cards further back in a hand. */
 const CHIP_STACK_INK = "#2C2A28";
 
@@ -89,6 +91,8 @@ export function resolveCalendarChipBackground(
   isRepeatOccurrence: boolean,
   options?: {
     opaque?: boolean;
+    /** Hover / expanded chip floating over neighbouring days. */
+    floating?: boolean;
     /** 0 = furthest back in the hand (darkest); higher = closer to front. */
     stackIndex?: number;
     stackCount?: number;
@@ -103,6 +107,10 @@ export function resolveCalendarChipBackground(
   // Earlier / back cards sit further in the fan — slightly darker than the front.
   const backness =
     stackCount > 1 ? (stackCount - 1 - stackIndex) / (stackCount - 1) : 0;
+
+  if (options?.floating) {
+    return calendarTypeColorWithAlpha(baseColor, FLOATING_CHIP_ALPHA);
+  }
 
   if (options?.opaque) {
     // Solid pastel so stacked / fanned chips don't ghost text through each other.

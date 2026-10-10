@@ -840,24 +840,30 @@ function TaskCardComponent({
             {newCommentBubble}
             {thumbnailFirst ? horizontalMedia : null}
             {/* Content — +3px down from prior py-4 centering */}
-            <div className="relative flex min-w-0 flex-1 flex-col justify-center px-[14px] pb-[13px] pt-[12px]">
-              {/* Title: reserved 2-line box, text bottom-aligned */}
+            <div
+              className={cn(
+                "relative flex min-w-0 flex-1 flex-col justify-center pb-[13px] pt-[12px]",
+                thumbnailFirst ? "pl-0 pr-[14px]" : "px-[14px]"
+              )}
+            >
+              {/* Title keeps the full row. Sample / training chip sits on its own line. */}
               <div
                 className={cn(
-                  "flex h-[37.5px] min-w-0 items-end gap-2",
+                  "flex min-w-0 flex-col items-start",
+                  !educationChipLabel && "h-[37.5px] justify-end",
                   (dimThumbnail || isConfirmingComplete) && dimCopyClass,
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-40 group-focus-within:opacity-40"
                 )}
               >
-                <h3 className="min-w-0 flex-1 text-[15px] font-medium leading-tight text-foreground line-clamp-2">
+                <h3 className="min-w-0 w-full text-[15px] font-medium leading-tight text-foreground line-clamp-2">
                   {t.title}
                 </h3>
                 {educationChipLabel ? (
                   <Badge
                     variant="neutral"
                     size="sm"
-                    className="mb-0.5 h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
+                    className="mt-1 h-[20px] shrink-0 border-0 bg-primary/15 px-1.5 text-2xs font-mono font-semibold uppercase tracking-wide text-primary-deep"
                   >
                     {educationChipLabel}
                   </Badge>
@@ -876,7 +882,7 @@ function TaskCardComponent({
                 className={cn(
                   "flex items-center",
                   belowMd ? "flex-nowrap gap-1.5 overflow-hidden" : "flex-wrap gap-2",
-                  themeTagChips ? "mt-1" : "mt-[7px]",
+                  themeTagChips || educationChipLabel ? "mt-1" : "mt-[7px]",
                   (dimThumbnail || isConfirmingComplete) && dimCopyClass,
                   isCompleted &&
                     "transition-opacity duration-150 group-hover:opacity-0 group-hover:pointer-events-none group-focus-within:opacity-0 group-focus-within:pointer-events-none"

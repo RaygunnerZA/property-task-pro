@@ -171,9 +171,9 @@ const statusCountBoxClass: Record<HubStatusCountTone, string> = {
 };
 
 const statusCountLabelClass: Record<HubStatusCountTone, string> = {
-  urgent: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-destructive",
-  warning: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-warning-foreground",
-  neutral: "font-mono text-2xs font-bold uppercase tracking-[0.04em] text-muted-foreground",
+  urgent: "font-mono text-2xs font-bold uppercase leading-none text-destructive",
+  warning: "font-mono text-2xs font-bold uppercase leading-none text-warning-foreground",
+  neutral: "font-mono text-2xs font-bold uppercase leading-none text-muted-foreground",
 };
 
 function PanelMetricItem({ item }: { item: PanelMetric }) {
@@ -210,8 +210,8 @@ function isOpenTaskStatus(status: string | null | undefined): boolean {
 }
 
 const hubCardActionClass = cn(
-  "inline-flex h-6 shrink-0 items-center gap-0.5 rounded-sharp px-1.5",
-  "font-mono text-2xs font-medium uppercase tracking-wider text-muted-foreground",
+  "inline-flex h-[18px] shrink-0 items-center gap-1 rounded-sharp px-1",
+  "font-mono text-2xs font-medium uppercase leading-none text-muted-foreground",
   "transition-colors hover:bg-background/50 hover:text-foreground",
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
 );
@@ -429,7 +429,7 @@ export function PropertyHubNavCards({
       >
         <div
           ref={tabRowRef}
-          className="relative h-[37px] w-full overflow-visible px-0 pt-0"
+          className="relative z-10 h-[37px] w-full overflow-visible px-0 pt-0"
         >
           {NAV_CARDS.map(({ id, title, fill }, index) => (
             <PropertyHubTab
@@ -460,18 +460,18 @@ export function PropertyHubNavCards({
             }
           }}
           className={cn(
-            "group relative -mt-px flex h-auto min-h-[132px] cursor-pointer flex-col gap-3 rounded-[0_12px_12px_12px] px-1.5 pb-[10px] pt-1 text-left",
-            "shadow-[inset_1px_1px_1px_0px_rgba(255,255,255,1),2px_2px_2px_-1px_rgba(0,0,0,0.15),0px_2px_4px_-2px_rgba(0,0,0,0.1)]",
+            "group relative flex h-auto min-h-[132px] cursor-pointer flex-col gap-3 rounded-[0_12px_12px_12px] px-1.5 pb-[10px] pt-1 text-left",
+            "shadow-[2px_2px_2px_-1px_rgba(0,0,0,0.15),0px_2px_4px_-2px_rgba(0,0,0,0.1)]",
             "transition-[transform,box-shadow] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
           )}
           style={paperTexturedDiagonalFadeStyle(activeCard.fill)}
         >
-          <div className="flex items-center justify-between gap-2 py-[5px]">
-            <div className="flex min-w-0 flex-1 items-center justify-start gap-3 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-h-[22px] items-center justify-between gap-3">
+            <div className="flex min-w-0 flex-1 items-center justify-start gap-2 overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
               {panelMetrics.map((item, index) => (
-                <span key={item.id} className="inline-flex shrink-0 items-center gap-3">
+                <span key={item.id} className="inline-flex shrink-0 items-center gap-2">
                   {index > 0 ? (
-                    <span className="font-mono text-2xs text-muted-foreground/50" aria-hidden>
+                    <span className="font-mono text-2xs leading-none text-muted-foreground/50" aria-hidden>
                       |
                     </span>
                   ) : null}
@@ -479,7 +479,7 @@ export function PropertyHubNavCards({
                 </span>
               ))}
             </div>
-            <div className="flex shrink-0 items-center gap-1.5">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={(e) => {
@@ -504,7 +504,7 @@ export function PropertyHubNavCards({
                     : `New ${activeCard.title.toLowerCase().replace(/s$/, "")}`
                 }
               >
-                <Plus className="h-4 w-4" strokeWidth={2.25} />
+                <Plus className="h-3 w-3 shrink-0" strokeWidth={2.25} />
                 {hubAddActionLabel(activeTab)}
               </button>
             </div>

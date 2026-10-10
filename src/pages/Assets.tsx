@@ -11,7 +11,7 @@ import { AssetDetailPanel } from "@/components/assets/AssetDetailPanel";
 import type { AssetMetricKey } from "@/components/assets/AssetsSummaryRow";
 import { AssetLinkedTasksList } from "@/components/assets/AssetLinkedTasksList";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Package } from "lucide-react";
+import { Circle, Package, ShieldAlert } from "lucide-react";
 import { OrganiseControlsBar, ORGANISE_SORT_OPTIONS } from "@/components/organise/OrganiseControlsBar";
 import { OrganiseViewTabs } from "@/components/organise/OrganiseViewTabs";
 import type { FilterGroup } from "@/components/ui/filters/FilterBar";
@@ -173,12 +173,22 @@ function PortfolioAssetsOrganise({
       options: STATUS_FILTERS.map((status) => ({
         id: `asset-status-${status.value}`,
         label: status.label,
+        icon:
+          status.value === "active" ? (
+            <Circle className="h-4 w-4 text-emerald-600" />
+          ) : undefined,
       })),
     },
     {
       id: "compliance",
       label: "Compliance",
-      options: [{ id: "asset-compliance", label: "Compliance issues" }],
+      options: [
+        {
+          id: "asset-compliance",
+          label: "Compliance issues",
+          icon: <ShieldAlert className="h-4 w-4 text-amber-600" />,
+        },
+      ],
     },
     {
       id: "property",
@@ -274,6 +284,11 @@ function PortfolioAssetsOrganise({
         search={pageSearch}
         onSearchChange={onPageSearchChange}
         searchPlaceholder="Search assets"
+        favouritesKey="assets"
+        defaultFavourites={[
+          { kind: "option", id: "asset-status-active" },
+          { kind: "option", id: "asset-compliance" },
+        ]}
       />
       {!hasAnyAssets ? (
         <FrameworkEmptyState

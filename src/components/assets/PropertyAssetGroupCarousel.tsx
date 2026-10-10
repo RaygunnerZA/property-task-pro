@@ -1411,6 +1411,11 @@ export function PropertyAssetGroupCarousel({
             search={search}
             onSearchChange={setSearch}
             searchPlaceholder="Search assets"
+            favouritesKey="property-assets"
+            defaultFavourites={[
+              { kind: "option", id: FILTER_OPEN_WORK },
+              { kind: "option", id: FILTER_CONDITION },
+            ]}
           />
 
           {view === "attention" ? attentionView : view === "spaces" ? spacesView : categoryView}

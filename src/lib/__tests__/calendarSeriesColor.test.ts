@@ -56,6 +56,24 @@ describe("calendarSeriesColor", () => {
     );
   });
 
+  it("expanded floating chips use a 90% opaque fill", () => {
+    const task = {
+      id: "weekly-float",
+      title: "Calendar Test",
+      repeat_rule: { type: "weekly", interval: 1 },
+    };
+    const resting = resolveCalendarChipBackground(task, true);
+    const floating = resolveCalendarChipBackground(task, true, {
+      floating: true,
+      opaque: true,
+    });
+    expect(resting).toContain("0.4");
+    expect(floating).toBe(
+      resolveCalendarChipBackground(task, false, { floating: true })
+    );
+    expect(floating).toMatch(/^rgba\(\d+, \d+, \d+, 0\.9\)$/);
+  });
+
   it("opaque stacked chips use solid hex so text cannot ghost through", () => {
     const task = { id: "once-opaque", title: "Plumbing compliance" };
     const fill = resolveCalendarChipBackground(task, false, { opaque: true });

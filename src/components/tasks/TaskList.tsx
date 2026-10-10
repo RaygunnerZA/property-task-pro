@@ -13,11 +13,11 @@ import SkeletonTaskCard from "@/components/SkeletonTaskCard";
 import { EmptyState } from "@/components/design-system/EmptyState";
 import { FilterBar, type FilterOption, type FilterGroup } from "@/components/ui/filters/FilterBar";
 import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
-import { useIsBelowMd } from "@/hooks/use-mobile";
+import { DEFAULT_SORT_OPTIONS, SortBar } from "@/components/ui/filters/SortBar";
+import { TASK_STATUS_FAVOURITES } from "@/components/ui/filters/taskStatusFavourites";
 import { ViewToggle } from "@/components/tasks/ViewToggle";
 import { cn } from "@/lib/utils";
-import { Calendar, AlertTriangle, User, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, Minus, Search } from "lucide-react";
-import { FilterChip } from "@/components/chips/filter";
+import { Calendar, AlertTriangle, User, UserX, ExternalLink, Tag, Building2, Users, ArrowDown, ArrowUp, Minus } from "lucide-react";
 import {
   useOptionalWorkbenchControls,
   type WorkbenchSortBy,
@@ -33,7 +33,6 @@ import {
   TASK_STATUS_VISUALS,
   taskMatchesStatusFilters,
 } from "@/lib/taskStatus";
-import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
 import { AutoArchiveCard } from "@/components/tasks/AutoArchiveCard";
 import { RestoreArchivedTasksSheet } from "@/components/tasks/RestoreArchivedTasksSheet";
 import { useAutoArchivePreference } from "@/hooks/useAutoArchivePreference";
@@ -177,8 +176,7 @@ export function TaskList({
     ? workbenchControls.setSelectedFilters
     : setInternalSelectedFilters;
   const [view, setView] = useState<'horizontal' | 'vertical'>('vertical');
-  const belowMd = useIsBelowMd();
-  const [taskSearchOpen, setTaskSearchOpen] = useState(false);
+  const [localSort, setLocalSort] = useState<WorkbenchSortBy>("recent");
   const [internalTaskSearchQuery, setInternalTaskSearchQuery] = useState("");
   const tasksPanelInteractionRef = useRef<HTMLDivElement | null>(null);
   const taskSearchQuery =
@@ -447,7 +445,7 @@ export function TaskList({
   // When the Done section is shown (All), keep completed in the primary list so
   // Mark Complete updates status in place instead of yanking the card below the fold.
   const groupedTasks = useMemo(() => {
-    const sortBy = workbenchControls?.sortBy ?? "recent";
+    const sortBy = (useHeaderControls ? workbenchControls?.sortBy : localSort) ?? "recent";
     const inlineCompleted = !hideDoneSection;
     const todo = sortTasksBy(
       filteredTasks.filter((task) => {
@@ -468,7 +466,7 @@ export function TaskList({
       : filteredTasks.filter((task) => task.status === "completed");
 
     return { todo, done };
-  }, [filteredTasks, workbenchControls?.sortBy, hideDoneSection]);
+  }, [filteredTasks, hideDoneSection, localSort, useHeaderControls, workbenchControls]);
 
   // Visible completed cards only (All keeps completed inline; Open/Urgent/My hide them).
   const visibleCompletedCount = useMemo(() => {
@@ -585,7 +583,7 @@ export function TaskList({
         {
           id: "filter-priority-high",
           label: "High",
-          icon: <AlertTriangle className="h-4 w-4" />,
+          icon: <ArrowUp className="h-4 w-4" />,
         },
         {
           id: "filter-priority-urgent",
@@ -753,23 +751,13 @@ export function TaskList({
           !embeddedInIssuesWorkbench && "ml-[-3px]"
         )}
       >
-        {embeddedInIssuesWorkbench && externalTaskSearchQuery === undefined && !useHeaderControls ? (
-          <div className="relative mb-2 flex items-center gap-2 rounded-[10px] bg-background/80 px-2 py-1.5 shadow-[inset_1px_2px_4px_rgba(0,0,0,0.08),inset_-1px_-1px_2px_rgba(255,255,255,0.5)]">
-            <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
-            <input
-              type="search"
-              value={taskSearchQuery}
-              onChange={(e) => setTaskSearchQuery(e.target.value)}
-              placeholder="Search tasks…"
-              className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
-              aria-label="Search tasks"
-            />
-          </div>
-        ) : null}
         {!useHeaderControls ? (
         <FilterBar
-          primaryOptions={primaryOptions}
-          secondaryGroups={secondaryGroups}
+          primaryOptions={[]}
+          secondaryGroups={[
+            { id: "quick", label: "Quick", options: primaryOptions },
+            ...secondaryGroups,
+          ]}
           selectedFilters={selectedFilters}
           onFilterChange={handleFilterChange}
           rightElement={
@@ -779,52 +767,22 @@ export function TaskList({
           }
           collapseFilterChipAfterMs={2000}
           collapseInteractionRootRef={tasksPanelInteractionRef}
+          favouritesKey="tasks"
+          defaultFavourites={TASK_STATUS_FAVOURITES}
+          sortBy={localSort}
+          onSortChange={(id) => setLocalSort(id as WorkbenchSortBy)}
+          sortOptions={DEFAULT_SORT_OPTIONS}
           afterFilterTrigger={
-            <StatusFilterIconStrip
-              selectedFilters={selectedFilters}
-              onFilterChange={handleFilterChange}
-            />
+            <SortBar sortBy={localSort} onSortChange={setLocalSort} />
           }
           primaryTrailing={
-            embeddedInIssuesWorkbench ? undefined : belowMd ? (
-              <FilterRowSearchField
-                value={taskSearchQuery}
-                onChange={setTaskSearchQuery}
-                placeholder="Search tasks"
-              />
-            ) : (
-              <FilterChip
-                label="Search"
-                icon={<Search className="h-4 w-4" />}
-                selected={taskSearchOpen || taskSearchQuery.trim().length > 0}
-                onSelect={() => setTaskSearchOpen((open) => !open)}
-                className="h-[24px]"
-              />
-            )
+            <FilterRowSearchField
+              value={taskSearchQuery}
+              onChange={setTaskSearchQuery}
+              placeholder="Search"
+            />
           }
         />
-        ) : null}
-        {!embeddedInIssuesWorkbench && !belowMd ? (
-        <div
-          className={cn(
-            "grid transition-[grid-template-rows] duration-200 ease-out",
-            taskSearchOpen || taskSearchQuery.trim().length > 0 ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
-          )}
-        >
-          <div className="overflow-hidden min-h-0">
-            <input
-              type="search"
-              value={taskSearchQuery}
-              onChange={(e) => setTaskSearchQuery(e.target.value)}
-              placeholder="Search tasks by title, notes, or property"
-              className={cn(
-                "mt-2 w-full rounded-[10px] bg-background shadow-[inset_1px_2px_4px_rgba(0,0,0,0.12),inset_-1px_-1px_2px_rgba(255,255,255,0.6)]",
-                "px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/30"
-              )}
-              aria-label="Search tasks"
-            />
-          </div>
-        </div>
         ) : null}
       </div>
       ) : null}

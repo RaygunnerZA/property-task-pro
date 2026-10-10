@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type RefObject } from "react";
 import {
   AlertTriangle,
   ArrowDown,
+  ArrowUp,
   Building2,
   Calendar,
   Minus,
@@ -10,9 +11,8 @@ import {
 } from "lucide-react";
 import { FilterBar, type FilterGroup, type FilterOption } from "@/components/ui/filters/FilterBar";
 import { FilterRowSearchField } from "@/components/ui/filters/FilterRowSearchField";
-import { useIsBelowMd } from "@/hooks/use-mobile";
-import { SortBar } from "@/components/ui/filters/SortBar";
-import { StatusFilterIconStrip } from "@/components/ui/filters/StatusFilterIconStrip";
+import { DEFAULT_SORT_OPTIONS, SortBar } from "@/components/ui/filters/SortBar";
+import { TASK_STATUS_FAVOURITES } from "@/components/ui/filters/taskStatusFavourites";
 import {
   MessageAuthorAvatarStrip,
   type MessageAuthorFilterOption,
@@ -64,7 +64,7 @@ export function WorkbenchTaskFilterBar({
   hidePrimaryUrgentChip = false,
   hidePrimaryQuickChips = false,
   calendarListScope,
-  showSortBar = false,
+  showSortBar = true,
   messagesMode = false,
   messageAuthors = [],
   selectedMessageAuthorKey = null,
@@ -76,7 +76,6 @@ export function WorkbenchTaskFilterBar({
     useWorkbenchControls();
   const { members } = useOrgMembers();
   const { teams } = useTeams();
-  const belowMd = useIsBelowMd();
   const [filterExpanded, setFilterExpanded] = useState(false);
 
   const allSpaces = useMemo(() => {
@@ -217,7 +216,7 @@ export function WorkbenchTaskFilterBar({
           {
             id: "filter-priority-high",
             label: "High",
-            icon: <AlertTriangle className="h-4 w-4" />,
+            icon: <ArrowUp className="h-4 w-4" />,
           },
           {
             id: "filter-priority-urgent",
@@ -285,67 +284,46 @@ export function WorkbenchTaskFilterBar({
     [calendarListScope, selectedFilters, setSelectedFilters]
   );
 
-  const mobileGroups = useMemo(() => {
+  const menuGroups = useMemo(() => {
     if (primaryOptions.length === 0) return secondaryGroups;
-    return [{ id: "scope", label: "Scope", options: primaryOptions }, ...secondaryGroups];
-  }, [primaryOptions, secondaryGroups]);
+    return [
+      {
+        id: calendarListScope ? "scope" : "quick",
+        label: calendarListScope ? "Scope" : "Quick",
+        options: primaryOptions,
+      },
+      ...secondaryGroups,
+    ];
+  }, [calendarListScope, primaryOptions, secondaryGroups]);
 
-  const midControls = messagesMode ? (
-    <MessageAuthorAvatarStrip
-      authors={messageAuthors}
-      selectedAuthorKey={selectedMessageAuthorKey}
-      onSelectAuthor={(key) => onSelectMessageAuthor?.(key)}
-    />
-  ) : (
-    <StatusFilterIconStrip
-      selectedFilters={effectiveSelectedFilters}
-      onFilterChange={handleFilterChange}
-    />
-  );
-
-  if (belowMd) {
-    return (
-      <FilterBar
-        primaryOptions={[]}
-        secondaryGroups={mobileGroups}
-        selectedFilters={effectiveSelectedFilters}
-        onFilterChange={handleFilterChange}
-        className={className}
-        onExpandedChange={showSortBar ? setFilterExpanded : undefined}
-        afterFilterTrigger={
-          <>
-            {messagesMode ? midControls : null}
-            {showSortBar ? (
-              <SortBar
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                forceCollapsed={filterExpanded}
-              />
-            ) : null}
-            <FilterRowSearchField
-              value={searchQuery}
-              onChange={setSearchQuery}
-              placeholder="Search"
-            />
-          </>
-        }
-      />
-    );
-  }
+  const favouritesKey = messagesMode ? "tasks-messages" : calendarListScope ? "calendar" : "tasks";
 
   return (
     <FilterBar
-      primaryOptions={primaryOptions}
-      secondaryGroups={secondaryGroups}
+      primaryOptions={[]}
+      secondaryGroups={menuGroups}
       selectedFilters={effectiveSelectedFilters}
       onFilterChange={handleFilterChange}
       className={cn(className)}
-      collapseFilterChipAfterMs={2000}
+      collapseFilterChipAfterMs={collapseInteractionRootRef ? 2000 : undefined}
       collapseInteractionRootRef={collapseInteractionRootRef}
       onExpandedChange={showSortBar ? setFilterExpanded : undefined}
+      favouritesKey={favouritesKey}
+      defaultFavourites={messagesMode ? [] : TASK_STATUS_FAVOURITES}
+      favouritesLeading={
+        messagesMode ? (
+          <MessageAuthorAvatarStrip
+            authors={messageAuthors}
+            selectedAuthorKey={selectedMessageAuthorKey}
+            onSelectAuthor={(key) => onSelectMessageAuthor?.(key)}
+          />
+        ) : undefined
+      }
+      sortOptions={DEFAULT_SORT_OPTIONS}
+      sortBy={sortBy}
+      onSortChange={setSortBy}
       afterFilterTrigger={
         <>
-          {midControls}
           {showSortBar ? (
             <SortBar
               sortBy={sortBy}
@@ -353,6 +331,11 @@ export function WorkbenchTaskFilterBar({
               forceCollapsed={filterExpanded}
             />
           ) : null}
+          <FilterRowSearchField
+            value={searchQuery}
+            onChange={setSearchQuery}
+            placeholder="Search"
+          />
         </>
       }
     />

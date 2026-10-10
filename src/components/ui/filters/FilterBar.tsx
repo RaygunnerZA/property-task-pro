@@ -3,6 +3,22 @@ import { ArrowLeftToLine, Building2, Home, Hotel, Warehouse, Store, Castle } fro
 import { cn } from "@/lib/utils";
 import { FilterChip } from "@/components/chips/filter";
 import { IconButton } from "@/components/ui/IconButton";
+import {
+  FilterFavouritesRow,
+  RemoveFavouriteSlot,
+  type FavouriteChipView,
+} from "@/components/ui/filters/FilterFavouritesRow";
+import {
+  FavouriteDragProvider,
+  HoldToDrag,
+} from "@/components/ui/filters/filterFavouriteDrag";
+import { useStoredFavourites } from "@/components/ui/filters/useStoredFavourites";
+import {
+  insertFavourite,
+  removeFavourite,
+  type FilterFavourite,
+} from "@/lib/filterFavourites";
+import { TASK_STATUS_ORDER, TASK_STATUS_VISUALS } from "@/lib/taskStatus";
 
 // Custom Funnel icon component (not available in lucide-react)
 const Funnel = ({ className, style, ...props }: React.SVGProps<SVGSVGElement>) => (
@@ -53,6 +69,23 @@ export interface FilterOption {
   color?: string;
 }
 
+/** Favourite-row icon tints. Urgent and overdue use the option colour (coral). */
+const FAVOURITE_ICON_COLORS: Record<string, string> = {
+  "filter-priority-high": "#E8A04A",
+};
+
+function favouriteIconColor(option: FilterOption): string | undefined {
+  return FAVOURITE_ICON_COLORS[option.id] ?? option.color;
+}
+
+function tintIcon(icon: React.ReactNode, color: string): React.ReactNode {
+  if (!React.isValidElement(icon)) return icon;
+  const element = icon as React.ReactElement<{ style?: React.CSSProperties }>;
+  return React.cloneElement(element, {
+    style: { ...element.props.style, color },
+  });
+}
+
 export interface FilterGroup {
   id: string;
   label: string;
@@ -94,6 +127,15 @@ interface FilterBarProps {
   onExpandedChange?: (expanded: boolean) => void;
   /** When true, force the bar back to the primary level (e.g. peer Sort expands). */
   forceCollapsed?: boolean;
+  /** Persists the favourites row for this screen. Omit to keep a single chip row. */
+  favouritesKey?: string;
+  defaultFavourites?: FilterFavourite[];
+  /** Sort chips that can be pinned. Clicking a pinned sort calls `onSortChange`. */
+  sortOptions?: { id: string; label: string }[];
+  sortBy?: string;
+  onSortChange?: (id: string) => void;
+  /** Contextual chips ahead of pinned favourites (for example message authors). */
+  favouritesLeading?: React.ReactNode;
 }
 
 type NavigationLevel = 'primary' | 'categories' | 'options';
@@ -158,6 +200,12 @@ export function FilterBar({
   onExitCategoriesLevel,
   onExpandedChange,
   forceCollapsed = false,
+  favouritesKey,
+  defaultFavourites = [],
+  sortOptions = [],
+  sortBy,
+  onSortChange,
+  favouritesLeading,
 }: FilterBarProps) {
   const [navigationLevel, setNavigationLevel] = useState<NavigationLevel>(() =>
     defaultNavigationLevel === "categories" ? "categories" : "primary"
@@ -207,6 +255,22 @@ export function FilterBar({
   }, []);
 
   const sortRowApi = useMemo(() => ({ openSort }), [openSort]);
+  const [favourites, setFavourites] = useStoredFavourites(favouritesKey, defaultFavourites);
+
+  const handleFavouriteDrop = useCallback(
+    (
+      item: FilterFavourite,
+      source: "menu" | "favourite",
+      hit: { overRow: boolean; overRemove: boolean; insertIndex: number }
+    ) => {
+      setFavourites((current) => {
+        if (hit.overRemove && source === "favourite") return removeFavourite(current, item);
+        if (hit.overRow) return insertFavourite(current, item, hit.insertIndex);
+        return current;
+      });
+    },
+    [setFavourites]
+  );
 
   const handleSortSelect = (id: string) => {
     if (!sortSession) return;
@@ -331,23 +395,122 @@ export function FilterBar({
     };
   }, [collapseFilterChipAfterMs, collapseInteractionRootRef]);
 
+  const findOption = (id: string): FilterOption | undefined => {
+    const primary = primaryOptions.find((option) => option.id === id);
+    if (primary) return primary;
+    for (const group of secondaryGroups) {
+      const match = group.options.find((option) => option.id === id);
+      if (match) return match;
+    }
+    return undefined;
+  };
+
+  const favouriteChips: FavouriteChipView[] = favouritesKey
+    ? favourites.flatMap((item): FavouriteChipView[] => {
+        if (item.kind === "sort") {
+          const option = sortOptions.find((entry) => entry.id === item.id);
+          if (!option || !onSortChange) return [];
+          return [
+            {
+              item,
+              label: option.label,
+              selected: sortBy === item.id,
+              onActivate: () => onSortChange(item.id),
+            },
+          ];
+        }
+        if (item.kind === "category") {
+          const group = secondaryGroups.find((entry) => entry.id === item.id);
+          if (!group) return [];
+          return [
+            {
+              item,
+              label: group.label,
+              selected: group.options.some((option) => selectedFilters.has(option.id)),
+              onActivate: () => {
+                setSortSession(null);
+                handleCategoryClick(group.id);
+              },
+            },
+          ];
+        }
+        const option = findOption(item.id);
+        if (!option) return [];
+        const status = TASK_STATUS_ORDER.map((key) => TASK_STATUS_VISUALS[key]).find(
+          (visual) => visual.filterId === item.id
+        );
+        if (status) {
+          const Icon = status.Icon;
+          const open = status.status === "open";
+          return [
+            {
+              item,
+              label: status.shortLabel,
+              selected: selectedFilters.has(option.id),
+              onActivate: () => handleFilterToggle(option.id),
+              icon: <Icon />,
+              iconClassName: status.filterIconClassName,
+              selectedSurfaceClassName: status.blockClassName,
+              selectedIconClassName: open ? status.filterIconClassName : "text-white",
+              selectedLabelClassName: open ? "text-muted-foreground" : "text-white",
+            },
+          ];
+        }
+        const iconColor = favouriteIconColor(option);
+        return [
+          {
+            item,
+            label: option.label,
+            selected: selectedFilters.has(option.id),
+            onActivate: () => handleFilterToggle(option.id),
+            icon: iconColor ? tintIcon(option.icon, iconColor) : option.icon,
+          },
+        ];
+      })
+    : [];
+
   // Render chip with animation - uses the canonical 28px FilterChip height
   const renderChip = (
     option: FilterOption,
     index: number,
     isSelected: boolean,
     onClick: () => void
-  ) => (
-    <FilterChip
-      key={option.id}
-      label={option.label}
-      selected={isSelected}
-      onSelect={onClick}
-      icon={option.icon ? React.cloneElement(option.icon as React.ReactElement, { className: "h-[14px] w-[14px]" }) : undefined}
-      color={option.color}
-      className="!duration-300 ease-out"
-    />
-  );
+  ) => {
+    const chip = (
+      <FilterChip
+        label={option.label}
+        selected={isSelected}
+        onSelect={onClick}
+        icon={option.icon ? React.cloneElement(option.icon as React.ReactElement, { className: "h-[14px] w-[14px]" }) : undefined}
+        color={option.color}
+        className="!duration-300 ease-out"
+      />
+    );
+    if (!favouritesKey) return <React.Fragment key={option.id}>{chip}</React.Fragment>;
+    return (
+      <HoldToDrag
+        key={option.id}
+        item={{ kind: "option", id: option.id }}
+        source="menu"
+        label={option.label}
+      >
+        {chip}
+      </HoldToDrag>
+    );
+  };
+
+  const renderMenuChip = (
+    item: FilterFavourite,
+    label: string,
+    chip: React.ReactNode
+  ) => {
+    if (!favouritesKey) return chip;
+    return (
+      <HoldToDrag key={`${item.kind}:${item.id}`} item={item} source="menu" label={label}>
+        {chip}
+      </HoldToDrag>
+    );
+  };
 
   // Render icon button - 28px to match chip height
   const renderIconButton = (
@@ -380,11 +543,15 @@ export function FilterBar({
       : "animate-[wipe-left-to-right_0.2s_ease-out_both]";
   };
 
-  return (
-    <FilterRowSortContext.Provider value={sortRowApi}>
-    <div className={cn("flex items-center justify-between gap-2 min-h-[36px]", className)}>
+  const clearControl = hasClearableFilters ? (
+    <RemoveFilterButton onClick={handleClearAllFilters} />
+  ) : null;
+
+  const column = (
+    <div className={cn("flex min-w-0 flex-col gap-1", className)}>
+    <div className="flex items-center justify-between gap-2 min-h-[36px]">
       {/* Scroll track: a few px inset so neumorphic outer shadows are not clipped */}
-      <div className="chip-row-scroll flex flex-1 min-w-0 items-center gap-2 px-1 py-1">
+      <div className="chip-row-scroll flex flex-1 min-w-0 items-center gap-2 py-[5px] pl-[3px] pr-2">
         <div 
           key={sortSession ? "sort" : `${navigationLevel}-${selectedCategory || 'none'}`}
           className={cn(
@@ -402,15 +569,20 @@ export function FilterBar({
                 size={28}
                 aria-label="Close sort"
               />
-              {sortSession.options.map((option) => (
-                <FilterChip
-                  key={option.id}
-                  label={option.label}
-                  selected={sortSession.sortBy === option.id}
-                  onSelect={() => handleSortSelect(option.id)}
-                  className="!duration-300 ease-out"
-                />
-              ))}
+              <RemoveFavouriteSlot />
+              {sortSession.options.map((option) =>
+                renderMenuChip(
+                  { kind: "sort", id: option.id },
+                  option.label,
+                  <FilterChip
+                    key={option.id}
+                    label={option.label}
+                    selected={sortSession.sortBy === option.id}
+                    onSelect={() => handleSortSelect(option.id)}
+                    className="!duration-300 ease-out"
+                  />
+                )
+              )}
             </>
           ) : null}
 
@@ -449,18 +621,14 @@ export function FilterBar({
                   </span>
                 </button>
               ) : null}
+              <RemoveFavouriteSlot />
               {mostUsedOptions.map((option, index) => {
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
               })}
               {afterFilterTrigger}
-              {hasClearableFilters && (
-                renderIconButton(
-                  <FunnelX className="h-[14px] w-[14px] text-foreground" />,
-                  handleClearAllFilters
-                )
-              )}
               {primaryTrailing}
+              {clearControl}
             </>
           )}
 
@@ -468,33 +636,27 @@ export function FilterBar({
           {!sortSession && navigationLevel === 'categories' && (
             <>
               {renderBackButton()}
-              {secondaryGroups.map((group, index) => (
-                <button
-                  key={group.id}
-                  onClick={() => handleCategoryClick(group.id)}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 px-2.5 py-0 rounded-[8px] flex-shrink-0 h-[28px]",
-                    "font-mono text-2xs uppercase tracking-wide leading-none",
-                    "select-none cursor-pointer transition-all",
-                    "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                  )}
-                >
-                  <span>{group.label}</span>
-                </button>
-              ))}
-              {hasClearableFilters && (
-                <button
-                  onClick={handleClearAllFilters}
-                  className={cn(
-                    "inline-flex items-center justify-center h-[28px] w-[28px] rounded-[8px] flex-shrink-0",
-                    "select-none cursor-pointer transition-all",
-                    "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                    "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                  )}
-                >
-                  <FunnelX className="h-[14px] w-[14px]" />
-                </button>
+              <RemoveFavouriteSlot />
+              {secondaryGroups.map((group) =>
+                renderMenuChip(
+                  { kind: "category", id: group.id },
+                  group.label,
+                  <button
+                    key={group.id}
+                    type="button"
+                    onClick={() => handleCategoryClick(group.id)}
+                    className={cn(
+                      "inline-flex items-center gap-1.5 px-2.5 py-0 rounded-[8px] flex-shrink-0 h-[28px]",
+                      "font-mono text-2xs uppercase tracking-wide leading-none",
+                      "select-none cursor-pointer transition-all",
+                      "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)] hover:bg-card hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+                    )}
+                  >
+                    <span>{group.label}</span>
+                  </button>
+                )
               )}
+              {clearControl}
             </>
           )}
 
@@ -502,23 +664,12 @@ export function FilterBar({
           {!sortSession && navigationLevel === 'options' && selectedGroup && (
             <>
               {renderBackButton()}
+              <RemoveFavouriteSlot />
               {selectedGroup.options.map((option, index) => {
                 const isSelected = selectedFilters.has(option.id);
                 return renderChip(option, index, isSelected, () => handleFilterToggle(option.id));
               })}
-              {hasClearableFilters && (
-                <button
-                  onClick={handleClearAllFilters}
-                  className={cn(
-                    "inline-flex items-center justify-center h-[28px] w-[28px] rounded-[8px] flex-shrink-0",
-                    "select-none cursor-pointer transition-all",
-                    "bg-background text-muted-foreground shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
-                    "hover:bg-[#F6F4F2] hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
-                  )}
-                >
-                  <FunnelX className="h-[14px] w-[14px]" />
-                </button>
-              )}
+              {clearControl}
             </>
           )}
         </div>
@@ -531,6 +682,50 @@ export function FilterBar({
         </div>
       )}
     </div>
+    {favouritesKey ? (
+      <FilterFavouritesRow chips={favouriteChips} leading={favouritesLeading} />
+    ) : null}
+    </div>
+  );
+
+  return (
+    <FilterRowSortContext.Provider value={sortRowApi}>
+      {favouritesKey ? (
+        <FavouriteDragProvider onDrop={handleFavouriteDrop}>{column}</FavouriteDragProvider>
+      ) : (
+        column
+      )}
     </FilterRowSortContext.Provider>
+  );
+}
+
+function RemoveFilterButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Remove filter"
+      className={cn(
+        "group/clear inline-flex h-[28px] min-w-[28px] shrink-0 items-center overflow-hidden rounded-[8px]",
+        "cursor-pointer select-none bg-background text-muted-foreground",
+        "shadow-[2px_2px_4px_rgba(0,0,0,0.08),-1px_-1px_2px_rgba(255,255,255,0.7)]",
+        "gap-0 pr-0 transition-[padding,gap,box-shadow,background-color] duration-300 ease-out",
+        "hover:gap-1.5 hover:bg-card hover:pr-2.5",
+        "hover:shadow-[inset_2px_2px_4px_rgba(0,0,0,0.15),inset_-1px_-1px_2px_rgba(255,255,255,0.3)]"
+      )}
+    >
+      <span className="inline-flex h-[28px] w-[28px] shrink-0 items-center justify-center">
+        <FunnelX className="h-[14px] w-[14px]" />
+      </span>
+      <span
+        className={cn(
+          "max-w-0 overflow-hidden whitespace-nowrap font-mono text-2xs uppercase tracking-wide opacity-0",
+          "transition-[max-width,opacity] duration-300 ease-out",
+          "group-hover/clear:max-w-[8rem] group-hover/clear:opacity-100"
+        )}
+      >
+        Remove filter
+      </span>
+    </button>
   );
 }
